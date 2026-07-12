@@ -65,6 +65,7 @@ public sealed class MainViewModel : BindableBase
     private DateTimeOffset _projectCreatedAt = DateTimeOffset.Now;
     private string _uiDensity = "Comoda";
     private bool _reducedMotion;
+    private bool _showOnboarding;
 
     public MainViewModel()
     {
@@ -81,6 +82,7 @@ public sealed class MainViewModel : BindableBase
         _currentProjectFile = _state.LastProjectFile;
         _uiDensity = new[] { "Compatta", "Comoda", "Ampia" }.Contains(_state.UiDensity) ? _state.UiDensity : "Comoda";
         _reducedMotion = _state.ReducedMotion;
+        _showOnboarding = !_state.HasCompletedOnboarding;
         foreach (var path in _state.SourcePaths.Where(Directory.Exists)) SourcePaths.Add(path);
         foreach (var pair in _state.Overrides.Where(pair => pair.Value.Kind is not null)) _kindOverrides.Add(pair.Key);
         ApplyOverridesCommand = new RelayCommand(ApplyOverrides, () => SelectedNode is not null && !IsScanning);
@@ -124,6 +126,14 @@ public sealed class MainViewModel : BindableBase
     public string ProjectDocumentStatus => string.IsNullOrWhiteSpace(CurrentProjectFile) ? "Progetto non ancora salvato" : Path.GetFileName(CurrentProjectFile);
     public string UiDensity { get => _uiDensity; set => Set(ref _uiDensity, value); }
     public bool ReducedMotion { get => _reducedMotion; set => Set(ref _reducedMotion, value); }
+    public bool ShowOnboarding { get => _showOnboarding; private set => Set(ref _showOnboarding, value); }
+    public void OpenOnboarding() => ShowOnboarding = true;
+    public void CompleteOnboarding()
+    {
+        ShowOnboarding = false;
+        _state.HasCompletedOnboarding = true;
+        SaveState();
+    }
     public int SessionBoundaryHour
     {
         get => _sessionBoundaryHour;

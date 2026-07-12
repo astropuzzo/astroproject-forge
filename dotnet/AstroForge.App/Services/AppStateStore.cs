@@ -18,6 +18,7 @@ public sealed class AppState
     public string LastProjectFile { get; set; } = "";
     public string UiDensity { get; set; } = "Comoda";
     public bool ReducedMotion { get; set; }
+    public bool HasCompletedOnboarding { get; set; }
     public Dictionary<string, FrameOverrides> Overrides { get; set; } = new(StringComparer.OrdinalIgnoreCase);
 }
 

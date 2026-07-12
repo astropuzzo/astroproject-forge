@@ -104,6 +104,7 @@
                     <CheckBox Content="Movimento ridotto" IsChecked="{Binding ReducedMotion, Mode=TwoWay}" Click="ReducedMotion_Click" Margin="0,3,0,7"/>
                     <TextBlock Text="Riduce la transizione di ingresso. La densità compatta libera spazio sui display piccoli." Style="{StaticResource MutedText}" TextWrapping="Wrap" FontSize="11"/>
                     <Button Content="Salva preferenze" Click="SaveUiPreferences_Click" Style="{StaticResource PrimaryButton}" Margin="0,16,0,0"/>
+                    <Button Content="Riapri configurazione guidata" Click="ReopenOnboarding_Click" Margin="0,8,0,0"/>
                 </StackPanel>
             </Border>
         </Popup>
@@ -418,5 +419,57 @@
         <Border Grid.Row="2" Background="#D0090D14" BorderBrush="#34465D" BorderThickness="0,1,0,0">
             <Grid Margin="14,0"><TextBlock Text="{Binding Status}" Style="{StaticResource MutedText}" VerticalAlignment="Center"/><ProgressBar Width="220" Height="4" HorizontalAlignment="Right" VerticalAlignment="Center" Value="{Binding Progress, Mode=OneWay}" Maximum="100" Visibility="{Binding IsScanning, Converter={StaticResource BooleanToVisibility}}" Foreground="{StaticResource Accent}" Background="{StaticResource Bg3}"/></Grid>
         </Border>
+
+        <Grid x:Name="OnboardingOverlay" Grid.RowSpan="3" Background="#E6060910" Visibility="{Binding ShowOnboarding, Converter={StaticResource BooleanToVisibility}}">
+            <Ellipse Width="760" Height="760" HorizontalAlignment="Right" VerticalAlignment="Top" Margin="0,-470,-360,0" IsHitTestVisible="False"><Ellipse.Fill><RadialGradientBrush><GradientStop Color="#4A2DD8C9" Offset="0"/><GradientStop Color="#002DD8C9" Offset="1"/></RadialGradientBrush></Ellipse.Fill></Ellipse>
+            <Border Width="780" MaxHeight="620" Margin="28" HorizontalAlignment="Center" VerticalAlignment="Center" Style="{StaticResource Card}" Background="#F20C1420" BorderBrush="#627B96" Padding="0">
+                <Grid>
+                    <Grid.RowDefinitions><RowDefinition Height="8"/><RowDefinition Height="*"/><RowDefinition Height="82"/></Grid.RowDefinitions>
+                    <Border Grid.Row="0" CornerRadius="16,16,0,0" Background="{StaticResource AccentGradient}"/>
+                    <Grid Grid.Row="1" Margin="42,34,42,18">
+                        <StackPanel x:Name="OnboardingStep1">
+                            <TextBlock Text="BENVENUTO IN ASTROPROJECT FORGE" Style="{StaticResource Eyebrow}"/>
+                            <TextBlock Text="Dal cielo a WBPP, senza caos." FontSize="38" FontWeight="SemiBold" FontFamily="Segoe UI Variable Display" Margin="0,10,0,12"/>
+                            <TextBlock Text="Forge legge i metadati delle sessioni, separa le configurazioni ottiche, trova Dark e Bias compatibili e prepara una struttura spiegabile per PixInsight." Style="{StaticResource MutedText}" FontSize="15" LineHeight="24" TextWrapping="Wrap" MaxWidth="650" HorizontalAlignment="Left"/>
+                            <Grid Margin="0,28,0,0"><Grid.ColumnDefinitions><ColumnDefinition/><ColumnDefinition/><ColumnDefinition/></Grid.ColumnDefinitions>
+                                <Border Style="{StaticResource Card}" Margin="0,0,8,0" Background="#102725"><StackPanel><TextBlock Text="01" Style="{StaticResource Eyebrow}"/><TextBlock Text="Legge" FontSize="18" FontWeight="SemiBold" Margin="0,6,0,3"/><TextBlock Text="FITS e XISF" Style="{StaticResource MutedText}"/></StackPanel></Border>
+                                <Border Grid.Column="1" Style="{StaticResource Card}" Margin="4,0" Background="#101F2A"><StackPanel><TextBlock Text="02" Style="{StaticResource Eyebrow}"/><TextBlock Text="Decide" FontSize="18" FontWeight="SemiBold" Margin="0,6,0,3"/><TextBlock Text="con motivazioni" Style="{StaticResource MutedText}"/></StackPanel></Border>
+                                <Border Grid.Column="2" Style="{StaticResource Card}" Margin="8,0,0,0" Background="#102725"><StackPanel><TextBlock Text="03" Style="{StaticResource Eyebrow}"/><TextBlock Text="Esporta" FontSize="18" FontWeight="SemiBold" Margin="0,6,0,3"/><TextBlock Text="copie verificate" Style="{StaticResource MutedText}"/></StackPanel></Border>
+                            </Grid>
+                        </StackPanel>
+                        <StackPanel x:Name="OnboardingStep2" Visibility="Collapsed">
+                            <TextBlock Text="PASSO 1 · CALIBRAZIONI" Style="{StaticResource Eyebrow}"/>
+                            <TextBlock Text="Collega la Master Library" FontSize="32" FontWeight="SemiBold" Margin="0,8,0,10"/>
+                            <TextBlock Text="Puoi usare più librerie e ordinarle per priorità. Ogni camera mantiene Master distinti; la struttura normalizzata parte sempre dal nome camera." Style="{StaticResource MutedText}" FontSize="14" LineHeight="22" TextWrapping="Wrap"/>
+                            <Border Style="{StaticResource Card}" Background="#102725" Margin="0,24,0,14"><Grid><Grid.ColumnDefinitions><ColumnDefinition/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions><StackPanel><TextBlock Text="LIBRERIE COLLEGATE" Style="{StaticResource Eyebrow}"/><TextBlock Text="{Binding MasterLibraries.Count, StringFormat={}{0} configurate}" FontSize="21" FontWeight="SemiBold" Margin="0,6,0,0"/></StackPanel><Button Grid.Column="1" Content="+ Scegli cartella Master" Click="OnboardingChooseLibrary_Click" Style="{StaticResource PrimaryButton}"/></Grid></Border>
+                            <TextBlock Text="Nessuna cartella è codificata: potrai cambiarla, disabilitarla o aggiungerne altre in qualsiasi momento." Style="{StaticResource MutedText}" TextWrapping="Wrap"/>
+                        </StackPanel>
+                        <StackPanel x:Name="OnboardingStep3" Visibility="Collapsed">
+                            <TextBlock Text="PASSO 2 · PROFILO PROGETTO" Style="{StaticResource Eyebrow}"/>
+                            <TextBlock Text="Imposta regole di acquisizione" FontSize="32" FontWeight="SemiBold" Margin="0,8,0,10"/>
+                            <TextBlock Text="I fallback entrano in gioco solo quando header e percorso non dimostrano il valore. Non sovrascrivono metadati validi." Style="{StaticResource MutedText}" TextWrapping="Wrap"/>
+                            <Grid Margin="0,24,0,0"><Grid.ColumnDefinitions><ColumnDefinition/><ColumnDefinition/><ColumnDefinition/></Grid.ColumnDefinitions>
+                                <StackPanel Margin="0,0,8,0"><TextBlock Text="Cambio notte (ora locale)" Style="{StaticResource MetaLabel}"/><TextBox Text="{Binding SessionBoundaryHour, UpdateSourceTrigger=PropertyChanged}" HorizontalContentAlignment="Center"/></StackPanel>
+                                <StackPanel Grid.Column="1" Margin="4,0"><TextBlock Text="Gain predefinito" Style="{StaticResource MetaLabel}"/><TextBox Text="{Binding ProjectDefaultGain, UpdateSourceTrigger=PropertyChanged}" HorizontalContentAlignment="Center"/></StackPanel>
+                                <StackPanel Grid.Column="2" Margin="8,0,0,0"><TextBlock Text="Offset predefinito" Style="{StaticResource MetaLabel}"/><TextBox Text="{Binding ProjectDefaultOffset, UpdateSourceTrigger=PropertyChanged}" HorizontalContentAlignment="Center"/></StackPanel>
+                            </Grid>
+                            <Border Style="{StaticResource Card}" Background="#101F2A" Margin="0,22,0,0"><Grid><Grid.ColumnDefinitions><ColumnDefinition/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions><StackPanel><TextBlock Text="SESSIONI N.I.N.A." Style="{StaticResource Eyebrow}"/><TextBlock Text="{Binding SourcePaths.Count, StringFormat={}{0} cartelle importate}" FontSize="20" FontWeight="SemiBold" Margin="0,5,0,0"/></StackPanel><Button Grid.Column="1" Content="+ Importa cartelle" Click="OnboardingAddSource_Click"/></Grid></Border>
+                        </StackPanel>
+                        <StackPanel x:Name="OnboardingStep4" Visibility="Collapsed" HorizontalAlignment="Center" VerticalAlignment="Center" MaxWidth="590">
+                            <Border Width="74" Height="74" CornerRadius="23" Background="{StaticResource AccentGradient}" HorizontalAlignment="Center" Effect="{StaticResource AccentGlow}"><TextBlock Text="✓" Foreground="#071411" FontSize="34" FontWeight="Bold" HorizontalAlignment="Center" VerticalAlignment="Center"/></Border>
+                            <TextBlock Text="Pronto per la prima analisi" FontSize="34" FontWeight="SemiBold" TextAlignment="Center" Margin="0,20,0,10"/>
+                            <TextBlock Text="Forge non modificherà gli originali. Dopo la scansione vedrai filtri, sessioni, Flat Epoch, ore integrate e ogni calibrazione assegnata." Style="{StaticResource MutedText}" FontSize="14" LineHeight="22" TextWrapping="Wrap" TextAlignment="Center"/>
+                        </StackPanel>
+                    </Grid>
+                    <Border Grid.Row="2" Background="#C9121C29" BorderBrush="#40536B" BorderThickness="0,1,0,0" CornerRadius="0,0,16,16">
+                        <Grid Margin="28,0"><Grid.ColumnDefinitions><ColumnDefinition/><ColumnDefinition Width="Auto"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions>
+                            <StackPanel Orientation="Horizontal" VerticalAlignment="Center"><TextBlock x:Name="OnboardingProgress" Text="1 / 4" Style="{StaticResource Eyebrow}"/><Button Content="Salta configurazione" Click="OnboardingSkip_Click" Padding="10,5" Margin="14,0,0,0" Background="Transparent" BorderThickness="0"/></StackPanel>
+                            <Button x:Name="OnboardingBackButton" Grid.Column="1" Content="Indietro" Click="OnboardingBack_Click" Visibility="Collapsed" Margin="0,0,10,0" MinWidth="110"/>
+                            <Button x:Name="OnboardingNextButton" Grid.Column="2" Content="Inizia" Click="OnboardingNext_Click" Style="{StaticResource PrimaryButton}" MinWidth="140"/>
+                        </Grid>
+                    </Border>
+                </Grid>
+            </Border>
+        </Grid>
     </Grid>
 </Window>

@@ -13,6 +13,7 @@ public partial class MainWindow : Window
     private bool _sourcesVisible = true;
     private bool _inspectorVisible = true;
     private bool _masterLabActive;
+    private int _onboardingStep = 1;
 
     public MainWindow()
     {
@@ -80,6 +81,27 @@ public partial class MainWindow : Window
     }
     private void ReducedMotion_Click(object sender, RoutedEventArgs e) => ApplyUiPreferences();
     private void SaveUiPreferences_Click(object sender, RoutedEventArgs e) { _viewModel.SaveState(); SettingsPopup.IsOpen = false; }
+    private void ReopenOnboarding_Click(object sender, RoutedEventArgs e) { SettingsPopup.IsOpen = false; _onboardingStep = 1; _viewModel.OpenOnboarding(); UpdateOnboarding(); }
+    private void OnboardingChooseLibrary_Click(object sender, RoutedEventArgs e) => ChooseLibrary_Click(sender, e);
+    private void OnboardingAddSource_Click(object sender, RoutedEventArgs e) => AddSource_Click(sender, e);
+    private void OnboardingSkip_Click(object sender, RoutedEventArgs e) => _viewModel.CompleteOnboarding();
+    private void OnboardingBack_Click(object sender, RoutedEventArgs e) { _onboardingStep = Math.Max(1, _onboardingStep - 1); UpdateOnboarding(); }
+    private void OnboardingNext_Click(object sender, RoutedEventArgs e)
+    {
+        if (_onboardingStep == 4) { _viewModel.CompleteOnboarding(); return; }
+        _onboardingStep++;
+        UpdateOnboarding();
+    }
+    private void UpdateOnboarding()
+    {
+        OnboardingStep1.Visibility = _onboardingStep == 1 ? Visibility.Visible : Visibility.Collapsed;
+        OnboardingStep2.Visibility = _onboardingStep == 2 ? Visibility.Visible : Visibility.Collapsed;
+        OnboardingStep3.Visibility = _onboardingStep == 3 ? Visibility.Visible : Visibility.Collapsed;
+        OnboardingStep4.Visibility = _onboardingStep == 4 ? Visibility.Visible : Visibility.Collapsed;
+        OnboardingProgress.Text = $"{_onboardingStep} / 4";
+        OnboardingBackButton.Visibility = _onboardingStep > 1 ? Visibility.Visible : Visibility.Collapsed;
+        OnboardingNextButton.Content = _onboardingStep switch { 1 => "Inizia", 4 => "Vai al progetto", _ => "Continua" };
+    }
     private void ApplyUiPreferences()
     {
         var density = _viewModel.UiDensity;

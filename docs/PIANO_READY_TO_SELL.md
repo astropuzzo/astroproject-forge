@@ -466,6 +466,8 @@ Creare un flusso guidato al primo avvio:
 
 **Preferenze UX v1 — 12 luglio 2026:** aggiunto pannello glass indipendente nell'header con densità `Compatta`, `Comoda` e `Ampia`, applicata in tempo reale ad altezze e padding dei controlli. Aggiunta preferenza persistente `Movimento ridotto`, che elimina la transizione di ingresso. Entrambe vengono conservate localmente in `state.json`. La vista Analisi ora possiede uno stato vuoto guidato invece di una superficie senza indicazioni. Build, avvio self-contained e popup sono stati verificati a schermo. Restano tema chiaro, localizzazione e audit DPI 125–250% per chiudere P0.11.
 
+**Onboarding v1 — 12 luglio 2026:** implementato flusso glass in quattro passaggi al primo avvio: promessa e limiti del prodotto, collegamento Master Library multi-camera, impostazioni della notte e fallback Gain/Offset, import cartelle N.I.N.A. e consegna alla prima analisi. Le azioni usano gli stessi selettori del workspace, quindi non creano una configurazione parallela. Il completamento è persistente, è possibile saltare il flusso e riaprirlo dalle Preferenze. Verificati visivamente tutti i passaggi e provata la persistenza con chiusura e riavvio dell'EXE self-contained.
+
 1. scegli lingua e cartella progetto;
 2. registra una o più librerie Master;
 3. scegli il confine della notte astronomica e timezone;
