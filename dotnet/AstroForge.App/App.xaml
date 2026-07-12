@@ -177,7 +177,8 @@
             <Setter Property="Padding" Value="14,12" />
             <Setter Property="Margin" Value="0,0,8,7" />
             <Setter Property="MinWidth" Value="142" />
-            <Setter Property="HorizontalContentAlignment" Value="Left" />
+            <Setter Property="HorizontalContentAlignment" Value="Stretch" />
+            <Setter Property="VerticalContentAlignment" Value="Stretch" />
             <Setter Property="Template">
                 <Setter.Value>
                     <ControlTemplate TargetType="TabItem">

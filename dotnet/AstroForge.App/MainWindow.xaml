@@ -190,7 +190,7 @@
                     </Grid>
                 </Border>
 
-                <TabControl x:Name="WorkspaceTabs" Grid.Row="1" Background="Transparent" BorderThickness="0" TabStripPlacement="Left" SelectionChanged="WorkspaceTabs_SelectionChanged">
+                <TabControl x:Name="WorkspaceTabs" Grid.Row="1" Background="Transparent" BorderThickness="0" TabStripPlacement="Left" HorizontalContentAlignment="Stretch" VerticalContentAlignment="Stretch" SelectionChanged="WorkspaceTabs_SelectionChanged">
                     <TabItem Header="01  Analisi">
                         <Grid Margin="0,14,0,0">
                             <Grid.RowDefinitions><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/><RowDefinition Height="*"/></Grid.RowDefinitions>
@@ -219,7 +219,7 @@
                                 <Button Grid.Column="1" Content="Genera anteprima" Click="BuildPlan_Click" Margin="8,0"/>
                                 <Button Grid.Column="2" Content="Crea progetto verificato" Click="Export_Click" Style="{StaticResource PrimaryButton}"/>
                             </Grid>
-                            <Border Grid.Row="3" Style="{StaticResource Card}" Padding="8"><TreeView ItemsSource="{Binding PlannedTreeRoots}" MouseDoubleClick="Tree_MouseDoubleClick" ToolTip="Doppio click per mostrare il file originale" VirtualizingStackPanel.IsVirtualizing="True" VirtualizingStackPanel.VirtualizationMode="Recycling"/></Border>
+                            <Border Grid.Row="3" Style="{StaticResource Card}" Padding="8" HorizontalAlignment="Stretch" VerticalAlignment="Stretch"><Grid><TreeView ItemsSource="{Binding PlannedTreeRoots}" MouseDoubleClick="Tree_MouseDoubleClick" ToolTip="Doppio click per mostrare il file originale" VirtualizingStackPanel.IsVirtualizing="True" VirtualizingStackPanel.VirtualizationMode="Recycling"/><StackPanel Visibility="{Binding PlannedTreeRoots, Converter={StaticResource EmptyCollectionToVisibility}}" HorizontalAlignment="Center" VerticalAlignment="Center" MaxWidth="440"><Border Width="58" Height="58" CornerRadius="18" Background="#173A3A" HorizontalAlignment="Center"><TextBlock Text="⌘" Foreground="{StaticResource Accent}" FontSize="24" HorizontalAlignment="Center" VerticalAlignment="Center"/></Border><TextBlock Text="La struttura apparirà qui" FontSize="21" FontWeight="SemiBold" TextAlignment="Center" Margin="0,15,0,6"/><TextBlock Text="Scegli nome e destinazione, quindi genera l’anteprima. Potrai controllare l’intero albero prima di copiare qualsiasi file." Style="{StaticResource MutedText}" TextWrapping="Wrap" TextAlignment="Center"/></StackPanel></Grid></Border>
                         </Grid>
                     </TabItem>
 
