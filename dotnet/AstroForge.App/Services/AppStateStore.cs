@@ -1,0 +1,83 @@
+using System.Text.Json;
+using System.IO;
+using AstroForge.Core.Models;
+
+namespace AstroForge.App.Services;
+
+public sealed class AppState
+{
+    public List<string> SourcePaths { get; set; } = [];
+    public string LibraryPath { get; set; } = @"E:\immagini\MSTE";
+    public string DestinationPath { get; set; } = "";
+    public string ProjectName { get; set; } = "";
+    public int SessionBoundaryHour { get; set; } = 12;
+    public double? ProjectDefaultGain { get; set; } = 100;
+    public double? ProjectDefaultOffset { get; set; } = 51;
+    public double? ProjectDefaultTemperatureC { get; set; }
+    public string LastProjectFile { get; set; } = "";
+    public Dictionary<string, FrameOverrides> Overrides { get; set; } = new(StringComparer.OrdinalIgnoreCase);
+}
+
+public sealed class FrameOverrides
+{
+    public bool HasGain { get; set; }
+    public double? Gain { get; set; }
+    public bool HasOffset { get; set; }
+    public double? Offset { get; set; }
+    public bool HasTemperature { get; set; }
+    public double? Temperature { get; set; }
+    public bool HasFilter { get; set; }
+    public string? Filter { get; set; }
+    public bool HasFlatSet { get; set; }
+    public string? FlatSet { get; set; }
+    public bool HasSession { get; set; }
+    public string? Session { get; set; }
+    public FrameKind? Kind { get; set; }
+}
+
+public static class AppStateStore
+{
+    private static readonly string DirectoryPath = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "AstroProjectForge");
+    private static readonly string FilePath = Path.Combine(DirectoryPath, "state.json");
+    private static readonly JsonSerializerOptions Options = new() { WriteIndented = true };
+
+    public static AppState Load()
+    {
+        try
+        {
+            if (!File.Exists(FilePath)) return new();
+            return JsonSerializer.Deserialize<AppState>(File.ReadAllText(FilePath), Options) ?? new();
+        }
+        catch { return new(); }
+    }
+
+    public static void Save(AppState state)
+    {
+        Directory.CreateDirectory(DirectoryPath);
+        var temporary = FilePath + ".tmp";
+        File.WriteAllText(temporary, JsonSerializer.Serialize(state, Options));
+        File.Move(temporary, FilePath, true);
+    }
+
+    public static void Apply(FrameMetadata frame, FrameOverrides value)
+    {
+        if (value.HasGain) frame.Gain.SetOverride(value.Gain);
+        if (value.HasOffset) frame.Offset.SetOverride(value.Offset);
+        if (value.HasTemperature) frame.SetTemperatureC.SetOverride(value.Temperature);
+        if (value.HasFilter) frame.FilterName.SetOverride(value.Filter);
+        if (value.HasFlatSet) frame.FlatSetId.SetOverride(value.FlatSet);
+        if (value.HasSession) frame.SessionId.SetOverride(value.Session);
+        if (value.Kind is { } kind) frame.Kind = kind;
+    }
+
+    public static FrameOverrides Snapshot(FrameMetadata frame) => new()
+    {
+        HasGain = frame.Gain.HasOverride, Gain = frame.Gain.OverrideValue,
+        HasOffset = frame.Offset.HasOverride, Offset = frame.Offset.OverrideValue,
+        HasTemperature = frame.SetTemperatureC.HasOverride, Temperature = frame.SetTemperatureC.OverrideValue,
+        HasFilter = frame.FilterName.HasOverride, Filter = frame.FilterName.OverrideValue,
+        HasFlatSet = frame.FlatSetId.HasOverride, FlatSet = frame.FlatSetId.OverrideValue,
+        HasSession = frame.SessionId.HasOverride, Session = frame.SessionId.OverrideValue,
+        Kind = frame.Kind
+    };
+}

@@ -1,0 +1,175 @@
+using AstroForge.Core.Scanning;
+using AstroForge.Core.Sessions;
+using AstroForge.Core.Analysis;
+using AstroForge.Core.Validation;
+using AstroForge.Core.Wbpp;
+using AstroForge.Core.Export;
+using AstroForge.Core.Models;
+using AstroForge.Core.Matching;
+
+var lightBeforeMidnight = Synthetic(FrameKind.Light, "2026-06-15_00-21-26_SIOIII.fits", "SIOIII", new DateTimeOffset(2026, 6, 15, 0, 21, 26, TimeSpan.Zero));
+lightBeforeMidnight.SetTemperatureC.SetOriginal(-10, MetadataSource.Header);
+var hooLight = Synthetic(FrameKind.Light, "2026-06-25_00-57-51_HOO.fits", "HOO", new DateTimeOffset(2026, 6, 25, 0, 57, 51, TimeSpan.Zero));
+hooLight.SetTemperatureC.SetOriginal(0, MetadataSource.Header);
+var sioFlat = Synthetic(FrameKind.Flat, "flat-SIOIII.fits", "SIOIII", new DateTimeOffset(2026, 6, 18, 3, 48, 20, TimeSpan.Zero));
+var hooFlat = Synthetic(FrameKind.Flat, "flat-HOO.fits", "HOO", new DateTimeOffset(2026, 6, 28, 4, 31, 18, TimeSpan.Zero));
+var darkMinusTen = SyntheticMaster(FrameKind.Dark, Path.Combine("library", "GAIN_100", "-10", "600s.xisf"), -10);
+var darkZero = SyntheticMaster(FrameKind.Dark, Path.Combine("library", "GAIN_100", "0", "600s.xisf"), 0);
+var bias100 = SyntheticMaster(FrameKind.Bias, Path.Combine("library", "GAIN_100", "masterBias100.xisf"), null);
+var frames = new List<FrameMetadata> { lightBeforeMidnight, hooLight, sioFlat, hooFlat, darkMinusTen, darkZero, bias100 };
+Assert(frames.Count == 7, $"Attesi 7 frame sintetici, trovati {frames.Count}.");
+Assert(frames.Count(frame => frame.Kind == AstroForge.Core.Models.FrameKind.Light) == 2, "Light non riconosciuti.");
+Assert(frames.Count(frame => frame.Kind == AstroForge.Core.Models.FrameKind.Flat) == 2, "Flat non riconosciuti.");
+Assert(frames.Count(frame => frame.Kind == AstroForge.Core.Models.FrameKind.Dark) == 2, "Dark non riconosciuti.");
+Assert(frames.Count(frame => frame.Kind == AstroForge.Core.Models.FrameKind.Bias) == 1, "Bias non riconosciuti.");
+Assert(lightBeforeMidnight.SessionId.Value == "2026-06-14", $"Sessione astronomica errata: {lightBeforeMidnight.SessionId.Value}");
+Assert(darkMinusTen.Gain.Value == 100 && darkMinusTen.EffectiveTemperatureC == -10, "Metadati libreria Dark non risolti.");
+Assert(bias100.Gain.Value == 100, "Gain Master Bias non risolto.");
+var defaulted = ProjectMetadataDefaultsResolver.Apply(frames, new(100, 51, null));
+Assert(defaulted > 0, "I fallback progetto non sono stati applicati ai Master incompleti.");
+Assert(frames.Where(frame => frame.IsMaster).All(frame => frame.Offset.Value == 51 && frame.Offset.Source == MetadataSource.ProjectDefault), "Offset fallback Master errato.");
+Assert(lightBeforeMidnight.Gain.Source == MetadataSource.Header, "Il fallback non deve sostituire il Gain presente nell'header Light.");
+var duplicateBias = CalibrationCopy(bias100, Path.Combine(Path.GetTempPath(), "duplicate-masterBias100.xisf"));
+var preferredBias = CalibrationMatcher.Find(lightBeforeMidnight, [bias100, duplicateBias], FrameKind.Bias);
+Assert(preferredBias.Selected?.Frame == bias100, "La libreria configurata deve avere priorità su copie Master equivalenti trovate nelle sorgenti.");
+var analysis = ProjectAnalyzer.Analyze(frames);
+Assert(analysis.Ready, $"Analisi calibrazioni non pronta: {analysis.UnresolvedCount} casi irrisolti.");
+var statistics = ProjectStatisticsCalculator.Calculate(analysis);
+Assert(statistics.LightCount == 2 && Math.Abs(statistics.ExposureSeconds - 1200) < 0.001, "Statistiche integrazione reali errate.");
+Assert(statistics.FilterCount == 2 && statistics.NightCount == 2, "Conteggio filtri o notti errato.");
+var sioiii = analysis.Lights.Single(item => item.Light.FilterName.Value == "SIOIII");
+var hoo = analysis.Lights.Single(item => item.Light.FilterName.Value == "HOO");
+Assert(sioiii.Dark.Selected?.Frame.Path.EndsWith(@"GAIN_100\-10\600s.xisf", StringComparison.OrdinalIgnoreCase) == true, "Dark SIOIII errato.");
+Assert(hoo.Dark.Selected?.Frame.Path.EndsWith(@"GAIN_100\0\600s.xisf", StringComparison.OrdinalIgnoreCase) == true, "Dark HOO errato.");
+Assert(sioiii.Bias.Selected?.Frame.FileName == "masterBias100.xisf" && hoo.Bias.Selected?.Frame.FileName == "masterBias100.xisf", "Bias gain 100 errato.");
+var recipe = WbppRecipeEngine.Recommend(analysis);
+Assert(recipe.Keywords.Count == 1 && recipe.Keywords[0].Keyword == "DARKSET" && recipe.Keywords[0].Pre && !recipe.Keywords[0].Post, "Ricetta WBPP adattiva errata.");
+
+var epochFrames = new List<FrameMetadata>();
+for (var day = 1; day <= 6; day++) epochFrames.Add(Synthetic(FrameKind.Light, $"hoo-a-{day}.fits", "HOO", new DateTimeOffset(2026, 6, day, 23, 0, 0, TimeSpan.Zero)));
+for (var day = 10; day <= 12; day++) epochFrames.Add(Synthetic(FrameKind.Light, $"hoo-b-{day}.fits", "HOO", new DateTimeOffset(2026, 6, day, 23, 0, 0, TimeSpan.Zero)));
+var flatA = Synthetic(FrameKind.Flat, "flat-hoo-a.fits", "HOO", new DateTimeOffset(2026, 6, 7, 5, 0, 0, TimeSpan.Zero));
+var flatB = Synthetic(FrameKind.Flat, "flat-hoo-b.fits", "HOO", new DateTimeOffset(2026, 6, 13, 5, 0, 0, TimeSpan.Zero));
+epochFrames.AddRange([flatA, flatB]);
+var epochAnalysis = ProjectAnalyzer.Analyze(epochFrames);
+Assert(epochAnalysis.Lights.Where(item => item.Light.FileName.StartsWith("hoo-a-")).All(item => item.Flat.Selected?.Frame == flatA), "Flat Epoch HOO iniziale errata.");
+Assert(epochAnalysis.Lights.Where(item => item.Light.FileName.StartsWith("hoo-b-")).All(item => item.Flat.Selected?.Frame == flatB), "Flat Epoch HOO successiva errata.");
+var epochStatistics = ProjectStatisticsCalculator.Calculate(epochAnalysis);
+Assert(epochStatistics.FilterCount == 1 && epochStatistics.ConfigurationSessionCount == 2 && epochStatistics.NightCount == 9, "Statistiche Flat Epoch errate.");
+Assert(Math.Abs(epochStatistics.ExposureHours - 1.5) < 0.001, "Ore di integrazione Flat Epoch errate.");
+var epochRecipe = WbppRecipeEngine.Recommend(epochAnalysis);
+Assert(epochRecipe.Keywords.Any(keyword => keyword.Keyword == "FLATSET" && keyword.Pre && !keyword.Post), "WBPP deve separare le sessioni ottiche con FLATSET Pre.");
+var manualLight = Synthetic(FrameKind.Light, "manual-light.fits", "HOO", new DateTimeOffset(2026, 6, 10, 0, 0, 0, TimeSpan.Zero));
+manualLight.FlatSetId.SetOverride("HOO-DOPO-CAMBIO");
+flatB.FlatSetId.SetOverride("HOO-DOPO-CAMBIO");
+var manualAnalysis = ProjectAnalyzer.Analyze([manualLight, flatA, flatB]);
+Assert(manualAnalysis.Lights[0].Flat.Selected?.Frame == flatB, "Override manuale Flat Epoch non rispettato.");
+
+var exportRoot = Path.Combine(Path.GetTempPath(), $"AstroForge-Test-{Guid.NewGuid():N}");
+Directory.CreateDirectory(exportRoot);
+try
+{
+    var sourceA = Path.Combine(exportRoot, "source-a.fit");
+    var sourceB = Path.Combine(exportRoot, "source-b.xisf");
+    await File.WriteAllTextAsync(sourceA, "astroforge-light");
+    await File.WriteAllTextAsync(sourceB, "astroforge-master");
+    var cache = new MemoryHeaderCache();
+    var sourceInfo = new FileInfo(sourceA);
+    cache.Put(sourceA, sourceInfo.Length, sourceInfo.LastWriteTimeUtc.Ticks, new()
+    {
+        ["IMAGETYP"] = "Light", ["FILTER"] = "HOO", ["EXPTIME"] = 600, ["GAIN"] = 100,
+        ["NAXIS1"] = 6248, ["NAXIS2"] = 4176, ["XBINNING"] = 1, ["YBINNING"] = 1
+    });
+    var cacheScanner = new ProjectScanner();
+    var cachedFrames = await cacheScanner.ScanAsync([sourceA], SessionSettings.DefaultForLocalMachine(), cache: cache);
+    Assert(cacheScanner.LastCacheHits == 1 && cachedFrames.Single().Kind == FrameKind.Light, "Cache header valida non utilizzata.");
+    await File.AppendAllTextAsync(sourceA, "-changed");
+    var invalidatedFrames = await cacheScanner.ScanAsync([sourceA], SessionSettings.DefaultForLocalMachine(), cache: cache);
+    Assert(cacheScanner.LastCacheHits == 0 && invalidatedFrames.Single().Issues.Any(issue => issue.Code == "image.unreadable"), "Cache non invalidata dopo modifica del file.");
+    var fakeLight = new FrameMetadata { Path = sourceA, Kind = FrameKind.Light };
+    var fakeMaster = new FrameMetadata { Path = sourceB, Kind = FrameKind.Dark, IsMaster = true };
+    var emptyRecipe = new WbppRecipe([], ["test"]);
+    var resumePlan = new ProjectPlan("Resume", exportRoot,
+    [
+        new(fakeLight, Path.Combine("Light", "source-a.fit"), "light"),
+        new(fakeMaster, Path.Combine("Dark", "source-b.xisf"), "dark")
+    ], emptyRecipe, statistics);
+    var staging = Path.Combine(exportRoot, ".Resume.astroforge-staging", "Light");
+    Directory.CreateDirectory(staging);
+    File.Copy(sourceA, Path.Combine(staging, "source-a.fit"));
+    var exported = await ProjectExporter.ExecuteAsync(resumePlan);
+    Assert(File.Exists(Path.Combine(exported, "Light", "source-a.fit")), "Ripresa esportazione non riuscita.");
+    Assert(File.Exists(Path.Combine(exported, "_AstroForge", "manifest.json")), "Manifest esportazione assente.");
+    Assert(File.Exists(Path.Combine(exported, "_AstroForge", "project-statistics.json")), "Statistiche JSON esportazione assenti.");
+    Assert(File.Exists(Path.Combine(exported, "_AstroForge", "project-statistics.csv")), "Statistiche CSV esportazione assenti.");
+}
+finally
+{
+    if (Directory.Exists(exportRoot)) Directory.Delete(exportRoot, true);
+}
+Console.WriteLine($"PASS: {frames.Count} fixture autosufficienti, Flat Epoch multisessione, link manuale, WBPP ed export riprendibile verificati.");
+
+static void Assert(bool condition, string message)
+{
+    if (!condition) throw new InvalidOperationException(message);
+}
+
+static FrameMetadata Synthetic(FrameKind kind, string name, string filter, DateTimeOffset captured)
+{
+    var frame = new FrameMetadata { Path = Path.Combine(Path.GetTempPath(), name), Kind = kind };
+    frame.FilterName.SetOriginal(filter, MetadataSource.Header);
+    frame.Camera.SetOriginal("Synthetic Camera", MetadataSource.Header);
+    frame.Width.SetOriginal(6248, MetadataSource.Header);
+    frame.Height.SetOriginal(4176, MetadataSource.Header);
+    frame.XBin.SetOriginal(1, MetadataSource.Header);
+    frame.YBin.SetOriginal(1, MetadataSource.Header);
+    frame.Gain.SetOriginal(100, MetadataSource.Header);
+    frame.ExposureSeconds.SetOriginal(kind == FrameKind.Light ? 600 : 4, MetadataSource.Header);
+    frame.Offset.SetOriginal(51, MetadataSource.Header);
+    frame.ReadoutMode.SetOriginal("Default", MetadataSource.Header);
+    frame.BayerPattern.SetOriginal("RGGB", MetadataSource.Header);
+    frame.CapturedAt.SetOriginal(captured, MetadataSource.Header);
+    frame.SessionId.SetOriginal(captured.AddHours(-12).ToString("yyyy-MM-dd"), MetadataSource.Inferred);
+    return frame;
+}
+
+static FrameMetadata SyntheticMaster(FrameKind kind, string path, double? temperature)
+{
+    var frame = new FrameMetadata { Path = path, Kind = kind, IsMaster = true };
+    frame.Camera.SetOriginal("Synthetic Camera", MetadataSource.Header);
+    frame.Width.SetOriginal(6248, MetadataSource.Header); frame.Height.SetOriginal(4176, MetadataSource.Header);
+    frame.XBin.SetOriginal(1, MetadataSource.Header); frame.YBin.SetOriginal(1, MetadataSource.Header);
+    frame.Gain.SetOriginal(100, MetadataSource.LibraryPath);
+    frame.ExposureSeconds.SetOriginal(kind == FrameKind.Dark ? 600 : 0, MetadataSource.Header);
+    frame.SetTemperatureC.SetOriginal(temperature, MetadataSource.LibraryPath);
+    frame.ReadoutMode.SetOriginal("Default", MetadataSource.Header); frame.BayerPattern.SetOriginal("RGGB", MetadataSource.Header);
+    return frame;
+}
+
+static FrameMetadata CalibrationCopy(FrameMetadata source, string path)
+{
+    var frame = new FrameMetadata { Path = path, Kind = source.Kind, IsMaster = source.IsMaster };
+    frame.Camera.SetOriginal(source.Camera.Value, MetadataSource.Header);
+    frame.Width.SetOriginal(source.Width.Value, MetadataSource.Header);
+    frame.Height.SetOriginal(source.Height.Value, MetadataSource.Header);
+    frame.XBin.SetOriginal(source.XBin.Value, MetadataSource.Header);
+    frame.YBin.SetOriginal(source.YBin.Value, MetadataSource.Header);
+    frame.Gain.SetOriginal(source.Gain.Value, MetadataSource.ProjectDefault);
+    frame.Offset.SetOriginal(source.Offset.Value, MetadataSource.ProjectDefault);
+    frame.SetTemperatureC.SetOriginal(source.SetTemperatureC.Value, MetadataSource.ProjectDefault);
+    frame.ReadoutMode.SetOriginal(source.ReadoutMode.Value, MetadataSource.Header);
+    frame.BayerPattern.SetOriginal(source.BayerPattern.Value, MetadataSource.Header);
+    return frame;
+}
+
+sealed class MemoryHeaderCache : IHeaderCache
+{
+    private readonly Dictionary<string, (long Length, long Ticks, Dictionary<string, object?> Headers)> _entries = new(StringComparer.OrdinalIgnoreCase);
+    public bool TryGet(string path, long length, long lastWriteUtcTicks, out Dictionary<string, object?> headers)
+    {
+        if (_entries.TryGetValue(path, out var entry) && entry.Length == length && entry.Ticks == lastWriteUtcTicks) { headers = new(entry.Headers); return true; }
+        headers = []; return false;
+    }
+    public void Put(string path, long length, long lastWriteUtcTicks, Dictionary<string, object?> headers) => _entries[path] = (length, lastWriteUtcTicks, new(headers));
+    public Task SaveAsync(CancellationToken cancellationToken = default) => Task.CompletedTask;
+}
