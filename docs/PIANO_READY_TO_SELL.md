@@ -462,6 +462,8 @@ Creare un flusso guidato al primo avvio:
 
 **Correzioni workflow 12 luglio 2026:** `Analizza ora` è stato spostato nel banner centrale dello stato progetto. Master Library Lab è presentato come strumento indipendente e può analizzare/organizzare librerie anche senza cartelle Light. La mappa non mostra più l'intero inventario Dark/Bias sotto `Senza filtro`: espone soltanto i Master realmente assegnati, mentre gli inutilizzati restano nel gestore librerie. Doppio click su albero, Coda di revisione e Master Lab apre l'origine in Esplora file.
 
+**Shell responsive v3 — 12 luglio 2026:** sostituita la fila di tab con una navigazione verticale persistente. Sorgenti e Inspector sono pannelli collassabili, ridimensionati automaticamente sotto 1250 px e chiusi progressivamente sugli schermi più stretti; restano richiamabili dall'header. Master Library Lab chiude l'Inspector non pertinente e utilizza tutta l'area di lavoro. La scansione Lab usa un percorso indipendente che legge esclusivamente le librerie abilitate e non modifica `_frames`, analisi WBPP, albero progetto o Coda di revisione.
+
 1. scegli lingua e cartella progetto;
 2. registra una o più librerie Master;
 3. scegli il confine della notte astronomica e timezone;

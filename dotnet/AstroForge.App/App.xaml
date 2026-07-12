@@ -155,14 +155,16 @@
         <Style TargetType="TabItem">
             <Setter Property="Foreground" Value="{StaticResource Muted}" />
             <Setter Property="Background" Value="Transparent" />
-            <Setter Property="Padding" Value="16,9" />
-            <Setter Property="Margin" Value="0,0,5,0" />
+            <Setter Property="Padding" Value="14,12" />
+            <Setter Property="Margin" Value="0,0,8,7" />
+            <Setter Property="MinWidth" Value="142" />
+            <Setter Property="HorizontalContentAlignment" Value="Left" />
             <Setter Property="Template">
                 <Setter.Value>
                     <ControlTemplate TargetType="TabItem">
                         <Border x:Name="TabBorder" Background="{TemplateBinding Background}" BorderBrush="Transparent" BorderThickness="1" CornerRadius="10" Padding="{TemplateBinding Padding}" RenderTransformOrigin="0.5,0.5">
                             <Border.RenderTransform><TranslateTransform Y="0"/></Border.RenderTransform>
-                            <ContentPresenter ContentSource="Header" HorizontalAlignment="Center" VerticalAlignment="Center" />
+                            <ContentPresenter ContentSource="Header" HorizontalAlignment="Left" VerticalAlignment="Center" />
                         </Border>
                         <ControlTemplate.Triggers>
                             <Trigger Property="IsSelected" Value="True"><Setter TargetName="TabBorder" Property="Background" Value="{StaticResource AccentDark}"/><Setter TargetName="TabBorder" Property="BorderBrush" Value="#4F6CE6D4"/><Setter Property="Foreground" Value="{StaticResource Accent}"/></Trigger>

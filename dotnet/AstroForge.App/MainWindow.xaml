@@ -2,8 +2,8 @@
         xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         xmlns:vm="clr-namespace:AstroForge.App.ViewModels"
-        Title="AstroProject Forge" Width="1540" Height="940" MinWidth="1180" MinHeight="720"
-        WindowStartupLocation="CenterScreen" Icon="Assets/astroforge.ico">
+        Title="AstroProject Forge" Width="1540" Height="940" MinWidth="900" MinHeight="650"
+        WindowStartupLocation="CenterScreen" Icon="Assets/astroforge.ico" SizeChanged="Window_SizeChanged">
     <Window.Resources>
         <Style x:Key="Card" TargetType="Border">
             <Setter Property="Background" Value="{StaticResource GlassSurface}" />
@@ -81,6 +81,8 @@
                     </StackPanel>
                 </StackPanel>
                 <StackPanel Grid.Column="1" Orientation="Horizontal" VerticalAlignment="Center">
+                    <Button Content="☰  Sorgenti" Click="ToggleSources_Click" Margin="0,0,8,0" Padding="11,8" ToolTip="Mostra o nasconde sorgenti e librerie"/>
+                    <Button Content="Inspector  ◫" Click="ToggleInspector_Click" Margin="0,0,12,0" Padding="11,8" ToolTip="Mostra o nasconde Inspector"/>
                     <StackPanel VerticalAlignment="Center" Margin="0,0,12,0"><TextBlock Text="{Binding ProjectDocumentStatus}" Style="{StaticResource MutedText}" FontSize="10" HorizontalAlignment="Right"/><StackPanel Orientation="Horizontal"><Button Content="Apri progetto" Click="OpenProject_Click" Padding="11,8"/><Button Content="Salva progetto" Click="SaveProject_Click" Margin="7,0,0,0" Padding="11,8"/></StackPanel></StackPanel>
                     <Button Content="Svuota progetto" Command="{Binding ClearProjectCommand}" ToolTip="Rimuove i file caricati dall'app, senza cancellare gli originali" Margin="0,0,8,0" Padding="11,8" />
                     <Button Content="Pulisci cache" Click="ClearCache_Click" ToolTip="Dimentica gli header indicizzati; nessuna immagine viene eliminata" Margin="0,0,8,0" Padding="11,8" />
@@ -91,9 +93,9 @@
 
         <Grid Grid.Row="1">
             <Grid.ColumnDefinitions>
-                <ColumnDefinition Width="270" />
+                <ColumnDefinition x:Name="SourcesColumn" Width="270" />
                 <ColumnDefinition Width="*" MinWidth="480" />
-                <ColumnDefinition Width="430" />
+                <ColumnDefinition x:Name="InspectorColumn" Width="430" />
             </Grid.ColumnDefinitions>
 
             <!-- Project sources -->
@@ -161,7 +163,7 @@
                     </Grid>
                 </Border>
 
-                <TabControl Grid.Row="1" Background="Transparent" BorderThickness="0">
+                <TabControl x:Name="WorkspaceTabs" Grid.Row="1" Background="Transparent" BorderThickness="0" TabStripPlacement="Left" SelectionChanged="WorkspaceTabs_SelectionChanged">
                     <TabItem Header="01  Analisi">
                         <Grid Margin="0,14,0,0">
                             <Grid.RowDefinitions><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/><RowDefinition Height="*"/></Grid.RowDefinitions>
@@ -293,8 +295,15 @@
                     </TabItem>
                     <TabItem Header="◇  MASTER LIBRARY LAB">
                         <Grid Margin="0,14,0,0"><Grid.RowDefinitions><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/><RowDefinition Height="*"/></Grid.RowDefinitions>
-                            <StackPanel><TextBlock Text="Master Library Lab" Style="{StaticResource Title}"/><TextBlock Text="Crea una nuova libreria normalizzata. Gli originali non vengono mai modificati: metadati e struttura sono applicati soltanto alle copie verificate." Style="{StaticResource MutedText}" TextWrapping="Wrap" Margin="0,2,0,12"/></StackPanel>
-                            <Grid Grid.Row="1" Margin="0,0,0,10"><Grid.ColumnDefinitions><ColumnDefinition/><ColumnDefinition Width="Auto"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions><TextBox Text="{Binding MasterOrganizerDestination}" IsReadOnly="True" ToolTip="Destinazione nuova Master Library"/><Button Grid.Column="1" Content="Scegli destinazione" Click="ChooseMasterOrganizerDestination_Click" Margin="7,0"/><Button Grid.Column="2" Content="Copia, imprimi e organizza" Click="OrganizeMasterLibrary_Click" Style="{StaticResource PrimaryButton}"/><TextBlock Grid.Row="1" Grid.ColumnSpan="3" Text="{Binding MasterOrganizerStatus}" Foreground="{StaticResource Accent}" Margin="2,7,0,0"/></Grid>
+                            <StackPanel><TextBlock Text="Master Library Lab" Style="{StaticResource Title}"/><TextBlock Text="Strumento indipendente dal progetto WBPP. Scansiona le librerie abilitate, completa i metadati mancanti e crea una nuova libreria normalizzata senza modificare gli originali." Style="{StaticResource MutedText}" TextWrapping="Wrap" Margin="0,2,0,12"/></StackPanel>
+                            <Grid Grid.Row="1" Margin="0,0,0,10"><Grid.RowDefinitions><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/></Grid.RowDefinitions><Grid.ColumnDefinitions><ColumnDefinition/><ColumnDefinition Width="Auto"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions>
+                                <Button Grid.ColumnSpan="3" Content="◎  SCANSIONA SOLO LE MASTER LIBRARY" Click="ScanMasterLibraries_Click" HorizontalAlignment="Left" Padding="20,10" FontWeight="SemiBold"/>
+                                <TextBlock Grid.Row="1" Text="Destinazione nuova libreria" Style="{StaticResource MetaLabel}" Margin="2,9,0,4"/>
+                                <TextBox Grid.Row="2" Text="{Binding MasterOrganizerDestination}" IsReadOnly="True" ToolTip="Destinazione nuova Master Library"/>
+                                <Button Grid.Row="2" Grid.Column="1" Content="Scegli destinazione" Click="ChooseMasterOrganizerDestination_Click" Margin="7,0"/>
+                                <Button Grid.Row="2" Grid.Column="2" Content="Copia, imprimi e organizza" Click="OrganizeMasterLibrary_Click" Style="{StaticResource PrimaryButton}"/>
+                                <TextBlock Grid.Row="0" Grid.Column="1" Grid.ColumnSpan="2" Text="{Binding MasterOrganizerStatus}" Foreground="{StaticResource Accent}" Margin="14,0,0,0" VerticalAlignment="Center" TextWrapping="Wrap"/>
+                            </Grid>
                             <DataGrid x:Name="MasterOrganizerGrid" Grid.Row="2" ItemsSource="{Binding MasterOrganizerItems}" MouseDoubleClick="MasterOrganizerGrid_MouseDoubleClick" ToolTip="Doppio click per mostrare il Master originale" AutoGenerateColumns="False" CanUserAddRows="False" HeadersVisibility="Column" Background="{StaticResource Bg1}" Foreground="{StaticResource Text}" GridLinesVisibility="Horizontal" HorizontalGridLinesBrush="{StaticResource Stroke}" RowBackground="{StaticResource Bg2}" AlternatingRowBackground="#101824">
                                 <DataGrid.Columns>
                                     <DataGridTextColumn Header="MASTER" Binding="{Binding FileName}" IsReadOnly="True" Width="1.5*"/>

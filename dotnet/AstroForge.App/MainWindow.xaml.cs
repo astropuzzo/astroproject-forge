@@ -9,6 +9,9 @@ namespace AstroForge.App;
 public partial class MainWindow : Window
 {
     private readonly MainViewModel _viewModel = new();
+    private bool _sourcesVisible = true;
+    private bool _inspectorVisible = true;
+    private bool _masterLabActive;
 
     public MainWindow()
     {
@@ -50,6 +53,28 @@ public partial class MainWindow : Window
     private void MoveLibraryUp_Click(object sender, RoutedEventArgs e) => _viewModel.MoveSelectedMasterLibrary(-1);
     private void MoveLibraryDown_Click(object sender, RoutedEventArgs e) => _viewModel.MoveSelectedMasterLibrary(1);
     private void RefreshLibraries_Click(object sender, RoutedEventArgs e) => _viewModel.RefreshMasterLibraryStates();
+
+    private void ToggleSources_Click(object sender, RoutedEventArgs e) { _sourcesVisible = !_sourcesVisible; ApplyResponsiveLayout(); }
+    private void ToggleInspector_Click(object sender, RoutedEventArgs e) { _inspectorVisible = !_inspectorVisible; ApplyResponsiveLayout(); }
+    private void Window_SizeChanged(object sender, SizeChangedEventArgs e)
+    {
+        if (ActualWidth < 1080) _sourcesVisible = false;
+        if (ActualWidth < 980) _inspectorVisible = false;
+        ApplyResponsiveLayout();
+    }
+    private void ApplyResponsiveLayout()
+    {
+        var compact = ActualWidth < 1250;
+        SourcesColumn.Width = _sourcesVisible ? new GridLength(compact ? 220 : 270) : new GridLength(0);
+        InspectorColumn.Width = _inspectorVisible && !_masterLabActive ? new GridLength(compact ? 330 : 430) : new GridLength(0);
+    }
+
+    private void WorkspaceTabs_SelectionChanged(object sender, System.Windows.Controls.SelectionChangedEventArgs e)
+    {
+        if (e.Source != WorkspaceTabs) return;
+        _masterLabActive = (WorkspaceTabs.SelectedItem as System.Windows.Controls.TabItem)?.Header?.ToString()?.Contains("MASTER LIBRARY", StringComparison.OrdinalIgnoreCase) == true;
+        ApplyResponsiveLayout();
+    }
 
     private void ChooseDestination_Click(object sender, RoutedEventArgs e)
     {
@@ -150,5 +175,11 @@ public partial class MainWindow : Window
     {
         try { await _viewModel.OrganizeMasterLibraryAsync(); MessageBox.Show(this, _viewModel.MasterOrganizerStatus, "Master Library completata", MessageBoxButton.OK, MessageBoxImage.Information); }
         catch (Exception exception) { MessageBox.Show(this, exception.Message, "Organizzazione non completata", MessageBoxButton.OK, MessageBoxImage.Warning); }
+    }
+
+    private async void ScanMasterLibraries_Click(object sender, RoutedEventArgs e)
+    {
+        try { await _viewModel.ScanMasterLibrariesAsync(); }
+        catch (Exception exception) { MessageBox.Show(this, exception.Message, "Scansione librerie non completata", MessageBoxButton.OK, MessageBoxImage.Warning); }
     }
 }

@@ -23,6 +23,7 @@ public sealed class MainViewModel : BindableBase
     private readonly AppState _state;
     private readonly HashSet<string> _kindOverrides = new(StringComparer.OrdinalIgnoreCase);
     private IReadOnlyList<FrameMetadata> _frames = [];
+    private IReadOnlyList<FrameMetadata> _masterLibraryFrames = [];
     private ProjectAnalysis? _analysis;
     private ProjectStatistics? _statistics;
     private ProjectPlan? _plan;
@@ -59,7 +60,7 @@ public sealed class MainViewModel : BindableBase
     private string _projectDefaultTemperature = "";
     private MasterLibraryItem? _selectedMasterLibrary;
     private string _masterOrganizerDestination = "";
-    private string _masterOrganizerStatus = "Analizza il progetto per preparare la libreria";
+    private string _masterOrganizerStatus = "Scansiona le Master Library abilitate per iniziare";
     private string _currentProjectFile = "";
     private DateTimeOffset _projectCreatedAt = DateTimeOffset.Now;
 
@@ -244,6 +245,19 @@ public sealed class MainViewModel : BindableBase
         var results = await MasterLibraryOrganizer.ExecuteAsync(requests, MasterOrganizerDestination, cancellationToken);
         MasterOrganizerStatus = $"Completata · {results.Count} copie verificate · {results.Count(item => item.HeaderStamped)} header aggiornati";
         Status = MasterOrganizerStatus;
+    }
+
+    public async Task ScanMasterLibrariesAsync(CancellationToken cancellationToken = default)
+    {
+        var libraries = MasterLibraries.Where(item => item.Enabled && item.IsOnline).OrderBy(item => item.Priority).ToArray();
+        if (libraries.Length == 0) throw new InvalidOperationException("Aggiungi o abilita almeno una Master Library online.");
+        MasterOrganizerStatus = $"Scansione indipendente di {libraries.Length} librerie…";
+        var progress = new Progress<ScanProgress>(item => MasterOrganizerStatus = $"Lettura Master {item.Completed}/{item.Total} · {item.CurrentFile}");
+        _masterLibraryFrames = await _scanner.ScanAsync(libraries.Select(item => item.Path), new SessionSettings(TimeZoneInfo.Local, new TimeOnly(SessionBoundaryHour, 0)), progress, cancellationToken, _headerCache);
+        foreach (var library in libraries) LibraryMetadataResolver.Apply(_masterLibraryFrames, library.Path, library.Priority);
+        ProjectMetadataDefaultsResolver.Apply(_masterLibraryFrames, CurrentProjectDefaults());
+        RefreshMasterOrganizer(_masterLibraryFrames);
+        MasterOrganizerStatus = $"{MasterOrganizerItems.Count} Master · {MasterOrganizerItems.Count(item => item.IsReady)} pronti · {MasterOrganizerItems.Count(item => !item.IsReady)} da completare";
     }
 
     private void NormalizeLibraryPriorities() { for (var index = 0; index < MasterLibraries.Count; index++) MasterLibraries[index].Priority = index + 1; Raise(nameof(LibraryPath)); }
@@ -448,7 +462,6 @@ public sealed class MainViewModel : BindableBase
         SessionStatistics.Clear();
         NightStatistics.Clear();
         ReviewQueue.Clear();
-        MasterOrganizerItems.Clear();
         SelectedIssues.Clear();
         SearchText = "";
         ShowIssuesOnly = false;
@@ -892,7 +905,6 @@ public sealed class MainViewModel : BindableBase
             AddCalibrationIssue(item.Light, "bias", item.Bias);
         }
         RefreshReviewQueue();
-        RefreshMasterOrganizer();
 
         var recipe = WbppRecipeEngine.Recommend(_analysis);
         WbppKeywords.Clear();
@@ -930,10 +942,10 @@ public sealed class MainViewModel : BindableBase
         foreach (var item in ordered) ReviewQueue.Add(item);
     }
 
-    private void RefreshMasterOrganizer()
+    private void RefreshMasterOrganizer(IEnumerable<FrameMetadata>? source = null)
     {
         MasterOrganizerItems.Clear();
-        foreach (var frame in _frames.Where(frame => frame.IsMaster && frame.Kind is FrameKind.Dark or FrameKind.Bias or FrameKind.DarkFlat).OrderBy(frame => frame.Path))
+        foreach (var frame in (source ?? _masterLibraryFrames).Where(frame => frame.IsMaster && frame.Kind is FrameKind.Dark or FrameKind.Bias or FrameKind.DarkFlat).OrderBy(frame => frame.Path))
             MasterOrganizerItems.Add(new(frame));
         var ready = MasterOrganizerItems.Count(item => item.IsReady);
         MasterOrganizerStatus = MasterOrganizerItems.Count == 0 ? "Nessun Master rilevato" : $"{ready}/{MasterOrganizerItems.Count} pronti · {MasterOrganizerItems.Count - ready} richiedono dati";
