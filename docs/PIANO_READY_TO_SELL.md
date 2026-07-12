@@ -60,7 +60,7 @@ economico è basso.
 | Override e persistenza preferenze | ✅ Implementato | Singolo, batch, undo e provenienza valori |
 | File progetto `.astroforge` | ✅ Implementato | Documento portabile v1, apertura/salvataggio atomico e autosalvataggio dopo le modifiche |
 | Coda di revisione | 🟡 Parziale | Diagnostiche disponibili; manca workflow dedicato candidato-per-candidato |
-| Gestore multi-libreria | ❌ Mancante | Presente una libreria configurabile, non ancora più radici/profili |
+| Gestore multi-libreria | 🟡 Implementato v1 | Più radici, priorità e stato online/offline; profili per ruolo ancora da completare |
 | Export verificato | 🟡 Parziale | SHA-256 e resume presenti; mancano preflight disco/rete e macchina a stati completa |
 | Cache incrementale | 🟡 Implementata v1 | Header indicizzati per path, dimensione e data modifica; invalidazione e pulizia manuale operative. Da migrare a SQLite per dataset estremi |
 | Installer/updates/firma | ❌ Mancante | Disponibile EXE autonomo, non ancora distribuzione commerciale |
@@ -236,6 +236,8 @@ dipendenza del programma.
 - L’utente può scegliere librerie diverse per due camere nello stesso progetto.
 - Un volume temporaneamente scollegato non elimina configurazioni o override.
 - Master duplicati vengono segnalati e confrontati, non scelti casualmente.
+
+**Avanzamento 12 luglio 2026:** implementato il gestore multi-libreria v1. Il progetto e il documento `.astroforge` conservano più radici Master con nome, abilitazione e priorità. La UI permette aggiunta, rimozione non distruttiva, riordino e aggiornamento dello stato online/offline. La scansione unifica le radici attive senza duplicare file; tra Master scientificamente equivalenti vince la libreria con priorità più alta. I vecchi progetti con il solo `LibraryPath` vengono migrati automaticamente. Restano da aggiungere profili separati Dark/Bias/Dark-flat, editor del nome e indice per-libreria con conteggi e diagnostica.
 
 ## P0.3 — Risoluzione guidata di ambiguità e assegnazioni manuali
 

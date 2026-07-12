@@ -7,12 +7,13 @@ namespace AstroForge.Core.Scanning;
 
 public static partial class LibraryMetadataResolver
 {
-    public static Dictionary<string, List<string>> Apply(IEnumerable<FrameMetadata> frames, string libraryRoot)
+    public static Dictionary<string, List<string>> Apply(IEnumerable<FrameMetadata> frames, string libraryRoot, int priority = 1)
     {
         var root = System.IO.Path.GetFullPath(libraryRoot).TrimEnd(System.IO.Path.DirectorySeparatorChar) + System.IO.Path.DirectorySeparatorChar;
         var applied = new Dictionary<string, List<string>>(StringComparer.OrdinalIgnoreCase);
         foreach (var frame in frames.Where(frame => frame.IsMaster && frame.Path.StartsWith(root, StringComparison.OrdinalIgnoreCase)))
         {
+            frame.ConfiguredLibraryPriority = priority;
             var relative = System.IO.Path.GetRelativePath(libraryRoot, frame.Path);
             var parts = relative.Split(System.IO.Path.DirectorySeparatorChar, System.IO.Path.AltDirectorySeparatorChar);
             var changes = new List<string>();

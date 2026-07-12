@@ -80,13 +80,15 @@ public static class CalibrationMatcher
         if (candidate.IsMaster) { result.Score++; result.Reasons.Add("Master riconosciuto"); }
         if (FromConfiguredLibrary(candidate))
         {
-            result.Score += 4;
-            result.Reasons.Add("Master proveniente dalla libreria configurata");
+            var libraryBonus = Math.Max(1, 7 - (candidate.ConfiguredLibraryPriority ?? 3));
+            result.Score += libraryBonus;
+            result.Reasons.Add($"Master dalla libreria configurata · priorità {candidate.ConfiguredLibraryPriority ?? 1}");
         }
         return result;
     }
 
     private static bool FromConfiguredLibrary(FrameMetadata frame) =>
+        frame.ConfiguredLibraryPriority is not null ||
         frame.Gain.OriginalSource == MetadataSource.LibraryPath ||
         frame.SetTemperatureC.OriginalSource == MetadataSource.LibraryPath ||
         frame.Offset.OriginalSource == MetadataSource.LibraryPath;

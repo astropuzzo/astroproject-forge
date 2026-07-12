@@ -57,6 +57,7 @@ public sealed class MainViewModel : BindableBase
     private string _projectDefaultGain = "100";
     private string _projectDefaultOffset = "51";
     private string _projectDefaultTemperature = "";
+    private MasterLibraryItem? _selectedMasterLibrary;
     private string _currentProjectFile = "";
     private DateTimeOffset _projectCreatedAt = DateTimeOffset.Now;
 
@@ -64,6 +65,8 @@ public sealed class MainViewModel : BindableBase
     {
         _state = AppStateStore.Load();
         _libraryPath = _state.LibraryPath;
+        var savedLibraries = _state.MasterLibraries.Count > 0 ? _state.MasterLibraries : string.IsNullOrWhiteSpace(_state.LibraryPath) ? [] : [new() { Name = "Libreria principale", Path = _state.LibraryPath, Priority = 1 }];
+        foreach (var library in savedLibraries.OrderBy(item => item.Priority)) MasterLibraries.Add(new(library.Name, library.Path, library.Priority, library.Enabled));
         _destinationPath = _state.DestinationPath;
         _projectName = _state.ProjectName;
         _sessionBoundaryHour = Math.Clamp(_state.SessionBoundaryHour, 0, 23);
@@ -84,6 +87,7 @@ public sealed class MainViewModel : BindableBase
     }
 
     public ObservableCollection<string> SourcePaths { get; } = [];
+    public ObservableCollection<MasterLibraryItem> MasterLibraries { get; } = [];
     public ObservableCollection<ProjectTreeNode> TreeRoots { get; } = [];
     public ObservableCollection<ProjectTreeNode> PlannedTreeRoots { get; } = [];
     public ObservableCollection<WbppKeywordRow> WbppKeywords { get; } = [];
@@ -104,7 +108,8 @@ public sealed class MainViewModel : BindableBase
     public RelayCommand UndoCommand { get; }
     public Array FrameKinds => Enum.GetValues<FrameKind>();
 
-    public string LibraryPath { get => _libraryPath; set => Set(ref _libraryPath, value); }
+    public string LibraryPath { get => MasterLibraries.FirstOrDefault()?.Path ?? _libraryPath; set { _libraryPath = value; if (!string.IsNullOrWhiteSpace(value) && !MasterLibraries.Any(item => item.Path.Equals(value, StringComparison.OrdinalIgnoreCase))) AddMasterLibrary(value); Raise(); } }
+    public MasterLibraryItem? SelectedMasterLibrary { get => _selectedMasterLibrary; set => Set(ref _selectedMasterLibrary, value); }
     public string ProjectName { get => _projectName; set => Set(ref _projectName, value); }
     public string DestinationPath { get => _destinationPath; set => Set(ref _destinationPath, value); }
     public string CurrentProjectFile { get => _currentProjectFile; private set { if (Set(ref _currentProjectFile, value)) Raise(nameof(ProjectDocumentStatus)); } }
@@ -199,6 +204,33 @@ public sealed class MainViewModel : BindableBase
 
     public void RemoveSource(string path) { SourcePaths.Remove(path); SaveState(); }
 
+    public void AddMasterLibrary(string path)
+    {
+        path = Path.GetFullPath(path);
+        if (MasterLibraries.Any(item => item.Path.Equals(path, StringComparison.OrdinalIgnoreCase))) { SelectedMasterLibrary = MasterLibraries.First(item => item.Path.Equals(path, StringComparison.OrdinalIgnoreCase)); return; }
+        var item = new MasterLibraryItem(new DirectoryInfo(path).Name, path, MasterLibraries.Count + 1, true);
+        MasterLibraries.Add(item); SelectedMasterLibrary = item; NormalizeLibraryPriorities(); SaveState();
+    }
+
+    public void RemoveSelectedMasterLibrary()
+    {
+        if (SelectedMasterLibrary is null) return;
+        MasterLibraries.Remove(SelectedMasterLibrary); SelectedMasterLibrary = null; NormalizeLibraryPriorities(); SaveState();
+        Status = "Libreria rimossa dal progetto · nessun Master è stato cancellato";
+    }
+
+    public void MoveSelectedMasterLibrary(int direction)
+    {
+        if (SelectedMasterLibrary is null) return;
+        var index = MasterLibraries.IndexOf(SelectedMasterLibrary); var target = index + direction;
+        if (target < 0 || target >= MasterLibraries.Count) return;
+        MasterLibraries.Move(index, target); NormalizeLibraryPriorities(); SaveState();
+    }
+
+    public void RefreshMasterLibraryStates() { foreach (var item in MasterLibraries) item.RefreshState(); Status = $"{MasterLibraries.Count(item => item.IsOnline && item.Enabled)}/{MasterLibraries.Count} librerie disponibili"; }
+
+    private void NormalizeLibraryPriorities() { for (var index = 0; index < MasterLibraries.Count; index++) MasterLibraries[index].Priority = index + 1; Raise(nameof(LibraryPath)); }
+
     public void RefreshManualSelection()
     {
         RefreshFlatSetOptions();
@@ -211,6 +243,7 @@ public sealed class MainViewModel : BindableBase
     {
         _state.SourcePaths = SourcePaths.ToList();
         _state.LibraryPath = LibraryPath;
+        _state.MasterLibraries = MasterLibraries.Select(item => item.ToDefinition()).ToList();
         _state.DestinationPath = DestinationPath;
         _state.ProjectName = ProjectName;
         _state.SessionBoundaryHour = SessionBoundaryHour;
@@ -243,7 +276,11 @@ public sealed class MainViewModel : BindableBase
         _projectCreatedAt = document.CreatedAt;
         SourcePaths.Clear();
         foreach (var source in document.SourcePaths) SourcePaths.Add(source);
-        LibraryPath = document.LibraryPath;
+        MasterLibraries.Clear();
+        var projectLibraries = document.MasterLibraries.Count > 0 ? document.MasterLibraries : string.IsNullOrWhiteSpace(document.LibraryPath) ? [] : [new() { Name = "Libreria principale", Path = document.LibraryPath, Priority = 1 }];
+        foreach (var library in projectLibraries.OrderBy(item => item.Priority)) MasterLibraries.Add(new(library.Name, library.Path, library.Priority, library.Enabled));
+        _libraryPath = document.LibraryPath;
+        Raise(nameof(LibraryPath));
         DestinationPath = document.DestinationPath;
         ProjectName = document.ProjectName;
         _sessionBoundaryHour = Math.Clamp(document.SessionBoundaryHour, 0, 23);
@@ -260,7 +297,7 @@ public sealed class MainViewModel : BindableBase
 
     private void SaveProjectDocument(string path) => ProjectDocumentStore.Save(path, new AstroForgeProjectDocument
     {
-        CreatedAt = _projectCreatedAt, ProjectName = ProjectName, SourcePaths = SourcePaths.ToList(), LibraryPath = LibraryPath,
+        CreatedAt = _projectCreatedAt, ProjectName = ProjectName, SourcePaths = SourcePaths.ToList(), LibraryPath = LibraryPath, MasterLibraries = MasterLibraries.Select(item => item.ToDefinition()).ToList(),
         DestinationPath = DestinationPath, SessionBoundaryHour = SessionBoundaryHour, DefaultGain = ParseDefault(ProjectDefaultGain),
         DefaultOffset = ParseDefault(ProjectDefaultOffset), DefaultTemperatureC = ParseDefault(ProjectDefaultTemperature),
         Overrides = new(_state.Overrides, StringComparer.OrdinalIgnoreCase)
@@ -274,7 +311,8 @@ public sealed class MainViewModel : BindableBase
         Status = "Lettura header FITS/XISF…";
         try
         {
-            var roots = SourcePaths.Concat(Directory.Exists(LibraryPath) ? [LibraryPath] : []);
+            var activeLibraries = MasterLibraries.Where(item => item.Enabled && item.IsOnline).OrderBy(item => item.Priority).ToArray();
+            var roots = SourcePaths.Concat(activeLibraries.Select(item => item.Path));
             var progress = new Progress<ScanProgress>(item =>
             {
                 Progress = item.Total == 0 ? 0 : item.Completed * 100d / item.Total;
@@ -282,7 +320,7 @@ public sealed class MainViewModel : BindableBase
             });
             var sessionSettings = new SessionSettings(TimeZoneInfo.Local, new TimeOnly(SessionBoundaryHour, 0));
             _frames = await _scanner.ScanAsync(roots, sessionSettings, progress, cancellationToken, _headerCache);
-            if (Directory.Exists(LibraryPath)) LibraryMetadataResolver.Apply(_frames, LibraryPath);
+            foreach (var library in activeLibraries) LibraryMetadataResolver.Apply(_frames, library.Path, library.Priority);
             foreach (var frame in _frames)
                 if (_state.Overrides.TryGetValue(frame.Path, out var saved)) { AppStateStore.Apply(frame, saved); FrameValidator.Revalidate(frame); }
             var defaultsApplied = ProjectMetadataDefaultsResolver.Apply(_frames, CurrentProjectDefaults());
@@ -721,8 +759,8 @@ public sealed class MainViewModel : BindableBase
     private void ApplyLibraryOffset()
     {
         if (!TryNumber(MasterLibraryOffset, out var offset)) { Status = "Offset libreria non valido"; return; }
-        var libraryRoot = Path.GetFullPath(LibraryPath).TrimEnd(Path.DirectorySeparatorChar) + Path.DirectorySeparatorChar;
-        var masters = _frames.Where(frame => frame.IsMaster && Path.GetFullPath(frame.Path).StartsWith(libraryRoot, StringComparison.OrdinalIgnoreCase)).ToArray();
+        var roots = MasterLibraries.Where(item => item.Enabled && item.IsOnline).Select(item => Path.GetFullPath(item.Path).TrimEnd(Path.DirectorySeparatorChar) + Path.DirectorySeparatorChar).ToArray();
+        var masters = _frames.Where(frame => frame.IsMaster && roots.Any(root => Path.GetFullPath(frame.Path).StartsWith(root, StringComparison.OrdinalIgnoreCase))).ToArray();
         if (masters.Length == 0) { Status = "Nessun Master appartenente alla libreria caricata"; return; }
         var undoActions = new List<Action>();
         foreach (var frame in masters) { ApplyField(frame.Offset, offset, undoActions); FrameValidator.Revalidate(frame); }
@@ -1101,4 +1139,19 @@ public sealed class ReviewQueueItem(FrameMetadata frame, string calibration, str
 public sealed record ReviewCandidateOption(string Path, string FileName, int Score, string Compatibility, string Reasons)
 {
     public string Display => $"{FileName} · score {Score} · {Compatibility}";
+}
+
+public sealed class MasterLibraryItem : BindableBase
+{
+    private string _name; private string _path; private int _priority; private bool _enabled;
+    public MasterLibraryItem(string name, string path, int priority, bool enabled) { _name = name; _path = path; _priority = priority; _enabled = enabled; }
+    public string Name { get => _name; set => Set(ref _name, value); }
+    public string Path { get => _path; set { if (Set(ref _path, value)) RefreshState(); } }
+    public int Priority { get => _priority; set { if (Set(ref _priority, value)) Raise(nameof(PriorityLabel)); } }
+    public bool Enabled { get => _enabled; set { if (Set(ref _enabled, value)) Raise(nameof(Status)); } }
+    public bool IsOnline => Directory.Exists(Path);
+    public string Status => !Enabled ? "Disabilitata" : IsOnline ? "Online" : "Offline";
+    public string PriorityLabel => $"Priorità {Priority}";
+    public void RefreshState() { Raise(nameof(IsOnline)); Raise(nameof(Status)); }
+    public MasterLibraryDefinition ToDefinition() => new() { Name = Name, Path = Path, Priority = Priority, Enabled = Enabled };
 }

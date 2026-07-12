@@ -175,7 +175,7 @@ duplicate, or equivalent candidates are sent to the guided Review Queue.
 | Portable `.astroforge` project | Operational; migrations pending |
 | Incremental header cache | v1 operational; SQLite planned |
 | Guided Review Queue | v1 operational; candidate comparison expanding |
-| Multiple Master Libraries | Planned |
+| Multiple Master Libraries | v1 operational: priority and online/offline state |
 | Installer, signing, and updates | Planned |
 | WBPP end-to-end compatibility matrix | Required before sale |
 

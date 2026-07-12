@@ -31,6 +31,11 @@ Assert(frames.Where(frame => frame.IsMaster).All(frame => frame.Offset.Value == 
 Assert(lightBeforeMidnight.Gain.Source == MetadataSource.Header, "Il fallback non deve sostituire il Gain presente nell'header Light.");
 var duplicateBias = CalibrationCopy(bias100, Path.Combine(Path.GetTempPath(), "duplicate-masterBias100.xisf"));
 var preferredBias = CalibrationMatcher.Find(lightBeforeMidnight, [bias100, duplicateBias], FrameKind.Bias);
+var lowerPriorityBias = CalibrationCopy(bias100, Path.Combine(Path.GetTempPath(), "secondary-library", "masterBias100.xisf"));
+lowerPriorityBias.Gain.SetOriginal(100, MetadataSource.LibraryPath);
+bias100.ConfiguredLibraryPriority = 1; lowerPriorityBias.ConfiguredLibraryPriority = 2;
+var priorityMatch = CalibrationMatcher.Find(lightBeforeMidnight, [lowerPriorityBias, bias100], FrameKind.Bias);
+Assert(priorityMatch.Selected?.Frame == bias100, "La libreria con priorità più alta deve vincere tra Master equivalenti.");
 Assert(preferredBias.Selected?.Frame == bias100, "La libreria configurata deve avere priorità su copie Master equivalenti trovate nelle sorgenti.");
 lightBeforeMidnight.ManualBiasPath.SetOverride(duplicateBias.Path);
 var manualMasterAnalysis = ProjectAnalyzer.Analyze(frames.Append(duplicateBias));

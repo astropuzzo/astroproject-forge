@@ -8,6 +8,7 @@ public sealed class AppState
 {
     public List<string> SourcePaths { get; set; } = [];
     public string LibraryPath { get; set; } = @"E:\immagini\MSTE";
+    public List<MasterLibraryDefinition> MasterLibraries { get; set; } = [];
     public string DestinationPath { get; set; } = "";
     public string ProjectName { get; set; } = "";
     public int SessionBoundaryHour { get; set; } = 12;
@@ -16,6 +17,14 @@ public sealed class AppState
     public double? ProjectDefaultTemperatureC { get; set; }
     public string LastProjectFile { get; set; } = "";
     public Dictionary<string, FrameOverrides> Overrides { get; set; } = new(StringComparer.OrdinalIgnoreCase);
+}
+
+public sealed class MasterLibraryDefinition
+{
+    public string Name { get; set; } = "Libreria Master";
+    public string Path { get; set; } = "";
+    public int Priority { get; set; } = 1;
+    public bool Enabled { get; set; } = true;
 }
 
 public sealed class FrameOverrides

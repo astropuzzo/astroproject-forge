@@ -64,6 +64,7 @@ public sealed class FrameMetadata
     public required string Path { get; init; }
     public FrameKind Kind { get; set; }
     public bool IsMaster { get; set; }
+    public int? ConfiguredLibraryPriority { get; set; }
     public MetadataField<string?> ObjectName { get; } = new();
     public MetadataField<string?> FilterName { get; } = new();
     public MetadataField<string?> FlatSetId { get; } = new();

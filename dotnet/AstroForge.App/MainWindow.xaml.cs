@@ -41,9 +41,14 @@ public partial class MainWindow : Window
 
     private void ChooseLibrary_Click(object sender, RoutedEventArgs e)
     {
-        var dialog = new OpenFolderDialog { Title = "Seleziona libreria Master", InitialDirectory = Directory.Exists(_viewModel.LibraryPath) ? _viewModel.LibraryPath : null };
-        if (dialog.ShowDialog(this) == true) _viewModel.LibraryPath = dialog.FolderName;
+        var dialog = new OpenFolderDialog { Title = "Aggiungi libreria Master", InitialDirectory = Directory.Exists(_viewModel.LibraryPath) ? _viewModel.LibraryPath : null };
+        if (dialog.ShowDialog(this) == true) _viewModel.AddMasterLibrary(dialog.FolderName);
     }
+
+    private void RemoveLibrary_Click(object sender, RoutedEventArgs e) => _viewModel.RemoveSelectedMasterLibrary();
+    private void MoveLibraryUp_Click(object sender, RoutedEventArgs e) => _viewModel.MoveSelectedMasterLibrary(-1);
+    private void MoveLibraryDown_Click(object sender, RoutedEventArgs e) => _viewModel.MoveSelectedMasterLibrary(1);
+    private void RefreshLibraries_Click(object sender, RoutedEventArgs e) => _viewModel.RefreshMasterLibraryStates();
 
     private void ChooseDestination_Click(object sender, RoutedEventArgs e)
     {

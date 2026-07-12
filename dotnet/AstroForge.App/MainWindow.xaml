@@ -112,9 +112,12 @@
                         </ListBox.ItemTemplate>
                     </ListBox>
                     <StackPanel Grid.Row="3" Margin="0,16,0,0">
-                        <TextBlock Text="LIBRERIA MASTER · DARK + BIAS" Style="{StaticResource MetaLabel}" />
-                        <TextBox Text="{Binding LibraryPath, UpdateSourceTrigger=PropertyChanged}" />
-                        <Button Content="Seleziona libreria" Click="ChooseLibrary_Click" Margin="0,7,0,0" />
+                        <TextBlock Text="LIBRERIE MASTER · DARK + BIAS" Style="{StaticResource MetaLabel}" />
+                        <ListBox x:Name="MasterLibrariesList" ItemsSource="{Binding MasterLibraries}" SelectedItem="{Binding SelectedMasterLibrary}" Background="Transparent" BorderThickness="0" MaxHeight="170" ScrollViewer.HorizontalScrollBarVisibility="Disabled">
+                            <ListBox.ItemTemplate><DataTemplate><Border Background="{StaticResource Bg2}" BorderBrush="{StaticResource Stroke}" BorderThickness="1" CornerRadius="8" Padding="8" Margin="0,0,0,5"><Grid><Grid.ColumnDefinitions><ColumnDefinition Width="22"/><ColumnDefinition/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions><CheckBox IsChecked="{Binding Enabled}" VerticalAlignment="Center" ToolTip="Includi questa libreria nell'analisi"/><StackPanel Grid.Column="1"><TextBlock Text="{Binding Name}" FontWeight="SemiBold" TextTrimming="CharacterEllipsis"/><TextBlock Text="{Binding Path}" Style="{StaticResource MutedText}" FontSize="9" TextTrimming="CharacterEllipsis"/></StackPanel><StackPanel Grid.Column="2" Margin="7,0,0,0"><TextBlock Text="{Binding PriorityLabel}" Foreground="{StaticResource Accent}" FontSize="9" TextAlignment="Right"/><TextBlock Text="{Binding Status}" Style="{StaticResource MutedText}" FontSize="9" TextAlignment="Right"/></StackPanel></Grid></Border></DataTemplate></ListBox.ItemTemplate>
+                        </ListBox>
+                        <Grid Margin="0,3,0,0"><Grid.ColumnDefinitions><ColumnDefinition/><ColumnDefinition/><ColumnDefinition/><ColumnDefinition/></Grid.ColumnDefinitions><Button Content="+" Click="ChooseLibrary_Click" ToolTip="Aggiungi libreria"/><Button Grid.Column="1" Content="−" Click="RemoveLibrary_Click" ToolTip="Rimuovi dal progetto" Margin="4,0"/><Button Grid.Column="2" Content="↑" Click="MoveLibraryUp_Click" ToolTip="Aumenta priorità"/><Button Grid.Column="3" Content="↓" Click="MoveLibraryDown_Click" ToolTip="Riduci priorità" Margin="4,0,0,0"/></Grid>
+                        <Button Content="Aggiorna stato librerie" Click="RefreshLibraries_Click" Margin="0,6,0,0" Padding="8,5" />
                         <Border Style="{StaticResource Card}" Padding="10" Margin="0,8,0,0" Background="#0D1C25">
                             <StackPanel>
                                 <TextBlock Text="FALLBACK PROGETTO" Style="{StaticResource Eyebrow}"/>

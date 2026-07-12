@@ -126,7 +126,7 @@ diversi e non devono essere ridotti tutti a `DATE-OBS`.
 | File progetto `.astroforge` | Operativo, migrazioni da completare |
 | Cache incrementale header | v1 operativa, backend SQLite pianificato |
 | Coda di revisione guidata | In sviluppo |
-| Gestore multi-libreria | Pianificato |
+| Gestore multi-libreria | v1 operativo: priorità e stato online/offline |
 | Installer, firma e aggiornamenti | Pianificato |
 | Matrice WBPP end-to-end | Da completare prima della vendita |
 

@@ -11,6 +11,7 @@ public sealed class AstroForgeProjectDocument
     public string ProjectName { get; set; } = "";
     public List<string> SourcePaths { get; set; } = [];
     public string LibraryPath { get; set; } = "";
+    public List<MasterLibraryDefinition> MasterLibraries { get; set; } = [];
     public string DestinationPath { get; set; } = "";
     public int SessionBoundaryHour { get; set; } = 12;
     public double? DefaultGain { get; set; }
