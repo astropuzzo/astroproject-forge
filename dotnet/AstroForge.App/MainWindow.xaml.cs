@@ -68,11 +68,24 @@ public partial class MainWindow : Window
     private void ApplyResponsiveLayout()
     {
         var compact = ActualWidth < 1250;
+        var narrowHeader = ActualWidth < 1080;
         SourcesColumn.Width = _sourcesVisible ? new GridLength(compact ? 220 : 270) : new GridLength(0);
         InspectorColumn.Width = _inspectorVisible && !_masterLabActive ? new GridLength(compact ? 330 : 430) : new GridLength(0);
+        BrandText.Visibility = narrowHeader ? Visibility.Collapsed : Visibility.Visible;
+        ProjectStatusBadge.Visibility = ActualWidth < 1380 ? Visibility.Collapsed : Visibility.Visible;
+        SourceToggleButton.Content = narrowHeader ? "☰" : "☰  Sorgenti";
+        SourceToggleButton.Width = narrowHeader ? 44 : double.NaN;
+        SourceToggleButton.Padding = narrowHeader ? new Thickness(0) : new Thickness(13, 0, 13, 0);
+        InspectorToggleButton.Content = narrowHeader ? "◫" : "Inspector  ◫";
+        InspectorToggleButton.Width = narrowHeader ? 44 : double.NaN;
+        InspectorToggleButton.Padding = narrowHeader ? new Thickness(0) : new Thickness(13, 0, 13, 0);
+        OpenProjectButton.Content = narrowHeader ? "Apri" : "Apri progetto";
+        SaveProjectButton.Content = narrowHeader ? "Salva" : "Salva progetto";
     }
 
-    private void Settings_Click(object sender, RoutedEventArgs e) => SettingsPopup.IsOpen = !SettingsPopup.IsOpen;
+    private void More_Click(object sender, RoutedEventArgs e) { SettingsPopup.IsOpen = false; MorePopup.IsOpen = !MorePopup.IsOpen; }
+    private void CloseMore_Click(object sender, RoutedEventArgs e) => MorePopup.IsOpen = false;
+    private void Settings_Click(object sender, RoutedEventArgs e) { MorePopup.IsOpen = false; SettingsPopup.IsOpen = !SettingsPopup.IsOpen; }
     private void DensitySelector_SelectionChanged(object sender, System.Windows.Controls.SelectionChangedEventArgs e)
     {
         if (!IsLoaded) return;
@@ -184,6 +197,7 @@ public partial class MainWindow : Window
 
     private void ClearCache_Click(object sender, RoutedEventArgs e)
     {
+        MorePopup.IsOpen = false;
         if (MessageBox.Show(this, "Svuotare la cache degli header? Le immagini originali non verranno modificate.", "Pulisci cache", MessageBoxButton.YesNo, MessageBoxImage.Question) == MessageBoxResult.Yes)
             _viewModel.ClearHeaderCache();
     }

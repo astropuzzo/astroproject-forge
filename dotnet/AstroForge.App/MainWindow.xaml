@@ -73,24 +73,33 @@
                     <Border Width="42" Height="42" CornerRadius="13" Background="{StaticResource AccentGradient}" Margin="0,0,13,0" Effect="{StaticResource AccentGlow}">
                         <TextBlock Text="✦" Foreground="{StaticResource Accent}" FontSize="22" HorizontalAlignment="Center" VerticalAlignment="Center" />
                     </Border>
-                    <StackPanel VerticalAlignment="Center">
+                    <StackPanel x:Name="BrandText" VerticalAlignment="Center">
                         <TextBlock Text="ASTROPROJECT FORGE" FontFamily="Segoe UI Variable Display" FontWeight="Bold" FontSize="18" />
                         <TextBlock Text="PROJECT INTELLIGENCE FOR PIXINSIGHT" Style="{StaticResource Eyebrow}" FontSize="10" />
                     </StackPanel>
                 </StackPanel>
                 <StackPanel Grid.Column="1" Orientation="Horizontal" VerticalAlignment="Center">
-                    <Border Height="42" MinWidth="104" MaxWidth="150" Background="#78121D2A" BorderBrush="{StaticResource Stroke}" BorderThickness="1" CornerRadius="10" Padding="11,0" Margin="0,0,8,0" ToolTip="{Binding CurrentProjectFile}"><TextBlock Text="{Binding ProjectDocumentStatus}" Style="{StaticResource MutedText}" FontSize="10" TextTrimming="CharacterEllipsis" VerticalAlignment="Center" HorizontalAlignment="Center"/></Border>
-                    <Button Content="☰  Sorgenti" Click="ToggleSources_Click" Style="{StaticResource ToolbarButton}" ToolTip="Mostra o nasconde sorgenti e librerie"/>
-                    <Button Content="Inspector  ◫" Click="ToggleInspector_Click" Style="{StaticResource ToolbarButton}" ToolTip="Mostra o nasconde Inspector"/>
-                    <Button Content="Apri progetto" Click="OpenProject_Click" Style="{StaticResource ToolbarButton}"/>
-                    <Button Content="Salva progetto" Click="SaveProject_Click" Style="{StaticResource ToolbarButton}"/>
-                    <Button Content="Svuota progetto" Command="{Binding ClearProjectCommand}" Style="{StaticResource ToolbarButton}" ToolTip="Rimuove i file caricati dall'app, senza cancellare gli originali" />
-                    <Button Content="Pulisci cache" Click="ClearCache_Click" Style="{StaticResource ToolbarButton}" ToolTip="Dimentica gli header indicizzati; nessuna immagine viene eliminata" />
-                    <Button Content="Annulla ultima modifica" Command="{Binding UndoCommand}" Style="{StaticResource ToolbarButton}" />
+                    <Border x:Name="ProjectStatusBadge" Height="42" MinWidth="104" MaxWidth="150" Background="#78121D2A" BorderBrush="{StaticResource Stroke}" BorderThickness="1" CornerRadius="10" Padding="11,0" Margin="0,0,8,0" ToolTip="{Binding CurrentProjectFile}"><TextBlock Text="{Binding ProjectDocumentStatus}" Style="{StaticResource MutedText}" FontSize="10" TextTrimming="CharacterEllipsis" VerticalAlignment="Center" HorizontalAlignment="Center"/></Border>
+                    <Button x:Name="SourceToggleButton" Content="☰  Sorgenti" Click="ToggleSources_Click" Style="{StaticResource ToolbarButton}" ToolTip="Mostra o nasconde sorgenti e librerie"/>
+                    <Button x:Name="InspectorToggleButton" Content="Inspector  ◫" Click="ToggleInspector_Click" Style="{StaticResource ToolbarButton}" ToolTip="Mostra o nasconde Inspector"/>
+                    <Button x:Name="OpenProjectButton" Content="Apri progetto" Click="OpenProject_Click" Style="{StaticResource ToolbarButton}" ToolTip="Apri un progetto .astroforge"/>
+                    <Button x:Name="SaveProjectButton" Content="Salva progetto" Click="SaveProject_Click" Style="{StaticResource ToolbarButton}" ToolTip="Salva il progetto .astroforge"/>
+                    <Button x:Name="MoreButton" Content="⋯" Click="More_Click" Style="{StaticResource ToolbarButton}" Width="44" Padding="0" ToolTip="Altri comandi" />
                     <Button x:Name="SettingsButton" Content="⚙" Click="Settings_Click" Style="{StaticResource ToolbarButton}" Width="44" Padding="0" Margin="0" ToolTip="Preferenze interfaccia" />
                 </StackPanel>
             </Grid>
         </Border>
+
+        <Popup x:Name="MorePopup" Grid.Row="1" PlacementTarget="{Binding ElementName=MoreButton}" Placement="Bottom" HorizontalOffset="-260" VerticalOffset="8" StaysOpen="False" AllowsTransparency="True">
+            <Border Width="310" Style="{StaticResource Card}" Background="#F2121B28" BorderBrush="#647A94" Padding="12">
+                <StackPanel>
+                    <TextBlock Text="COMANDI PROGETTO" Style="{StaticResource Eyebrow}" Margin="8,5,8,10"/>
+                    <Button Command="{Binding UndoCommand}" Click="CloseMore_Click" HorizontalContentAlignment="Stretch" Margin="0,0,0,6"><Grid><Grid.ColumnDefinitions><ColumnDefinition Width="34"/><ColumnDefinition/></Grid.ColumnDefinitions><TextBlock Text="↶" Foreground="{StaticResource Accent}" FontSize="18" VerticalAlignment="Center"/><StackPanel Grid.Column="1"><TextBlock Text="Annulla ultima modifica" FontWeight="SemiBold"/><TextBlock Text="Ripristina l'ultimo override" Style="{StaticResource MutedText}" FontSize="10"/></StackPanel></Grid></Button>
+                    <Button Click="ClearCache_Click" HorizontalContentAlignment="Stretch" Margin="0,0,0,6"><Grid><Grid.ColumnDefinitions><ColumnDefinition Width="34"/><ColumnDefinition/></Grid.ColumnDefinitions><TextBlock Text="⌁" Foreground="{StaticResource Accent}" FontSize="18" VerticalAlignment="Center"/><StackPanel Grid.Column="1"><TextBlock Text="Pulisci cache header" FontWeight="SemiBold"/><TextBlock Text="Non elimina immagini" Style="{StaticResource MutedText}" FontSize="10"/></StackPanel></Grid></Button>
+                    <Button Command="{Binding ClearProjectCommand}" Click="CloseMore_Click" HorizontalContentAlignment="Stretch" BorderBrush="#71434A"><Grid><Grid.ColumnDefinitions><ColumnDefinition Width="34"/><ColumnDefinition/></Grid.ColumnDefinitions><TextBlock Text="×" Foreground="{StaticResource Danger}" FontSize="20" VerticalAlignment="Center"/><StackPanel Grid.Column="1"><TextBlock Text="Svuota progetto" FontWeight="SemiBold"/><TextBlock Text="Scarica i dati, conserva gli originali" Style="{StaticResource MutedText}" FontSize="10"/></StackPanel></Grid></Button>
+                </StackPanel>
+            </Border>
+        </Popup>
 
         <Popup x:Name="SettingsPopup" Grid.Row="1" PlacementTarget="{Binding ElementName=SettingsButton}" Placement="Bottom" HorizontalOffset="-300" VerticalOffset="8" StaysOpen="False" AllowsTransparency="True">
             <Border Width="340" Style="{StaticResource Card}" Background="#F2121B28" BorderBrush="#647A94" Padding="20">

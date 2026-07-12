@@ -468,6 +468,8 @@ Creare un flusso guidato al primo avvio:
 
 **Onboarding v1 — 12 luglio 2026:** implementato flusso glass in quattro passaggi al primo avvio: promessa e limiti del prodotto, collegamento Master Library multi-camera, impostazioni della notte e fallback Gain/Offset, import cartelle N.I.N.A. e consegna alla prima analisi. Le azioni usano gli stessi selettori del workspace, quindi non creano una configurazione parallela. Il completamento è persistente, è possibile saltare il flusso e riaprirlo dalle Preferenze. Verificati visivamente tutti i passaggi e provata la persistenza con chiusura e riavvio dell'EXE self-contained.
 
+**Command bar responsive v4 — 12 luglio 2026:** riprogettato l'header per mantenere allineamento e priorità tra 900 e 2560 px. Apri, Salva, pannelli e Preferenze restano immediatamente raggiungibili; Annulla, pulizia cache e svuotamento progetto sono raccolti in un menu dedicato con descrizioni esplicite e trattamento visivo distinto per l'azione distruttiva. Sotto 1080 px marchio esteso e label dei pannelli si comprimono, mentre lo stato documento scompare sotto 1380 px senza provocare sovrapposizioni. Popup, tooltip, stato disabilitato e nomi accessibili fanno parte dello stesso controllo. Restano da completare audit DPI 125–250%, navigazione completa da tastiera e tema chiaro.
+
 1. scegli lingua e cartella progetto;
 2. registra una o più librerie Master;
 3. scegli il confine della notte astronomica e timezone;
