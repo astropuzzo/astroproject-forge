@@ -39,12 +39,22 @@ public static class ProjectAnalyzer
         {
             var flatResolution = flatMatches[light.Path];
             var flat = flatResolution.Result;
-            var dark = CalibrationMatcher.Find(light, darks, FrameKind.Dark, policy);
-            var bias = CalibrationMatcher.Find(light, biases, FrameKind.Bias, policy);
+            var dark = ResolveManual(CalibrationMatcher.Find(light, darks, FrameKind.Dark, policy), light.ManualDarkPath.Value);
+            var bias = ResolveManual(CalibrationMatcher.Find(light, biases, FrameKind.Bias, policy), light.ManualBiasPath.Value);
             var group = flat.Selected is not null ? groupByPath.GetValueOrDefault(flat.Selected.Frame.Path) : null;
             lights.Add(new(light, flat, dark, bias, group, flatResolution.Decision));
         }
         return new(flatGroups, lights);
+    }
+
+    private static MatchResult ResolveManual(MatchResult automatic, string? requestedPath)
+    {
+        if (string.IsNullOrWhiteSpace(requestedPath)) return automatic;
+        var selected = automatic.Candidates.FirstOrDefault(candidate => candidate.Frame.Path.Equals(requestedPath, StringComparison.OrdinalIgnoreCase));
+        if (selected is null || !selected.Compatible)
+            return new(automatic.RequestedKind, MatchStatus.Incompatible, null, automatic.Candidates);
+        selected.Reasons.Add("Master assegnato manualmente dall'utente");
+        return new(automatic.RequestedKind, selected.Exact ? MatchStatus.Exact : MatchStatus.WithinTolerance, selected, automatic.Candidates);
     }
 
     public static IReadOnlyList<CalibrationGroup> GroupFlats(IEnumerable<FrameMetadata> source)

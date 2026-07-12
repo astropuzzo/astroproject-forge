@@ -347,6 +347,28 @@ public sealed class MainViewModel : BindableBase
         Status = $"Revisione · {item.Calibration} · {item.Frame.FileName}";
     }
 
+    public void AssignReviewCandidate(ReviewQueueItem? item, bool entireGroup)
+    {
+        if (item?.SelectedCandidate is null || item.Calibration == "Flat") return;
+        var targets = entireGroup
+            ? _frames.Where(frame => frame.Kind == FrameKind.Light && NormalizeText(frame.FilterName.Value) == NormalizeText(item.Frame.FilterName.Value) && NormalizeText(frame.SessionId.Value) == NormalizeText(item.Frame.SessionId.Value)).ToArray()
+            : [item.Frame];
+        var previous = targets.Select(frame => (Frame: frame, Dark: frame.ManualDarkPath.HasOverride ? frame.ManualDarkPath.OverrideValue : null, HasDark: frame.ManualDarkPath.HasOverride, Bias: frame.ManualBiasPath.HasOverride ? frame.ManualBiasPath.OverrideValue : null, HasBias: frame.ManualBiasPath.HasOverride)).ToArray();
+        foreach (var frame in targets)
+            if (item.Calibration == "Dark") frame.ManualDarkPath.SetOverride(item.SelectedCandidate.Path); else frame.ManualBiasPath.SetOverride(item.SelectedCandidate.Path);
+        _undo.Push(() =>
+        {
+            foreach (var value in previous)
+            {
+                if (item.Calibration == "Dark") { value.Frame.ManualDarkPath.ClearOverride(); if (value.HasDark) value.Frame.ManualDarkPath.SetOverride(value.Dark); }
+                else { value.Frame.ManualBiasPath.ClearOverride(); if (value.HasBias) value.Frame.ManualBiasPath.SetOverride(value.Bias); }
+            }
+            RefreshIntelligence(); RebuildTree(); SaveState();
+        });
+        RefreshIntelligence(); RebuildTree(); SaveState(); UndoCommand.RaiseCanExecuteChanged();
+        Status = $"{item.Calibration} assegnato manualmente a {targets.Length} Light";
+    }
+
     private void SaveSettings()
     {
         SaveState();
@@ -804,7 +826,7 @@ public sealed class MainViewModel : BindableBase
             foreach (var child in Descendants(node.Children)) yield return child;
         }
     }
-    private static bool HasAnyOverride(FrameMetadata frame) => frame.Gain.HasOverride || frame.Offset.HasOverride || frame.SetTemperatureC.HasOverride || frame.FilterName.HasOverride || frame.FlatSetId.HasOverride || frame.SessionId.HasOverride;
+    private static bool HasAnyOverride(FrameMetadata frame) => frame.Gain.HasOverride || frame.Offset.HasOverride || frame.SetTemperatureC.HasOverride || frame.FilterName.HasOverride || frame.FlatSetId.HasOverride || frame.SessionId.HasOverride || frame.ManualDarkPath.HasOverride || frame.ManualBiasPath.HasOverride;
 
     private void RefreshIntelligence()
     {
@@ -866,8 +888,12 @@ public sealed class MainViewModel : BindableBase
             MatchStatus.Incompatible => (0, "Nessun candidato compatibile", $"{result.Candidates.Count} candidati trovati, ma tutti incompatibili.", $"Controlla libreria e parametri oppure collega un {calibration} valido."),
             _ => (0, "Calibrazione mancante", $"Nessun {calibration} disponibile per questa configurazione.", $"Aggiungi o seleziona una libreria contenente il {calibration} richiesto.")
         };
+        var candidates = result.Candidates.Where(candidate => candidate.Compatible)
+            .Select(candidate => new ReviewCandidateOption(candidate.Frame.Path, candidate.Frame.FileName, candidate.Score,
+                candidate.Exact ? "Compatibilità esatta" : "Entro tolleranza", string.Join(" · ", candidate.Reasons)))
+            .ToArray();
         ReviewQueue.Add(new(frame, calibration, state, reason, action, result.Candidates.Count,
-            frame.FilterName.Value ?? "Senza filtro", frame.SessionId.Value ?? "Notte non definita", priority));
+            frame.FilterName.Value ?? "Senza filtro", frame.SessionId.Value ?? "Notte non definita", priority, candidates));
     }
 
     private void RefreshStatistics()
@@ -1055,8 +1081,24 @@ public sealed record SessionStatsRow(string Filter, string Session, string Techn
     public string NightsLabel => Nights == 1 ? "1 notte" : $"{Nights} notti";
 }
 public sealed record NightStatsRow(string Filter, string Session, string Night, string Integration, int Lights, string AverageExposure, string Temperature, int Issues);
-public sealed record ReviewQueueItem(FrameMetadata Frame, string Calibration, string State, string Reason, string SuggestedAction, int CandidateCount, string Filter, string Night, int Priority)
+public sealed class ReviewQueueItem(FrameMetadata frame, string calibration, string state, string reason, string suggestedAction, int candidateCount, string filter, string night, int priority, IReadOnlyList<ReviewCandidateOption> candidates)
 {
+    public FrameMetadata Frame { get; } = frame;
+    public string Calibration { get; } = calibration;
+    public string State { get; } = state;
+    public string Reason { get; } = reason;
+    public string SuggestedAction { get; } = suggestedAction;
+    public int CandidateCount { get; } = candidateCount;
+    public string Filter { get; } = filter;
+    public string Night { get; } = night;
+    public int Priority { get; } = priority;
+    public IReadOnlyList<ReviewCandidateOption> Candidates { get; } = candidates;
+    public ReviewCandidateOption? SelectedCandidate { get; set; }
     public string Scope => $"{Filter} · {Night}";
     public string CandidateLabel => CandidateCount == 1 ? "1 candidato" : $"{CandidateCount} candidati";
+    public bool CanAssignMaster => Calibration is "Dark" or "Bias" && Candidates.Count > 0;
+}
+public sealed record ReviewCandidateOption(string Path, string FileName, int Score, string Compatibility, string Reasons)
+{
+    public string Display => $"{FileName} · score {Score} · {Compatibility}";
 }

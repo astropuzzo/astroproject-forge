@@ -117,4 +117,10 @@ public partial class MainWindow : Window
 
     private void ReviewQueue_SelectionChanged(object sender, System.Windows.Controls.SelectionChangedEventArgs e) =>
         _viewModel.SelectReviewItem((sender as System.Windows.Controls.ListBox)?.SelectedItem as ReviewQueueItem);
+
+    private void AssignCandidate_Click(object sender, RoutedEventArgs e) =>
+        _viewModel.AssignReviewCandidate((sender as FrameworkElement)?.DataContext as ReviewQueueItem, false);
+
+    private void AssignCandidateGroup_Click(object sender, RoutedEventArgs e) =>
+        _viewModel.AssignReviewCandidate((sender as FrameworkElement)?.DataContext as ReviewQueueItem, true);
 }

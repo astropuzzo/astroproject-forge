@@ -32,6 +32,10 @@ Assert(lightBeforeMidnight.Gain.Source == MetadataSource.Header, "Il fallback no
 var duplicateBias = CalibrationCopy(bias100, Path.Combine(Path.GetTempPath(), "duplicate-masterBias100.xisf"));
 var preferredBias = CalibrationMatcher.Find(lightBeforeMidnight, [bias100, duplicateBias], FrameKind.Bias);
 Assert(preferredBias.Selected?.Frame == bias100, "La libreria configurata deve avere priorità su copie Master equivalenti trovate nelle sorgenti.");
+lightBeforeMidnight.ManualBiasPath.SetOverride(duplicateBias.Path);
+var manualMasterAnalysis = ProjectAnalyzer.Analyze(frames.Append(duplicateBias));
+Assert(manualMasterAnalysis.Lights.Single(item => item.Light == lightBeforeMidnight).Bias.Selected?.Frame == duplicateBias, "L'assegnazione manuale Bias deve avere precedenza sull'automatismo.");
+lightBeforeMidnight.ManualBiasPath.ClearOverride();
 var analysis = ProjectAnalyzer.Analyze(frames);
 Assert(analysis.Ready, $"Analisi calibrazioni non pronta: {analysis.UnresolvedCount} casi irrisolti.");
 var statistics = ProjectStatisticsCalculator.Calculate(analysis);

@@ -32,6 +32,10 @@ public sealed class FrameOverrides
     public string? FlatSet { get; set; }
     public bool HasSession { get; set; }
     public string? Session { get; set; }
+    public bool HasManualDark { get; set; }
+    public string? ManualDarkPath { get; set; }
+    public bool HasManualBias { get; set; }
+    public string? ManualBiasPath { get; set; }
     public FrameKind? Kind { get; set; }
 }
 
@@ -67,6 +71,8 @@ public static class AppStateStore
         if (value.HasFilter) frame.FilterName.SetOverride(value.Filter);
         if (value.HasFlatSet) frame.FlatSetId.SetOverride(value.FlatSet);
         if (value.HasSession) frame.SessionId.SetOverride(value.Session);
+        if (value.HasManualDark) frame.ManualDarkPath.SetOverride(value.ManualDarkPath);
+        if (value.HasManualBias) frame.ManualBiasPath.SetOverride(value.ManualBiasPath);
         if (value.Kind is { } kind) frame.Kind = kind;
     }
 
@@ -78,6 +84,8 @@ public static class AppStateStore
         HasFilter = frame.FilterName.HasOverride, Filter = frame.FilterName.OverrideValue,
         HasFlatSet = frame.FlatSetId.HasOverride, FlatSet = frame.FlatSetId.OverrideValue,
         HasSession = frame.SessionId.HasOverride, Session = frame.SessionId.OverrideValue,
+        HasManualDark = frame.ManualDarkPath.HasOverride, ManualDarkPath = frame.ManualDarkPath.OverrideValue,
+        HasManualBias = frame.ManualBiasPath.HasOverride, ManualBiasPath = frame.ManualBiasPath.OverrideValue,
         Kind = frame.Kind
     };
 }

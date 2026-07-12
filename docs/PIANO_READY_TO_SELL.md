@@ -264,7 +264,7 @@ essere registrata nel manifest.
 - Cambiare un valore ricalcola immediatamente tutti gli abbinamenti dipendenti.
 - L’app non passa allo stato “Pronto” se resta una scelta non dimostrata.
 
-**Avanzamento 12 luglio 2026:** implementata la Coda di revisione v1 come quinta area dell'app. Le assegnazioni Flat/Dark/Bias non risolte sono ordinate per priorità e mostrano stato, frame, filtro/notte, numero di candidati, causa e azione suggerita. Selezionare una voce porta il relativo frame nell’Inspector. Restano da implementare il confronto visuale tra candidati e il comando diretto `Assegna questo Master`, necessari per considerare P0.3 completo.
+**Avanzamento 12 luglio 2026:** implementata la Coda di revisione v1 come quinta area dell'app. Le assegnazioni Flat/Dark/Bias non risolte sono ordinate per priorità e mostrano stato, frame, filtro/notte, numero di candidati, causa e azione suggerita. Selezionare una voce porta il relativo frame nell’Inspector. Dark e Bias possono ora essere assegnati esplicitamente al singolo Light o all'intera notte; la scelta è persistente, annullabile e prevale sull'automatismo. Restano da completare una comparazione tabellare campo-per-campo e l'assegnazione batch con firma di configurazione, necessarie per chiudere P0.3.
 
 ## P0.4 — Motore di regole e profili riutilizzabili
 

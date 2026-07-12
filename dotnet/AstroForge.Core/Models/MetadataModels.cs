@@ -84,6 +84,8 @@ public sealed class FrameMetadata
     public MetadataField<double?> RotatorAngleDeg { get; } = new();
     public MetadataField<DateTimeOffset?> CapturedAt { get; } = new();
     public MetadataField<string?> SessionId { get; } = new();
+    public MetadataField<string?> ManualDarkPath { get; } = new();
+    public MetadataField<string?> ManualBiasPath { get; } = new();
     public Dictionary<string, object?> Headers { get; } = new(StringComparer.OrdinalIgnoreCase);
     public List<FrameIssue> Issues { get; } = [];
 
