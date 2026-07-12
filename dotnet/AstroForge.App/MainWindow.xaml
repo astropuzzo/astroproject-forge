@@ -255,6 +255,27 @@
                             </StackPanel>
                         </ScrollViewer>
                     </TabItem>
+                    <TabItem Header="05  Revisione">
+                        <Grid Margin="0,14,0,0">
+                            <Grid.RowDefinitions><RowDefinition Height="Auto"/><RowDefinition Height="*"/></Grid.RowDefinitions>
+                            <Grid>
+                                <StackPanel><TextBlock Text="Coda di revisione" Style="{StaticResource Title}"/><TextBlock Text="Solo decisioni che richiedono dati o conferma. Seleziona una voce per aprirla nell’Inspector." Style="{StaticResource MutedText}" Margin="0,2,0,14"/></StackPanel>
+                                <Border HorizontalAlignment="Right" VerticalAlignment="Top" Background="#172A32" CornerRadius="12" Padding="12,7"><StackPanel Orientation="Horizontal"><TextBlock Text="{Binding ReviewQueueCount}" Foreground="{StaticResource Accent}" FontSize="18" FontWeight="SemiBold"/><TextBlock Text="  da risolvere" Style="{StaticResource MutedText}" VerticalAlignment="Center"/></StackPanel></Border>
+                            </Grid>
+                            <ListBox Grid.Row="1" ItemsSource="{Binding ReviewQueue}" SelectionChanged="ReviewQueue_SelectionChanged" Background="Transparent" BorderThickness="0" ScrollViewer.HorizontalScrollBarVisibility="Disabled">
+                                <ListBox.ItemContainerStyle><Style TargetType="ListBoxItem"><Setter Property="HorizontalContentAlignment" Value="Stretch"/><Setter Property="Padding" Value="0"/><Setter Property="Margin" Value="0,0,0,8"/><Setter Property="Background" Value="Transparent"/></Style></ListBox.ItemContainerStyle>
+                                <ListBox.ItemTemplate><DataTemplate>
+                                    <Border Style="{StaticResource Card}" Padding="14">
+                                        <Grid><Grid.ColumnDefinitions><ColumnDefinition Width="86"/><ColumnDefinition/><ColumnDefinition Width="145"/></Grid.ColumnDefinitions>
+                                            <Border Background="#4A2C20" CornerRadius="8" Padding="8,4" HorizontalAlignment="Left" VerticalAlignment="Top"><TextBlock Text="{Binding Calibration}" Foreground="{StaticResource Warning}" FontWeight="SemiBold"/></Border>
+                                            <StackPanel Grid.Column="1" Margin="10,0,14,0"><TextBlock Text="{Binding State}" FontWeight="SemiBold" FontSize="15"/><TextBlock Text="{Binding Frame.FileName}" Style="{StaticResource MutedText}" FontSize="11" TextTrimming="CharacterEllipsis"/><TextBlock Text="{Binding Reason}" Margin="0,7,0,0" TextWrapping="Wrap"/><TextBlock Text="{Binding SuggestedAction}" Foreground="{StaticResource Accent}" Margin="0,5,0,0" TextWrapping="Wrap" FontSize="11"/></StackPanel>
+                                            <StackPanel Grid.Column="2"><TextBlock Text="{Binding Scope}" TextAlignment="Right" TextWrapping="Wrap"/><TextBlock Text="{Binding CandidateLabel}" Style="{StaticResource MutedText}" TextAlignment="Right" Margin="0,5,0,0"/></StackPanel>
+                                        </Grid>
+                                    </Border>
+                                </DataTemplate></ListBox.ItemTemplate>
+                            </ListBox>
+                        </Grid>
+                    </TabItem>
                 </TabControl>
             </Grid>
 

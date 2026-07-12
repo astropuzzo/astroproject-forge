@@ -92,6 +92,7 @@ public sealed class MainViewModel : BindableBase
     public ObservableCollection<FilterStatsRow> FilterStatistics { get; } = [];
     public ObservableCollection<SessionStatsRow> SessionStatistics { get; } = [];
     public ObservableCollection<NightStatsRow> NightStatistics { get; } = [];
+    public ObservableCollection<ReviewQueueItem> ReviewQueue { get; } = [];
     public ObservableCollection<string> SelectedIssues { get; } = [];
     public RelayCommand ApplyOverridesCommand { get; }
     public RelayCommand ApplyLibraryOffsetCommand { get; }
@@ -130,6 +131,7 @@ public sealed class MainViewModel : BindableBase
     public int TotalIssues => _frames.Sum(frame => frame.Issues.Count);
     public int OverrideCount => _frames.Count(frame => HasAnyOverride(frame));
     public int UnresolvedCalibrations => _analysis?.UnresolvedCount ?? 0;
+    public int ReviewQueueCount => ReviewQueue.Count;
     public bool IsProjectReady => _analysis?.Ready == true;
     public string ReadinessText { get => _readinessText; private set => Set(ref _readinessText, value); }
     public string CalibrationSummary { get => _calibrationSummary; private set => Set(ref _calibrationSummary, value); }
@@ -337,6 +339,14 @@ public sealed class MainViewModel : BindableBase
         Status = "Cache header svuotata · i file verranno riletti alla prossima analisi";
     }
 
+    public void SelectReviewItem(ReviewQueueItem? item)
+    {
+        if (item is null) return;
+        SelectedNode = Descendants(TreeRoots).FirstOrDefault(node => node.IsLeaf && node.Frames.Any(frame => frame.Path.Equals(item.Frame.Path, StringComparison.OrdinalIgnoreCase)))
+            ?? new ProjectTreeNode { Key = $"review:{item.Frame.Path}", Name = item.Frame.FileName, Detail = item.Frame.Path, Icon = "!", Frames = [item.Frame] };
+        Status = $"Revisione · {item.Calibration} · {item.Frame.FileName}";
+    }
+
     private void SaveSettings()
     {
         SaveState();
@@ -359,6 +369,7 @@ public sealed class MainViewModel : BindableBase
         FilterStatistics.Clear();
         SessionStatistics.Clear();
         NightStatistics.Clear();
+        ReviewQueue.Clear();
         SelectedIssues.Clear();
         SearchText = "";
         ShowIssuesOnly = false;
@@ -809,6 +820,7 @@ public sealed class MainViewModel : BindableBase
             AddCalibrationIssue(item.Light, "dark", item.Dark);
             AddCalibrationIssue(item.Light, "bias", item.Bias);
         }
+        RefreshReviewQueue();
 
         var recipe = WbppRecipeEngine.Recommend(_analysis);
         WbppKeywords.Clear();
@@ -825,7 +837,37 @@ public sealed class MainViewModel : BindableBase
         Raise(nameof(UnresolvedCalibrations));
         Raise(nameof(IsProjectReady));
         Raise(nameof(PlanSummary));
+        Raise(nameof(ReviewQueueCount));
         UpdateCalibrationSummary();
+    }
+
+    private void RefreshReviewQueue()
+    {
+        ReviewQueue.Clear();
+        if (_analysis is null) return;
+        foreach (var item in _analysis.Lights)
+        {
+            AddReview(item.Light, "Flat", item.Flat);
+            AddReview(item.Light, "Dark", item.Dark);
+            AddReview(item.Light, "Bias", item.Bias);
+        }
+        var ordered = ReviewQueue.OrderBy(item => item.Priority).ThenBy(item => item.Filter).ThenBy(item => item.Night).ThenBy(item => item.Frame.FileName).ToArray();
+        ReviewQueue.Clear();
+        foreach (var item in ordered) ReviewQueue.Add(item);
+    }
+
+    private void AddReview(FrameMetadata frame, string calibration, MatchResult result)
+    {
+        if (result.IsAccepted) return;
+        var (priority, state, reason, action) = result.Status switch
+        {
+            MatchStatus.Ambiguous => (1, "Scelta ambigua", $"{result.Candidates.Count} candidati compatibili hanno la stessa priorità.", $"Confronta i candidati {calibration} e assegna quello corretto al gruppo."),
+            MatchStatus.InsufficientMetadata => (0, "Metadati insufficienti", $"Mancano: {string.Join(", ", result.Candidates.FirstOrDefault()?.MissingRequired ?? ["campi richiesti"])}.", "Completa i metadati nell’Inspector e ricalcola il progetto."),
+            MatchStatus.Incompatible => (0, "Nessun candidato compatibile", $"{result.Candidates.Count} candidati trovati, ma tutti incompatibili.", $"Controlla libreria e parametri oppure collega un {calibration} valido."),
+            _ => (0, "Calibrazione mancante", $"Nessun {calibration} disponibile per questa configurazione.", $"Aggiungi o seleziona una libreria contenente il {calibration} richiesto.")
+        };
+        ReviewQueue.Add(new(frame, calibration, state, reason, action, result.Candidates.Count,
+            frame.FilterName.Value ?? "Senza filtro", frame.SessionId.Value ?? "Notte non definita", priority));
     }
 
     private void RefreshStatistics()
@@ -1013,3 +1055,8 @@ public sealed record SessionStatsRow(string Filter, string Session, string Techn
     public string NightsLabel => Nights == 1 ? "1 notte" : $"{Nights} notti";
 }
 public sealed record NightStatsRow(string Filter, string Session, string Night, string Integration, int Lights, string AverageExposure, string Temperature, int Issues);
+public sealed record ReviewQueueItem(FrameMetadata Frame, string Calibration, string State, string Reason, string SuggestedAction, int CandidateCount, string Filter, string Night, int Priority)
+{
+    public string Scope => $"{Filter} · {Night}";
+    public string CandidateLabel => CandidateCount == 1 ? "1 candidato" : $"{CandidateCount} candidati";
+}

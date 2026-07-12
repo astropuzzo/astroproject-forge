@@ -1,53 +1,175 @@
 # AstroProject Forge
 
-Applicazione Windows nativa (.NET/WPF) per preparare progetti astronomici
-multisessione destinati a PixInsight WeightedBatchPreprocessing 3.x.
+**Trasforma notti di acquisizione N.I.N.A. in un progetto multisessione pronto
+per PixInsight WBPP, senza organizzare centinaia di file a mano.**
 
-Legge gli header FITS/XISF senza caricare le immagini, classifica Light/Flat/
-Dark/Bias, risolve la notte astronomica oltre mezzanotte, abbina la libreria
-Master, permette override singoli o di gruppo e mostra sia l'albero acquisito
-sia quello finale. La ricetta Grouping Keywords è adattiva: suggerisce solo le
-keyword realmente necessarie e specifica Pre/Post.
+AstroProject Forge è un'applicazione Windows nativa che legge i metadati
+FITS/XISF, ricostruisce sessioni osservative e configurazioni del treno ottico,
+abbina Flat, Dark e Bias e genera una struttura verificabile per
+WeightedBatchPreprocessing.
 
-La struttura principale è `Filtro → Sessioni di configurazione → Sessione →
-Notti/Flat/Master collegati`. Più notti possono condividere la stessa Flat Epoch;
-checkbox e linker manuale permettono di collegare un Flat Set a notti singole,
-multiple o a un’intera sessione. Dark e Bias sono inoltre raccolti sotto
-`Senza filtro → Sessioni sensore`.
+> Il progetto è in sviluppo attivo e non è ancora una release commerciale.
+> Correttezza delle calibrazioni e sicurezza degli originali hanno precedenza
+> sulla quantità di funzioni.
 
-L'esportazione usa una cartella di staging riprendibile, copia verificata
-SHA-256, rinomina descrittiva dei Master e genera manifest JSON, guida WBPP e
-report HTML. Gli originali non vengono modificati.
+![Dashboard delle acquisizioni](docs/images/acquisition-dashboard.png)
 
-## Avvio per sviluppo
+## Il problema che risolve
 
-Richiede .NET SDK 10 per compilare. L'eseguibile pubblicato è autonomo.
+Un target debole può richiedere settimane di acquisizione. Nello stesso progetto
+possono esserci più filtri, notti che attraversano la mezzanotte, cambi del treno
+ottico e diversi set di Flat. Una semplice divisione per data non basta:
 
-```powershell
-.\.dotnet\dotnet.exe run --project dotnet\AstroForge.App\AstroForge.App.csproj
+- sei notti HOO possono condividere lo stesso Flat Set;
+- dopo un cambio filtro o rotazione serve una nuova configurazione;
+- tornando a HOO, i nuovi Flat non devono calibrare le vecchie sessioni;
+- pulizia di specchio o filtro può creare un'altra Flat Epoch anche senza
+  cambiare il nome del filtro;
+- Dark e Bias devono corrispondere a camera, geometria, Gain, Offset,
+  temperatura, esposizione e readout mode.
+
+AstroProject Forge costruisce una mappa esplicita del progetto e segnala ciò che
+non può dimostrare, invece di inventare un abbinamento.
+
+## Come funziona
+
+```mermaid
+flowchart LR
+    A["Cartelle N.I.N.A.<br/>FITS / XISF"] --> B["Lettura header<br/>e validazione"]
+    L["Librerie Master<br/>Dark / Bias"] --> B
+    B --> C["Filtro → sessione ottica<br/>→ notte astronomica"]
+    C --> D["Matching Flat / Dark / Bias<br/>con motivazioni"]
+    D --> E["Revisione e link manuali<br/>non distruttivi"]
+    E --> F["Struttura progetto<br/>+ ricetta WBPP"]
+    F --> G["Copia verificata SHA-256<br/>+ manifest e report"]
 ```
 
-## Test
+1. Selezioni una o più cartelle di acquisizione e le librerie Master.
+2. L'app legge solo gli header: i pixel non vengono caricati durante l'analisi.
+3. Le immagini vengono organizzate come
+   `Filtro → Sessioni di configurazione → Notti / Flat / Master`.
+4. Il motore propone le calibrazioni compatibili e spiega errori o ambiguità.
+5. Puoi correggere metadati e collegare manualmente un Flat Set a una notte, a
+   più notti o a un'intera sessione.
+6. L'app suggerisce le Grouping Keywords WBPP necessarie, inclusi valori
+   `Pre/Post` per `FLATSET`, `DARKSET`, `BIASSET` e `TARGET`.
+7. L'esportazione genera una cartella pronta da controllare in PixInsight.
 
-```powershell
-.\.dotnet\dotnet.exe run --project dotnet\AstroForge.Core.Tests\AstroForge.Core.Tests.csproj -c Release
+## Funzioni implementate
+
+### Project Intelligence
+
+- parser FITS e XISF;
+- classificazione Light, Flat, Dark, Bias e Dark-flat;
+- notte astronomica configurabile: i file dopo mezzanotte possono restare nella
+  sessione della sera precedente;
+- Flat Epoch automatiche e link manuale multisessione;
+- albero gerarchico invece di una lista infinita di file;
+- override singoli e di gruppo con provenienza del valore;
+- dashboard con ore per filtro, sessione e notte;
+- intervalli temporali, Gain, temperatura e copertura calibrazioni;
+- esportazione statistiche CSV e JSON.
+
+### PixInsight WBPP
+
+- matching motivato di Flat, Dark e Bias;
+- preferenza per Master provenienti dalla libreria configurata;
+- ricetta adattiva delle Grouping Keywords;
+- anteprima della struttura finale;
+- guida WBPP generata insieme al progetto;
+- manifest con assegnazioni e decisioni utilizzate.
+
+### Sicurezza e ripresa
+
+- gli originali restano in sola lettura;
+- copia tramite staging riprendibile;
+- verifica SHA-256;
+- file progetto portabile `.astroforge` con salvataggio atomico;
+- autosalvataggio dopo il primo salvataggio esplicito;
+- cache incrementale degli header con invalidazione dei soli file modificati;
+- comando `Pulisci cache` che non elimina immagini astronomiche.
+
+## Struttura attesa
+
+```text
+HOO
+└── Sessioni
+    ├── Sessione 01 · 15–28 giu
+    │   ├── Notti osservative
+    │   ├── Flat Set collegato
+    │   ├── Master Dark
+    │   └── Master Bias
+    └── Sessione 02 · 02–05 lug
+        └── ...
+SIOIII
+└── Sessioni
+    └── ...
+Senza filtro
+└── Sessioni sensore
+    ├── Dark
+    └── Bias
 ```
 
-## Build Windows
+Questa gerarchia distingue la **notte di calendario** dalla **sessione
+astronomica** e dalla **sessione di configurazione ottica**. Sono concetti
+diversi e non devono essere ridotti tutti a `DATE-OBS`.
+
+## Stato della roadmap
+
+| Area | Stato |
+|---|---|
+| Analisi FITS/XISF e albero multisessione | Operativa |
+| Flat Epoch e link manuali | Operativa |
+| Dashboard e statistiche | Operativa |
+| File progetto `.astroforge` | Operativo, migrazioni da completare |
+| Cache incrementale header | v1 operativa, backend SQLite pianificato |
+| Coda di revisione guidata | In sviluppo |
+| Gestore multi-libreria | Pianificato |
+| Installer, firma e aggiornamenti | Pianificato |
+| Matrice WBPP end-to-end | Da completare prima della vendita |
+
+Il backlog completo, con criteri di accettazione, è in
+[PIANO_READY_TO_SELL.md](docs/PIANO_READY_TO_SELL.md).
+
+## Sviluppo
+
+### Requisiti
+
+- Windows 10/11;
+- .NET SDK 10 per compilare;
+- PixInsight non è necessario per analizzare o organizzare i file.
 
 ```powershell
-.\.dotnet\dotnet.exe publish dotnet\AstroForge.App\AstroForge.App.csproj -c Release -r win-x64 --self-contained true -p:PublishSingleFile=true -p:IncludeNativeLibrariesForSelfExtract=true -o dist-dotnet
+dotnet run --project dotnet/AstroForge.App/AstroForge.App.csproj
 ```
 
-L'eseguibile autonomo viene creato in `dist-dotnet\AstroForge.App.exe`.
+### Test
 
-## Principi di sicurezza
+I test usano fixture sintetiche e non richiedono scatti astronomici personali.
 
-- Gli header hanno precedenza sul nome del file.
-- Il nome viene usato solo come fallback o per rilevare conflitti.
-- Nessun file sorgente viene modificato.
-- L'esportazione usa copia, verifica dimensione e hash SHA-256, quindi scrive il
-  manifest del progetto.
-- Gli abbinamenti ambigui richiedono revisione esplicita; omonimi provenienti da
-  sorgenti diverse vengono conservati con suffissi deterministici.
-- Le preferenze e le correzioni manuali sono persistenti in `%LocalAppData%`.
+```powershell
+dotnet run --project dotnet/AstroForge.Core.Tests/AstroForge.Core.Tests.csproj -c Release
+```
+
+### Build Windows autonoma
+
+```powershell
+dotnet publish dotnet/AstroForge.App/AstroForge.App.csproj `
+  -c Release -r win-x64 --self-contained true `
+  -p:PublishSingleFile=true -o dist-dotnet
+```
+
+## Principi del progetto
+
+- Nessun abbinamento scientifico senza una motivazione verificabile.
+- Un dato mancante resta mancante finché una regola o l'utente non lo risolve.
+- Le correzioni sono overlay: gli header originali non vengono riscritti.
+- Le operazioni distruttive non devono essere confuse con pulizia cache o
+  rimozione dalla memoria.
+- Nessun FITS/XISF personale o artefatto di build viene versionato nel
+  repository.
+
+## Licenza e distribuzione
+
+Licenza commerciale, installer e canale di distribuzione non sono ancora
+definiti. Il repository è privato durante lo sviluppo pre-release.

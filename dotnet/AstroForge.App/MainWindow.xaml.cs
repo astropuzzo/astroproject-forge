@@ -114,4 +114,7 @@ public partial class MainWindow : Window
     private void Tree_SelectedItemChanged(object sender, RoutedPropertyChangedEventArgs<object> e) => _viewModel.SelectedNode = e.NewValue as ProjectTreeNode;
 
     private void TreeMark_Changed(object sender, RoutedEventArgs e) => _viewModel.RefreshManualSelection();
+
+    private void ReviewQueue_SelectionChanged(object sender, System.Windows.Controls.SelectionChangedEventArgs e) =>
+        _viewModel.SelectReviewItem((sender as System.Windows.Controls.ListBox)?.SelectedItem as ReviewQueueItem);
 }
