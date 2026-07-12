@@ -322,13 +322,14 @@ public sealed class MainViewModel : BindableBase
 
     public async Task ScanAsync(CancellationToken cancellationToken = default)
     {
-        if (SourcePaths.Count == 0) { Status = "Aggiungi almeno una sorgente"; return; }
+        var availableLibraries = MasterLibraries.Where(item => item.Enabled && item.IsOnline).ToArray();
+        if (SourcePaths.Count == 0 && availableLibraries.Length == 0) { Status = "Aggiungi una sorgente oppure una Master Library online"; return; }
         IsScanning = true;
         Progress = 0;
         Status = "Lettura header FITS/XISF…";
         try
         {
-            var activeLibraries = MasterLibraries.Where(item => item.Enabled && item.IsOnline).OrderBy(item => item.Priority).ToArray();
+            var activeLibraries = availableLibraries.OrderBy(item => item.Priority).ToArray();
             var roots = SourcePaths.Concat(activeLibraries.Select(item => item.Path));
             var progress = new Progress<ScanProgress>(item =>
             {
@@ -624,18 +625,10 @@ public sealed class MainViewModel : BindableBase
                 index++;
             }
         }
-        var unused = available.Where(frame => !usedPaths.Contains(frame.Path)).ToArray();
-        if (unused.Length > 0)
-        {
-            var unusedChildren = new List<ProjectTreeNode>();
-            var unusedDarks = unused.Where(frame => frame.Kind == FrameKind.Dark).ToArray();
-            var unusedBiases = unused.Where(frame => frame.Kind == FrameKind.Bias).ToArray();
-            if (unusedDarks.Length > 0) unusedChildren.Add(GroupNode("unused-darks", "Dark non collegati", "D", unusedDarks, unusedDarks.Select(Leaf)));
-            if (unusedBiases.Length > 0) unusedChildren.Add(GroupNode("unused-biases", "Bias non collegati", "B", unusedBiases, unusedBiases.Select(Leaf)));
-            sessionNodes.Add(GroupNode("unused-sensor-calibration", "Calibrazioni non collegate", "?", unused, unusedChildren));
-        }
-        var sessions = GroupNode("sensor-sessions", "Sessioni sensore", "S", available, sessionNodes);
-        TreeRoots.Add(Category("no-filter", "Senza filtro", "∅", available, [sessions]));
+        var used = available.Where(frame => usedPaths.Contains(frame.Path)).ToArray();
+        if (used.Length == 0 || sessionNodes.Count == 0) return;
+        var sessions = GroupNode("sensor-sessions", "Calibrazioni utilizzate", "S", used, sessionNodes);
+        TreeRoots.Add(Category("project-calibration", "Master assegnati al progetto", "◆", used, [sessions]));
     }
 
     private static string SensorPairKey(FrameMetadata? dark, FrameMetadata? bias)
@@ -908,9 +901,11 @@ public sealed class MainViewModel : BindableBase
         WbppNotes.Clear();
         foreach (var note in recipe.Notes) WbppNotes.Add(note);
 
-        ReadinessText = _analysis.Ready
-            ? $"Pronto per WBPP · {_analysis.Lights.Count} Light con Flat, Dark e Bias assegnati"
-            : $"Da risolvere · {_analysis.UnresolvedCount} assegnazioni di calibrazione mancanti o ambigue";
+        ReadinessText = _analysis.Lights.Count == 0
+            ? $"Modalità Master Library · {_frames.Count(frame => frame.IsMaster)} Master analizzati"
+            : _analysis.Ready
+                ? $"Pronto per WBPP · {_analysis.Lights.Count} Light con Flat, Dark e Bias assegnati"
+                : $"Da risolvere · {_analysis.UnresolvedCount} assegnazioni di calibrazione mancanti o ambigue";
         _plan = null;
         PlannedTreeRoots.Clear();
         Raise(nameof(UnresolvedCalibrations));

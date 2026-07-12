@@ -1,4 +1,5 @@
 using System.IO;
+using System.Diagnostics;
 using System.Windows;
 using Microsoft.Win32;
 using AstroForge.App.ViewModels;
@@ -117,6 +118,16 @@ public partial class MainWindow : Window
     }
 
     private void Tree_SelectedItemChanged(object sender, RoutedPropertyChangedEventArgs<object> e) => _viewModel.SelectedNode = e.NewValue as ProjectTreeNode;
+
+    private void Tree_MouseDoubleClick(object sender, System.Windows.Input.MouseButtonEventArgs e) => Reveal((_viewModel.SelectedNode?.Frames.FirstOrDefault())?.Path);
+    private void ReviewQueue_MouseDoubleClick(object sender, System.Windows.Input.MouseButtonEventArgs e) => Reveal(((sender as System.Windows.Controls.ListBox)?.SelectedItem as ReviewQueueItem)?.Frame.Path);
+    private void MasterOrganizerGrid_MouseDoubleClick(object sender, System.Windows.Input.MouseButtonEventArgs e) => Reveal((MasterOrganizerGrid.SelectedItem as MasterOrganizerItem)?.Frame.Path);
+
+    private static void Reveal(string? path)
+    {
+        if (string.IsNullOrWhiteSpace(path) || !File.Exists(path)) return;
+        Process.Start(new ProcessStartInfo("explorer.exe", $"/select,\"{path}\"") { UseShellExecute = true });
+    }
 
     private void TreeMark_Changed(object sender, RoutedEventArgs e) => _viewModel.RefreshManualSelection();
 

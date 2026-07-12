@@ -55,6 +55,14 @@ var recipe = WbppRecipeEngine.Recommend(analysis);
 Assert(recipe.Keywords.Count == 1 && recipe.Keywords[0].Keyword == "DARKSET" && recipe.Keywords[0].Pre && !recipe.Keywords[0].Post, "Ricetta WBPP adattiva errata.");
 
 var epochFrames = new List<FrameMetadata>();
+var flippedLight = Synthetic(FrameKind.Light, "flipped-light.fits", "HOO", new DateTimeOffset(2026, 6, 29, 1, 0, 0, TimeSpan.Zero));
+var flippedFlat = Synthetic(FrameKind.Flat, "flipped-flat.fits", "HOO", new DateTimeOffset(2026, 6, 28, 2, 0, 0, TimeSpan.Zero));
+flippedLight.RotatorAngleDeg.SetOriginal(0.30, MetadataSource.Header); flippedFlat.RotatorAngleDeg.SetOriginal(180.38, MetadataSource.Header);
+var flipMatch = CalibrationMatcher.Find(flippedLight, [flippedFlat], FrameKind.Flat);
+Assert(flipMatch.IsAccepted, "Un Flat equivalente dopo meridian flip deve essere compatibile modulo 180 gradi.");
+flippedLight.RotatorAngleDeg.SetOriginal(178.73, MetadataSource.Header);
+var softRotatorMatch = CalibrationMatcher.Find(flippedLight, [flippedFlat], FrameKind.Flat);
+Assert(softRotatorMatch.IsAccepted && softRotatorMatch.Status == MatchStatus.WithinTolerance, "Il solo angolo rotatore non deve rendere incompatibile un Flat altrimenti valido.");
 for (var day = 1; day <= 6; day++) epochFrames.Add(Synthetic(FrameKind.Light, $"hoo-a-{day}.fits", "HOO", new DateTimeOffset(2026, 6, day, 23, 0, 0, TimeSpan.Zero)));
 for (var day = 10; day <= 12; day++) epochFrames.Add(Synthetic(FrameKind.Light, $"hoo-b-{day}.fits", "HOO", new DateTimeOffset(2026, 6, day, 23, 0, 0, TimeSpan.Zero)));
 var flatA = Synthetic(FrameKind.Flat, "flat-hoo-a.fits", "HOO", new DateTimeOffset(2026, 6, 7, 5, 0, 0, TimeSpan.Zero));

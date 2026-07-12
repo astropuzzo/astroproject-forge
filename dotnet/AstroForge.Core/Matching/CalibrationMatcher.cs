@@ -65,7 +65,7 @@ public static class CalibrationMatcher
         if (requestedKind == FrameKind.Flat)
         {
             SameText(result, "filtro", target.FilterName.Value, candidate.FilterName.Value, 20, true);
-            Within(result, "rotatore", target.RotatorAngleDeg.Value, candidate.RotatorAngleDeg.Value, policy.RotatorToleranceDegrees, 6, false);
+            AngularWithin180(result, "rotatore", target.RotatorAngleDeg.Value, candidate.RotatorAngleDeg.Value, policy.RotatorToleranceDegrees, 6);
             Relative(result, "focale", target.FocalLengthMm.Value, candidate.FocalLengthMm.Value, policy.FocalLengthRelativeTolerance, 6);
             if (target.SessionId.Value is not null && target.SessionId.Value == candidate.SessionId.Value) { result.Score += 2; result.Reasons.Add("stessa sessione"); }
         }
@@ -114,6 +114,15 @@ public static class CalibrationMatcher
         if (!left.HasValue || !right.HasValue) { Missing(result, label, false); return; }
         if (Math.Abs(left.Value - right.Value) <= Math.Abs(left.Value) * tolerance) Pass(result, label, points); else Fail(result, label, left.Value, right.Value);
         if (left is not null && right is not null && Math.Abs(left.Value - right.Value) > 1e-9 && result.Compatible) result.Exact = false;
+    }
+    private static void AngularWithin180(MatchCandidate result, string label, double? left, double? right, double tolerance, int points)
+    {
+        if (!left.HasValue || !right.HasValue) { Missing(result, label, false); return; }
+        var normalized = Math.Abs(left.Value - right.Value) % 180d;
+        var distance = Math.Min(normalized, 180d - normalized);
+        if (distance <= tolerance) { result.Score += points; result.Reasons.Add($"{label}: compatibile modulo 180° (Δ {distance:0.###}°)"); }
+        else { result.Exact = false; result.Reasons.Add($"{label}: differenza {distance:0.###}° oltre la preferenza di {tolerance:0.###}° · verificare se il treno ottico è stato mosso"); }
+        if (distance > 1e-9) result.Exact = false;
     }
     private static void Missing(MatchCandidate result, string label, bool required)
     {
