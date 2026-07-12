@@ -82,6 +82,14 @@ try
     var sourceB = Path.Combine(exportRoot, "source-b.xisf");
     await File.WriteAllTextAsync(sourceA, "astroforge-light");
     await File.WriteAllTextAsync(sourceB, "astroforge-master");
+    var organizerSource = Path.Combine(exportRoot, "raw-master-dark.fits");
+    WriteMinimalFits(organizerSource);
+    var organizerFrame = new FrameMetadata { Path = organizerSource, Kind = FrameKind.Dark, IsMaster = true };
+    var organizerOutput = Path.Combine(exportRoot, "organized-library");
+    var organized = await MasterLibraryOrganizer.ExecuteAsync([new(organizerFrame, new("Synthetic Camera", 100, 51, -10, 600, "Default"))], organizerOutput);
+    var organizedHeaders = await AstroForge.Core.Parsing.FitsHeaderReader.ReadAsync(organized.Single().DestinationPath);
+    Assert(organized.Single().HeaderStamped && organizedHeaders["GAIN"]?.ToString() == "100" && organizedHeaders["SET-TEMP"]?.ToString() == "-10", "Metadati Master non impressi sulla copia FITS.");
+    Assert(File.Exists(Path.Combine(organizerOutput, "astroforge-master-library.json")) && File.Exists(organizerSource), "Manifest organizzatore o Master originale assente.");
     var cache = new MemoryHeaderCache();
     var sourceInfo = new FileInfo(sourceA);
     cache.Put(sourceA, sourceInfo.Length, sourceInfo.LastWriteTimeUtc.Ticks, new()
@@ -169,6 +177,13 @@ static FrameMetadata CalibrationCopy(FrameMetadata source, string path)
     frame.ReadoutMode.SetOriginal(source.ReadoutMode.Value, MetadataSource.Header);
     frame.BayerPattern.SetOriginal(source.BayerPattern.Value, MetadataSource.Header);
     return frame;
+}
+
+static void WriteMinimalFits(string path)
+{
+    static string Card(string key, string value = "") => (value.Length == 0 ? key : $"{key.PadRight(8)}= {value}").PadRight(80)[..80];
+    var text = Card("SIMPLE", "T") + Card("BITPIX", "16") + Card("NAXIS", "0") + Card("END");
+    File.WriteAllBytes(path, System.Text.Encoding.ASCII.GetBytes(text.PadRight(2880)));
 }
 
 sealed class MemoryHeaderCache : IHeaderCache

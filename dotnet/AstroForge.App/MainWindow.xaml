@@ -281,6 +281,25 @@
                             </ListBox>
                         </Grid>
                     </TabItem>
+                    <TabItem Header="06  Master Lab">
+                        <Grid Margin="0,14,0,0"><Grid.RowDefinitions><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/><RowDefinition Height="*"/></Grid.RowDefinitions>
+                            <StackPanel><TextBlock Text="Master Library Lab" Style="{StaticResource Title}"/><TextBlock Text="Crea una nuova libreria normalizzata. Gli originali non vengono mai modificati: metadati e struttura sono applicati soltanto alle copie verificate." Style="{StaticResource MutedText}" TextWrapping="Wrap" Margin="0,2,0,12"/></StackPanel>
+                            <Grid Grid.Row="1" Margin="0,0,0,10"><Grid.ColumnDefinitions><ColumnDefinition/><ColumnDefinition Width="Auto"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions><TextBox Text="{Binding MasterOrganizerDestination}" IsReadOnly="True" ToolTip="Destinazione nuova Master Library"/><Button Grid.Column="1" Content="Scegli destinazione" Click="ChooseMasterOrganizerDestination_Click" Margin="7,0"/><Button Grid.Column="2" Content="Copia, imprimi e organizza" Click="OrganizeMasterLibrary_Click" Style="{StaticResource PrimaryButton}"/><TextBlock Grid.Row="1" Grid.ColumnSpan="3" Text="{Binding MasterOrganizerStatus}" Foreground="{StaticResource Accent}" Margin="2,7,0,0"/></Grid>
+                            <DataGrid Grid.Row="2" ItemsSource="{Binding MasterOrganizerItems}" AutoGenerateColumns="False" CanUserAddRows="False" HeadersVisibility="Column" Background="{StaticResource Bg1}" Foreground="{StaticResource Text}" GridLinesVisibility="Horizontal" HorizontalGridLinesBrush="{StaticResource Stroke}" RowBackground="{StaticResource Bg2}" AlternatingRowBackground="#101824">
+                                <DataGrid.Columns>
+                                    <DataGridTextColumn Header="MASTER" Binding="{Binding FileName}" IsReadOnly="True" Width="1.5*"/>
+                                    <DataGridTextColumn Header="TIPO" Binding="{Binding Kind}" IsReadOnly="True" Width="70"/>
+                                    <DataGridTextColumn Header="CAMERA" Binding="{Binding Camera, UpdateSourceTrigger=PropertyChanged}" Width="120"/>
+                                    <DataGridTextColumn Header="GAIN" Binding="{Binding Gain, UpdateSourceTrigger=PropertyChanged}" Width="65"/>
+                                    <DataGridTextColumn Header="OFFSET" Binding="{Binding Offset, UpdateSourceTrigger=PropertyChanged}" Width="65"/>
+                                    <DataGridTextColumn Header="TEMP °C" Binding="{Binding Temperature, UpdateSourceTrigger=PropertyChanged}" Width="70"/>
+                                    <DataGridTextColumn Header="EXP s" Binding="{Binding Exposure, UpdateSourceTrigger=PropertyChanged}" Width="70"/>
+                                    <DataGridTextColumn Header="STATO" Binding="{Binding State}" IsReadOnly="True" Width="1.2*"/>
+                                    <DataGridTextColumn Header="DESTINAZIONE" Binding="{Binding SuggestedPath}" IsReadOnly="True" Width="2*"/>
+                                </DataGrid.Columns>
+                            </DataGrid>
+                        </Grid>
+                    </TabItem>
                 </TabControl>
             </Grid>
 

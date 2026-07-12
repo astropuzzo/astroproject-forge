@@ -90,6 +90,9 @@ flowchart LR
 - autosalvataggio dopo il primo salvataggio esplicito;
 - cache incrementale degli header con invalidazione dei soli file modificati;
 - comando `Pulisci cache` che non elimina immagini astronomiche.
+- Master Library Lab con compilazione guidata dei metadati mancanti, nuova
+  struttura normalizzata, keyword FITS/XISF sulle sole copie, verifica SHA-256 e
+  manifest finale.
 
 ## Struttura attesa
 

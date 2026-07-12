@@ -128,4 +128,16 @@ public partial class MainWindow : Window
 
     private void AssignCandidateGroup_Click(object sender, RoutedEventArgs e) =>
         _viewModel.AssignReviewCandidate((sender as FrameworkElement)?.DataContext as ReviewQueueItem, true);
+
+    private void ChooseMasterOrganizerDestination_Click(object sender, RoutedEventArgs e)
+    {
+        var dialog = new OpenFolderDialog { Title = "Destinazione della nuova Master Library" };
+        if (dialog.ShowDialog(this) == true) _viewModel.MasterOrganizerDestination = dialog.FolderName;
+    }
+
+    private async void OrganizeMasterLibrary_Click(object sender, RoutedEventArgs e)
+    {
+        try { await _viewModel.OrganizeMasterLibraryAsync(); MessageBox.Show(this, _viewModel.MasterOrganizerStatus, "Master Library completata", MessageBoxButton.OK, MessageBoxImage.Information); }
+        catch (Exception exception) { MessageBox.Show(this, exception.Message, "Organizzazione non completata", MessageBoxButton.OK, MessageBoxImage.Warning); }
+    }
 }

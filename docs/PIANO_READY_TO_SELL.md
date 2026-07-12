@@ -239,6 +239,8 @@ dipendenza del programma.
 
 **Avanzamento 12 luglio 2026:** implementato il gestore multi-libreria v1. Il progetto e il documento `.astroforge` conservano più radici Master con nome, abilitazione e priorità. La UI permette aggiunta, rimozione non distruttiva, riordino e aggiornamento dello stato online/offline. La scansione unifica le radici attive senza duplicare file; tra Master scientificamente equivalenti vince la libreria con priorità più alta. I vecchi progetti con il solo `LibraryPath` vengono migrati automaticamente. Restano da aggiungere profili separati Dark/Bias/Dark-flat, editor del nome e indice per-libreria con conteggi e diagnostica.
 
+**Master Library Lab — 12 luglio 2026:** aggiunto il flusso di normalizzazione non distruttivo. I metadati dimostrabili vengono precompilati; per i Master incompleti la tabella richiede Camera, Gain, Offset, temperatura ed esposizione. L'esecuzione crea una nuova libreria per `Camera/Gain/Offset/Temperatura/Tipo`, copia in streaming, imprime le keyword sulle sole copie FITS/XISF quando l'header può essere aggiornato senza spostare i dati, verifica SHA-256 e genera `astroforge-master-library.json`. L'originale viene ricontrollato dopo ogni copia. Restano da aggiungere anteprima dei conflitti, gestione CHECKSUM/DATASUM FITS e rollback guidato dell'intero batch.
+
 ## P0.3 — Risoluzione guidata di ambiguità e assegnazioni manuali
 
 ### Intervento

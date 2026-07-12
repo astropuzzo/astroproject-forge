@@ -58,6 +58,8 @@ public sealed class MainViewModel : BindableBase
     private string _projectDefaultOffset = "51";
     private string _projectDefaultTemperature = "";
     private MasterLibraryItem? _selectedMasterLibrary;
+    private string _masterOrganizerDestination = "";
+    private string _masterOrganizerStatus = "Analizza il progetto per preparare la libreria";
     private string _currentProjectFile = "";
     private DateTimeOffset _projectCreatedAt = DateTimeOffset.Now;
 
@@ -97,6 +99,7 @@ public sealed class MainViewModel : BindableBase
     public ObservableCollection<SessionStatsRow> SessionStatistics { get; } = [];
     public ObservableCollection<NightStatsRow> NightStatistics { get; } = [];
     public ObservableCollection<ReviewQueueItem> ReviewQueue { get; } = [];
+    public ObservableCollection<MasterOrganizerItem> MasterOrganizerItems { get; } = [];
     public ObservableCollection<string> SelectedIssues { get; } = [];
     public RelayCommand ApplyOverridesCommand { get; }
     public RelayCommand ApplyLibraryOffsetCommand { get; }
@@ -196,6 +199,8 @@ public sealed class MainViewModel : BindableBase
     public string ProjectDefaultGain { get => _projectDefaultGain; set => Set(ref _projectDefaultGain, value); }
     public string ProjectDefaultOffset { get => _projectDefaultOffset; set => Set(ref _projectDefaultOffset, value); }
     public string ProjectDefaultTemperature { get => _projectDefaultTemperature; set => Set(ref _projectDefaultTemperature, value); }
+    public string MasterOrganizerDestination { get => _masterOrganizerDestination; set => Set(ref _masterOrganizerDestination, value); }
+    public string MasterOrganizerStatus { get => _masterOrganizerStatus; private set => Set(ref _masterOrganizerStatus, value); }
 
     public void AddSource(string path)
     {
@@ -228,6 +233,18 @@ public sealed class MainViewModel : BindableBase
     }
 
     public void RefreshMasterLibraryStates() { foreach (var item in MasterLibraries) item.RefreshState(); Status = $"{MasterLibraries.Count(item => item.IsOnline && item.Enabled)}/{MasterLibraries.Count} librerie disponibili"; }
+
+    public async Task OrganizeMasterLibraryAsync(CancellationToken cancellationToken = default)
+    {
+        if (string.IsNullOrWhiteSpace(MasterOrganizerDestination)) throw new InvalidOperationException("Scegli la destinazione della nuova Master Library.");
+        var invalid = MasterOrganizerItems.Where(item => !item.TryRequest(out _)).ToArray();
+        if (invalid.Length > 0) throw new InvalidOperationException($"Completa prima i metadati di {invalid.Length} Master evidenziati.");
+        var requests = MasterOrganizerItems.Select(item => { item.TryRequest(out var request); return request!; }).ToArray();
+        MasterOrganizerStatus = $"Organizzazione di {requests.Length} Master…";
+        var results = await MasterLibraryOrganizer.ExecuteAsync(requests, MasterOrganizerDestination, cancellationToken);
+        MasterOrganizerStatus = $"Completata · {results.Count} copie verificate · {results.Count(item => item.HeaderStamped)} header aggiornati";
+        Status = MasterOrganizerStatus;
+    }
 
     private void NormalizeLibraryPriorities() { for (var index = 0; index < MasterLibraries.Count; index++) MasterLibraries[index].Priority = index + 1; Raise(nameof(LibraryPath)); }
 
@@ -430,6 +447,7 @@ public sealed class MainViewModel : BindableBase
         SessionStatistics.Clear();
         NightStatistics.Clear();
         ReviewQueue.Clear();
+        MasterOrganizerItems.Clear();
         SelectedIssues.Clear();
         SearchText = "";
         ShowIssuesOnly = false;
@@ -881,6 +899,7 @@ public sealed class MainViewModel : BindableBase
             AddCalibrationIssue(item.Light, "bias", item.Bias);
         }
         RefreshReviewQueue();
+        RefreshMasterOrganizer();
 
         var recipe = WbppRecipeEngine.Recommend(_analysis);
         WbppKeywords.Clear();
@@ -914,6 +933,15 @@ public sealed class MainViewModel : BindableBase
         var ordered = ReviewQueue.OrderBy(item => item.Priority).ThenBy(item => item.Filter).ThenBy(item => item.Night).ThenBy(item => item.Frame.FileName).ToArray();
         ReviewQueue.Clear();
         foreach (var item in ordered) ReviewQueue.Add(item);
+    }
+
+    private void RefreshMasterOrganizer()
+    {
+        MasterOrganizerItems.Clear();
+        foreach (var frame in _frames.Where(frame => frame.IsMaster && frame.Kind is FrameKind.Dark or FrameKind.Bias or FrameKind.DarkFlat).OrderBy(frame => frame.Path))
+            MasterOrganizerItems.Add(new(frame));
+        var ready = MasterOrganizerItems.Count(item => item.IsReady);
+        MasterOrganizerStatus = MasterOrganizerItems.Count == 0 ? "Nessun Master rilevato" : $"{ready}/{MasterOrganizerItems.Count} pronti · {MasterOrganizerItems.Count - ready} richiedono dati";
     }
 
     private void AddReview(FrameMetadata frame, string calibration, MatchResult result)
@@ -1154,4 +1182,38 @@ public sealed class MasterLibraryItem : BindableBase
     public string PriorityLabel => $"Priorità {Priority}";
     public void RefreshState() { Raise(nameof(IsOnline)); Raise(nameof(Status)); }
     public MasterLibraryDefinition ToDefinition() => new() { Name = Name, Path = Path, Priority = Priority, Enabled = Enabled };
+}
+
+public sealed class MasterOrganizerItem : BindableBase
+{
+    private string _camera; private string _gain; private string _offset; private string _temperature; private string _exposure; private string _readoutMode;
+    public MasterOrganizerItem(FrameMetadata frame)
+    {
+        Frame = frame; _camera = frame.Camera.Value ?? ""; _gain = Input(frame.Gain.Value); _offset = Input(frame.Offset.Value);
+        _temperature = Input(frame.SetTemperatureC.Value); _exposure = Input(frame.ExposureSeconds.Value); _readoutMode = frame.ReadoutMode.Value ?? "Default";
+    }
+    public FrameMetadata Frame { get; }
+    public string FileName => Frame.FileName;
+    public string Kind => Frame.Kind.ToString();
+    public string Camera { get => _camera; set { if (Set(ref _camera, value)) Changed(); } }
+    public string Gain { get => _gain; set { if (Set(ref _gain, value)) Changed(); } }
+    public string Offset { get => _offset; set { if (Set(ref _offset, value)) Changed(); } }
+    public string Temperature { get => _temperature; set { if (Set(ref _temperature, value)) Changed(); } }
+    public string Exposure { get => _exposure; set { if (Set(ref _exposure, value)) Changed(); } }
+    public string ReadoutMode { get => _readoutMode; set { if (Set(ref _readoutMode, value)) Changed(); } }
+    public bool IsReady => TryRequest(out _);
+    public string State => IsReady ? "Pronto" : $"Mancano: {string.Join(", ", Missing())}";
+    public string SuggestedPath => TryRequest(out var request) ? MasterLibraryOrganizer.RelativePath(Frame, request!.Metadata) : "Completa i campi richiesti";
+    public bool TryRequest(out MasterOrganizationRequest? request)
+    {
+        request = null;
+        if (string.IsNullOrWhiteSpace(Camera) || !Try(Gain, out var gain) || !Try(Offset, out var offset) || !TryOptional(Temperature, out var temperature) || !TryOptional(Exposure, out var exposure)) return false;
+        if (Frame.Kind == FrameKind.Dark && (temperature is null || exposure is null)) return false;
+        request = new(Frame, new(Camera.Trim(), gain!.Value, offset!.Value, temperature, exposure, string.IsNullOrWhiteSpace(ReadoutMode) ? "Default" : ReadoutMode.Trim())); return true;
+    }
+    private IEnumerable<string> Missing() { if (string.IsNullOrWhiteSpace(Camera)) yield return "Camera"; if (!Try(Gain, out _)) yield return "Gain"; if (!Try(Offset, out _)) yield return "Offset"; if (Frame.Kind == FrameKind.Dark && !Try(Temperature, out _)) yield return "Temperatura"; if (Frame.Kind == FrameKind.Dark && !Try(Exposure, out _)) yield return "Esposizione"; }
+    private void Changed() { Raise(nameof(IsReady)); Raise(nameof(State)); Raise(nameof(SuggestedPath)); }
+    private static string Input(double? value) => value?.ToString("0.###", CultureInfo.CurrentCulture) ?? "";
+    private static bool Try(string text, out double? value) { value = null; if (double.TryParse(text, NumberStyles.Float, CultureInfo.CurrentCulture, out var number) || double.TryParse(text.Replace(',', '.'), NumberStyles.Float, CultureInfo.InvariantCulture, out number)) { value = number; return true; } return false; }
+    private static bool TryOptional(string text, out double? value) { if (string.IsNullOrWhiteSpace(text)) { value = null; return true; } return Try(text, out value); }
 }

@@ -89,6 +89,8 @@ flowchart LR
 - autosave after the first explicit project save;
 - incremental header cache that invalidates only changed files;
 - safe cache cleanup that cannot delete astronomical images.
+- Master Library Lab with guided missing-metadata entry, normalized copy layout,
+  safe FITS/XISF keyword stamping, SHA-256 verification, and manifest output.
 
 ## Project hierarchy
 
