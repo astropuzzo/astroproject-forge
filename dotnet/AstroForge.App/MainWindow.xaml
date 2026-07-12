@@ -81,12 +81,14 @@
                     </StackPanel>
                 </StackPanel>
                 <StackPanel Grid.Column="1" Orientation="Horizontal" VerticalAlignment="Center">
-                    <Button Content="☰  Sorgenti" Click="ToggleSources_Click" Margin="0,0,8,0" Padding="11,8" ToolTip="Mostra o nasconde sorgenti e librerie"/>
-                    <Button Content="Inspector  ◫" Click="ToggleInspector_Click" Margin="0,0,12,0" Padding="11,8" ToolTip="Mostra o nasconde Inspector"/>
-                    <StackPanel VerticalAlignment="Center" Margin="0,0,12,0"><TextBlock Text="{Binding ProjectDocumentStatus}" Style="{StaticResource MutedText}" FontSize="10" HorizontalAlignment="Right"/><StackPanel Orientation="Horizontal"><Button Content="Apri progetto" Click="OpenProject_Click" Padding="11,8"/><Button Content="Salva progetto" Click="SaveProject_Click" Margin="7,0,0,0" Padding="11,8"/></StackPanel></StackPanel>
-                    <Button Content="Svuota progetto" Command="{Binding ClearProjectCommand}" ToolTip="Rimuove i file caricati dall'app, senza cancellare gli originali" Margin="0,0,8,0" Padding="11,8" />
-                    <Button Content="Pulisci cache" Click="ClearCache_Click" ToolTip="Dimentica gli header indicizzati; nessuna immagine viene eliminata" Margin="0,0,8,0" Padding="11,8" />
-                    <Button Content="Annulla ultima modifica" Command="{Binding UndoCommand}" Margin="0,0,10,0" />
+                    <Border Height="42" MinWidth="104" MaxWidth="150" Background="#78121D2A" BorderBrush="{StaticResource Stroke}" BorderThickness="1" CornerRadius="10" Padding="11,0" Margin="0,0,8,0" ToolTip="{Binding CurrentProjectFile}"><TextBlock Text="{Binding ProjectDocumentStatus}" Style="{StaticResource MutedText}" FontSize="10" TextTrimming="CharacterEllipsis" VerticalAlignment="Center" HorizontalAlignment="Center"/></Border>
+                    <Button Content="☰  Sorgenti" Click="ToggleSources_Click" Style="{StaticResource ToolbarButton}" ToolTip="Mostra o nasconde sorgenti e librerie"/>
+                    <Button Content="Inspector  ◫" Click="ToggleInspector_Click" Style="{StaticResource ToolbarButton}" ToolTip="Mostra o nasconde Inspector"/>
+                    <Button Content="Apri progetto" Click="OpenProject_Click" Style="{StaticResource ToolbarButton}"/>
+                    <Button Content="Salva progetto" Click="SaveProject_Click" Style="{StaticResource ToolbarButton}"/>
+                    <Button Content="Svuota progetto" Command="{Binding ClearProjectCommand}" Style="{StaticResource ToolbarButton}" ToolTip="Rimuove i file caricati dall'app, senza cancellare gli originali" />
+                    <Button Content="Pulisci cache" Click="ClearCache_Click" Style="{StaticResource ToolbarButton}" ToolTip="Dimentica gli header indicizzati; nessuna immagine viene eliminata" />
+                    <Button Content="Annulla ultima modifica" Command="{Binding UndoCommand}" Style="{StaticResource ToolbarButton}" Margin="0" />
                 </StackPanel>
             </Grid>
         </Border>
@@ -109,10 +111,10 @@
                         <TextBlock Text="Sorgenti" FontSize="22" FontWeight="SemiBold" Margin="0,5,0,4" />
                         <TextBlock Text="Le immagini originali restano in sola lettura." Style="{StaticResource MutedText}" TextWrapping="Wrap" />
                     </StackPanel>
-                    <StackPanel Grid.Row="1" Orientation="Horizontal" Margin="0,18,0,8">
-                        <Button Content="+ Cartella" Click="AddSource_Click" Padding="10,7" />
-                        <Button Content="Rimuovi" Click="RemoveSource_Click" Padding="10,7" Margin="7,0,0,0" />
-                    </StackPanel>
+                    <Grid Grid.Row="1" Margin="0,18,0,8"><Grid.ColumnDefinitions><ColumnDefinition/><ColumnDefinition/></Grid.ColumnDefinitions>
+                        <Button Content="+ Cartella" Click="AddSource_Click" Margin="0,0,4,0" />
+                        <Button Grid.Column="1" Content="Rimuovi" Click="RemoveSource_Click" Margin="4,0,0,0" />
+                    </Grid>
                     <ListBox x:Name="SourcesList" Grid.Row="2" ItemsSource="{Binding SourcePaths}" Background="Transparent" BorderThickness="0" Foreground="{StaticResource Text}" ScrollViewer.HorizontalScrollBarVisibility="Disabled">
                         <ListBox.ItemTemplate>
                             <DataTemplate>
@@ -127,16 +129,16 @@
                         <ListBox x:Name="MasterLibrariesList" ItemsSource="{Binding MasterLibraries}" SelectedItem="{Binding SelectedMasterLibrary}" Background="Transparent" BorderThickness="0" MaxHeight="170" ScrollViewer.HorizontalScrollBarVisibility="Disabled">
                             <ListBox.ItemTemplate><DataTemplate><Border Background="{StaticResource Bg2}" BorderBrush="{StaticResource Stroke}" BorderThickness="1" CornerRadius="8" Padding="8" Margin="0,0,0,5"><Grid><Grid.ColumnDefinitions><ColumnDefinition Width="22"/><ColumnDefinition/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions><CheckBox IsChecked="{Binding Enabled}" VerticalAlignment="Center" ToolTip="Includi questa libreria nell'analisi"/><StackPanel Grid.Column="1"><TextBlock Text="{Binding Name}" FontWeight="SemiBold" TextTrimming="CharacterEllipsis"/><TextBlock Text="{Binding Path}" Style="{StaticResource MutedText}" FontSize="9" TextTrimming="CharacterEllipsis"/></StackPanel><StackPanel Grid.Column="2" Margin="7,0,0,0"><TextBlock Text="{Binding PriorityLabel}" Foreground="{StaticResource Accent}" FontSize="9" TextAlignment="Right"/><TextBlock Text="{Binding Status}" Style="{StaticResource MutedText}" FontSize="9" TextAlignment="Right"/></StackPanel></Grid></Border></DataTemplate></ListBox.ItemTemplate>
                         </ListBox>
-                        <Grid Margin="0,3,0,0"><Grid.ColumnDefinitions><ColumnDefinition/><ColumnDefinition/><ColumnDefinition/><ColumnDefinition/></Grid.ColumnDefinitions><Button Content="+" Click="ChooseLibrary_Click" ToolTip="Aggiungi libreria"/><Button Grid.Column="1" Content="−" Click="RemoveLibrary_Click" ToolTip="Rimuovi dal progetto" Margin="4,0"/><Button Grid.Column="2" Content="↑" Click="MoveLibraryUp_Click" ToolTip="Aumenta priorità"/><Button Grid.Column="3" Content="↓" Click="MoveLibraryDown_Click" ToolTip="Riduci priorità" Margin="4,0,0,0"/></Grid>
-                        <Button Content="Aggiorna stato librerie" Click="RefreshLibraries_Click" Margin="0,6,0,0" Padding="8,5" />
+                        <Grid Margin="0,3,0,0"><Grid.ColumnDefinitions><ColumnDefinition/><ColumnDefinition/><ColumnDefinition/><ColumnDefinition/></Grid.ColumnDefinitions><Button Content="+" Click="ChooseLibrary_Click" ToolTip="Aggiungi libreria" Style="{StaticResource CompactIconButton}" Margin="0,0,3,0"/><Button Grid.Column="1" Content="−" Click="RemoveLibrary_Click" ToolTip="Rimuovi dal progetto" Style="{StaticResource CompactIconButton}" Margin="3,0"/><Button Grid.Column="2" Content="↑" Click="MoveLibraryUp_Click" ToolTip="Aumenta priorità" Style="{StaticResource CompactIconButton}" Margin="3,0"/><Button Grid.Column="3" Content="↓" Click="MoveLibraryDown_Click" ToolTip="Riduci priorità" Style="{StaticResource CompactIconButton}" Margin="3,0,0,0"/></Grid>
+                        <Button Content="Aggiorna stato librerie" Click="RefreshLibraries_Click" Margin="0,7,0,0" />
                         <Border Style="{StaticResource Card}" Padding="10" Margin="0,8,0,0" Background="#0D1C25">
                             <StackPanel>
                                 <TextBlock Text="FALLBACK PROGETTO" Style="{StaticResource Eyebrow}"/>
                                 <TextBlock Text="Usati solo se header e percorso non contengono il valore." Style="{StaticResource MutedText}" TextWrapping="Wrap" FontSize="10" Margin="0,4,0,6"/>
-                                <Grid><Grid.ColumnDefinitions><ColumnDefinition/><ColumnDefinition Width="68"/></Grid.ColumnDefinitions><Grid.RowDefinitions><RowDefinition/><RowDefinition/><RowDefinition/></Grid.RowDefinitions>
-                                    <TextBlock Text="Gain" VerticalAlignment="Center"/><TextBox Grid.Column="1" Text="{Binding ProjectDefaultGain, UpdateSourceTrigger=PropertyChanged}" HorizontalContentAlignment="Center"/>
-                                    <TextBlock Grid.Row="1" Text="Offset" VerticalAlignment="Center"/><TextBox Grid.Row="1" Grid.Column="1" Text="{Binding ProjectDefaultOffset, UpdateSourceTrigger=PropertyChanged}" HorizontalContentAlignment="Center" Margin="0,5,0,0"/>
-                                    <TextBlock Grid.Row="2" Text="Temperatura °C" VerticalAlignment="Center"/><TextBox Grid.Row="2" Grid.Column="1" Text="{Binding ProjectDefaultTemperature, UpdateSourceTrigger=PropertyChanged}" HorizontalContentAlignment="Center" Margin="0,5,0,0" ToolTip="Lascia vuoto per usare esclusivamente SET-TEMP, CCD-TEMP o il percorso libreria"/>
+                                <Grid><Grid.ColumnDefinitions><ColumnDefinition/><ColumnDefinition Width="76"/></Grid.ColumnDefinitions><Grid.RowDefinitions><RowDefinition Height="42"/><RowDefinition Height="42"/><RowDefinition Height="42"/></Grid.RowDefinitions>
+                                    <TextBlock Text="Gain" VerticalAlignment="Center"/><TextBox Grid.Column="1" Text="{Binding ProjectDefaultGain, UpdateSourceTrigger=PropertyChanged}" HorizontalContentAlignment="Center" VerticalContentAlignment="Center" Margin="0,2"/>
+                                    <TextBlock Grid.Row="1" Text="Offset" VerticalAlignment="Center"/><TextBox Grid.Row="1" Grid.Column="1" Text="{Binding ProjectDefaultOffset, UpdateSourceTrigger=PropertyChanged}" HorizontalContentAlignment="Center" VerticalContentAlignment="Center" Margin="0,2"/>
+                                    <TextBlock Grid.Row="2" Text="Temperatura °C" VerticalAlignment="Center"/><TextBox Grid.Row="2" Grid.Column="1" Text="{Binding ProjectDefaultTemperature, UpdateSourceTrigger=PropertyChanged}" HorizontalContentAlignment="Center" VerticalContentAlignment="Center" Margin="0,2" ToolTip="Lascia vuoto per usare esclusivamente SET-TEMP, CCD-TEMP o il percorso libreria"/>
                                 </Grid>
                                 <Button Content="Applica fallback e rianalizza" Command="{Binding ApplyProjectDefaultsCommand}" Margin="0,7,0,0" Padding="8,6"/>
                             </StackPanel>

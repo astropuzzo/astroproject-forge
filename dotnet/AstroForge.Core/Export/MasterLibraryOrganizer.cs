@@ -26,6 +26,8 @@ public static class MasterLibraryOrganizer
 
     public static string RelativePath(FrameMetadata frame, MasterOrganizationMetadata metadata)
     {
+        if (string.IsNullOrWhiteSpace(metadata.Camera))
+            throw new InvalidOperationException("La camera è obbligatoria: ogni libreria Master deve iniziare dalla camera di acquisizione.");
         var role = frame.Kind switch { FrameKind.Dark => "Dark", FrameKind.Bias => "Bias", FrameKind.DarkFlat => "DarkFlat", _ => "Other" };
         var temperature = metadata.TemperatureC is null ? "Temp-NA" : $"Temp-{Token(metadata.TemperatureC.Value)}C";
         var exposure = metadata.ExposureSeconds is null ? "" : $"_{Token(metadata.ExposureSeconds.Value)}s";
