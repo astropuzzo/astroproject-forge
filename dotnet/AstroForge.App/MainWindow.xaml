@@ -6,11 +6,12 @@
         WindowStartupLocation="CenterScreen" Icon="Assets/astroforge.ico">
     <Window.Resources>
         <Style x:Key="Card" TargetType="Border">
-            <Setter Property="Background" Value="{StaticResource Bg2}" />
-            <Setter Property="BorderBrush" Value="{StaticResource Stroke}" />
+            <Setter Property="Background" Value="{StaticResource GlassSurface}" />
+            <Setter Property="BorderBrush" Value="#42546C" />
             <Setter Property="BorderThickness" Value="1" />
-            <Setter Property="CornerRadius" Value="12" />
+            <Setter Property="CornerRadius" Value="16" />
             <Setter Property="Padding" Value="16" />
+            <Setter Property="Effect" Value="{StaticResource SoftShadow}" />
         </Style>
         <Style x:Key="MetaLabel" TargetType="TextBlock" BasedOn="{StaticResource MutedText}">
             <Setter Property="FontSize" Value="12" />
@@ -48,21 +49,30 @@
                     </Border>
                 </Grid>
             </Border>
+            <HierarchicalDataTemplate.Triggers>
+                <Trigger Property="IsMouseOver" Value="True"><Setter TargetName="NodeBorder" Property="Background" Value="#941B3040"/></Trigger>
+            </HierarchicalDataTemplate.Triggers>
         </HierarchicalDataTemplate>
     </Window.Resources>
 
-    <Grid Background="{StaticResource Bg0}">
+    <Window.Triggers><EventTrigger RoutedEvent="Loaded"><BeginStoryboard><Storyboard><DoubleAnimation Storyboard.TargetName="RootSurface" Storyboard.TargetProperty="Opacity" From="0" To="1" Duration="0:0:0.42"/><DoubleAnimation Storyboard.TargetName="RootSurface" Storyboard.TargetProperty="RenderTransform.Y" From="8" To="0" Duration="0:0:0.42"><DoubleAnimation.EasingFunction><CubicEase EasingMode="EaseOut"/></DoubleAnimation.EasingFunction></DoubleAnimation></Storyboard></BeginStoryboard></EventTrigger></Window.Triggers>
+
+    <Grid x:Name="RootSurface" Background="{StaticResource AppBackground}" Opacity="0" RenderTransformOrigin="0.5,0.5">
+        <Grid.RenderTransform><TranslateTransform Y="0"/></Grid.RenderTransform>
         <Grid.RowDefinitions>
             <RowDefinition Height="72" />
             <RowDefinition Height="*" />
             <RowDefinition Height="30" />
         </Grid.RowDefinitions>
 
-        <Border Grid.Row="0" Background="{StaticResource Bg1}" BorderBrush="{StaticResource Stroke}" BorderThickness="0,0,0,1">
+        <Ellipse Grid.RowSpan="3" Width="760" Height="760" HorizontalAlignment="Left" VerticalAlignment="Top" Margin="-390,-480,0,0" IsHitTestVisible="False"><Ellipse.Fill><RadialGradientBrush><GradientStop Color="#3A29D8CA" Offset="0"/><GradientStop Color="#0029D8CA" Offset="1"/></RadialGradientBrush></Ellipse.Fill></Ellipse>
+        <Ellipse Grid.RowSpan="3" Width="620" Height="620" HorizontalAlignment="Right" VerticalAlignment="Bottom" Margin="0,0,-340,-390" IsHitTestVisible="False"><Ellipse.Fill><RadialGradientBrush><GradientStop Color="#262C72C8" Offset="0"/><GradientStop Color="#002C72C8" Offset="1"/></RadialGradientBrush></Ellipse.Fill></Ellipse>
+
+        <Border Grid.Row="0" Background="{StaticResource GlassSurface}" BorderBrush="#3E5169" BorderThickness="0,0,0,1">
             <Grid Margin="22,0">
                 <Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions>
                 <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
-                    <Border Width="38" Height="38" CornerRadius="10" Background="{StaticResource AccentDark}" Margin="0,0,13,0">
+                    <Border Width="42" Height="42" CornerRadius="13" Background="{StaticResource AccentGradient}" Margin="0,0,13,0" Effect="{StaticResource AccentGlow}">
                         <TextBlock Text="✦" Foreground="{StaticResource Accent}" FontSize="22" HorizontalAlignment="Center" VerticalAlignment="Center" />
                     </Border>
                     <StackPanel VerticalAlignment="Center">
@@ -88,7 +98,7 @@
             </Grid.ColumnDefinitions>
 
             <!-- Project sources -->
-            <Border Grid.Column="0" Background="{StaticResource Bg1}" BorderBrush="{StaticResource Stroke}" BorderThickness="0,0,1,0" Padding="18">
+            <Border Grid.Column="0" Background="#B80B121D" BorderBrush="#34465D" BorderThickness="0,0,1,0" Padding="18">
                 <Grid>
                     <Grid.RowDefinitions>
                         <RowDefinition Height="Auto"/><RowDefinition Height="Auto"/><RowDefinition Height="*"/><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/>
@@ -304,7 +314,7 @@
             </Grid>
 
             <!-- Editable inspector -->
-            <Border Grid.Column="2" Background="{StaticResource Bg1}" BorderBrush="{StaticResource Stroke}" BorderThickness="1,0,0,0">
+            <Border Grid.Column="2" Background="#B80B121D" BorderBrush="#34465D" BorderThickness="1,0,0,0">
                 <ScrollViewer VerticalScrollBarVisibility="Auto">
                     <StackPanel Margin="20">
                         <TextBlock Text="INSPECTOR / OVERRIDE" Style="{StaticResource Eyebrow}" />
@@ -379,7 +389,7 @@
             </Border>
         </Grid>
 
-        <Border Grid.Row="2" Background="#090D14" BorderBrush="{StaticResource Stroke}" BorderThickness="0,1,0,0">
+        <Border Grid.Row="2" Background="#D0090D14" BorderBrush="#34465D" BorderThickness="0,1,0,0">
             <Grid Margin="14,0"><TextBlock Text="{Binding Status}" Style="{StaticResource MutedText}" VerticalAlignment="Center"/><ProgressBar Width="220" Height="4" HorizontalAlignment="Right" VerticalAlignment="Center" Value="{Binding Progress, Mode=OneWay}" Maximum="100" Visibility="{Binding IsScanning, Converter={StaticResource BooleanToVisibility}}" Foreground="{StaticResource Accent}" Background="{StaticResource Bg3}"/></Grid>
         </Border>
     </Grid>

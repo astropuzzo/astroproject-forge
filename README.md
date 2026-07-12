@@ -71,6 +71,8 @@ flowchart LR
 - integration time by filter, session, and night;
 - date ranges, Gain, temperature, and calibration coverage;
 - CSV and JSON statistics export.
+- premium glass-based Windows UI with consistent motion, tables, trees, inputs,
+  status surfaces, and calibration-focused visual hierarchy.
 
 ### Calibration review and WBPP
 

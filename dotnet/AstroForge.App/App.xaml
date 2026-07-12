@@ -7,20 +7,25 @@
         <BooleanToVisibilityConverter x:Key="BooleanToVisibility" />
         <converters:InverseBooleanConverter x:Key="InverseBoolean" />
 
-        <SolidColorBrush x:Key="Bg0" Color="#080B11" />
-        <SolidColorBrush x:Key="Bg1" Color="#0C111A" />
-        <SolidColorBrush x:Key="Bg2" Color="#111824" />
-        <SolidColorBrush x:Key="Bg3" Color="#172130" />
-        <SolidColorBrush x:Key="Stroke" Color="#243043" />
+        <SolidColorBrush x:Key="Bg0" Color="#060910" />
+        <SolidColorBrush x:Key="Bg1" Color="#CC0B111B" />
+        <SolidColorBrush x:Key="Bg2" Color="#B8141C29" />
+        <SolidColorBrush x:Key="Bg3" Color="#D01B293A" />
+        <SolidColorBrush x:Key="Stroke" Color="#3A4961" />
         <SolidColorBrush x:Key="Text" Color="#EEF3F8" />
         <SolidColorBrush x:Key="Muted" Color="#8997AA" />
-        <SolidColorBrush x:Key="Accent" Color="#41D8C7" />
-        <SolidColorBrush x:Key="AccentDark" Color="#123B3A" />
+        <SolidColorBrush x:Key="Accent" Color="#52E6D4" />
+        <SolidColorBrush x:Key="AccentDark" Color="#B2144745" />
         <SolidColorBrush x:Key="Warning" Color="#F4B860" />
         <SolidColorBrush x:Key="Danger" Color="#F47581" />
+        <LinearGradientBrush x:Key="AppBackground" StartPoint="0,0" EndPoint="1,1"><GradientStop Color="#070B13" Offset="0"/><GradientStop Color="#0A1320" Offset="0.52"/><GradientStop Color="#071017" Offset="1"/></LinearGradientBrush>
+        <LinearGradientBrush x:Key="GlassSurface" StartPoint="0,0" EndPoint="1,1"><GradientStop Color="#D0182231" Offset="0"/><GradientStop Color="#A90E1622" Offset="1"/></LinearGradientBrush>
+        <LinearGradientBrush x:Key="AccentGradient" StartPoint="0,0" EndPoint="1,1"><GradientStop Color="#75F3E4" Offset="0"/><GradientStop Color="#32C8C0" Offset="0.55"/><GradientStop Color="#269FBC" Offset="1"/></LinearGradientBrush>
+        <DropShadowEffect x:Key="SoftShadow" Color="#000000" BlurRadius="26" ShadowDepth="8" Opacity="0.42"/>
+        <DropShadowEffect x:Key="AccentGlow" Color="#36D8CF" BlurRadius="22" ShadowDepth="0" Opacity="0.38"/>
 
         <Style TargetType="Window">
-            <Setter Property="Background" Value="{StaticResource Bg0}" />
+            <Setter Property="Background" Value="{StaticResource AppBackground}" />
             <Setter Property="Foreground" Value="{StaticResource Text}" />
             <Setter Property="FontFamily" Value="Segoe UI Variable Text, Segoe UI" />
             <Setter Property="FontSize" Value="14" />
@@ -46,35 +51,42 @@
             <Setter Property="Background" Value="{StaticResource Bg3}" />
             <Setter Property="BorderBrush" Value="{StaticResource Stroke}" />
             <Setter Property="BorderThickness" Value="1" />
-            <Setter Property="Padding" Value="14,9" />
+            <Setter Property="Padding" Value="15,9" />
             <Setter Property="Cursor" Value="Hand" />
+            <Setter Property="SnapsToDevicePixels" Value="True" />
             <Setter Property="Template">
                 <Setter.Value>
                     <ControlTemplate TargetType="Button">
-                        <Border x:Name="Border" Background="{TemplateBinding Background}" BorderBrush="{TemplateBinding BorderBrush}" BorderThickness="{TemplateBinding BorderThickness}" CornerRadius="8" Padding="{TemplateBinding Padding}">
+                        <Border x:Name="Border" Background="{TemplateBinding Background}" BorderBrush="{TemplateBinding BorderBrush}" BorderThickness="{TemplateBinding BorderThickness}" CornerRadius="10" Padding="{TemplateBinding Padding}" RenderTransformOrigin="0.5,0.5">
+                            <Border.RenderTransform><ScaleTransform ScaleX="1" ScaleY="1"/></Border.RenderTransform>
                             <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center" />
                         </Border>
                         <ControlTemplate.Triggers>
-                            <Trigger Property="IsMouseOver" Value="True"><Setter TargetName="Border" Property="Background" Value="#203044" /></Trigger>
+                            <Trigger Property="IsMouseOver" Value="True"><Setter TargetName="Border" Property="Background" Value="#D0253A4D"/><Setter TargetName="Border" Property="BorderBrush" Value="#6B8AA6"/></Trigger>
+                            <Trigger Property="IsPressed" Value="True"><Setter TargetName="Border" Property="Opacity" Value="0.82"/></Trigger>
                             <Trigger Property="IsEnabled" Value="False"><Setter TargetName="Border" Property="Opacity" Value="0.4" /></Trigger>
+                            <EventTrigger RoutedEvent="MouseEnter"><BeginStoryboard><Storyboard><DoubleAnimation Storyboard.TargetName="Border" Storyboard.TargetProperty="RenderTransform.ScaleX" To="1.025" Duration="0:0:0.14"/><DoubleAnimation Storyboard.TargetName="Border" Storyboard.TargetProperty="RenderTransform.ScaleY" To="1.025" Duration="0:0:0.14"/></Storyboard></BeginStoryboard></EventTrigger>
+                            <EventTrigger RoutedEvent="MouseLeave"><BeginStoryboard><Storyboard><DoubleAnimation Storyboard.TargetName="Border" Storyboard.TargetProperty="RenderTransform.ScaleX" To="1" Duration="0:0:0.18"/><DoubleAnimation Storyboard.TargetName="Border" Storyboard.TargetProperty="RenderTransform.ScaleY" To="1" Duration="0:0:0.18"/></Storyboard></BeginStoryboard></EventTrigger>
                         </ControlTemplate.Triggers>
                     </ControlTemplate>
                 </Setter.Value>
             </Setter>
         </Style>
         <Style x:Key="PrimaryButton" TargetType="Button" BasedOn="{StaticResource {x:Type Button}}">
-            <Setter Property="Background" Value="{StaticResource Accent}" />
+            <Setter Property="Background" Value="{StaticResource AccentGradient}" />
             <Setter Property="Foreground" Value="#061210" />
             <Setter Property="BorderBrush" Value="{StaticResource Accent}" />
             <Setter Property="FontWeight" Value="SemiBold" />
+            <Setter Property="Effect" Value="{StaticResource AccentGlow}" />
         </Style>
         <Style TargetType="TextBox">
-            <Setter Property="Background" Value="#090E16" />
+            <Setter Property="Background" Value="#A9080E17" />
             <Setter Property="Foreground" Value="{StaticResource Text}" />
             <Setter Property="BorderBrush" Value="{StaticResource Stroke}" />
             <Setter Property="BorderThickness" Value="1" />
             <Setter Property="Padding" Value="10,8" />
             <Setter Property="CaretBrush" Value="{StaticResource Accent}" />
+            <Setter Property="SelectionBrush" Value="#6741D8C7" />
         </Style>
         <Style TargetType="ComboBox">
             <Setter Property="Background" Value="#090E16" />
@@ -133,6 +145,7 @@
             <Setter Property="Margin" Value="0,1" />
             <Setter Property="IsExpanded" Value="{Binding IsExpanded, Mode=TwoWay}" />
             <Setter Property="HorizontalContentAlignment" Value="Stretch" />
+            <Setter Property="ScrollViewer.CanContentScroll" Value="True" />
         </Style>
         <Style TargetType="TabControl">
             <Setter Property="Foreground" Value="{StaticResource Text}" />
@@ -147,16 +160,25 @@
             <Setter Property="Template">
                 <Setter.Value>
                     <ControlTemplate TargetType="TabItem">
-                        <Border x:Name="TabBorder" Background="{TemplateBinding Background}" CornerRadius="8" Padding="{TemplateBinding Padding}">
+                        <Border x:Name="TabBorder" Background="{TemplateBinding Background}" BorderBrush="Transparent" BorderThickness="1" CornerRadius="10" Padding="{TemplateBinding Padding}" RenderTransformOrigin="0.5,0.5">
+                            <Border.RenderTransform><TranslateTransform Y="0"/></Border.RenderTransform>
                             <ContentPresenter ContentSource="Header" HorizontalAlignment="Center" VerticalAlignment="Center" />
                         </Border>
                         <ControlTemplate.Triggers>
-                            <Trigger Property="IsSelected" Value="True"><Setter TargetName="TabBorder" Property="Background" Value="{StaticResource AccentDark}"/><Setter Property="Foreground" Value="{StaticResource Accent}"/></Trigger>
-                            <Trigger Property="IsMouseOver" Value="True"><Setter TargetName="TabBorder" Property="Background" Value="{StaticResource Bg3}"/></Trigger>
+                            <Trigger Property="IsSelected" Value="True"><Setter TargetName="TabBorder" Property="Background" Value="{StaticResource AccentDark}"/><Setter TargetName="TabBorder" Property="BorderBrush" Value="#4F6CE6D4"/><Setter Property="Foreground" Value="{StaticResource Accent}"/></Trigger>
+                            <Trigger Property="IsMouseOver" Value="True"><Setter TargetName="TabBorder" Property="Background" Value="#9A1A293A"/></Trigger>
+                            <EventTrigger RoutedEvent="MouseEnter"><BeginStoryboard><Storyboard><DoubleAnimation Storyboard.TargetName="TabBorder" Storyboard.TargetProperty="RenderTransform.Y" To="-2" Duration="0:0:0.13"/></Storyboard></BeginStoryboard></EventTrigger>
+                            <EventTrigger RoutedEvent="MouseLeave"><BeginStoryboard><Storyboard><DoubleAnimation Storyboard.TargetName="TabBorder" Storyboard.TargetProperty="RenderTransform.Y" To="0" Duration="0:0:0.18"/></Storyboard></BeginStoryboard></EventTrigger>
                         </ControlTemplate.Triggers>
                     </ControlTemplate>
                 </Setter.Value>
             </Setter>
         </Style>
+        <Style TargetType="DataGrid">
+            <Setter Property="Background" Value="Transparent"/><Setter Property="BorderBrush" Value="{StaticResource Stroke}"/><Setter Property="BorderThickness" Value="1"/><Setter Property="RowBackground" Value="#A9121B28"/><Setter Property="AlternatingRowBackground" Value="#84101A27"/><Setter Property="HorizontalGridLinesBrush" Value="#24384A60"/><Setter Property="VerticalGridLinesBrush" Value="Transparent"/><Setter Property="HeadersVisibility" Value="Column"/><Setter Property="RowHeaderWidth" Value="0"/>
+        </Style>
+        <Style TargetType="DataGridColumnHeader"><Setter Property="Background" Value="#D0162232"/><Setter Property="Foreground" Value="{StaticResource Accent}"/><Setter Property="FontWeight" Value="SemiBold"/><Setter Property="Padding" Value="10,9"/><Setter Property="BorderBrush" Value="#33445A"/><Setter Property="BorderThickness" Value="0,0,1,1"/></Style>
+        <Style TargetType="DataGridCell"><Setter Property="Padding" Value="7,5"/><Setter Property="BorderThickness" Value="0"/><Setter Property="Foreground" Value="{StaticResource Text}"/><Style.Triggers><Trigger Property="IsSelected" Value="True"><Setter Property="Background" Value="#7A164B4A"/><Setter Property="Foreground" Value="White"/></Trigger></Style.Triggers></Style>
+        <Style TargetType="ScrollBar"><Setter Property="Width" Value="9"/><Setter Property="Background" Value="Transparent"/><Setter Property="Opacity" Value="0.7"/></Style>
     </Application.Resources>
 </Application>

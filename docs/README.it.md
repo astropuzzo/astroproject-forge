@@ -71,6 +71,8 @@ flowchart LR
 - dashboard con ore per filtro, sessione e notte;
 - intervalli temporali, Gain, temperatura e copertura calibrazioni;
 - esportazione statistiche CSV e JSON.
+- interfaccia Windows glass premium con animazioni coerenti, tabelle, alberi,
+  input e gerarchia visiva progettata per la revisione delle calibrazioni.
 
 ### PixInsight WBPP
 
