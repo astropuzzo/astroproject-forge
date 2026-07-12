@@ -63,6 +63,8 @@ public sealed class MainViewModel : BindableBase
     private string _masterOrganizerStatus = "Scansiona le Master Library abilitate per iniziare";
     private string _currentProjectFile = "";
     private DateTimeOffset _projectCreatedAt = DateTimeOffset.Now;
+    private string _uiDensity = "Comoda";
+    private bool _reducedMotion;
 
     public MainViewModel()
     {
@@ -77,6 +79,8 @@ public sealed class MainViewModel : BindableBase
         _projectDefaultOffset = Input(_state.ProjectDefaultOffset);
         _projectDefaultTemperature = Input(_state.ProjectDefaultTemperatureC);
         _currentProjectFile = _state.LastProjectFile;
+        _uiDensity = new[] { "Compatta", "Comoda", "Ampia" }.Contains(_state.UiDensity) ? _state.UiDensity : "Comoda";
+        _reducedMotion = _state.ReducedMotion;
         foreach (var path in _state.SourcePaths.Where(Directory.Exists)) SourcePaths.Add(path);
         foreach (var pair in _state.Overrides.Where(pair => pair.Value.Kind is not null)) _kindOverrides.Add(pair.Key);
         ApplyOverridesCommand = new RelayCommand(ApplyOverrides, () => SelectedNode is not null && !IsScanning);
@@ -118,6 +122,8 @@ public sealed class MainViewModel : BindableBase
     public string DestinationPath { get => _destinationPath; set => Set(ref _destinationPath, value); }
     public string CurrentProjectFile { get => _currentProjectFile; private set { if (Set(ref _currentProjectFile, value)) Raise(nameof(ProjectDocumentStatus)); } }
     public string ProjectDocumentStatus => string.IsNullOrWhiteSpace(CurrentProjectFile) ? "Progetto non ancora salvato" : Path.GetFileName(CurrentProjectFile);
+    public string UiDensity { get => _uiDensity; set => Set(ref _uiDensity, value); }
+    public bool ReducedMotion { get => _reducedMotion; set => Set(ref _reducedMotion, value); }
     public int SessionBoundaryHour
     {
         get => _sessionBoundaryHour;
@@ -282,6 +288,8 @@ public sealed class MainViewModel : BindableBase
         _state.ProjectDefaultOffset = ParseDefault(ProjectDefaultOffset);
         _state.ProjectDefaultTemperatureC = ParseDefault(ProjectDefaultTemperature);
         _state.LastProjectFile = CurrentProjectFile;
+        _state.UiDensity = UiDensity;
+        _state.ReducedMotion = ReducedMotion;
         foreach (var frame in _frames)
         {
             if (!HasAnyOverride(frame) && !_kindOverrides.Contains(frame.Path)) { _state.Overrides.Remove(frame.Path); continue; }

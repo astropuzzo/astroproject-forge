@@ -16,6 +16,8 @@ public sealed class AppState
     public double? ProjectDefaultOffset { get; set; } = 51;
     public double? ProjectDefaultTemperatureC { get; set; }
     public string LastProjectFile { get; set; } = "";
+    public string UiDensity { get; set; } = "Comoda";
+    public bool ReducedMotion { get; set; }
     public Dictionary<string, FrameOverrides> Overrides { get; set; } = new(StringComparer.OrdinalIgnoreCase);
 }
 

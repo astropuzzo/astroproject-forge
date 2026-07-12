@@ -1,6 +1,7 @@
 using System.IO;
 using System.Diagnostics;
 using System.Windows;
+using System.Windows.Media.Animation;
 using Microsoft.Win32;
 using AstroForge.App.ViewModels;
 
@@ -18,6 +19,7 @@ public partial class MainWindow : Window
         InitializeComponent();
         DataContext = _viewModel;
         Closing += (_, _) => _viewModel.SaveState();
+        Loaded += MainWindow_Loaded;
         ApplyCommandLine();
     }
 
@@ -67,6 +69,34 @@ public partial class MainWindow : Window
         var compact = ActualWidth < 1250;
         SourcesColumn.Width = _sourcesVisible ? new GridLength(compact ? 220 : 270) : new GridLength(0);
         InspectorColumn.Width = _inspectorVisible && !_masterLabActive ? new GridLength(compact ? 330 : 430) : new GridLength(0);
+    }
+
+    private void Settings_Click(object sender, RoutedEventArgs e) => SettingsPopup.IsOpen = !SettingsPopup.IsOpen;
+    private void DensitySelector_SelectionChanged(object sender, System.Windows.Controls.SelectionChangedEventArgs e)
+    {
+        if (!IsLoaded) return;
+        if (DensitySelector.SelectedItem is System.Windows.Controls.ComboBoxItem item) _viewModel.UiDensity = item.Content?.ToString() ?? "Comoda";
+        ApplyUiPreferences();
+    }
+    private void ReducedMotion_Click(object sender, RoutedEventArgs e) => ApplyUiPreferences();
+    private void SaveUiPreferences_Click(object sender, RoutedEventArgs e) { _viewModel.SaveState(); SettingsPopup.IsOpen = false; }
+    private void ApplyUiPreferences()
+    {
+        var density = _viewModel.UiDensity;
+        Application.Current.Resources["ControlPadding"] = density switch { "Compatta" => new Thickness(12, 6, 12, 6), "Ampia" => new Thickness(18, 11, 18, 11), _ => new Thickness(15, 9, 15, 9) };
+        Application.Current.Resources["ControlMinHeight"] = density switch { "Compatta" => 34d, "Ampia" => 46d, _ => 40d };
+        Application.Current.Resources["ToolbarHeight"] = density switch { "Compatta" => 38d, "Ampia" => 46d, _ => 42d };
+    }
+
+    private void MainWindow_Loaded(object sender, RoutedEventArgs e)
+    {
+        ApplyUiPreferences();
+        if (_viewModel.ReducedMotion) return;
+        RootSurface.Opacity = 0;
+        if (RootSurface.RenderTransform is System.Windows.Media.TranslateTransform transform) transform.Y = 8;
+        RootSurface.BeginAnimation(OpacityProperty, new DoubleAnimation(0, 1, TimeSpan.FromMilliseconds(420)) { EasingFunction = new CubicEase { EasingMode = EasingMode.EaseOut } });
+        if (RootSurface.RenderTransform is System.Windows.Media.TranslateTransform translate)
+            translate.BeginAnimation(System.Windows.Media.TranslateTransform.YProperty, new DoubleAnimation(8, 0, TimeSpan.FromMilliseconds(420)) { EasingFunction = new CubicEase { EasingMode = EasingMode.EaseOut } });
     }
 
     private void WorkspaceTabs_SelectionChanged(object sender, System.Windows.Controls.SelectionChangedEventArgs e)

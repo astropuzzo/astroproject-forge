@@ -55,9 +55,7 @@
         </HierarchicalDataTemplate>
     </Window.Resources>
 
-    <Window.Triggers><EventTrigger RoutedEvent="Loaded"><BeginStoryboard><Storyboard><DoubleAnimation Storyboard.TargetName="RootSurface" Storyboard.TargetProperty="Opacity" From="0" To="1" Duration="0:0:0.42"/><DoubleAnimation Storyboard.TargetName="RootSurface" Storyboard.TargetProperty="RenderTransform.Y" From="8" To="0" Duration="0:0:0.42"><DoubleAnimation.EasingFunction><CubicEase EasingMode="EaseOut"/></DoubleAnimation.EasingFunction></DoubleAnimation></Storyboard></BeginStoryboard></EventTrigger></Window.Triggers>
-
-    <Grid x:Name="RootSurface" Background="{StaticResource AppBackground}" Opacity="0" RenderTransformOrigin="0.5,0.5">
+    <Grid x:Name="RootSurface" Background="{StaticResource AppBackground}" RenderTransformOrigin="0.5,0.5">
         <Grid.RenderTransform><TranslateTransform Y="0"/></Grid.RenderTransform>
         <Grid.RowDefinitions>
             <RowDefinition Height="72" />
@@ -88,10 +86,27 @@
                     <Button Content="Salva progetto" Click="SaveProject_Click" Style="{StaticResource ToolbarButton}"/>
                     <Button Content="Svuota progetto" Command="{Binding ClearProjectCommand}" Style="{StaticResource ToolbarButton}" ToolTip="Rimuove i file caricati dall'app, senza cancellare gli originali" />
                     <Button Content="Pulisci cache" Click="ClearCache_Click" Style="{StaticResource ToolbarButton}" ToolTip="Dimentica gli header indicizzati; nessuna immagine viene eliminata" />
-                    <Button Content="Annulla ultima modifica" Command="{Binding UndoCommand}" Style="{StaticResource ToolbarButton}" Margin="0" />
+                    <Button Content="Annulla ultima modifica" Command="{Binding UndoCommand}" Style="{StaticResource ToolbarButton}" />
+                    <Button x:Name="SettingsButton" Content="⚙" Click="Settings_Click" Style="{StaticResource ToolbarButton}" Width="44" Padding="0" Margin="0" ToolTip="Preferenze interfaccia" />
                 </StackPanel>
             </Grid>
         </Border>
+
+        <Popup x:Name="SettingsPopup" Grid.Row="1" PlacementTarget="{Binding ElementName=SettingsButton}" Placement="Bottom" HorizontalOffset="-300" VerticalOffset="8" StaysOpen="False" AllowsTransparency="True">
+            <Border Width="340" Style="{StaticResource Card}" Background="#F2121B28" BorderBrush="#647A94" Padding="20">
+                <StackPanel>
+                    <TextBlock Text="PREFERENZE INTERFACCIA" Style="{StaticResource Eyebrow}"/>
+                    <TextBlock Text="Aspetto e accessibilità" FontSize="22" FontWeight="SemiBold" Margin="0,5,0,15"/>
+                    <TextBlock Text="Densità controlli" Style="{StaticResource MetaLabel}"/>
+                    <ComboBox x:Name="DensitySelector" SelectedValuePath="Content" SelectedValue="{Binding UiDensity, Mode=TwoWay}" SelectionChanged="DensitySelector_SelectionChanged" Margin="0,0,0,13">
+                        <ComboBoxItem Content="Compatta"/><ComboBoxItem Content="Comoda"/><ComboBoxItem Content="Ampia"/>
+                    </ComboBox>
+                    <CheckBox Content="Movimento ridotto" IsChecked="{Binding ReducedMotion, Mode=TwoWay}" Click="ReducedMotion_Click" Margin="0,3,0,7"/>
+                    <TextBlock Text="Riduce la transizione di ingresso. La densità compatta libera spazio sui display piccoli." Style="{StaticResource MutedText}" TextWrapping="Wrap" FontSize="11"/>
+                    <Button Content="Salva preferenze" Click="SaveUiPreferences_Click" Style="{StaticResource PrimaryButton}" Margin="0,16,0,0"/>
+                </StackPanel>
+            </Border>
+        </Popup>
 
         <Grid Grid.Row="1">
             <Grid.ColumnDefinitions>
@@ -176,7 +191,7 @@
                                 <Border Grid.Column="2" Style="{StaticResource Card}" Padding="9,7"><TextBlock Text="{Binding TotalIssues, StringFormat=AVVISI  {0}}" Foreground="{StaticResource Warning}"/></Border>
                             </Grid>
                             <Grid Grid.Row="2" Margin="2,0,2,9"><Grid.ColumnDefinitions><ColumnDefinition/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions><CheckBox Content="Solo elementi da rivedere" IsChecked="{Binding ShowIssuesOnly}"/><TextBlock Grid.Column="1" Text="{Binding OverrideCount, StringFormat={}{0} frame modificati}" Style="{StaticResource MutedText}"/></Grid>
-                            <Border Grid.Row="3" Style="{StaticResource Card}" Padding="8"><TreeView ItemsSource="{Binding TreeRoots}" SelectedItemChanged="Tree_SelectedItemChanged" MouseDoubleClick="Tree_MouseDoubleClick" ToolTip="Doppio click per mostrare il file originale" VirtualizingStackPanel.IsVirtualizing="True" VirtualizingStackPanel.VirtualizationMode="Recycling" ScrollViewer.CanContentScroll="True"/></Border>
+                            <Border Grid.Row="3" Style="{StaticResource Card}" Padding="8"><Grid><TreeView ItemsSource="{Binding TreeRoots}" SelectedItemChanged="Tree_SelectedItemChanged" MouseDoubleClick="Tree_MouseDoubleClick" ToolTip="Doppio click per mostrare il file originale" VirtualizingStackPanel.IsVirtualizing="True" VirtualizingStackPanel.VirtualizationMode="Recycling" ScrollViewer.CanContentScroll="True"/><StackPanel Visibility="{Binding TreeRoots, Converter={StaticResource EmptyCollectionToVisibility}}" HorizontalAlignment="Center" VerticalAlignment="Center" MaxWidth="420"><Border Width="58" Height="58" CornerRadius="18" Background="#173A3A" HorizontalAlignment="Center"><TextBlock Text="✦" Foreground="{StaticResource Accent}" FontSize="25" HorizontalAlignment="Center" VerticalAlignment="Center"/></Border><TextBlock Text="Costruiamo la mappa del progetto" FontSize="21" FontWeight="SemiBold" TextAlignment="Center" Margin="0,15,0,6"/><TextBlock Text="Aggiungi una o più cartelle N.I.N.A., quindi usa Analizza ora. Light e calibrazioni verranno ordinati senza modificare gli originali." Style="{StaticResource MutedText}" TextWrapping="Wrap" TextAlignment="Center"/></StackPanel></Grid></Border>
                         </Grid>
                     </TabItem>
 

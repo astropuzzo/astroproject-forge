@@ -464,6 +464,8 @@ Creare un flusso guidato al primo avvio:
 
 **Shell responsive v3 — 12 luglio 2026:** sostituita la fila di tab con una navigazione verticale persistente. Sorgenti e Inspector sono pannelli collassabili, ridimensionati automaticamente sotto 1250 px e chiusi progressivamente sugli schermi più stretti; restano richiamabili dall'header. Master Library Lab chiude l'Inspector non pertinente e utilizza tutta l'area di lavoro. La scansione Lab usa un percorso indipendente che legge esclusivamente le librerie abilitate e non modifica `_frames`, analisi WBPP, albero progetto o Coda di revisione.
 
+**Preferenze UX v1 — 12 luglio 2026:** aggiunto pannello glass indipendente nell'header con densità `Compatta`, `Comoda` e `Ampia`, applicata in tempo reale ad altezze e padding dei controlli. Aggiunta preferenza persistente `Movimento ridotto`, che elimina la transizione di ingresso. Entrambe vengono conservate localmente in `state.json`. La vista Analisi ora possiede uno stato vuoto guidato invece di una superficie senza indicazioni. Build, avvio self-contained e popup sono stati verificati a schermo. Restano tema chiaro, localizzazione e audit DPI 125–250% per chiudere P0.11.
+
 1. scegli lingua e cartella progetto;
 2. registra una o più librerie Master;
 3. scegli il confine della notte astronomica e timezone;
