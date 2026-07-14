@@ -114,13 +114,26 @@ try
     WriteMinimalFits(organizerSource);
     var organizerFrame = new FrameMetadata { Path = organizerSource, Kind = FrameKind.Dark, IsMaster = true };
     var organizerOutput = Path.Combine(exportRoot, "organized-library");
-    var organized = await MasterLibraryOrganizer.ExecuteAsync([new(organizerFrame, new("Synthetic Camera", 100, 51, -10, 600, "Default"))], organizerOutput);
+    var organizerRequest = new MasterOrganizationRequest(organizerFrame, new("Synthetic Camera", 100, 51, -10, 600, "Default"));
+    var duplicatePlan = await MasterLibraryOrganizer.PlanAsync([organizerRequest, organizerRequest], organizerOutput);
+    Assert(duplicatePlan.All(item => item.Status == MasterOrganizationPlanStatus.DuplicateDestination), "Il preflight deve bloccare destinazioni duplicate prima della copia.");
+    var organized = await MasterLibraryOrganizer.ExecuteAsync([organizerRequest], organizerOutput);
     var organizedRelativePath = Path.GetRelativePath(organizerOutput, organized.Single().DestinationPath);
     Assert(organizedRelativePath.Split(Path.DirectorySeparatorChar)[0] == "Camera-Synthetic Camera", "La camera deve essere sempre la radice della libreria Master organizzata.");
     AssertThrows(() => MasterLibraryOrganizer.RelativePath(organizerFrame, new("", 100, 51, -10, 600, "Default")), "Una libreria Master senza camera non deve essere organizzabile.");
     var organizedHeaders = await AstroForge.Core.Parsing.FitsHeaderReader.ReadAsync(organized.Single().DestinationPath);
     Assert(organized.Single().HeaderStamped && organizedHeaders["GAIN"]?.ToString() == "100" && organizedHeaders["SET-TEMP"]?.ToString() == "-10", "Metadati Master non impressi sulla copia FITS.");
     Assert(File.Exists(Path.Combine(organizerOutput, "astroforge-master-library.json")) && File.Exists(organizerSource), "Manifest organizzatore o Master originale assente.");
+    var existingPlan = await MasterLibraryOrganizer.PlanAsync([organizerRequest], organizerOutput);
+    Assert(existingPlan.Single().Status == MasterOrganizationPlanStatus.ExistingFile, "Il preflight deve segnalare una destinazione già esistente.");
+    var rolledBack = await MasterLibraryOrganizer.RollbackAsync(organizerOutput);
+    Assert(rolledBack == 1 && !File.Exists(organized.Single().DestinationPath) && !File.Exists(Path.Combine(organizerOutput, "astroforge-master-library.json")) && File.Exists(organizerSource), "Rollback del batch non sicuro o incompleto.");
+    var organizedAgain = await MasterLibraryOrganizer.ExecuteAsync([organizerRequest], organizerOutput);
+    await File.AppendAllTextAsync(organizedAgain.Single().DestinationPath, "tampered");
+    var tamperedRollbackBlocked = false;
+    try { await MasterLibraryOrganizer.RollbackAsync(organizerOutput); }
+    catch (IOException) { tamperedRollbackBlocked = true; }
+    Assert(tamperedRollbackBlocked && File.Exists(organizedAgain.Single().DestinationPath), "Il rollback deve bloccarsi senza eliminare copie modificate dopo il batch.");
     var cache = new MemoryHeaderCache();
     var sourceInfo = new FileInfo(sourceA);
     cache.Put(sourceA, sourceInfo.Length, sourceInfo.LastWriteTimeUtc.Ticks, new()

@@ -10,6 +10,8 @@ namespace AstroForge.Core.Export;
 public sealed record MasterOrganizationMetadata(string Camera, double Gain, double Offset, double? TemperatureC, double? ExposureSeconds, string ReadoutMode);
 public sealed record MasterOrganizationRequest(FrameMetadata Source, MasterOrganizationMetadata Metadata);
 public sealed record MasterOrganizationResult(string SourcePath, string DestinationPath, string SourceSha256, string DestinationSha256, bool HeaderStamped);
+public enum MasterOrganizationPlanStatus { Ready, DuplicateDestination, ExistingFile }
+public sealed record MasterOrganizationPlanItem(MasterOrganizationRequest Request, string DestinationPath, MasterOrganizationPlanStatus Status, string Message);
 
 public static class MasterLibraryOrganizer
 {
@@ -36,31 +38,103 @@ public static class MasterLibraryOrganizer
         return Path.Combine($"Camera-{Safe(metadata.Camera)}", $"Gain-{Token(metadata.Gain)}", $"Offset-{Token(metadata.Offset)}", temperature, role, filename);
     }
 
-    public static async Task<IReadOnlyList<MasterOrganizationResult>> ExecuteAsync(IEnumerable<MasterOrganizationRequest> requests, string destinationRoot, CancellationToken cancellationToken = default)
+    public static Task<IReadOnlyList<MasterOrganizationPlanItem>> PlanAsync(IEnumerable<MasterOrganizationRequest> requests, string destinationRoot, CancellationToken cancellationToken = default)
     {
-        var results = new List<MasterOrganizationResult>();
-        Directory.CreateDirectory(destinationRoot);
-        foreach (var request in requests)
+        cancellationToken.ThrowIfCancellationRequested();
+        var root = SafeRoot(destinationRoot);
+        var values = requests.Select(request =>
         {
-            cancellationToken.ThrowIfCancellationRequested();
             var source = Path.GetFullPath(request.Source.Path);
-            var destination = Path.GetFullPath(Path.Combine(destinationRoot, RelativePath(request.Source, request.Metadata)));
-            var root = Path.GetFullPath(destinationRoot).TrimEnd(Path.DirectorySeparatorChar) + Path.DirectorySeparatorChar;
+            var destination = Path.GetFullPath(Path.Combine(root, RelativePath(request.Source, request.Metadata)));
             if (!destination.StartsWith(root, StringComparison.OrdinalIgnoreCase)) throw new InvalidOperationException("Percorso Master non sicuro.");
             if (source.StartsWith(root, StringComparison.OrdinalIgnoreCase)) throw new InvalidOperationException("La destinazione non può contenere i Master sorgente.");
-            if (File.Exists(destination)) throw new IOException($"La destinazione esiste già: {destination}");
-            Directory.CreateDirectory(Path.GetDirectoryName(destination)!);
-            var sourceHash = await HashAsync(source, cancellationToken);
-            await CopyAsync(source, destination, cancellationToken);
-            var stamped = await MasterHeaderStamper.StampAsync(destination, request.Source.Kind, request.Metadata, cancellationToken);
-            if (!stamped) { File.Delete(destination); throw new InvalidDataException($"Header non aggiornabile in sicurezza: {request.Source.FileName}"); }
-            var destinationHash = await HashAsync(destination, cancellationToken);
-            if (!sourceHash.Equals(await HashAsync(source, cancellationToken), StringComparison.OrdinalIgnoreCase)) throw new IOException("Il Master originale è cambiato durante l'organizzazione.");
-            results.Add(new(source, destination, sourceHash, destinationHash, stamped));
+            return (Request: request, Destination: destination);
+        }).ToArray();
+        var duplicates = values.GroupBy(value => value.Destination, StringComparer.OrdinalIgnoreCase).Where(group => group.Count() > 1).Select(group => group.Key).ToHashSet(StringComparer.OrdinalIgnoreCase);
+        IReadOnlyList<MasterOrganizationPlanItem> plan = values.Select(value =>
+            duplicates.Contains(value.Destination)
+                ? new MasterOrganizationPlanItem(value.Request, value.Destination, MasterOrganizationPlanStatus.DuplicateDestination, "Più Master generano la stessa destinazione")
+                : File.Exists(value.Destination)
+                    ? new MasterOrganizationPlanItem(value.Request, value.Destination, MasterOrganizationPlanStatus.ExistingFile, "Esiste già un file nella destinazione")
+                    : new MasterOrganizationPlanItem(value.Request, value.Destination, MasterOrganizationPlanStatus.Ready, "Pronto per la copia")).ToArray();
+        return Task.FromResult(plan);
+    }
+
+    public static async Task<IReadOnlyList<MasterOrganizationResult>> ExecuteAsync(IEnumerable<MasterOrganizationRequest> requests, string destinationRoot, CancellationToken cancellationToken = default)
+    {
+        var plan = await PlanAsync(requests, destinationRoot, cancellationToken);
+        var conflicts = plan.Where(item => item.Status != MasterOrganizationPlanStatus.Ready).ToArray();
+        if (conflicts.Length > 0) throw new IOException($"Preflight non superato: {conflicts.Length} conflitti. {conflicts[0].Request.Source.FileName}: {conflicts[0].Message}.");
+        var results = new List<MasterOrganizationResult>();
+        var created = new List<string>();
+        Directory.CreateDirectory(destinationRoot);
+        try
+        {
+            foreach (var item in plan)
+            {
+                cancellationToken.ThrowIfCancellationRequested();
+                var source = Path.GetFullPath(item.Request.Source.Path);
+                var destination = item.DestinationPath;
+                Directory.CreateDirectory(Path.GetDirectoryName(destination)!);
+                var sourceHash = await HashAsync(source, cancellationToken);
+                await CopyAsync(source, destination, cancellationToken);
+                created.Add(destination);
+                var stamped = await MasterHeaderStamper.StampAsync(destination, item.Request.Source.Kind, item.Request.Metadata, cancellationToken);
+                if (!stamped) throw new InvalidDataException($"Header non aggiornabile in sicurezza: {item.Request.Source.FileName}");
+                var destinationHash = await HashAsync(destination, cancellationToken);
+                if (!sourceHash.Equals(await HashAsync(source, cancellationToken), StringComparison.OrdinalIgnoreCase)) throw new IOException("Il Master originale è cambiato durante l'organizzazione.");
+                results.Add(new(source, destination, sourceHash, destinationHash, stamped));
+            }
+        }
+        catch
+        {
+            foreach (var path in created.Where(File.Exists)) File.Delete(path);
+            DeleteEmptyDirectories(destinationRoot);
+            throw;
         }
         var manifest = Path.Combine(destinationRoot, "astroforge-master-library.json");
-        await File.WriteAllTextAsync(manifest, JsonSerializer.Serialize(results, new JsonSerializerOptions { WriteIndented = true }), cancellationToken);
+        var temporaryManifest = manifest + ".tmp";
+        try
+        {
+            await File.WriteAllTextAsync(temporaryManifest, JsonSerializer.Serialize(results, new JsonSerializerOptions { WriteIndented = true }), cancellationToken);
+            File.Move(temporaryManifest, manifest, true);
+        }
+        catch
+        {
+            if (File.Exists(temporaryManifest)) File.Delete(temporaryManifest);
+            foreach (var path in created.Where(File.Exists)) File.Delete(path);
+            DeleteEmptyDirectories(destinationRoot);
+            throw;
+        }
         return results;
+    }
+
+    public static async Task<int> RollbackAsync(string destinationRoot, CancellationToken cancellationToken = default)
+    {
+        var root = SafeRoot(destinationRoot);
+        var manifest = Path.Combine(root, "astroforge-master-library.json");
+        if (!File.Exists(manifest)) throw new FileNotFoundException("Nessun batch AstroProject Forge da annullare.", manifest);
+        var results = JsonSerializer.Deserialize<List<MasterOrganizationResult>>(await File.ReadAllTextAsync(manifest, cancellationToken)) ?? [];
+        foreach (var result in results)
+        {
+            var destination = Path.GetFullPath(result.DestinationPath);
+            if (!destination.StartsWith(root, StringComparison.OrdinalIgnoreCase)) throw new InvalidDataException("Il manifest contiene un percorso esterno alla libreria.");
+            if (!File.Exists(destination)) throw new IOException($"Rollback interrotto: file mancante {destination}");
+            if (!result.DestinationSha256.Equals(await HashAsync(destination, cancellationToken), StringComparison.OrdinalIgnoreCase))
+                throw new IOException($"Rollback interrotto: il file è stato modificato dopo il batch: {destination}");
+        }
+        foreach (var result in results) File.Delete(result.DestinationPath);
+        File.Delete(manifest);
+        DeleteEmptyDirectories(destinationRoot);
+        return results.Count;
+    }
+
+    private static string SafeRoot(string destinationRoot) => Path.GetFullPath(destinationRoot).TrimEnd(Path.DirectorySeparatorChar) + Path.DirectorySeparatorChar;
+    private static void DeleteEmptyDirectories(string root)
+    {
+        if (!Directory.Exists(root)) return;
+        foreach (var directory in Directory.EnumerateDirectories(root, "*", SearchOption.AllDirectories).OrderByDescending(path => path.Length))
+            if (!Directory.EnumerateFileSystemEntries(directory).Any()) Directory.Delete(directory);
     }
 
     private static async Task CopyAsync(string source, string destination, CancellationToken token)

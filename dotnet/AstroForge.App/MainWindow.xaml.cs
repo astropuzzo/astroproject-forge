@@ -254,6 +254,19 @@ public partial class MainWindow : Window
         catch (Exception exception) { MessageBox.Show(this, exception.Message, "Organizzazione non completata", MessageBoxButton.OK, MessageBoxImage.Warning); }
     }
 
+    private async void PreviewMasterOrganizer_Click(object sender, RoutedEventArgs e)
+    {
+        try { await _viewModel.PreviewMasterOrganizerAsync(); }
+        catch (Exception exception) { MessageBox.Show(this, exception.Message, "Preflight non completato", MessageBoxButton.OK, MessageBoxImage.Warning); }
+    }
+
+    private async void RollbackMasterOrganizer_Click(object sender, RoutedEventArgs e)
+    {
+        if (MessageBox.Show(this, "Annullare l’ultimo batch creato da AstroProject Forge? Verranno eliminate soltanto le copie elencate nel manifest e solo se i loro hash sono invariati. Gli originali non saranno toccati.", "Rollback Master Library", MessageBoxButton.YesNo, MessageBoxImage.Warning) != MessageBoxResult.Yes) return;
+        try { await _viewModel.RollbackMasterOrganizerAsync(); MessageBox.Show(this, _viewModel.MasterOrganizerStatus, "Rollback completato", MessageBoxButton.OK, MessageBoxImage.Information); }
+        catch (Exception exception) { MessageBox.Show(this, exception.Message, "Rollback interrotto", MessageBoxButton.OK, MessageBoxImage.Warning); }
+    }
+
     private async void ScanMasterLibraries_Click(object sender, RoutedEventArgs e)
     {
         try { await _viewModel.ScanMasterLibrariesAsync(); }

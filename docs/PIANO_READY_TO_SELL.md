@@ -241,6 +241,8 @@ dipendenza del programma.
 
 **Master Library Lab — 12 luglio 2026:** aggiunto il flusso di normalizzazione non distruttivo. I metadati dimostrabili vengono precompilati; per i Master incompleti la tabella richiede Camera, Gain, Offset, temperatura ed esposizione. L'esecuzione crea una nuova libreria per `Camera/Gain/Offset/Temperatura/Tipo`, copia in streaming, imprime le keyword sulle sole copie FITS/XISF quando l'header può essere aggiornato senza spostare i dati, verifica SHA-256 e genera `astroforge-master-library.json`. L'originale viene ricontrollato dopo ogni copia. Restano da aggiungere anteprima dei conflitti, gestione CHECKSUM/DATASUM FITS e rollback guidato dell'intero batch.
 
+**Master Library Lab safety v2 — 14 luglio 2026:** introdotto un preflight obbligatorio che calcola tutte le destinazioni prima di scrivere e blocca sia collisioni interne al batch sia file già presenti. Ogni Master mostra il proprio stato preflight nella tabella. L'esecuzione è transazionale a livello di batch: se copia, stamping o verifica falliscono, vengono rimosse soltanto le nuove copie prodotte dal tentativo e le cartelle rimaste vuote. Il manifest viene pubblicato atomicamente. Il rollback guidato dell'ultimo batch verifica preventivamente percorso e SHA-256 di ogni copia; se anche un solo file è mancante o modificato, non elimina nulla. Testate collisioni, destinazioni esistenti, rollback riuscito e blocco su copia alterata. Restano CHECKSUM/DATASUM FITS e una cronologia multi-batch per chiudere completamente P0.2.
+
 ## P0.3 — Risoluzione guidata di ambiguità e assegnazioni manuali
 
 ### Intervento

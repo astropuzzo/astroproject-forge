@@ -216,7 +216,7 @@ public sealed class MainViewModel : BindableBase
     public string ProjectDefaultGain { get => _projectDefaultGain; set => Set(ref _projectDefaultGain, value); }
     public string ProjectDefaultOffset { get => _projectDefaultOffset; set => Set(ref _projectDefaultOffset, value); }
     public string ProjectDefaultTemperature { get => _projectDefaultTemperature; set => Set(ref _projectDefaultTemperature, value); }
-    public string MasterOrganizerDestination { get => _masterOrganizerDestination; set => Set(ref _masterOrganizerDestination, value); }
+    public string MasterOrganizerDestination { get => _masterOrganizerDestination; set { if (Set(ref _masterOrganizerDestination, value)) foreach (var item in MasterOrganizerItems) item.SetPreflight("Non verificato"); } }
     public string MasterOrganizerStatus { get => _masterOrganizerStatus; private set => Set(ref _masterOrganizerStatus, value); }
 
     public void AddSource(string path)
@@ -253,14 +253,49 @@ public sealed class MainViewModel : BindableBase
 
     public async Task OrganizeMasterLibraryAsync(CancellationToken cancellationToken = default)
     {
+        var requests = MasterOrganizerRequests();
+        var plan = await MasterLibraryOrganizer.PlanAsync(requests, MasterOrganizerDestination, cancellationToken);
+        ApplyMasterOrganizerPlan(plan);
+        var conflicts = plan.Count(item => item.Status != MasterOrganizationPlanStatus.Ready);
+        if (conflicts > 0) throw new IOException($"Preflight non superato: risolvi {conflicts} conflitti evidenziati prima di copiare.");
+        MasterOrganizerStatus = $"Organizzazione di {requests.Length} Master…";
+        var results = await MasterLibraryOrganizer.ExecuteAsync(requests, MasterOrganizerDestination, cancellationToken);
+        foreach (var item in MasterOrganizerItems) item.SetPreflight("Copiato e verificato");
+        MasterOrganizerStatus = $"Completata · {results.Count} copie verificate · {results.Count(item => item.HeaderStamped)} header aggiornati";
+        Status = MasterOrganizerStatus;
+    }
+
+    public async Task PreviewMasterOrganizerAsync(CancellationToken cancellationToken = default)
+    {
+        var plan = await MasterLibraryOrganizer.PlanAsync(MasterOrganizerRequests(), MasterOrganizerDestination, cancellationToken);
+        ApplyMasterOrganizerPlan(plan);
+        var conflicts = plan.Count(item => item.Status != MasterOrganizationPlanStatus.Ready);
+        MasterOrganizerStatus = conflicts == 0 ? $"Preflight superato · {plan.Count} Master pronti" : $"Preflight bloccato · {conflicts} conflitti su {plan.Count} Master";
+        Status = MasterOrganizerStatus;
+    }
+
+    public async Task RollbackMasterOrganizerAsync(CancellationToken cancellationToken = default)
+    {
+        if (string.IsNullOrWhiteSpace(MasterOrganizerDestination)) throw new InvalidOperationException("Scegli la libreria da ripristinare.");
+        var removed = await MasterLibraryOrganizer.RollbackAsync(MasterOrganizerDestination, cancellationToken);
+        foreach (var item in MasterOrganizerItems) item.SetPreflight("Rollback completato");
+        MasterOrganizerStatus = $"Rollback completato · rimosse {removed} copie verificate · originali intatti";
+        Status = MasterOrganizerStatus;
+    }
+
+    private MasterOrganizationRequest[] MasterOrganizerRequests()
+    {
         if (string.IsNullOrWhiteSpace(MasterOrganizerDestination)) throw new InvalidOperationException("Scegli la destinazione della nuova Master Library.");
         var invalid = MasterOrganizerItems.Where(item => !item.TryRequest(out _)).ToArray();
         if (invalid.Length > 0) throw new InvalidOperationException($"Completa prima i metadati di {invalid.Length} Master evidenziati.");
-        var requests = MasterOrganizerItems.Select(item => { item.TryRequest(out var request); return request!; }).ToArray();
-        MasterOrganizerStatus = $"Organizzazione di {requests.Length} Master…";
-        var results = await MasterLibraryOrganizer.ExecuteAsync(requests, MasterOrganizerDestination, cancellationToken);
-        MasterOrganizerStatus = $"Completata · {results.Count} copie verificate · {results.Count(item => item.HeaderStamped)} header aggiornati";
-        Status = MasterOrganizerStatus;
+        return MasterOrganizerItems.Select(item => { item.TryRequest(out var request); return request!; }).ToArray();
+    }
+
+    private void ApplyMasterOrganizerPlan(IReadOnlyList<MasterOrganizationPlanItem> plan)
+    {
+        var bySource = plan.ToDictionary(item => item.Request.Source.Path, StringComparer.OrdinalIgnoreCase);
+        foreach (var item in MasterOrganizerItems)
+            item.SetPreflight(bySource.TryGetValue(item.Frame.Path, out var value) ? value.Status == MasterOrganizationPlanStatus.Ready ? "Pronto" : $"CONFLITTO · {value.Message}" : "Non verificato");
     }
 
     public async Task ScanMasterLibrariesAsync(CancellationToken cancellationToken = default)
@@ -1230,7 +1265,7 @@ public sealed class MasterLibraryItem : BindableBase
 
 public sealed class MasterOrganizerItem : BindableBase
 {
-    private string _camera; private string _gain; private string _offset; private string _temperature; private string _exposure; private string _readoutMode;
+    private string _camera; private string _gain; private string _offset; private string _temperature; private string _exposure; private string _readoutMode; private string _preflight = "Non verificato";
     public MasterOrganizerItem(FrameMetadata frame)
     {
         Frame = frame; _camera = frame.Camera.Value ?? ""; _gain = Input(frame.Gain.Value); _offset = Input(frame.Offset.Value);
@@ -1245,6 +1280,7 @@ public sealed class MasterOrganizerItem : BindableBase
     public string Temperature { get => _temperature; set { if (Set(ref _temperature, value)) Changed(); } }
     public string Exposure { get => _exposure; set { if (Set(ref _exposure, value)) Changed(); } }
     public string ReadoutMode { get => _readoutMode; set { if (Set(ref _readoutMode, value)) Changed(); } }
+    public string Preflight { get => _preflight; private set => Set(ref _preflight, value); }
     public bool IsReady => TryRequest(out _);
     public string State => IsReady ? "Pronto" : $"Mancano: {string.Join(", ", Missing())}";
     public string SuggestedPath => TryRequest(out var request) ? MasterLibraryOrganizer.RelativePath(Frame, request!.Metadata) : "Completa i campi richiesti";
@@ -1256,7 +1292,8 @@ public sealed class MasterOrganizerItem : BindableBase
         request = new(Frame, new(Camera.Trim(), gain!.Value, offset!.Value, temperature, exposure, string.IsNullOrWhiteSpace(ReadoutMode) ? "Default" : ReadoutMode.Trim())); return true;
     }
     private IEnumerable<string> Missing() { if (string.IsNullOrWhiteSpace(Camera)) yield return "Camera"; if (!Try(Gain, out _)) yield return "Gain"; if (!Try(Offset, out _)) yield return "Offset"; if (Frame.Kind == FrameKind.Dark && !Try(Temperature, out _)) yield return "Temperatura"; if (Frame.Kind == FrameKind.Dark && !Try(Exposure, out _)) yield return "Esposizione"; }
-    private void Changed() { Raise(nameof(IsReady)); Raise(nameof(State)); Raise(nameof(SuggestedPath)); }
+    private void Changed() { Raise(nameof(IsReady)); Raise(nameof(State)); Raise(nameof(SuggestedPath)); Preflight = "Da verificare"; }
+    public void SetPreflight(string value) => Preflight = value;
     private static string Input(double? value) => value?.ToString("0.###", CultureInfo.CurrentCulture) ?? "";
     private static bool Try(string text, out double? value) { value = null; if (double.TryParse(text, NumberStyles.Float, CultureInfo.CurrentCulture, out var number) || double.TryParse(text.Replace(',', '.'), NumberStyles.Float, CultureInfo.InvariantCulture, out number)) { value = number; return true; } return false; }
     private static bool TryOptional(string text, out double? value) { if (string.IsNullOrWhiteSpace(text)) { value = null; return true; } return Try(text, out value); }

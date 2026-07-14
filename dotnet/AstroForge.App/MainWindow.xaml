@@ -350,13 +350,17 @@
                     <TabItem Header="◇  MASTER LIBRARY LAB">
                         <Grid Margin="0,14,0,0"><Grid.RowDefinitions><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/><RowDefinition Height="*"/></Grid.RowDefinitions>
                             <StackPanel><TextBlock Text="Master Library Lab" Style="{StaticResource Title}"/><TextBlock Text="Strumento indipendente dal progetto WBPP. Scansiona le librerie abilitate, completa i metadati mancanti e crea una nuova libreria normalizzata senza modificare gli originali." Style="{StaticResource MutedText}" TextWrapping="Wrap" Margin="0,2,0,12"/></StackPanel>
-                            <Grid Grid.Row="1" Margin="0,0,0,10"><Grid.RowDefinitions><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/></Grid.RowDefinitions><Grid.ColumnDefinitions><ColumnDefinition/><ColumnDefinition Width="Auto"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions>
+                            <Grid Grid.Row="1" Margin="0,0,0,10"><Grid.RowDefinitions><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/></Grid.RowDefinitions><Grid.ColumnDefinitions><ColumnDefinition/><ColumnDefinition Width="Auto"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions>
                                 <Button Grid.ColumnSpan="3" Content="◎  SCANSIONA SOLO LE MASTER LIBRARY" Click="ScanMasterLibraries_Click" HorizontalAlignment="Left" Padding="20,10" FontWeight="SemiBold"/>
                                 <TextBlock Grid.Row="1" Text="Destinazione nuova libreria" Style="{StaticResource MetaLabel}" Margin="2,9,0,4"/>
                                 <TextBox Grid.Row="2" Text="{Binding MasterOrganizerDestination}" IsReadOnly="True" ToolTip="Destinazione nuova Master Library"/>
                                 <Button Grid.Row="2" Grid.Column="1" Content="Scegli destinazione" Click="ChooseMasterOrganizerDestination_Click" Margin="7,0"/>
-                                <Button Grid.Row="2" Grid.Column="2" Content="Copia, imprimi e organizza" Click="OrganizeMasterLibrary_Click" Style="{StaticResource PrimaryButton}"/>
                                 <TextBlock Grid.Row="0" Grid.Column="1" Grid.ColumnSpan="2" Text="{Binding MasterOrganizerStatus}" Foreground="{StaticResource Accent}" Margin="14,0,0,0" VerticalAlignment="Center" TextWrapping="Wrap"/>
+                                <WrapPanel Grid.Row="3" Grid.ColumnSpan="3" HorizontalAlignment="Right" Margin="0,8,0,0">
+                                    <Button Content="1 · Verifica conflitti" Click="PreviewMasterOrganizer_Click" ToolTip="Calcola tutte le destinazioni e blocca duplicati o file già esistenti prima della copia"/>
+                                    <Button Content="2 · Copia, imprimi e organizza" Click="OrganizeMasterLibrary_Click" Style="{StaticResource PrimaryButton}" Margin="7,0,0,0"/>
+                                    <Button Content="Rollback ultimo batch" Click="RollbackMasterOrganizer_Click" Margin="7,0,0,0" ToolTip="Elimina soltanto le copie dell’ultimo batch se gli hash sono ancora invariati"/>
+                                </WrapPanel>
                             </Grid>
                             <DataGrid x:Name="MasterOrganizerGrid" Grid.Row="2" ItemsSource="{Binding MasterOrganizerItems}" MouseDoubleClick="MasterOrganizerGrid_MouseDoubleClick" ToolTip="Doppio click per mostrare il Master originale" AutoGenerateColumns="False" CanUserAddRows="False" HeadersVisibility="Column" Background="{StaticResource Bg1}" Foreground="{StaticResource Text}" GridLinesVisibility="Horizontal" HorizontalGridLinesBrush="{StaticResource Stroke}" RowBackground="{StaticResource Bg2}" AlternatingRowBackground="#101824">
                                 <DataGrid.Columns>
@@ -368,6 +372,7 @@
                                     <DataGridTextColumn Header="TEMP °C" Binding="{Binding Temperature, UpdateSourceTrigger=PropertyChanged}" Width="70"/>
                                     <DataGridTextColumn Header="EXP s" Binding="{Binding Exposure, UpdateSourceTrigger=PropertyChanged}" Width="70"/>
                                     <DataGridTextColumn Header="STATO" Binding="{Binding State}" IsReadOnly="True" Width="1.2*"/>
+                                    <DataGridTextColumn Header="PREFLIGHT" Binding="{Binding Preflight}" IsReadOnly="True" Width="1.3*"/>
                                     <DataGridTextColumn Header="DESTINAZIONE" Binding="{Binding SuggestedPath}" IsReadOnly="True" Width="2*"/>
                                 </DataGrid.Columns>
                             </DataGrid>
