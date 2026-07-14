@@ -29,6 +29,15 @@ var defaulted = ProjectMetadataDefaultsResolver.Apply(frames, new(100, 51, null)
 Assert(defaulted > 0, "I fallback progetto non sono stati applicati ai Master incompleti.");
 Assert(frames.Where(frame => frame.IsMaster).All(frame => frame.Offset.Value == 51 && frame.Offset.Source == MetadataSource.ProjectDefault), "Offset fallback Master errato.");
 Assert(lightBeforeMidnight.Gain.Source == MetadataSource.Header, "Il fallback non deve sostituire il Gain presente nell'header Light.");
+var sameTechnicalSignature = Synthetic(FrameKind.Light, "same-signature-other-night.fits", "HOO", new DateTimeOffset(2026, 7, 1, 23, 0, 0, TimeSpan.Zero));
+sameTechnicalSignature.SetTemperatureC.SetOriginal(-10, MetadataSource.Header);
+Assert(CalibrationScopeMatcher.Matches(lightBeforeMidnight, sameTechnicalSignature, FrameKind.Dark), "La firma tecnica deve attraversare filtro e notte quando camera e parametri coincidono.");
+sameTechnicalSignature.Gain.SetOverride(200);
+Assert(!CalibrationScopeMatcher.Matches(lightBeforeMidnight, sameTechnicalSignature, FrameKind.Dark), "Gain diversi non devono condividere una calibrazione batch.");
+sameTechnicalSignature.Gain.ClearOverride();
+sameTechnicalSignature.ExposureSeconds.SetOverride(300);
+Assert(!CalibrationScopeMatcher.Matches(lightBeforeMidnight, sameTechnicalSignature, FrameKind.Dark), "Un Dark non deve essere applicato a esposizioni diverse.");
+Assert(CalibrationScopeMatcher.Matches(lightBeforeMidnight, sameTechnicalSignature, FrameKind.Bias), "L'esposizione non deve separare l'ambito di un Bias.");
 var duplicateBias = CalibrationCopy(bias100, Path.Combine(Path.GetTempPath(), "duplicate-masterBias100.xisf"));
 var preferredBias = CalibrationMatcher.Find(lightBeforeMidnight, [bias100, duplicateBias], FrameKind.Bias);
 var lowerPriorityBias = CalibrationCopy(bias100, Path.Combine(Path.GetTempPath(), "secondary-library", "masterBias100.xisf"));

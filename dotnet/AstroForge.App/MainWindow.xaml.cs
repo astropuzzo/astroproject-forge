@@ -226,10 +226,13 @@ public partial class MainWindow : Window
         _viewModel.SelectReviewItem((sender as System.Windows.Controls.ListBox)?.SelectedItem as ReviewQueueItem);
 
     private void AssignCandidate_Click(object sender, RoutedEventArgs e) =>
-        _viewModel.AssignReviewCandidate((sender as FrameworkElement)?.DataContext as ReviewQueueItem, false);
+        _viewModel.AssignReviewCandidate((sender as FrameworkElement)?.DataContext as ReviewQueueItem, ReviewAssignmentScope.Light);
 
     private void AssignCandidateGroup_Click(object sender, RoutedEventArgs e) =>
-        _viewModel.AssignReviewCandidate((sender as FrameworkElement)?.DataContext as ReviewQueueItem, true);
+        _viewModel.AssignReviewCandidate((sender as FrameworkElement)?.DataContext as ReviewQueueItem, ReviewAssignmentScope.Night);
+
+    private void AssignCandidateSignature_Click(object sender, RoutedEventArgs e) =>
+        _viewModel.AssignReviewCandidate((sender as FrameworkElement)?.DataContext as ReviewQueueItem, ReviewAssignmentScope.Configuration);
 
     private void ChooseMasterOrganizerDestination_Click(object sender, RoutedEventArgs e)
     {

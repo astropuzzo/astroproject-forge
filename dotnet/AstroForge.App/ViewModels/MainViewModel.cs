@@ -435,12 +435,15 @@ public sealed class MainViewModel : BindableBase
         Status = $"Revisione · {item.Calibration} · {item.Frame.FileName}";
     }
 
-    public void AssignReviewCandidate(ReviewQueueItem? item, bool entireGroup)
+    public void AssignReviewCandidate(ReviewQueueItem? item, ReviewAssignmentScope scope)
     {
         if (item?.SelectedCandidate is null || item.Calibration == "Flat") return;
-        var targets = entireGroup
-            ? _frames.Where(frame => frame.Kind == FrameKind.Light && NormalizeText(frame.FilterName.Value) == NormalizeText(item.Frame.FilterName.Value) && NormalizeText(frame.SessionId.Value) == NormalizeText(item.Frame.SessionId.Value)).ToArray()
-            : [item.Frame];
+        var targets = scope switch
+        {
+            ReviewAssignmentScope.Night => _frames.Where(frame => frame.Kind == FrameKind.Light && NormalizeText(frame.FilterName.Value) == NormalizeText(item.Frame.FilterName.Value) && NormalizeText(frame.SessionId.Value) == NormalizeText(item.Frame.SessionId.Value)).ToArray(),
+            ReviewAssignmentScope.Configuration => _frames.Where(frame => CalibrationScopeMatcher.Matches(item.Frame, frame, item.Calibration == "Dark" ? FrameKind.Dark : FrameKind.Bias)).ToArray(),
+            _ => [item.Frame]
+        };
         var previous = targets.Select(frame => (Frame: frame, Dark: frame.ManualDarkPath.HasOverride ? frame.ManualDarkPath.OverrideValue : null, HasDark: frame.ManualDarkPath.HasOverride, Bias: frame.ManualBiasPath.HasOverride ? frame.ManualBiasPath.OverrideValue : null, HasBias: frame.ManualBiasPath.HasOverride)).ToArray();
         foreach (var frame in targets)
             if (item.Calibration == "Dark") frame.ManualDarkPath.SetOverride(item.SelectedCandidate.Path); else frame.ManualBiasPath.SetOverride(item.SelectedCandidate.Path);
@@ -454,7 +457,8 @@ public sealed class MainViewModel : BindableBase
             RefreshIntelligence(); RebuildTree(); SaveState();
         });
         RefreshIntelligence(); RebuildTree(); SaveState(); UndoCommand.RaiseCanExecuteChanged();
-        Status = $"{item.Calibration} assegnato manualmente a {targets.Length} Light";
+        var scopeLabel = scope switch { ReviewAssignmentScope.Night => "nella notte", ReviewAssignmentScope.Configuration => "con la stessa firma tecnica", _ => "selezionato" };
+        Status = $"{item.Calibration} assegnato manualmente a {targets.Length} Light {scopeLabel}";
     }
 
     private void SaveSettings()
@@ -981,11 +985,20 @@ public sealed class MainViewModel : BindableBase
         };
         var candidates = result.Candidates.Where(candidate => candidate.Compatible)
             .Select(candidate => new ReviewCandidateOption(candidate.Frame.Path, candidate.Frame.FileName, candidate.Score,
-                candidate.Exact ? "Compatibilità esatta" : "Entro tolleranza", string.Join(" · ", candidate.Reasons)))
+                candidate.Exact ? "Compatibilità esatta" : "Entro tolleranza", string.Join(" · ", candidate.Reasons),
+                DisplayValue(candidate.Frame.Camera.Value), DisplayValue(candidate.Frame.Gain.Value), DisplayValue(candidate.Frame.Offset.Value),
+                DisplayTemperature(candidate.Frame.EffectiveTemperatureC), DisplayExposure(candidate.Frame.ExposureSeconds.Value),
+                DisplayBinning(candidate.Frame), DisplayValue(candidate.Frame.ReadoutMode.Value)))
             .ToArray();
         ReviewQueue.Add(new(frame, calibration, state, reason, action, result.Candidates.Count,
             frame.FilterName.Value ?? "Senza filtro", frame.SessionId.Value ?? "Notte non definita", priority, candidates));
     }
+
+    private static string DisplayValue(string? value) => string.IsNullOrWhiteSpace(value) ? "—" : value.Trim();
+    private static string DisplayValue(double? value) => value.HasValue ? value.Value.ToString("0.###", CultureInfo.CurrentCulture) : "—";
+    private static string DisplayTemperature(double? value) => value.HasValue ? $"{value.Value:0.#} °C" : "—";
+    private static string DisplayExposure(double? value) => value.HasValue ? $"{value.Value:0.###} s" : "—";
+    private static string DisplayBinning(FrameMetadata frame) => frame.XBin.Value.HasValue && frame.YBin.Value.HasValue ? $"{frame.XBin.Value}×{frame.YBin.Value}" : "—";
 
     private void RefreshStatistics()
     {
@@ -1172,6 +1185,7 @@ public sealed record SessionStatsRow(string Filter, string Session, string Techn
     public string NightsLabel => Nights == 1 ? "1 notte" : $"{Nights} notti";
 }
 public sealed record NightStatsRow(string Filter, string Session, string Night, string Integration, int Lights, string AverageExposure, string Temperature, int Issues);
+public enum ReviewAssignmentScope { Light, Night, Configuration }
 public sealed class ReviewQueueItem(FrameMetadata frame, string calibration, string state, string reason, string suggestedAction, int candidateCount, string filter, string night, int priority, IReadOnlyList<ReviewCandidateOption> candidates)
 {
     public FrameMetadata Frame { get; } = frame;
@@ -1188,8 +1202,13 @@ public sealed class ReviewQueueItem(FrameMetadata frame, string calibration, str
     public string Scope => $"{Filter} · {Night}";
     public string CandidateLabel => CandidateCount == 1 ? "1 candidato" : $"{CandidateCount} candidati";
     public bool CanAssignMaster => Calibration is "Dark" or "Bias" && Candidates.Count > 0;
+    public string TargetSignature => $"Light · Camera {SignatureValue(Frame.Camera.Value)} · G{SignatureValue(Frame.Gain.Value)} · O{SignatureValue(Frame.Offset.Value)} · {SignatureTemperature(Frame.EffectiveTemperatureC)} · {SignatureBinning(Frame)} · {SignatureValue(Frame.ReadoutMode.Value)}";
+    private static string SignatureValue(string? value) => string.IsNullOrWhiteSpace(value) ? "—" : value.Trim();
+    private static string SignatureValue(double? value) => value.HasValue ? value.Value.ToString("0.###") : "—";
+    private static string SignatureTemperature(double? value) => value.HasValue ? $"{value.Value:0.#} °C" : "—";
+    private static string SignatureBinning(FrameMetadata value) => value.XBin.Value.HasValue && value.YBin.Value.HasValue ? $"{value.XBin.Value}×{value.YBin.Value}" : "—";
 }
-public sealed record ReviewCandidateOption(string Path, string FileName, int Score, string Compatibility, string Reasons)
+public sealed record ReviewCandidateOption(string Path, string FileName, int Score, string Compatibility, string Reasons, string Camera, string Gain, string Offset, string Temperature, string Exposure, string Binning, string Readout)
 {
     public string Display => $"{FileName} · score {Score} · {Compatibility}";
 }

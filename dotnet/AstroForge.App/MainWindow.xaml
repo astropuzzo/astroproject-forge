@@ -304,20 +304,46 @@
                                 <StackPanel><TextBlock Text="Coda di revisione" Style="{StaticResource Title}"/><TextBlock Text="Solo decisioni che richiedono dati o conferma. Seleziona una voce per aprirla nell’Inspector." Style="{StaticResource MutedText}" Margin="0,2,0,14"/></StackPanel>
                                 <Border HorizontalAlignment="Right" VerticalAlignment="Top" Background="#172A32" CornerRadius="12" Padding="12,7"><StackPanel Orientation="Horizontal"><TextBlock Text="{Binding ReviewQueueCount}" Foreground="{StaticResource Accent}" FontSize="18" FontWeight="SemiBold"/><TextBlock Text="  da risolvere" Style="{StaticResource MutedText}" VerticalAlignment="Center"/></StackPanel></Border>
                             </Grid>
-                            <ListBox Grid.Row="1" ItemsSource="{Binding ReviewQueue}" SelectionChanged="ReviewQueue_SelectionChanged" MouseDoubleClick="ReviewQueue_MouseDoubleClick" ToolTip="Doppio click per mostrare il Light originale" Background="Transparent" BorderThickness="0" ScrollViewer.HorizontalScrollBarVisibility="Disabled">
+                            <Grid Grid.Row="1">
+                            <ListBox ItemsSource="{Binding ReviewQueue}" SelectionChanged="ReviewQueue_SelectionChanged" MouseDoubleClick="ReviewQueue_MouseDoubleClick" ToolTip="Doppio click per mostrare il Light originale" Background="Transparent" BorderThickness="0" ScrollViewer.HorizontalScrollBarVisibility="Disabled">
                                 <ListBox.ItemContainerStyle><Style TargetType="ListBoxItem"><Setter Property="HorizontalContentAlignment" Value="Stretch"/><Setter Property="Padding" Value="0"/><Setter Property="Margin" Value="0,0,0,8"/><Setter Property="Background" Value="Transparent"/></Style></ListBox.ItemContainerStyle>
                                 <ListBox.ItemTemplate><DataTemplate>
                                     <Border Style="{StaticResource Card}" Padding="14">
                                         <Grid><Grid.ColumnDefinitions><ColumnDefinition Width="86"/><ColumnDefinition/><ColumnDefinition Width="145"/></Grid.ColumnDefinitions>
                                             <Border Background="#4A2C20" CornerRadius="8" Padding="8,4" HorizontalAlignment="Left" VerticalAlignment="Top"><TextBlock Text="{Binding Calibration}" Foreground="{StaticResource Warning}" FontWeight="SemiBold"/></Border>
                                             <StackPanel Grid.Column="1" Margin="10,0,14,0"><TextBlock Text="{Binding State}" FontWeight="SemiBold" FontSize="15"/><TextBlock Text="{Binding Frame.FileName}" Style="{StaticResource MutedText}" FontSize="11" TextTrimming="CharacterEllipsis"/><TextBlock Text="{Binding Reason}" Margin="0,7,0,0" TextWrapping="Wrap"/><TextBlock Text="{Binding SuggestedAction}" Foreground="{StaticResource Accent}" Margin="0,5,0,0" TextWrapping="Wrap" FontSize="11"/>
-                                                <StackPanel Margin="0,9,0,0" Visibility="{Binding CanAssignMaster, Converter={StaticResource BooleanToVisibility}}"><ComboBox ItemsSource="{Binding Candidates}" SelectedItem="{Binding SelectedCandidate}" DisplayMemberPath="Display" ToolTip="I dettagli completi del candidato restano disponibili nel report"/><StackPanel Orientation="Horizontal" Margin="0,6,0,0"><Button Content="Assegna a questo Light" Click="AssignCandidate_Click" Padding="9,5"/><Button Content="Applica alla notte" Click="AssignCandidateGroup_Click" Margin="6,0,0,0" Padding="9,5"/></StackPanel></StackPanel>
+                                                <StackPanel Margin="0,9,0,0" Visibility="{Binding CanAssignMaster, Converter={StaticResource BooleanToVisibility}}">
+                                                    <TextBlock Text="{Binding TargetSignature}" Style="{StaticResource MutedText}" FontSize="10" TextWrapping="Wrap" Margin="0,0,0,6"/>
+                                                    <ComboBox ItemsSource="{Binding Candidates}" SelectedItem="{Binding SelectedCandidate}" DisplayMemberPath="Display" ToolTip="Scegli il Master da assegnare"/>
+                                                    <Expander Header="Confronta i candidati campo per campo" Margin="0,7,0,0">
+                                                        <DataGrid ItemsSource="{Binding Candidates}" SelectedItem="{Binding SelectedCandidate, Mode=TwoWay}" AutoGenerateColumns="False" IsReadOnly="True" MaxHeight="190" Margin="0,5,0,0" HeadersVisibility="Column" CanUserAddRows="False" CanUserDeleteRows="False" SelectionMode="Single">
+                                                            <DataGrid.Columns>
+                                                                <DataGridTextColumn Header="Master" Binding="{Binding FileName}" Width="2*"/>
+                                                                <DataGridTextColumn Header="Camera" Binding="{Binding Camera}" Width="*"/>
+                                                                <DataGridTextColumn Header="Gain" Binding="{Binding Gain}" Width="58"/>
+                                                                <DataGridTextColumn Header="Offset" Binding="{Binding Offset}" Width="58"/>
+                                                                <DataGridTextColumn Header="Temp." Binding="{Binding Temperature}" Width="70"/>
+                                                                <DataGridTextColumn Header="Esp." Binding="{Binding Exposure}" Width="70"/>
+                                                                <DataGridTextColumn Header="Bin" Binding="{Binding Binning}" Width="52"/>
+                                                                <DataGridTextColumn Header="Readout" Binding="{Binding Readout}" Width="*"/>
+                                                                <DataGridTextColumn Header="Score" Binding="{Binding Score}" Width="54"/>
+                                                            </DataGrid.Columns>
+                                                        </DataGrid>
+                                                    </Expander>
+                                                    <WrapPanel Margin="0,7,0,0">
+                                                        <Button Content="Solo questo Light" Click="AssignCandidate_Click" Padding="9,5"/>
+                                                        <Button Content="Tutta la notte" Click="AssignCandidateGroup_Click" Margin="6,0,0,0" Padding="9,5"/>
+                                                        <Button Content="Stessa firma tecnica" Click="AssignCandidateSignature_Click" Margin="6,0,0,0" Padding="9,5" ToolTip="Applica a tutte le notti con camera, gain, offset, temperatura, binning e readout equivalenti; per i Dark anche esposizione"/>
+                                                    </WrapPanel>
+                                                </StackPanel>
                                             </StackPanel>
                                             <StackPanel Grid.Column="2"><TextBlock Text="{Binding Scope}" TextAlignment="Right" TextWrapping="Wrap"/><TextBlock Text="{Binding CandidateLabel}" Style="{StaticResource MutedText}" TextAlignment="Right" Margin="0,5,0,0"/></StackPanel>
                                         </Grid>
                                     </Border>
                                 </DataTemplate></ListBox.ItemTemplate>
                             </ListBox>
+                            <StackPanel Visibility="{Binding ReviewQueue, Converter={StaticResource EmptyCollectionToVisibility}}" HorizontalAlignment="Center" VerticalAlignment="Center" MaxWidth="430"><Border Width="58" Height="58" CornerRadius="18" Background="#173A3A" HorizontalAlignment="Center"><TextBlock Text="✓" Foreground="{StaticResource Accent}" FontSize="26" FontWeight="Bold" HorizontalAlignment="Center" VerticalAlignment="Center"/></Border><TextBlock Text="Nessuna decisione in sospeso" FontSize="21" FontWeight="SemiBold" TextAlignment="Center" Margin="0,15,0,6"/><TextBlock Text="Dark, Bias e Flat risultano assegnati. Se modifichi metadati, librerie o collegamenti, qui compariranno soltanto i casi che richiedono una scelta." Style="{StaticResource MutedText}" TextWrapping="Wrap" TextAlignment="Center"/></StackPanel>
+                            </Grid>
                         </Grid>
                     </TabItem>
                     <TabItem Header="◇  MASTER LIBRARY LAB">

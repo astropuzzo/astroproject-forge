@@ -270,6 +270,8 @@ essere registrata nel manifest.
 
 **Avanzamento 12 luglio 2026:** implementata la Coda di revisione v1 come quinta area dell'app. Le assegnazioni Flat/Dark/Bias non risolte sono ordinate per priorità e mostrano stato, frame, filtro/notte, numero di candidati, causa e azione suggerita. Selezionare una voce porta il relativo frame nell’Inspector. Dark e Bias possono ora essere assegnati esplicitamente al singolo Light o all'intera notte; la scelta è persistente, annullabile e prevale sull'automatismo. Restano da completare una comparazione tabellare campo-per-campo e l'assegnazione batch con firma di configurazione, necessarie per chiudere P0.3.
 
+**Avanzamento 14 luglio 2026 — revisione batch v2:** aggiunto il confronto espandibile dei Master candidati con Camera, Gain, Offset, temperatura, esposizione, binning, readout e score. Dark e Bias possono essere assegnati al singolo Light, alla notte astronomica oppure a tutti i Light che condividono la stessa firma tecnica, anche attraverso filtri e notti differenti. La firma è una regola testata del Core: Camera, Gain, Offset, temperatura entro tolleranza, dimensioni, binning e readout devono coincidere; per il Dark coincide anche l'esposizione, mentre per il Bias viene ignorata. L'operazione resta persistente e annullabile. P0.3 è funzionalmente chiuso; resta l'audit visuale su dataset con decine di candidati, incluso uso da tastiera e schermi stretti.
+
 ## P0.4 — Motore di regole e profili riutilizzabili
 
 ### Intervento
