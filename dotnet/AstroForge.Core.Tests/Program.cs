@@ -22,6 +22,17 @@ Assert(frames.Count(frame => frame.Kind == AstroForge.Core.Models.FrameKind.Ligh
 Assert(frames.Count(frame => frame.Kind == AstroForge.Core.Models.FrameKind.Flat) == 2, "Flat non riconosciuti.");
 Assert(frames.Count(frame => frame.Kind == AstroForge.Core.Models.FrameKind.Dark) == 2, "Dark non riconosciuti.");
 Assert(frames.Count(frame => frame.Kind == AstroForge.Core.Models.FrameKind.Bias) == 1, "Bias non riconosciuti.");
+var genericHeaders = new Dictionary<string, object?>
+{
+    ["OBSTYPE"] = "SCIENCE", ["DETECTOR"] = "Generic CMOS", ["FILTERID"] = "Ha",
+    ["EXPOSURETIME"] = "180", ["CCDGAIN"] = "120", ["BLACKLVL"] = "30", ["SENSOR-T"] = "-15",
+    ["CCDXBIN"] = "2", ["CCDYBIN"] = "2", ["NAXIS1"] = "3000", ["NAXIS2"] = "2000",
+    ["READMODE"] = "High Gain", ["DATE-OBS"] = "2026-07-13T22:30:00Z"
+};
+var genericFrame = AstroForge.Core.Parsing.FrameClassifier.Classify(Path.Combine(Path.GetTempPath(), "dark_name_but_science_header_0042.fit"), genericHeaders, SessionSettings.DefaultForLocalMachine());
+Assert(genericFrame.Kind == FrameKind.Light, "Un header generico valido deve prevalere su un nome file fuorviante.");
+Assert(genericFrame.Camera.Value == "Generic CMOS" && genericFrame.Gain.Value == 120 && genericFrame.Offset.Value == 30 && genericFrame.FilterName.Value == "Ha", "Alias FITS multiproduttore non risolti.");
+Assert(genericFrame.Camera.Source == MetadataSource.Header && genericFrame.XBin.Value == 2 && genericFrame.ReadoutMode.Value == "High Gain", "I metadati generici devono mantenere provenienza Header.");
 Assert(lightBeforeMidnight.SessionId.Value == "2026-06-14", $"Sessione astronomica errata: {lightBeforeMidnight.SessionId.Value}");
 Assert(darkMinusTen.Gain.Value == 100 && darkMinusTen.EffectiveTemperatureC == -10, "Metadati libreria Dark non risolti.");
 Assert(bias100.Gain.Value == 100, "Gain Master Bias non risolto.");

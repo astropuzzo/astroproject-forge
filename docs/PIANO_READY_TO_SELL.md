@@ -154,7 +154,7 @@ economico è basso.
    sostituzione filtro e cambio readout.
 4. **Fingerprint dei Flat**: confrontare vignettatura e polvere per suggerire
    discontinuità reali tra Flat Set.
-5. **Import N.I.N.A.**: confrontare sequenza pianificata, log e header acquisiti.
+5. **Import multiproduttore**: confrontare file FITS/XISF, sequenza pianificata, eventuali log e header acquisiti; l'integrazione N.I.N.A. resta un arricchimento opzionale.
 6. **Export dati**: CSV/JSON per fogli di calcolo, archivio personale e supporto.
 7. **Target intelligence**: ore totali per target e filtro, non soltanto per
    progetto.
@@ -321,6 +321,8 @@ Creare profili verificati almeno per:
 - Voyager o Sequence Generator Pro;
 - PixInsight XISF Master;
 - almeno una camera OSC e una mono di produttori differenti.
+
+**Avanzamento 14 luglio 2026 — import generico v1:** l'import accetta sia cartelle ricorsive sia singoli file `.fit`, `.fits`, `.fts` e `.xisf`, persistendoli correttamente nel progetto e tra i riavvii. N.I.N.A. non è più presentato né trattato come requisito. La classificazione è ora header-first: `IMAGETYP`, `FRAMETYP`, `OBSTYPE`, `FRAME`, `PICTTYPE` e `IMAGE-TYP` prevalgono sul nome file; quest'ultimo viene usato soltanto se il tipo non è dimostrabile dall'header. Aggiunti alias multiproduttore per camera, filtro, esposizione, Gain, Offset, temperature, binning, readout, Bayer, focale, rotatore e data. Una fixture non-N.I.N.A. verifica anche che un nome file contraddittorio non possa sovrascrivere un header SCIENCE valido. Restano multi-HDU, FITS compressi, golden dataset reali per produttore e fuzzing per chiudere P0.5.
 
 ### Criteri di accettazione
 

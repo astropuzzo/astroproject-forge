@@ -2,7 +2,7 @@
 
 [Italiano](docs/README.it.md) · **English**
 
-**Turn multi-night N.I.N.A. acquisitions into a reviewable PixInsight WBPP
+**Turn multi-night FITS/XISF acquisitions from any capture software into a reviewable PixInsight WBPP
 project without manually sorting hundreds of files.**
 
 AstroProject Forge is a native Windows application that reads FITS/XISF
@@ -35,7 +35,7 @@ prove instead of silently guessing.
 
 ```mermaid
 flowchart LR
-    A["N.I.N.A. folders<br/>FITS / XISF"] --> B["Header parsing<br/>and validation"]
+    A["Files or folders<br/>FITS / XISF"] --> B["Header-first parsing<br/>and validation"]
     L["Master libraries<br/>Dark / Bias"] --> B
     B --> C["Filter → optical session<br/>→ astronomical night"]
     C --> D["Explainable Flat / Dark / Bias matching"]

@@ -36,9 +36,16 @@ public partial class MainWindow : Window
 
     private void AddSource_Click(object sender, RoutedEventArgs e)
     {
-        var dialog = new OpenFolderDialog { Title = "Seleziona cartella N.I.N.A.", Multiselect = true };
+        var dialog = new OpenFolderDialog { Title = "Seleziona cartelle contenenti FITS o XISF", Multiselect = true };
         if (dialog.ShowDialog(this) == true)
             foreach (var folder in dialog.FolderNames) _viewModel.AddSource(folder);
+    }
+
+    private void AddFiles_Click(object sender, RoutedEventArgs e)
+    {
+        var dialog = new OpenFileDialog { Title = "Importa immagini astronomiche", Filter = "Immagini astronomiche (*.fit;*.fits;*.fts;*.xisf)|*.fit;*.fits;*.fts;*.xisf|Tutti i file (*.*)|*.*", Multiselect = true, CheckFileExists = true };
+        if (dialog.ShowDialog(this) == true)
+            foreach (var file in dialog.FileNames) _viewModel.AddSource(file);
     }
 
     private void RemoveSource_Click(object sender, RoutedEventArgs e)
@@ -97,6 +104,7 @@ public partial class MainWindow : Window
     private void ReopenOnboarding_Click(object sender, RoutedEventArgs e) { SettingsPopup.IsOpen = false; _onboardingStep = 1; _viewModel.OpenOnboarding(); UpdateOnboarding(); }
     private void OnboardingChooseLibrary_Click(object sender, RoutedEventArgs e) => ChooseLibrary_Click(sender, e);
     private void OnboardingAddSource_Click(object sender, RoutedEventArgs e) => AddSource_Click(sender, e);
+    private void OnboardingAddFiles_Click(object sender, RoutedEventArgs e) => AddFiles_Click(sender, e);
     private void OnboardingSkip_Click(object sender, RoutedEventArgs e) => _viewModel.CompleteOnboarding();
     private void OnboardingBack_Click(object sender, RoutedEventArgs e) { _onboardingStep = Math.Max(1, _onboardingStep - 1); UpdateOnboarding(); }
     private void OnboardingNext_Click(object sender, RoutedEventArgs e)

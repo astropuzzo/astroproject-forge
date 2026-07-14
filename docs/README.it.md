@@ -2,7 +2,7 @@
 
 **Italiano** · [English](../README.md)
 
-**Trasforma notti di acquisizione N.I.N.A. in un progetto multisessione pronto
+**Trasforma acquisizioni FITS/XISF multisessione prodotte da qualunque software in un progetto pronto
 per PixInsight WBPP, senza organizzare centinaia di file a mano.**
 
 AstroProject Forge è un'applicazione Windows nativa che legge i metadati
@@ -37,7 +37,7 @@ non può dimostrare, invece di inventare un abbinamento.
 
 ```mermaid
 flowchart LR
-    A["Cartelle N.I.N.A.<br/>FITS / XISF"] --> B["Lettura header<br/>e validazione"]
+    A["File o cartelle<br/>FITS / XISF"] --> B["Lettura prioritaria header<br/>e validazione"]
     L["Librerie Master<br/>Dark / Bias"] --> B
     B --> C["Filtro → sessione ottica<br/>→ notte astronomica"]
     C --> D["Matching Flat / Dark / Bias<br/>con motivazioni"]

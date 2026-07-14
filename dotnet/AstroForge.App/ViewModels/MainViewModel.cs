@@ -33,7 +33,7 @@ public sealed class MainViewModel : BindableBase
     private bool _showIssuesOnly;
     private string _searchText = "";
     private string _libraryPath = @"E:\immagini\MSTE";
-    private string _status = "Aggiungi una cartella N.I.N.A. e avvia la scansione";
+    private string _status = "Aggiungi file o cartelle FITS/XISF e avvia l’analisi";
     private double _progress;
     private string _editGain = "";
     private string _editOffset = "";
@@ -83,7 +83,7 @@ public sealed class MainViewModel : BindableBase
         _uiDensity = new[] { "Compatta", "Comoda", "Ampia" }.Contains(_state.UiDensity) ? _state.UiDensity : "Comoda";
         _reducedMotion = _state.ReducedMotion;
         _showOnboarding = !_state.HasCompletedOnboarding;
-        foreach (var path in _state.SourcePaths.Where(Directory.Exists)) SourcePaths.Add(path);
+        foreach (var path in _state.SourcePaths.Where(path => Directory.Exists(path) || File.Exists(path))) SourcePaths.Add(path);
         foreach (var pair in _state.Overrides.Where(pair => pair.Value.Kind is not null)) _kindOverrides.Add(pair.Key);
         ApplyOverridesCommand = new RelayCommand(ApplyOverrides, () => SelectedNode is not null && !IsScanning);
         ApplyLibraryOffsetCommand = new RelayCommand(ApplyLibraryOffset, () => _frames.Any(frame => frame.IsMaster) && !IsScanning);
