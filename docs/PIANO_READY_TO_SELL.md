@@ -522,6 +522,8 @@ pacchetto diagnostico` contenente, previa anteprima:
 Il pacchetto deve essere creato localmente. L’invio al supporto è sempre una
 scelta separata dell’utente.
 
+**Avanzamento 16 luglio 2026 — diagnostica v1:** introdotto un registro JSONL locale con timestamp UTC, livello, codice evento, messaggio controllato e tipo eccezione. I log ruotano automaticamente e oscurano percorsi Windows e nomi FITS/XISF prima della scrittura. Tutti gli errori intercettati dai flussi principali mostrano ora un codice `AF-*` ricercabile e lo registrano localmente; anche le eccezioni UI impreviste hanno recovery e codice dedicato. Dal menu progetto è disponibile `Esporta diagnostica`: prima del salvataggio mostra l'inventario esatto, poi crea localmente uno ZIP con versioni di app/Windows/runtime, impostazioni tecniche non sensibili, soli conteggi diagnostici, codici/severità degli errori e log recenti. Sono esclusi immagini, pixel, target, coordinate, nomi file, percorsi, header grezzi e dettagli dei Master. Testate rotazione, inventario ZIP e redazione di percorsi/nomi astronomici. Restano una vista log interna, correlazione per singola operazione e recovery journal del progetto per chiudere P0.12.
+
 ### Criteri di accettazione
 
 - Ogni errore mostrato nella GUI possiede un codice ricercabile.

@@ -5,6 +5,7 @@ using System.Text;
 using System.Text.Json;
 using AstroForge.Core.Models;
 using AstroForge.Core.Analysis;
+using AstroForge.Core.Diagnostics;
 using AstroForge.Core.Export;
 using AstroForge.Core.Matching;
 using AstroForge.Core.Scanning;
@@ -19,6 +20,7 @@ public sealed class MainViewModel : BindableBase
 {
     private readonly ProjectScanner _scanner = new();
     private readonly JsonHeaderCache _headerCache = new();
+    private readonly StructuredEventLog _eventLog = new();
     private readonly Stack<Action> _undo = new();
     private readonly AppState _state;
     private readonly HashSet<string> _kindOverrides = new(StringComparer.OrdinalIgnoreCase);
@@ -93,6 +95,7 @@ public sealed class MainViewModel : BindableBase
         LinkFlatSetCommand = new RelayCommand(LinkFlatSet, CanLinkFlatSet);
         UnlinkFlatSetCommand = new RelayCommand(UnlinkFlatSet, () => GetManualLinkFrames().Any(frame => frame.Kind == FrameKind.Light && frame.FlatSetId.HasOverride) && !IsScanning);
         UndoCommand = new RelayCommand(Undo, () => _undo.Count > 0 && !IsScanning);
+        _eventLog.Write("Information", "AF-APP-START", "Applicazione avviata");
     }
 
     public ObservableCollection<string> SourcePaths { get; } = [];
@@ -419,6 +422,7 @@ public sealed class MainViewModel : BindableBase
             RefreshIntelligence();
             RebuildTree();
             Status = $"{TotalFiles} file analizzati · {_scanner.LastCacheHits} da cache · {_scanner.LastParsedFiles} letti · {TotalIssues} segnalazioni";
+            _eventLog.Write("Information", "AF-SCAN-OK", $"Scansione completata: {TotalFiles} file, {TotalIssues} segnalazioni");
             Raise(nameof(TotalFiles)); Raise(nameof(TotalIssues)); Raise(nameof(OverrideCount));
             ApplyLibraryOffsetCommand.RaiseCanExecuteChanged();
             ApplyProjectDefaultsCommand.RaiseCanExecuteChanged();
@@ -455,6 +459,45 @@ public sealed class MainViewModel : BindableBase
         Status = $"Statistiche esportate: {output}";
         return output;
     }
+
+    public string SupportBundlePreview => string.Join(Environment.NewLine, SupportBundleBuilder.PreviewEntries.Select(entry => $"• {entry}"));
+
+    public async Task<string> ExportSupportBundleAsync(string outputPath, CancellationToken cancellationToken = default)
+    {
+        var allFrames = _frames.Concat(_masterLibraryFrames).DistinctBy(frame => frame.Path, StringComparer.OrdinalIgnoreCase).ToArray();
+        var issues = allFrames.SelectMany(frame => frame.Issues).GroupBy(issue => new { issue.Code, issue.Severity })
+            .Select(group => new SupportIssueSummary(group.Key.Code, group.Key.Severity.ToString(), group.Count())).OrderBy(item => item.Code).ToArray();
+        var settings = new Dictionary<string, object?>
+        {
+            ["sessionBoundaryHour"] = SessionBoundaryHour,
+            ["defaultGainConfigured"] = ParseDefault(ProjectDefaultGain).HasValue,
+            ["defaultOffsetConfigured"] = ParseDefault(ProjectDefaultOffset).HasValue,
+            ["defaultTemperatureConfigured"] = ParseDefault(ProjectDefaultTemperature).HasValue,
+            ["uiDensity"] = UiDensity,
+            ["reducedMotion"] = ReducedMotion,
+            ["sourceCount"] = SourcePaths.Count,
+            ["masterLibraryCount"] = MasterLibraries.Count,
+            ["enabledMasterLibraryCount"] = MasterLibraries.Count(item => item.Enabled)
+        };
+        var diagnostics = new Dictionary<string, object?>
+        {
+            ["frameCount"] = allFrames.Length,
+            ["frameKinds"] = allFrames.GroupBy(frame => frame.Kind.ToString()).ToDictionary(group => group.Key, group => group.Count()),
+            ["issueCount"] = allFrames.Sum(frame => frame.Issues.Count),
+            ["unresolvedCalibrationCount"] = UnresolvedCalibrations,
+            ["hasAnalysis"] = _analysis is not null,
+            ["hasExportPlan"] = _plan is not null,
+            ["headerCacheHitsLastScan"] = _scanner.LastCacheHits,
+            ["headersParsedLastScan"] = _scanner.LastParsedFiles
+        };
+        var version = typeof(MainViewModel).Assembly.GetName().Version?.ToString() ?? "unknown";
+        var result = await SupportBundleBuilder.BuildAsync(new(outputPath, version, settings, diagnostics, issues, _eventLog.Files), cancellationToken);
+        _eventLog.Write("Information", "AF-SUPPORT-EXPORTED", $"Pacchetto diagnostico creato con {result.Entries.Count} elementi");
+        Status = $"Pacchetto diagnostico creato · {result.Entries.Count} elementi";
+        return result.Path;
+    }
+
+    public void RecordError(string code, Exception exception) => _eventLog.Write("Error", code, "Operazione non completata", exception);
 
     public void ClearHeaderCache()
     {

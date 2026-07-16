@@ -62,6 +62,7 @@ flowchart LR
 ### Project Intelligence
 
 - parser FITS e XISF;
+- diagnostica locale privacy-safe con codici errore ricercabili e pacchetto ZIP;
 - classificazione Light, Flat, Dark, Bias e Dark-flat;
 - notte astronomica configurabile: i file dopo mezzanotte possono restare nella
   sessione della sera precedente;

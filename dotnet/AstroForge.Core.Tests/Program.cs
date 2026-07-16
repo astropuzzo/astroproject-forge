@@ -6,6 +6,8 @@ using AstroForge.Core.Wbpp;
 using AstroForge.Core.Export;
 using AstroForge.Core.Models;
 using AstroForge.Core.Matching;
+using AstroForge.Core.Diagnostics;
+using System.IO.Compression;
 
 var lightBeforeMidnight = Synthetic(FrameKind.Light, "2026-06-15_00-21-26_SIOIII.fits", "SIOIII", new DateTimeOffset(2026, 6, 15, 0, 21, 26, TimeSpan.Zero));
 lightBeforeMidnight.SetTemperatureC.SetOriginal(-10, MetadataSource.Header);
@@ -147,6 +149,17 @@ try
     await File.AppendAllTextAsync(sourceA, "-changed");
     var invalidatedFrames = await cacheScanner.ScanAsync([sourceA], SessionSettings.DefaultForLocalMachine(), cache: cache);
     Assert(cacheScanner.LastCacheHits == 0 && invalidatedFrames.Single().Issues.Any(issue => issue.Code == "image.unreadable"), "Cache non invalidata dopo modifica del file.");
+    var diagnosticLog = new StructuredEventLog(Path.Combine(exportRoot, "logs"), 4096, 2);
+    for (var index = 0; index < 80; index++) diagnosticLog.Write("Error", "AF-TEST-001", $@"Errore controllato {index} in C:\secret\target-{index}.fits", new IOException("private detail"));
+    Assert(diagnosticLog.Files.Count is >= 2 and <= 3, "Rotazione log strutturato non applicata.");
+    var supportZip = Path.Combine(exportRoot, "support.zip");
+    var support = await SupportBundleBuilder.BuildAsync(new(supportZip, "test", new Dictionary<string, object?> { ["uiDensity"] = "Comoda" }, new Dictionary<string, object?> { ["frameCount"] = 2 }, [new("image.unreadable", "Error", 1)], diagnosticLog.Files));
+    using (var supportArchive = ZipFile.OpenRead(support.Path))
+    {
+        Assert(supportArchive.Entries.All(entry => !new[] { ".fit", ".fits", ".fts", ".xisf" }.Contains(Path.GetExtension(entry.FullName), StringComparer.OrdinalIgnoreCase)), "Il support bundle non deve contenere immagini astronomiche.");
+        var supportText = string.Join("\n", supportArchive.Entries.Select(entry => { using var reader = new StreamReader(entry.Open()); return reader.ReadToEnd(); }));
+        Assert(!supportText.Contains(@"C:\secret", StringComparison.OrdinalIgnoreCase) && !supportText.Contains("target-", StringComparison.OrdinalIgnoreCase), "Percorsi o nomi astronomici presenti nel support bundle.");
+    }
     var fakeLight = new FrameMetadata { Path = sourceA, Kind = FrameKind.Light };
     var fakeMaster = new FrameMetadata { Path = sourceB, Kind = FrameKind.Dark, IsMaster = true };
     var emptyRecipe = new WbppRecipe([], ["test"]);

@@ -158,7 +158,7 @@ public partial class MainWindow : Window
     private void BuildPlan_Click(object sender, RoutedEventArgs e)
     {
         try { _viewModel.BuildPlan(); }
-        catch (Exception exception) { MessageBox.Show(this, exception.Message, "Anteprima non disponibile", MessageBoxButton.OK, MessageBoxImage.Warning); }
+        catch (Exception exception) { ShowError("AF-PLAN-001", "Anteprima non disponibile", exception, MessageBoxImage.Warning); }
     }
 
     private async void Export_Click(object sender, RoutedEventArgs e)
@@ -168,7 +168,7 @@ public partial class MainWindow : Window
             var path = await _viewModel.ExportAsync();
             MessageBox.Show(this, $"Progetto creato e verificato.\n\n{path}", "Esportazione completata", MessageBoxButton.OK, MessageBoxImage.Information);
         }
-        catch (Exception exception) { MessageBox.Show(this, exception.Message, "Esportazione non completata", MessageBoxButton.OK, MessageBoxImage.Error); }
+        catch (Exception exception) { ShowError("AF-EXPORT-001", "Esportazione non completata", exception, MessageBoxImage.Error); }
     }
 
     private void ExportStatistics_Click(object sender, RoutedEventArgs e)
@@ -180,7 +180,7 @@ public partial class MainWindow : Window
             var path = _viewModel.ExportStatistics(dialog.FolderName);
             MessageBox.Show(this, $"Statistiche CSV e JSON esportate.\n\n{path}", "Dati esportati", MessageBoxButton.OK, MessageBoxImage.Information);
         }
-        catch (Exception exception) { MessageBox.Show(this, exception.Message, "Esportazione statistiche non completata", MessageBoxButton.OK, MessageBoxImage.Warning); }
+        catch (Exception exception) { ShowError("AF-STATS-001", "Esportazione statistiche non completata", exception, MessageBoxImage.Warning); }
     }
 
     private async void OpenProject_Click(object sender, RoutedEventArgs e)
@@ -190,7 +190,7 @@ public partial class MainWindow : Window
             var dialog = new OpenFileDialog { Title = "Apri progetto AstroProject Forge", Filter = "Progetto AstroProject Forge (*.astroforge)|*.astroforge" };
             if (dialog.ShowDialog(this) == true) await _viewModel.LoadProjectAsync(dialog.FileName);
         }
-        catch (Exception exception) { MessageBox.Show(this, exception.Message, "Progetto non aperto", MessageBoxButton.OK, MessageBoxImage.Error); }
+        catch (Exception exception) { ShowError("AF-PROJECT-OPEN-001", "Progetto non aperto", exception, MessageBoxImage.Error); }
     }
 
     private void SaveProject_Click(object sender, RoutedEventArgs e)
@@ -200,7 +200,7 @@ public partial class MainWindow : Window
             var dialog = new SaveFileDialog { Title = "Salva progetto AstroProject Forge", Filter = "Progetto AstroProject Forge (*.astroforge)|*.astroforge", AddExtension = true, DefaultExt = ".astroforge", FileName = string.IsNullOrWhiteSpace(_viewModel.ProjectName) ? "Nuovo progetto" : _viewModel.ProjectName };
             if (dialog.ShowDialog(this) == true) _viewModel.SaveProject(dialog.FileName);
         }
-        catch (Exception exception) { MessageBox.Show(this, exception.Message, "Progetto non salvato", MessageBoxButton.OK, MessageBoxImage.Error); }
+        catch (Exception exception) { ShowError("AF-PROJECT-SAVE-001", "Progetto non salvato", exception, MessageBoxImage.Error); }
     }
 
     private void ClearCache_Click(object sender, RoutedEventArgs e)
@@ -210,10 +210,31 @@ public partial class MainWindow : Window
             _viewModel.ClearHeaderCache();
     }
 
+    private async void ExportSupportBundle_Click(object sender, RoutedEventArgs e)
+    {
+        MorePopup.IsOpen = false;
+        var preview = "Il pacchetto verrà creato soltanto sul computer e conterrà esattamente:\n\n" + _viewModel.SupportBundlePreview + "\n\nNon include FITS/XISF, pixel, target, coordinate, nomi file, percorsi o header grezzi. Continuare?";
+        if (MessageBox.Show(this, preview, "Anteprima pacchetto diagnostico", MessageBoxButton.YesNo, MessageBoxImage.Information) != MessageBoxResult.Yes) return;
+        var dialog = new SaveFileDialog { Title = "Salva pacchetto diagnostico", Filter = "Pacchetto diagnostico ZIP (*.zip)|*.zip", AddExtension = true, DefaultExt = ".zip", FileName = $"AstroProjectForge-Support-{DateTime.Now:yyyyMMdd-HHmmss}" };
+        if (dialog.ShowDialog(this) != true) return;
+        try
+        {
+            var path = await _viewModel.ExportSupportBundleAsync(dialog.FileName);
+            MessageBox.Show(this, $"Pacchetto creato localmente:\n{path}\n\nNessun dato è stato inviato.", "Diagnostica esportata", MessageBoxButton.OK, MessageBoxImage.Information);
+        }
+        catch (Exception exception) { ShowError("AF-SUPPORT-001", "Pacchetto diagnostico non creato", exception, MessageBoxImage.Error); }
+    }
+
+    private void ShowError(string code, string title, Exception exception, MessageBoxImage icon)
+    {
+        _viewModel.RecordError(code, exception);
+        MessageBox.Show(this, $"[{code}] {exception.Message}\n\nIl codice è stato registrato nella diagnostica locale.", title, MessageBoxButton.OK, icon);
+    }
+
     private async void Scan_Click(object sender, RoutedEventArgs e)
     {
         try { await _viewModel.ScanAsync(); }
-        catch (Exception exception) { MessageBox.Show(this, exception.Message, "Scansione non completata", MessageBoxButton.OK, MessageBoxImage.Error); }
+        catch (Exception exception) { ShowError("AF-SCAN-001", "Scansione non completata", exception, MessageBoxImage.Error); }
     }
 
     private void Tree_SelectedItemChanged(object sender, RoutedPropertyChangedEventArgs<object> e) => _viewModel.SelectedNode = e.NewValue as ProjectTreeNode;
@@ -251,25 +272,25 @@ public partial class MainWindow : Window
     private async void OrganizeMasterLibrary_Click(object sender, RoutedEventArgs e)
     {
         try { await _viewModel.OrganizeMasterLibraryAsync(); MessageBox.Show(this, _viewModel.MasterOrganizerStatus, "Master Library completata", MessageBoxButton.OK, MessageBoxImage.Information); }
-        catch (Exception exception) { MessageBox.Show(this, exception.Message, "Organizzazione non completata", MessageBoxButton.OK, MessageBoxImage.Warning); }
+        catch (Exception exception) { ShowError("AF-MASTER-ORGANIZE-001", "Organizzazione non completata", exception, MessageBoxImage.Warning); }
     }
 
     private async void PreviewMasterOrganizer_Click(object sender, RoutedEventArgs e)
     {
         try { await _viewModel.PreviewMasterOrganizerAsync(); }
-        catch (Exception exception) { MessageBox.Show(this, exception.Message, "Preflight non completato", MessageBoxButton.OK, MessageBoxImage.Warning); }
+        catch (Exception exception) { ShowError("AF-MASTER-PREFLIGHT-001", "Preflight non completato", exception, MessageBoxImage.Warning); }
     }
 
     private async void RollbackMasterOrganizer_Click(object sender, RoutedEventArgs e)
     {
         if (MessageBox.Show(this, "Annullare l’ultimo batch creato da AstroProject Forge? Verranno eliminate soltanto le copie elencate nel manifest e solo se i loro hash sono invariati. Gli originali non saranno toccati.", "Rollback Master Library", MessageBoxButton.YesNo, MessageBoxImage.Warning) != MessageBoxResult.Yes) return;
         try { await _viewModel.RollbackMasterOrganizerAsync(); MessageBox.Show(this, _viewModel.MasterOrganizerStatus, "Rollback completato", MessageBoxButton.OK, MessageBoxImage.Information); }
-        catch (Exception exception) { MessageBox.Show(this, exception.Message, "Rollback interrotto", MessageBoxButton.OK, MessageBoxImage.Warning); }
+        catch (Exception exception) { ShowError("AF-MASTER-ROLLBACK-001", "Rollback interrotto", exception, MessageBoxImage.Warning); }
     }
 
     private async void ScanMasterLibraries_Click(object sender, RoutedEventArgs e)
     {
         try { await _viewModel.ScanMasterLibrariesAsync(); }
-        catch (Exception exception) { MessageBox.Show(this, exception.Message, "Scansione librerie non completata", MessageBoxButton.OK, MessageBoxImage.Warning); }
+        catch (Exception exception) { ShowError("AF-MASTER-SCAN-001", "Scansione librerie non completata", exception, MessageBoxImage.Warning); }
     }
 }

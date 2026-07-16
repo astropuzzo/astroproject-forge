@@ -63,6 +63,7 @@ flowchart LR
 ### Project intelligence
 
 - FITS and XISF parsing;
+- local privacy-safe diagnostics with searchable error codes and support ZIP export;
 - Light, Flat, Dark, Bias, and Dark-flat classification;
 - configurable astronomical-night boundary across midnight;
 - automatic Flat Epochs and manual multi-session Flat linking;
