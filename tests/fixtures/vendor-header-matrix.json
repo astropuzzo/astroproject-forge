@@ -1,0 +1,7 @@
+[
+  { "vendor": "N.I.N.A. / ZWO", "headers": { "IMAGETYP": "Light", "INSTRUME": "ZWO ASI2600MC Pro", "GAIN": 100, "OFFSET": 50, "SET-TEMP": -10, "FILTER": "HOO" } },
+  { "vendor": "ASIAIR", "headers": { "FRAME": "Object", "CAMERA": "ASI533MM Pro", "CAM-GAIN": "101", "BLKLEVEL": "20", "COOLER-T": "-5", "FILTNAME": "Ha" } },
+  { "vendor": "QHY / Voyager", "headers": { "OBSTYPE": "Science", "DETECTOR": "QHY268C", "CCDGAIN": "26", "BLACKLVL": "30", "CCD-SETT": "-15", "FILTERID": "L" } },
+  { "vendor": "Player One / SharpCap", "headers": { "FRAMETYP": "Light Frame", "SENSOR": "Poseidon-C Pro", "GAIN": "125.5", "OFFSET": "10", "SETTEMP": "-10", "FILTER": "DualBand" } },
+  { "vendor": "Generic FITS", "headers": { "PICTTYPE": "science", "INSTRUME": "Generic CMOS", "GAIN": "42", "OFFSET": "7", "SET-TEMP": "0", "FILTER": "NoFilter" } }
+]

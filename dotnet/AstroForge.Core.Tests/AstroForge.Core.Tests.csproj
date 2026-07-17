@@ -7,6 +7,7 @@
   </PropertyGroup>
   <ItemGroup>
     <ProjectReference Include="..\AstroForge.Core\AstroForge.Core.csproj" />
+    <Content Include="..\..\tests\fixtures\vendor-header-matrix.json" Link="fixtures\vendor-header-matrix.json" CopyToOutputDirectory="PreserveNewest" />
   </ItemGroup>
 </Project>
 

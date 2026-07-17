@@ -1,9 +1,12 @@
 using System.IO;
 using System.Diagnostics;
+using System.Net.Http;
 using System.Windows;
 using System.Windows.Media.Animation;
 using Microsoft.Win32;
 using AstroForge.App.ViewModels;
+using AstroForge.App.Services;
+using AstroForge.Core.Releases;
 
 namespace AstroForge.App;
 
@@ -14,6 +17,8 @@ public partial class MainWindow : Window
     private bool _inspectorVisible = true;
     private bool _masterLabActive;
     private int _onboardingStep = 1;
+    private readonly UpdateService _updateService = new();
+    private ReleaseManifest? _availableUpdate;
 
     public MainWindow()
     {
@@ -101,6 +106,57 @@ public partial class MainWindow : Window
     private void CloseDiagnostics_Click(object sender, RoutedEventArgs e) => DiagnosticsOverlay.Visibility = Visibility.Collapsed;
     private void RefreshDiagnostics_Click(object sender, RoutedEventArgs e) => _viewModel.RefreshDiagnostics();
     private void Settings_Click(object sender, RoutedEventArgs e) { MorePopup.IsOpen = false; SettingsPopup.IsOpen = !SettingsPopup.IsOpen; }
+    private void ShowAbout_Click(object sender, RoutedEventArgs e)
+    {
+        MorePopup.IsOpen = false;
+        SettingsPopup.IsOpen = false;
+        AboutOverlay.Visibility = Visibility.Visible;
+    }
+    private void CloseAbout_Click(object sender, RoutedEventArgs e) => AboutOverlay.Visibility = Visibility.Collapsed;
+    private async void CheckUpdates_Click(object sender, RoutedEventArgs e) => await CheckUpdatesAsync(true);
+    private async Task CheckUpdatesAsync(bool interactive)
+    {
+        try
+        {
+            _viewModel.UpdateStatus = $"Controllo canale {_viewModel.UpdateChannel}…";
+            DownloadUpdateButton.Visibility = Visibility.Collapsed;
+            var channel = Enum.Parse<ReleaseChannel>(_viewModel.UpdateChannel, true);
+            var decision = await _updateService.CheckAsync(UpdateService.FeedUri(channel), ReleaseIdentity.Version, channel);
+            _viewModel.UpdateStatus = decision.Reason;
+            _availableUpdate = decision.IsAvailable ? decision.Manifest : null;
+            DownloadUpdateButton.Visibility = decision.IsAvailable ? Visibility.Visible : Visibility.Collapsed;
+            if (interactive && !decision.IsAvailable)
+                MessageBox.Show(this, decision.Reason, "Aggiornamenti", MessageBoxButton.OK, MessageBoxImage.Information);
+        }
+        catch (HttpRequestException)
+        {
+            _availableUpdate = null;
+            _viewModel.UpdateStatus = "Feed non raggiungibile o canale non ancora pubblicato";
+            if (interactive) MessageBox.Show(this, "Il canale selezionato non è raggiungibile o non è ancora stato pubblicato. Nessun file è stato scaricato.", "Aggiornamenti", MessageBoxButton.OK, MessageBoxImage.Information);
+        }
+        catch (Exception exception)
+        {
+            _availableUpdate = null;
+            _viewModel.UpdateStatus = "Manifest rifiutato: integrità o formato non validi";
+            if (interactive) ShowError("AF-UPDATE-001", "Controllo aggiornamenti non completato", exception, MessageBoxImage.Warning);
+        }
+    }
+    private async void DownloadUpdate_Click(object sender, RoutedEventArgs e)
+    {
+        if (_availableUpdate is null) return;
+        var artifact = _availableUpdate.Installer;
+        var dialog = new SaveFileDialog { Title = "Salva installer verificato", FileName = artifact.FileName, Filter = "Installer Windows (*.exe)|*.exe", AddExtension = true, DefaultExt = ".exe" };
+        if (dialog.ShowDialog(this) != true) return;
+        try
+        {
+            _viewModel.UpdateStatus = "Download e verifica SHA-256…";
+            var progress = new Progress<double>(value => _viewModel.UpdateStatus = $"Download verificato · {value:0}%");
+            var path = await _updateService.DownloadVerifiedAsync(artifact, dialog.FileName, progress);
+            _viewModel.UpdateStatus = "Installer verificato e pronto · avvio manuale";
+            MessageBox.Show(this, $"Installer scaricato e verificato.\n\n{path}\n\nForge non lo avvierà automaticamente: chiudi il progetto e avvialo quando vuoi procedere.", "Aggiornamento verificato", MessageBoxButton.OK, MessageBoxImage.Information);
+        }
+        catch (Exception exception) { ShowError("AF-UPDATE-002", "Download rifiutato", exception, MessageBoxImage.Error); }
+    }
     private void DensitySelector_SelectionChanged(object sender, System.Windows.Controls.SelectionChangedEventArgs e)
     {
         if (!IsLoaded) return;
@@ -139,15 +195,18 @@ public partial class MainWindow : Window
         Application.Current.Resources["ToolbarHeight"] = density switch { "Compatta" => 38d, "Ampia" => 46d, _ => 42d };
     }
 
-    private void MainWindow_Loaded(object sender, RoutedEventArgs e)
+    private async void MainWindow_Loaded(object sender, RoutedEventArgs e)
     {
         ApplyUiPreferences();
-        if (_viewModel.ReducedMotion) return;
-        RootSurface.Opacity = 0;
-        if (RootSurface.RenderTransform is System.Windows.Media.TranslateTransform transform) transform.Y = 8;
-        RootSurface.BeginAnimation(OpacityProperty, new DoubleAnimation(0, 1, TimeSpan.FromMilliseconds(420)) { EasingFunction = new CubicEase { EasingMode = EasingMode.EaseOut } });
-        if (RootSurface.RenderTransform is System.Windows.Media.TranslateTransform translate)
-            translate.BeginAnimation(System.Windows.Media.TranslateTransform.YProperty, new DoubleAnimation(8, 0, TimeSpan.FromMilliseconds(420)) { EasingFunction = new CubicEase { EasingMode = EasingMode.EaseOut } });
+        if (!_viewModel.ReducedMotion)
+        {
+            RootSurface.Opacity = 0;
+            if (RootSurface.RenderTransform is System.Windows.Media.TranslateTransform transform) transform.Y = 8;
+            RootSurface.BeginAnimation(OpacityProperty, new DoubleAnimation(0, 1, TimeSpan.FromMilliseconds(420)) { EasingFunction = new CubicEase { EasingMode = EasingMode.EaseOut } });
+            if (RootSurface.RenderTransform is System.Windows.Media.TranslateTransform translate)
+                translate.BeginAnimation(System.Windows.Media.TranslateTransform.YProperty, new DoubleAnimation(8, 0, TimeSpan.FromMilliseconds(420)) { EasingFunction = new CubicEase { EasingMode = EasingMode.EaseOut } });
+        }
+        if (_viewModel.CheckForUpdates) await CheckUpdatesAsync(false);
     }
 
     private void WorkspaceTabs_SelectionChanged(object sender, System.Windows.Controls.SelectionChangedEventArgs e)

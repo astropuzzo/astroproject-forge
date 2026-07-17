@@ -36,7 +36,7 @@ public sealed class MainViewModel : BindableBase
     private bool _isScanning;
     private bool _showIssuesOnly;
     private string _searchText = "";
-    private string _libraryPath = @"E:\immagini\MSTE";
+    private string _libraryPath = "";
     private string _status = "Aggiungi file o cartelle FITS/XISF e avvia l’analisi";
     private double _progress;
     private string _editGain = "";
@@ -69,6 +69,9 @@ public sealed class MainViewModel : BindableBase
     private DateTimeOffset _projectCreatedAt = DateTimeOffset.Now;
     private string _uiDensity = "Comoda";
     private bool _reducedMotion;
+    private bool _checkForUpdates;
+    private string _updateChannel = "Beta";
+    private string _updateStatus = "Controllo automatico disattivato";
     private bool _showOnboarding;
     private string _diagnosticsSummary = "Nessun evento caricato";
 
@@ -87,6 +90,9 @@ public sealed class MainViewModel : BindableBase
         _currentProjectFile = _state.LastProjectFile;
         _uiDensity = new[] { "Compatta", "Comoda", "Ampia" }.Contains(_state.UiDensity) ? _state.UiDensity : "Comoda";
         _reducedMotion = _state.ReducedMotion;
+        _checkForUpdates = _state.CheckForUpdates;
+        _updateChannel = _state.UpdateChannel is "Stable" or "Beta" ? _state.UpdateChannel : "Beta";
+        _updateStatus = _checkForUpdates ? $"Controllo { _updateChannel } attivo · nessun download automatico" : "Controllo automatico disattivato";
         _pendingRecovery = _recoveryJournal.Read<ProjectRecoverySnapshot>();
         _showOnboarding = !_state.HasCompletedOnboarding && _pendingRecovery is null;
         foreach (var path in _state.SourcePaths.Where(path => Directory.Exists(path) || File.Exists(path))) SourcePaths.Add(path);
@@ -136,6 +142,12 @@ public sealed class MainViewModel : BindableBase
     public string ProjectDocumentStatus => string.IsNullOrWhiteSpace(CurrentProjectFile) ? "Progetto non ancora salvato" : Path.GetFileName(CurrentProjectFile);
     public string UiDensity { get => _uiDensity; set => Set(ref _uiDensity, value); }
     public bool ReducedMotion { get => _reducedMotion; set => Set(ref _reducedMotion, value); }
+    public bool CheckForUpdates { get => _checkForUpdates; set { if (Set(ref _checkForUpdates, value)) UpdateStatus = value ? $"Controllo {UpdateChannel} attivo · nessun download automatico" : "Controllo automatico disattivato"; } }
+    public string UpdateChannel { get => _updateChannel; set { var normalized = value == "Stable" ? "Stable" : "Beta"; if (Set(ref _updateChannel, normalized) && CheckForUpdates) UpdateStatus = $"Controllo {normalized} attivo · nessun download automatico"; } }
+    public string UpdateStatus { get => _updateStatus; set => Set(ref _updateStatus, value); }
+    public string VersionDisplay => ReleaseIdentity.Display;
+    public string ApplicationVersion => ReleaseIdentity.Version;
+    public string ReleaseChannel => ReleaseIdentity.Channel;
     public bool ShowOnboarding { get => _showOnboarding; private set => Set(ref _showOnboarding, value); }
     public bool HasRecoverySnapshot => _pendingRecovery is not null;
     public bool CanRunProjectOperations => !IsScanning && !HasRecoverySnapshot;
@@ -388,6 +400,8 @@ public sealed class MainViewModel : BindableBase
         _state.LastProjectFile = CurrentProjectFile;
         _state.UiDensity = UiDensity;
         _state.ReducedMotion = ReducedMotion;
+        _state.CheckForUpdates = CheckForUpdates;
+        _state.UpdateChannel = UpdateChannel;
         foreach (var frame in _frames)
         {
             if (!HasAnyOverride(frame) && !_kindOverrides.Contains(frame.Path)) { _state.Overrides.Remove(frame.Path); continue; }

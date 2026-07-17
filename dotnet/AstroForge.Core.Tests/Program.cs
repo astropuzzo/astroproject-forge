@@ -191,6 +191,7 @@ finally
 {
     if (Directory.Exists(exportRoot)) Directory.Delete(exportRoot, true);
 }
+await RegressionQa.RunAsync();
 Console.WriteLine($"PASS: {frames.Count} fixture autosufficienti, Flat Epoch multisessione, link manuale, WBPP ed export riprendibile verificati.");
 
 static void Assert(bool condition, string message)

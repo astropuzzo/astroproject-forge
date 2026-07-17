@@ -6,6 +6,8 @@ __pycache__/
 build/
 dist/
 dist-dotnet/
+artifacts/
+.tools/
 **/bin/
 **/obj/
 *.spec

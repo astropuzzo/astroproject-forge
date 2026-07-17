@@ -198,6 +198,7 @@ revisione.
 
 ```powershell
 dotnet run --project dotnet/AstroForge.App/AstroForge.App.csproj
+.\qa-gate.ps1
 ```
 
 ### Test
@@ -208,12 +209,11 @@ I test usano fixture sintetiche e non richiedono scatti astronomici personali.
 dotnet run --project dotnet/AstroForge.Core.Tests/AstroForge.Core.Tests.csproj -c Release
 ```
 
-### Build Windows autonoma
+### Build Windows autonoma e distribuzione Beta
 
 ```powershell
-dotnet publish dotnet/AstroForge.App/AstroForge.App.csproj `
-  -c Release -r win-x64 --self-contained true `
-  -p:PublishSingleFile=true -o dist-dotnet
+.\build-release.ps1
+.\build-distribution.ps1
 ```
 
 ## Principi del progetto
@@ -228,5 +228,9 @@ dotnet publish dotnet/AstroForge.App/AstroForge.App.csproj `
 
 ## Licenza e distribuzione
 
-Licenza commerciale, installer e canale di distribuzione non sono ancora
-definiti. Il repository è privato durante lo sviluppo pre-release.
+L'installer x64 per utente, l'identità Stable/Beta, il manifest aggiornamenti,
+lo SBOM e gli hash di integrità sono implementati. La pubblicazione commerciale
+resta bloccata finché EXE e installer non saranno firmati Authenticode, non sarà
+completata la matrice su VM Windows 10/11 pulite e non sarà regolarizzata la
+licenza commerciale del tool di distribuzione. Il repository resta privato in
+pre-release. Il processo completo è in [RELEASE_PROCESS.md](RELEASE_PROCESS.md).

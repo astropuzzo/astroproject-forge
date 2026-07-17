@@ -1,13 +1,15 @@
 using System.Text.Json;
 using System.IO;
 using AstroForge.Core.Models;
+using AstroForge.Core.Persistence;
 
 namespace AstroForge.App.Services;
 
 public sealed class AppState
 {
+    public int SchemaVersion { get; set; } = 2;
     public List<string> SourcePaths { get; set; } = [];
-    public string LibraryPath { get; set; } = @"E:\immagini\MSTE";
+    public string LibraryPath { get; set; } = "";
     public List<MasterLibraryDefinition> MasterLibraries { get; set; } = [];
     public string DestinationPath { get; set; } = "";
     public string ProjectName { get; set; } = "";
@@ -18,6 +20,8 @@ public sealed class AppState
     public string LastProjectFile { get; set; } = "";
     public string UiDensity { get; set; } = "Comoda";
     public bool ReducedMotion { get; set; }
+    public bool CheckForUpdates { get; set; }
+    public string UpdateChannel { get; set; } = "Beta";
     public bool HasCompletedOnboarding { get; set; }
     public Dictionary<string, FrameOverrides> Overrides { get; set; } = new(StringComparer.OrdinalIgnoreCase);
 }
@@ -62,7 +66,9 @@ public static class AppStateStore
         try
         {
             if (!File.Exists(FilePath)) return new();
-            return JsonSerializer.Deserialize<AppState>(File.ReadAllText(FilePath), Options) ?? new();
+            var state = JsonSerializer.Deserialize<AppState>(SettingsMigration.Migrate(File.ReadAllText(FilePath)), Options) ?? new();
+            if (state.UpdateChannel is not ("Stable" or "Beta")) state.UpdateChannel = "Beta";
+            return state;
         }
         catch { return new(); }
     }

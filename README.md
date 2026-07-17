@@ -182,7 +182,8 @@ duplicate, or equivalent candidates are sent to the guided Review Queue.
 | Incremental header cache | v1 operational; SQLite planned |
 | Guided Review Queue | v1 operational; candidate comparison expanding |
 | Multiple Master Libraries | v1 operational: priority and online/offline state |
-| Installer, signing, and updates | Planned |
+| Reproducible Windows QA gate | Operational locally + GitHub Actions workflow |
+| Installer, signing, and updates | Beta packaging operational; commercial signing/VM matrix pending |
 | WBPP end-to-end compatibility matrix | Required before sale |
 
 See the detailed acceptance criteria in
@@ -192,15 +193,14 @@ See the detailed acceptance criteria in
 
 ```powershell
 dotnet run --project dotnet/AstroForge.App/AstroForge.App.csproj
-dotnet run --project dotnet/AstroForge.Core.Tests/AstroForge.Core.Tests.csproj -c Release
+.\qa-gate.ps1
 ```
 
-Self-contained Windows build:
+Self-contained Windows build and full Beta distribution:
 
 ```powershell
-dotnet publish dotnet/AstroForge.App/AstroForge.App.csproj `
-  -c Release -r win-x64 --self-contained true `
-  -p:PublishSingleFile=true -o dist-dotnet
+.\build-release.ps1
+.\build-distribution.ps1
 ```
 
 Tests use synthetic fixtures and never require personal astrophotography data.
@@ -215,5 +215,9 @@ Tests use synthetic fixtures and never require personal astrophotography data.
 
 ## License and distribution
 
-Commercial licensing, installer, and distribution channel are not finalized.
-The repository remains private during pre-release development.
+The per-user x64 installer, Stable/Beta identity, update manifest, SBOM and
+integrity hashes are implemented. Commercial publication remains blocked until
+EXE and installer are Authenticode-signed, the clean Windows 10/11 VM matrix is
+completed, and the distribution-tool commercial license is settled. The
+repository remains private during pre-release development. See
+[RELEASE_PROCESS.md](docs/RELEASE_PROCESS.md).

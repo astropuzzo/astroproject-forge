@@ -582,6 +582,10 @@ in uno storage di test con manifest degli hash.
 - La disinstallazione non elimina progetti o FITS.
 - L’app non richiede l’SDK .NET sul PC dell’utente.
 
+**Avanzamento 17 luglio 2026 — P0.13:** implementato un gate QA locale e una workflow GitHub Actions Windows senza dipendenze da `E:` o da dati personali. La suite usa una fixture JSON multiproduttore versionata, verifica 1.000 casi property-based attorno al cambio della notte astronomica, 10.000 classificazioni sintetiche, percorsi Unicode lunghi, fuzz bounded di FITS/XISF, migrazione impostazioni, SemVer/update e un'interruzione reale dell'export seguita da ripresa. Il gate compila inoltre WPF Release e pubblica l'EXE self-contained, producendo un report JSON. Il collaudo visivo del flusso Informazioni/aggiornamenti è passato sulla build pubblicata. Restano come gate di Release Candidate — non come dipendenze del test locale — la matrice su VM Windows 10/11, account standard, exFAT e share di rete.
+
+**Avanzamento 17 luglio 2026 — P0.14:** implementati SemVer e canale visibili nell'app, preferenza Stable/Beta, controllo update disattivato di default, feed esclusivamente HTTPS e download in `.partial` verificato per dimensione e SHA-256 prima del rename atomico. La pipeline produce EXE self-contained, ZIP portabile, SBOM, manifest, feed di canale, `SHA256SUMS.txt` e installer Inno Setup 7 x64 per utente senza privilegi amministrativi. Stable e Beta hanno AppId e directory distinti; l'uninstaller chiede se rimuovere i soli dati locali e non include mai progetti o FITS/XISF. Il gate `-RequireSignature` rifiuta EXE o installer privi di firma Authenticode verificabile. La build Beta locale è stata compilata correttamente ma resta deliberatamente `releaseEligible: false`: servono un certificato code-signing autentico, una licenza commerciale del compilatore installer e il collaudo install/update/downgrade su VM pulite prima di chiudere i criteri commerciali.
+
 ## P0.15 — Sicurezza e privacy
 
 ### Intervento
