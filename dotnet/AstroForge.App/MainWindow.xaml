@@ -96,6 +96,7 @@
                     <TextBlock Text="COMANDI PROGETTO" Style="{StaticResource Eyebrow}" Margin="8,5,8,10"/>
                     <Button Command="{Binding UndoCommand}" Click="CloseMore_Click" HorizontalContentAlignment="Stretch" Margin="0,0,0,6"><Grid><Grid.ColumnDefinitions><ColumnDefinition Width="34"/><ColumnDefinition/></Grid.ColumnDefinitions><TextBlock Text="↶" Foreground="{StaticResource Accent}" FontSize="18" VerticalAlignment="Center"/><StackPanel Grid.Column="1"><TextBlock Text="Annulla ultima modifica" FontWeight="SemiBold"/><TextBlock Text="Ripristina l'ultimo override" Style="{StaticResource MutedText}" FontSize="10"/></StackPanel></Grid></Button>
                     <Button Click="ClearCache_Click" HorizontalContentAlignment="Stretch" Margin="0,0,0,6"><Grid><Grid.ColumnDefinitions><ColumnDefinition Width="34"/><ColumnDefinition/></Grid.ColumnDefinitions><TextBlock Text="⌁" Foreground="{StaticResource Accent}" FontSize="18" VerticalAlignment="Center"/><StackPanel Grid.Column="1"><TextBlock Text="Pulisci cache header" FontWeight="SemiBold"/><TextBlock Text="Non elimina immagini" Style="{StaticResource MutedText}" FontSize="10"/></StackPanel></Grid></Button>
+                    <Button Click="OpenDiagnostics_Click" HorizontalContentAlignment="Stretch" Margin="0,0,0,6"><Grid><Grid.ColumnDefinitions><ColumnDefinition Width="34"/><ColumnDefinition/></Grid.ColumnDefinitions><TextBlock Text="◎" Foreground="{StaticResource Accent}" FontSize="18" VerticalAlignment="Center"/><StackPanel Grid.Column="1"><TextBlock Text="Centro diagnostica" FontWeight="SemiBold"/><TextBlock Text="Eventi, errori e operazioni correlate" Style="{StaticResource MutedText}" FontSize="10"/></StackPanel></Grid></Button>
                     <Button Click="ExportSupportBundle_Click" HorizontalContentAlignment="Stretch" Margin="0,0,0,6"><Grid><Grid.ColumnDefinitions><ColumnDefinition Width="34"/><ColumnDefinition/></Grid.ColumnDefinitions><TextBlock Text="?" Foreground="{StaticResource Accent}" FontSize="18" FontWeight="Bold" VerticalAlignment="Center"/><StackPanel Grid.Column="1"><TextBlock Text="Esporta diagnostica" FontWeight="SemiBold"/><TextBlock Text="ZIP locale senza immagini o percorsi" Style="{StaticResource MutedText}" FontSize="10"/></StackPanel></Grid></Button>
                     <Button Command="{Binding ClearProjectCommand}" Click="CloseMore_Click" HorizontalContentAlignment="Stretch" BorderBrush="#71434A"><Grid><Grid.ColumnDefinitions><ColumnDefinition Width="34"/><ColumnDefinition/></Grid.ColumnDefinitions><TextBlock Text="×" Foreground="{StaticResource Danger}" FontSize="20" VerticalAlignment="Center"/><StackPanel Grid.Column="1"><TextBlock Text="Svuota progetto" FontWeight="SemiBold"/><TextBlock Text="Scarica i dati, conserva gli originali" Style="{StaticResource MutedText}" FontSize="10"/></StackPanel></Grid></Button>
                 </StackPanel>
@@ -188,7 +189,7 @@
                     <Grid><Grid.ColumnDefinitions><ColumnDefinition/><ColumnDefinition Width="Auto"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions>
                         <StackPanel><TextBlock Text="STATO PROGETTO" Style="{StaticResource Eyebrow}"/><TextBlock Text="{Binding ReadinessText}" Margin="0,3,0,0" TextWrapping="Wrap"/></StackPanel>
                         <Border Grid.Column="1" Background="#173633" CornerRadius="12" Padding="10,4" VerticalAlignment="Center"><TextBlock Text="{Binding UnresolvedCalibrations, StringFormat={}{0} irrisolte}" Foreground="{StaticResource Accent}"/></Border>
-                        <Button Grid.Column="2" Content="✦  ANALIZZA ORA" Click="Scan_Click" Style="{StaticResource PrimaryButton}" IsEnabled="{Binding IsScanning, Converter={StaticResource InverseBoolean}}" Margin="14,0,0,0" Padding="22,11" FontWeight="Bold" ToolTip="Analizza sorgenti e librerie attive"/>
+                        <Button Grid.Column="2" Content="✦  ANALIZZA ORA" Click="Scan_Click" Style="{StaticResource PrimaryButton}" IsEnabled="{Binding CanRunProjectOperations}" Margin="14,0,0,0" Padding="22,11" FontWeight="Bold" ToolTip="Analizza sorgenti e librerie attive"/>
                     </Grid>
                 </Border>
 
@@ -219,7 +220,7 @@
                             <Grid Grid.Row="2" Margin="0,0,0,10"><Grid.ColumnDefinitions><ColumnDefinition/><ColumnDefinition Width="Auto"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions>
                                 <TextBlock Text="{Binding PlanSummary}" Style="{StaticResource MutedText}" VerticalAlignment="Center" TextTrimming="CharacterEllipsis"/>
                                 <Button Grid.Column="1" Content="Genera anteprima" Click="BuildPlan_Click" Margin="8,0"/>
-                                <Button Grid.Column="2" Content="Crea progetto verificato" Click="Export_Click" Style="{StaticResource PrimaryButton}"/>
+                                <Button Grid.Column="2" Content="Crea progetto verificato" Click="Export_Click" Style="{StaticResource PrimaryButton}" IsEnabled="{Binding CanRunProjectOperations}"/>
                             </Grid>
                             <Border Grid.Row="3" Style="{StaticResource Card}" Padding="8" HorizontalAlignment="Stretch" VerticalAlignment="Stretch"><Grid><TreeView ItemsSource="{Binding PlannedTreeRoots}" MouseDoubleClick="Tree_MouseDoubleClick" ToolTip="Doppio click per mostrare il file originale" VirtualizingStackPanel.IsVirtualizing="True" VirtualizingStackPanel.VirtualizationMode="Recycling"/><StackPanel Visibility="{Binding PlannedTreeRoots, Converter={StaticResource EmptyCollectionToVisibility}}" HorizontalAlignment="Center" VerticalAlignment="Center" MaxWidth="440"><Border Width="58" Height="58" CornerRadius="18" Background="#173A3A" HorizontalAlignment="Center"><TextBlock Text="⌘" Foreground="{StaticResource Accent}" FontSize="24" HorizontalAlignment="Center" VerticalAlignment="Center"/></Border><TextBlock Text="La struttura apparirà qui" FontSize="21" FontWeight="SemiBold" TextAlignment="Center" Margin="0,15,0,6"/><TextBlock Text="Scegli nome e destinazione, quindi genera l’anteprima. Potrai controllare l’intero albero prima di copiare qualsiasi file." Style="{StaticResource MutedText}" TextWrapping="Wrap" TextAlignment="Center"/></StackPanel></Grid></Border>
                         </Grid>
@@ -352,15 +353,15 @@
                         <Grid Margin="0,14,0,0"><Grid.RowDefinitions><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/><RowDefinition Height="*"/></Grid.RowDefinitions>
                             <StackPanel><TextBlock Text="Master Library Lab" Style="{StaticResource Title}"/><TextBlock Text="Strumento indipendente dal progetto WBPP. Scansiona le librerie abilitate, completa i metadati mancanti e crea una nuova libreria normalizzata senza modificare gli originali." Style="{StaticResource MutedText}" TextWrapping="Wrap" Margin="0,2,0,12"/></StackPanel>
                             <Grid Grid.Row="1" Margin="0,0,0,10"><Grid.RowDefinitions><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/></Grid.RowDefinitions><Grid.ColumnDefinitions><ColumnDefinition/><ColumnDefinition Width="Auto"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions>
-                                <Button Grid.ColumnSpan="3" Content="◎  SCANSIONA SOLO LE MASTER LIBRARY" Click="ScanMasterLibraries_Click" HorizontalAlignment="Left" Padding="20,10" FontWeight="SemiBold"/>
+                                <Button Grid.ColumnSpan="3" Content="◎  SCANSIONA SOLO LE MASTER LIBRARY" Click="ScanMasterLibraries_Click" HorizontalAlignment="Left" Padding="20,10" FontWeight="SemiBold" IsEnabled="{Binding CanRunProjectOperations}"/>
                                 <TextBlock Grid.Row="1" Text="Destinazione nuova libreria" Style="{StaticResource MetaLabel}" Margin="2,9,0,4"/>
                                 <TextBox Grid.Row="2" Text="{Binding MasterOrganizerDestination}" IsReadOnly="True" ToolTip="Destinazione nuova Master Library"/>
                                 <Button Grid.Row="2" Grid.Column="1" Content="Scegli destinazione" Click="ChooseMasterOrganizerDestination_Click" Margin="7,0"/>
                                 <TextBlock Grid.Row="0" Grid.Column="1" Grid.ColumnSpan="2" Text="{Binding MasterOrganizerStatus}" Foreground="{StaticResource Accent}" Margin="14,0,0,0" VerticalAlignment="Center" TextWrapping="Wrap"/>
                                 <WrapPanel Grid.Row="3" Grid.ColumnSpan="3" HorizontalAlignment="Right" Margin="0,8,0,0">
-                                    <Button Content="1 · Verifica conflitti" Click="PreviewMasterOrganizer_Click" ToolTip="Calcola tutte le destinazioni e blocca duplicati o file già esistenti prima della copia"/>
-                                    <Button Content="2 · Copia, imprimi e organizza" Click="OrganizeMasterLibrary_Click" Style="{StaticResource PrimaryButton}" Margin="7,0,0,0"/>
-                                    <Button Content="Rollback ultimo batch" Click="RollbackMasterOrganizer_Click" Margin="7,0,0,0" ToolTip="Elimina soltanto le copie dell’ultimo batch se gli hash sono ancora invariati"/>
+                                    <Button Content="1 · Verifica conflitti" Click="PreviewMasterOrganizer_Click" IsEnabled="{Binding CanRunProjectOperations}" ToolTip="Calcola tutte le destinazioni e blocca duplicati o file già esistenti prima della copia"/>
+                                    <Button Content="2 · Copia, imprimi e organizza" Click="OrganizeMasterLibrary_Click" Style="{StaticResource PrimaryButton}" Margin="7,0,0,0" IsEnabled="{Binding CanRunProjectOperations}"/>
+                                    <Button Content="Rollback ultimo batch" Click="RollbackMasterOrganizer_Click" Margin="7,0,0,0" IsEnabled="{Binding CanRunProjectOperations}" ToolTip="Elimina soltanto le copie dell’ultimo batch se gli hash sono ancora invariati"/>
                                 </WrapPanel>
                             </Grid>
                             <DataGrid x:Name="MasterOrganizerGrid" Grid.Row="2" ItemsSource="{Binding MasterOrganizerItems}" MouseDoubleClick="MasterOrganizerGrid_MouseDoubleClick" ToolTip="Doppio click per mostrare il Master originale" AutoGenerateColumns="False" CanUserAddRows="False" HeadersVisibility="Column" Background="{StaticResource Bg1}" Foreground="{StaticResource Text}" GridLinesVisibility="Horizontal" HorizontalGridLinesBrush="{StaticResource Stroke}" RowBackground="{StaticResource Bg2}" AlternatingRowBackground="#101824">
@@ -455,6 +456,58 @@
                         </Expander>
                     </StackPanel>
                 </ScrollViewer>
+            </Border>
+        </Grid>
+
+        <Border Grid.Row="1" Panel.ZIndex="30" HorizontalAlignment="Center" VerticalAlignment="Top" MaxWidth="980" Margin="24,18,24,0" Padding="18,14" CornerRadius="14" Background="#F21A241F" BorderBrush="#5DBF99" BorderThickness="1" Effect="{StaticResource SoftShadow}" Visibility="{Binding HasRecoverySnapshot, Converter={StaticResource BooleanToVisibility}}">
+            <Grid>
+                <Grid.ColumnDefinitions><ColumnDefinition Width="Auto"/><ColumnDefinition Width="*"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions>
+                <Border Width="38" Height="38" CornerRadius="11" Background="#243F36" Margin="0,0,13,0"><TextBlock Text="↺" Foreground="{StaticResource Accent}" FontSize="21" HorizontalAlignment="Center" VerticalAlignment="Center"/></Border>
+                <StackPanel Grid.Column="1" VerticalAlignment="Center">
+                    <TextBlock Text="RECUPERO DISPONIBILE" Style="{StaticResource Eyebrow}"/>
+                    <TextBlock Text="{Binding RecoverySummary}" Foreground="{StaticResource Text}" TextWrapping="Wrap" FontSize="12" Margin="0,3,12,0"/>
+                </StackPanel>
+                <StackPanel Grid.Column="2" Orientation="Horizontal" VerticalAlignment="Center">
+                    <Button Content="Ignora" Click="DiscardRecovery_Click" Margin="0,0,8,0" Padding="14,8"/>
+                    <Button Content="Ripristina progetto" Click="RestoreRecovery_Click" Style="{StaticResource PrimaryButton}" Padding="16,8"/>
+                </StackPanel>
+            </Grid>
+        </Border>
+
+        <Grid x:Name="DiagnosticsOverlay" Grid.RowSpan="3" Panel.ZIndex="80" Background="#E6070B12" Visibility="Collapsed">
+            <Border MaxWidth="1180" MaxHeight="760" Margin="34" HorizontalAlignment="Center" VerticalAlignment="Center" Style="{StaticResource Card}" Background="#FA0D1622" BorderBrush="#5B7894" Padding="0">
+                <Grid>
+                    <Grid.RowDefinitions><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/><RowDefinition Height="*"/><RowDefinition Height="Auto"/></Grid.RowDefinitions>
+                    <Grid Margin="28,24,28,12">
+                        <Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions>
+                        <StackPanel>
+                            <TextBlock Text="DIAGNOSTICA LOCALE" Style="{StaticResource Eyebrow}"/>
+                            <TextBlock Text="Centro diagnostica" Style="{StaticResource Title}" Margin="0,4,0,3"/>
+                            <TextBlock Text="Eventi tecnici già privati di percorsi e nomi astronomici. La correlazione collega inizio, esito ed errore della stessa operazione." Style="{StaticResource MutedText}" TextWrapping="Wrap"/>
+                        </StackPanel>
+                        <Button Grid.Column="1" Content="×" Click="CloseDiagnostics_Click" Style="{StaticResource ToolbarButton}" Width="42" Height="42" Padding="0" FontSize="20" ToolTip="Chiudi diagnostica"/>
+                    </Grid>
+                    <Border Grid.Row="1" Background="#172533" BorderBrush="#36546A" BorderThickness="1" CornerRadius="10" Padding="13,9" Margin="28,0,28,12">
+                        <TextBlock Text="{Binding DiagnosticsSummary}" Foreground="{StaticResource Accent}" FontWeight="SemiBold"/>
+                    </Border>
+                    <DataGrid Grid.Row="2" ItemsSource="{Binding DiagnosticEvents}" IsReadOnly="True" AutoGenerateColumns="False" CanUserAddRows="False" CanUserDeleteRows="False" CanUserResizeRows="False" HeadersVisibility="Column" Margin="28,0" MinHeight="260" SelectionMode="Single">
+                        <DataGrid.Columns>
+                            <DataGridTextColumn Header="Ora" Binding="{Binding Timestamp}" Width="118"/>
+                            <DataGridTextColumn Header="Livello" Binding="{Binding Level}" Width="88"/>
+                            <DataGridTextColumn Header="Codice" Binding="{Binding Code}" Width="150"/>
+                            <DataGridTextColumn Header="Operazione" Binding="{Binding Operation}" Width="180"/>
+                            <DataGridTextColumn Header="ID" Binding="{Binding Correlation}" Width="78"/>
+                            <DataGridTextColumn Header="Evento" Binding="{Binding Message}" Width="*"/>
+                            <DataGridTextColumn Header="Eccezione" Binding="{Binding ExceptionType}" Width="160"/>
+                        </DataGrid.Columns>
+                    </DataGrid>
+                    <Grid Grid.Row="3" Margin="28,16,28,24">
+                        <Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="Auto"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions>
+                        <TextBlock Text="I dati restano sul computer finché non scegli esplicitamente Esporta ZIP." Style="{StaticResource MutedText}" VerticalAlignment="Center" TextWrapping="Wrap"/>
+                        <Button Grid.Column="1" Content="Aggiorna eventi" Click="RefreshDiagnostics_Click" Margin="12,0,8,0" Padding="16,9"/>
+                        <Button Grid.Column="2" Content="Esporta ZIP privacy-safe" Click="ExportSupportFromDiagnostics_Click" Style="{StaticResource PrimaryButton}" Padding="18,9"/>
+                    </Grid>
+                </Grid>
             </Border>
         </Grid>
 

@@ -92,6 +92,14 @@ public partial class MainWindow : Window
 
     private void More_Click(object sender, RoutedEventArgs e) { SettingsPopup.IsOpen = false; MorePopup.IsOpen = !MorePopup.IsOpen; }
     private void CloseMore_Click(object sender, RoutedEventArgs e) => MorePopup.IsOpen = false;
+    private void OpenDiagnostics_Click(object sender, RoutedEventArgs e)
+    {
+        MorePopup.IsOpen = false;
+        _viewModel.RefreshDiagnostics();
+        DiagnosticsOverlay.Visibility = Visibility.Visible;
+    }
+    private void CloseDiagnostics_Click(object sender, RoutedEventArgs e) => DiagnosticsOverlay.Visibility = Visibility.Collapsed;
+    private void RefreshDiagnostics_Click(object sender, RoutedEventArgs e) => _viewModel.RefreshDiagnostics();
     private void Settings_Click(object sender, RoutedEventArgs e) { MorePopup.IsOpen = false; SettingsPopup.IsOpen = !SettingsPopup.IsOpen; }
     private void DensitySelector_SelectionChanged(object sender, System.Windows.Controls.SelectionChangedEventArgs e)
     {
@@ -210,7 +218,11 @@ public partial class MainWindow : Window
             _viewModel.ClearHeaderCache();
     }
 
-    private async void ExportSupportBundle_Click(object sender, RoutedEventArgs e)
+    private async void ExportSupportBundle_Click(object sender, RoutedEventArgs e) => await ExportSupportBundleCoreAsync();
+
+    private async void ExportSupportFromDiagnostics_Click(object sender, RoutedEventArgs e) => await ExportSupportBundleCoreAsync();
+
+    private async Task ExportSupportBundleCoreAsync()
     {
         MorePopup.IsOpen = false;
         var preview = "Il pacchetto verrà creato soltanto sul computer e conterrà esattamente:\n\n" + _viewModel.SupportBundlePreview + "\n\nNon include FITS/XISF, pixel, target, coordinate, nomi file, percorsi o header grezzi. Continuare?";
@@ -224,6 +236,14 @@ public partial class MainWindow : Window
         }
         catch (Exception exception) { ShowError("AF-SUPPORT-001", "Pacchetto diagnostico non creato", exception, MessageBoxImage.Error); }
     }
+
+    private async void RestoreRecovery_Click(object sender, RoutedEventArgs e)
+    {
+        try { await _viewModel.RestoreRecoveryAsync(); }
+        catch (Exception exception) { ShowError("AF-RECOVERY-001", "Progetto non ripristinato", exception, MessageBoxImage.Error); }
+    }
+
+    private void DiscardRecovery_Click(object sender, RoutedEventArgs e) => _viewModel.DiscardRecovery();
 
     private void ShowError(string code, string title, Exception exception, MessageBoxImage icon)
     {

@@ -21,8 +21,10 @@ public sealed class MainViewModel : BindableBase
     private readonly ProjectScanner _scanner = new();
     private readonly JsonHeaderCache _headerCache = new();
     private readonly StructuredEventLog _eventLog = new();
+    private readonly RecoveryJournalStore _recoveryJournal = new();
     private readonly Stack<Action> _undo = new();
     private readonly AppState _state;
+    private RecoveryJournalEntry<ProjectRecoverySnapshot>? _pendingRecovery;
     private readonly HashSet<string> _kindOverrides = new(StringComparer.OrdinalIgnoreCase);
     private IReadOnlyList<FrameMetadata> _frames = [];
     private IReadOnlyList<FrameMetadata> _masterLibraryFrames = [];
@@ -68,6 +70,7 @@ public sealed class MainViewModel : BindableBase
     private string _uiDensity = "Comoda";
     private bool _reducedMotion;
     private bool _showOnboarding;
+    private string _diagnosticsSummary = "Nessun evento caricato";
 
     public MainViewModel()
     {
@@ -84,7 +87,8 @@ public sealed class MainViewModel : BindableBase
         _currentProjectFile = _state.LastProjectFile;
         _uiDensity = new[] { "Compatta", "Comoda", "Ampia" }.Contains(_state.UiDensity) ? _state.UiDensity : "Comoda";
         _reducedMotion = _state.ReducedMotion;
-        _showOnboarding = !_state.HasCompletedOnboarding;
+        _pendingRecovery = _recoveryJournal.Read<ProjectRecoverySnapshot>();
+        _showOnboarding = !_state.HasCompletedOnboarding && _pendingRecovery is null;
         foreach (var path in _state.SourcePaths.Where(path => Directory.Exists(path) || File.Exists(path))) SourcePaths.Add(path);
         foreach (var pair in _state.Overrides.Where(pair => pair.Value.Kind is not null)) _kindOverrides.Add(pair.Key);
         ApplyOverridesCommand = new RelayCommand(ApplyOverrides, () => SelectedNode is not null && !IsScanning);
@@ -96,6 +100,8 @@ public sealed class MainViewModel : BindableBase
         UnlinkFlatSetCommand = new RelayCommand(UnlinkFlatSet, () => GetManualLinkFrames().Any(frame => frame.Kind == FrameKind.Light && frame.FlatSetId.HasOverride) && !IsScanning);
         UndoCommand = new RelayCommand(Undo, () => _undo.Count > 0 && !IsScanning);
         _eventLog.Write("Information", "AF-APP-START", "Applicazione avviata");
+        if (_pendingRecovery is not null)
+            _eventLog.Write("Warning", "AF-RECOVERY-AVAILABLE", "Rilevata operazione interrotta recuperabile", operationId: _pendingRecovery.OperationId, operation: _pendingRecovery.Operation);
     }
 
     public ObservableCollection<string> SourcePaths { get; } = [];
@@ -111,6 +117,7 @@ public sealed class MainViewModel : BindableBase
     public ObservableCollection<ReviewQueueItem> ReviewQueue { get; } = [];
     public ObservableCollection<MasterOrganizerItem> MasterOrganizerItems { get; } = [];
     public ObservableCollection<string> SelectedIssues { get; } = [];
+    public ObservableCollection<DiagnosticEventRow> DiagnosticEvents { get; } = [];
     public RelayCommand ApplyOverridesCommand { get; }
     public RelayCommand ApplyLibraryOffsetCommand { get; }
     public RelayCommand ApplyProjectDefaultsCommand { get; }
@@ -130,6 +137,12 @@ public sealed class MainViewModel : BindableBase
     public string UiDensity { get => _uiDensity; set => Set(ref _uiDensity, value); }
     public bool ReducedMotion { get => _reducedMotion; set => Set(ref _reducedMotion, value); }
     public bool ShowOnboarding { get => _showOnboarding; private set => Set(ref _showOnboarding, value); }
+    public bool HasRecoverySnapshot => _pendingRecovery is not null;
+    public bool CanRunProjectOperations => !IsScanning && !HasRecoverySnapshot;
+    public string RecoverySummary => _pendingRecovery is null
+        ? "Nessun recupero necessario"
+        : $"{_pendingRecovery.Operation} interrotta il {_pendingRecovery.StartedAtUtc.ToLocalTime():dd MMM yyyy 'alle' HH:mm}. Puoi ripristinare la fotografia del progetto precedente all’operazione.";
+    public string DiagnosticsSummary { get => _diagnosticsSummary; private set => Set(ref _diagnosticsSummary, value); }
     public void OpenOnboarding() => ShowOnboarding = true;
     public void CompleteOnboarding()
     {
@@ -150,7 +163,7 @@ public sealed class MainViewModel : BindableBase
             Status = $"Sessioni ricalcolate con cambio alle {_sessionBoundaryHour:00}:00 locali";
         }
     }
-    public bool IsScanning { get => _isScanning; private set { if (Set(ref _isScanning, value)) { ApplyOverridesCommand.RaiseCanExecuteChanged(); ApplyLibraryOffsetCommand.RaiseCanExecuteChanged(); ApplyProjectDefaultsCommand.RaiseCanExecuteChanged(); SaveSettingsCommand.RaiseCanExecuteChanged(); ClearProjectCommand.RaiseCanExecuteChanged(); LinkFlatSetCommand.RaiseCanExecuteChanged(); UnlinkFlatSetCommand.RaiseCanExecuteChanged(); UndoCommand.RaiseCanExecuteChanged(); } } }
+    public bool IsScanning { get => _isScanning; private set { if (Set(ref _isScanning, value)) { Raise(nameof(CanRunProjectOperations)); ApplyOverridesCommand.RaiseCanExecuteChanged(); ApplyLibraryOffsetCommand.RaiseCanExecuteChanged(); ApplyProjectDefaultsCommand.RaiseCanExecuteChanged(); SaveSettingsCommand.RaiseCanExecuteChanged(); ClearProjectCommand.RaiseCanExecuteChanged(); LinkFlatSetCommand.RaiseCanExecuteChanged(); UnlinkFlatSetCommand.RaiseCanExecuteChanged(); UndoCommand.RaiseCanExecuteChanged(); } } }
     public bool ShowIssuesOnly { get => _showIssuesOnly; set { if (Set(ref _showIssuesOnly, value)) RebuildTree(); } }
     public string SearchText { get => _searchText; set { if (Set(ref _searchText, value)) RebuildTree(); } }
     public string Status { get => _status; private set => Set(ref _status, value); }
@@ -257,15 +270,25 @@ public sealed class MainViewModel : BindableBase
     public async Task OrganizeMasterLibraryAsync(CancellationToken cancellationToken = default)
     {
         var requests = MasterOrganizerRequests();
-        var plan = await MasterLibraryOrganizer.PlanAsync(requests, MasterOrganizerDestination, cancellationToken);
-        ApplyMasterOrganizerPlan(plan);
-        var conflicts = plan.Count(item => item.Status != MasterOrganizationPlanStatus.Ready);
-        if (conflicts > 0) throw new IOException($"Preflight non superato: risolvi {conflicts} conflitti evidenziati prima di copiare.");
-        MasterOrganizerStatus = $"Organizzazione di {requests.Length} Master…";
-        var results = await MasterLibraryOrganizer.ExecuteAsync(requests, MasterOrganizerDestination, cancellationToken);
-        foreach (var item in MasterOrganizerItems) item.SetPreflight("Copiato e verificato");
-        MasterOrganizerStatus = $"Completata · {results.Count} copie verificate · {results.Count(item => item.HeaderStamped)} header aggiornati";
-        Status = MasterOrganizerStatus;
+        using var tracked = BeginTrackedOperation("Organizzazione Master Library", "AF-MASTER-ORGANIZE-START", $"Organizzazione di {requests.Length} Master avviata");
+        try
+        {
+            var plan = await MasterLibraryOrganizer.PlanAsync(requests, MasterOrganizerDestination, cancellationToken);
+            ApplyMasterOrganizerPlan(plan);
+            var conflicts = plan.Count(item => item.Status != MasterOrganizationPlanStatus.Ready);
+            if (conflicts > 0) throw new IOException($"Preflight non superato: risolvi {conflicts} conflitti evidenziati prima di copiare.");
+            MasterOrganizerStatus = $"Organizzazione di {requests.Length} Master…";
+            var results = await MasterLibraryOrganizer.ExecuteAsync(requests, MasterOrganizerDestination, cancellationToken);
+            foreach (var item in MasterOrganizerItems) item.SetPreflight("Copiato e verificato");
+            MasterOrganizerStatus = $"Completata · {results.Count} copie verificate · {results.Count(item => item.HeaderStamped)} header aggiornati";
+            Status = MasterOrganizerStatus;
+            tracked.Complete("AF-MASTER-ORGANIZE-OK", $"Organizzazione completata: {results.Count} copie verificate");
+        }
+        catch (Exception exception)
+        {
+            tracked.Fail("AF-MASTER-ORGANIZE-001", "Organizzazione Master Library non completata", exception);
+            throw;
+        }
     }
 
     public async Task PreviewMasterOrganizerAsync(CancellationToken cancellationToken = default)
@@ -280,10 +303,20 @@ public sealed class MainViewModel : BindableBase
     public async Task RollbackMasterOrganizerAsync(CancellationToken cancellationToken = default)
     {
         if (string.IsNullOrWhiteSpace(MasterOrganizerDestination)) throw new InvalidOperationException("Scegli la libreria da ripristinare.");
-        var removed = await MasterLibraryOrganizer.RollbackAsync(MasterOrganizerDestination, cancellationToken);
-        foreach (var item in MasterOrganizerItems) item.SetPreflight("Rollback completato");
-        MasterOrganizerStatus = $"Rollback completato · rimosse {removed} copie verificate · originali intatti";
-        Status = MasterOrganizerStatus;
+        using var tracked = BeginTrackedOperation("Rollback Master Library", "AF-MASTER-ROLLBACK-START", "Rollback verificato avviato");
+        try
+        {
+            var removed = await MasterLibraryOrganizer.RollbackAsync(MasterOrganizerDestination, cancellationToken);
+            foreach (var item in MasterOrganizerItems) item.SetPreflight("Rollback completato");
+            MasterOrganizerStatus = $"Rollback completato · rimosse {removed} copie verificate · originali intatti";
+            Status = MasterOrganizerStatus;
+            tracked.Complete("AF-MASTER-ROLLBACK-OK", $"Rollback completato: {removed} copie rimosse");
+        }
+        catch (Exception exception)
+        {
+            tracked.Fail("AF-MASTER-ROLLBACK-001", "Rollback Master Library non completato", exception);
+            throw;
+        }
     }
 
     private MasterOrganizationRequest[] MasterOrganizerRequests()
@@ -305,13 +338,23 @@ public sealed class MainViewModel : BindableBase
     {
         var libraries = MasterLibraries.Where(item => item.Enabled && item.IsOnline).OrderBy(item => item.Priority).ToArray();
         if (libraries.Length == 0) throw new InvalidOperationException("Aggiungi o abilita almeno una Master Library online.");
-        MasterOrganizerStatus = $"Scansione indipendente di {libraries.Length} librerie…";
-        var progress = new Progress<ScanProgress>(item => MasterOrganizerStatus = $"Lettura Master {item.Completed}/{item.Total} · {item.CurrentFile}");
-        _masterLibraryFrames = await _scanner.ScanAsync(libraries.Select(item => item.Path), new SessionSettings(TimeZoneInfo.Local, new TimeOnly(SessionBoundaryHour, 0)), progress, cancellationToken, _headerCache);
-        foreach (var library in libraries) LibraryMetadataResolver.Apply(_masterLibraryFrames, library.Path, library.Priority);
-        ProjectMetadataDefaultsResolver.Apply(_masterLibraryFrames, CurrentProjectDefaults());
-        RefreshMasterOrganizer(_masterLibraryFrames);
-        MasterOrganizerStatus = $"{MasterOrganizerItems.Count} Master · {MasterOrganizerItems.Count(item => item.IsReady)} pronti · {MasterOrganizerItems.Count(item => !item.IsReady)} da completare";
+        using var tracked = BeginTrackedOperation("Scansione Master Library", "AF-MASTER-SCAN-START", $"Scansione di {libraries.Length} librerie avviata");
+        try
+        {
+            MasterOrganizerStatus = $"Scansione indipendente di {libraries.Length} librerie…";
+            var progress = new Progress<ScanProgress>(item => MasterOrganizerStatus = $"Lettura Master {item.Completed}/{item.Total} · {item.CurrentFile}");
+            _masterLibraryFrames = await _scanner.ScanAsync(libraries.Select(item => item.Path), new SessionSettings(TimeZoneInfo.Local, new TimeOnly(SessionBoundaryHour, 0)), progress, cancellationToken, _headerCache);
+            foreach (var library in libraries) LibraryMetadataResolver.Apply(_masterLibraryFrames, library.Path, library.Priority);
+            ProjectMetadataDefaultsResolver.Apply(_masterLibraryFrames, CurrentProjectDefaults());
+            RefreshMasterOrganizer(_masterLibraryFrames);
+            MasterOrganizerStatus = $"{MasterOrganizerItems.Count} Master · {MasterOrganizerItems.Count(item => item.IsReady)} pronti · {MasterOrganizerItems.Count(item => !item.IsReady)} da completare";
+            tracked.Complete("AF-MASTER-SCAN-OK", $"Scansione Master completata: {MasterOrganizerItems.Count} elementi");
+        }
+        catch (Exception exception)
+        {
+            tracked.Fail("AF-MASTER-SCAN-001", "Scansione Master Library non completata", exception);
+            throw;
+        }
     }
 
     private void NormalizeLibraryPriorities() { for (var index = 0; index < MasterLibraries.Count; index++) MasterLibraries[index].Priority = index + 1; Raise(nameof(LibraryPath)); }
@@ -325,6 +368,13 @@ public sealed class MainViewModel : BindableBase
     }
 
     public void SaveState()
+    {
+        SyncStateFromViewModel();
+        AppStateStore.Save(_state);
+        if (!string.IsNullOrWhiteSpace(CurrentProjectFile)) SaveProjectDocument(CurrentProjectFile);
+    }
+
+    private void SyncStateFromViewModel()
     {
         _state.SourcePaths = SourcePaths.ToList();
         _state.LibraryPath = LibraryPath;
@@ -345,8 +395,6 @@ public sealed class MainViewModel : BindableBase
             if (!_kindOverrides.Contains(frame.Path)) snapshot.Kind = null;
             _state.Overrides[frame.Path] = snapshot;
         }
-        AppStateStore.Save(_state);
-        if (!string.IsNullOrWhiteSpace(CurrentProjectFile)) SaveProjectDocument(CurrentProjectFile);
     }
 
     public void SaveProject(string path)
@@ -358,8 +406,16 @@ public sealed class MainViewModel : BindableBase
 
     public async Task LoadProjectAsync(string path)
     {
+        if (_pendingRecovery is not null) throw new InvalidOperationException("Ripristina oppure ignora prima il recovery journal mostrato in alto.");
         var document = ProjectDocumentStore.Load(path);
-        CurrentProjectFile = Path.GetFullPath(path);
+        ApplyProjectDocument(document, Path.GetFullPath(path));
+        Status = $"Progetto aperto · {Path.GetFileName(CurrentProjectFile)}";
+        if (SourcePaths.Count > 0) await ScanAsync(); else SaveState();
+    }
+
+    private void ApplyProjectDocument(AstroForgeProjectDocument document, string projectFile)
+    {
+        CurrentProjectFile = string.IsNullOrWhiteSpace(projectFile) ? "" : Path.GetFullPath(projectFile);
         _projectCreatedAt = document.CreatedAt;
         SourcePaths.Clear();
         foreach (var source in document.SourcePaths) SourcePaths.Add(source);
@@ -378,22 +434,33 @@ public sealed class MainViewModel : BindableBase
         _state.Overrides = new(document.Overrides, StringComparer.OrdinalIgnoreCase);
         _kindOverrides.Clear();
         foreach (var pair in _state.Overrides.Where(pair => pair.Value.Kind is not null)) _kindOverrides.Add(pair.Key);
-        Status = $"Progetto aperto · {Path.GetFileName(CurrentProjectFile)}";
-        if (SourcePaths.Count > 0) await ScanAsync(); else SaveState();
     }
 
-    private void SaveProjectDocument(string path) => ProjectDocumentStore.Save(path, new AstroForgeProjectDocument
+    private AstroForgeProjectDocument CreateProjectDocument() => new()
     {
         CreatedAt = _projectCreatedAt, ProjectName = ProjectName, SourcePaths = SourcePaths.ToList(), LibraryPath = LibraryPath, MasterLibraries = MasterLibraries.Select(item => item.ToDefinition()).ToList(),
         DestinationPath = DestinationPath, SessionBoundaryHour = SessionBoundaryHour, DefaultGain = ParseDefault(ProjectDefaultGain),
         DefaultOffset = ParseDefault(ProjectDefaultOffset), DefaultTemperatureC = ParseDefault(ProjectDefaultTemperature),
         Overrides = new(_state.Overrides, StringComparer.OrdinalIgnoreCase)
-    });
+    };
+
+    private void SaveProjectDocument(string path) => ProjectDocumentStore.Save(path, CreateProjectDocument());
+
+    private TrackedOperation BeginTrackedOperation(string operation, string startCode, string message)
+    {
+        if (_pendingRecovery is not null) throw new InvalidOperationException("Ripristina oppure ignora prima il recovery journal mostrato in alto.");
+        SyncStateFromViewModel();
+        var snapshot = new ProjectRecoverySnapshot { ProjectFile = CurrentProjectFile, Document = CreateProjectDocument() };
+        var journal = _recoveryJournal.Begin(operation, snapshot);
+        var log = _eventLog.BeginOperation(operation, startCode, message, journal.OperationId);
+        return new(log, _recoveryJournal, journal.OperationId);
+    }
 
     public async Task ScanAsync(CancellationToken cancellationToken = default)
     {
         var availableLibraries = MasterLibraries.Where(item => item.Enabled && item.IsOnline).ToArray();
         if (SourcePaths.Count == 0 && availableLibraries.Length == 0) { Status = "Aggiungi una sorgente oppure una Master Library online"; return; }
+        using var tracked = BeginTrackedOperation("Analisi progetto", "AF-SCAN-START", "Analisi progetto avviata");
         IsScanning = true;
         Progress = 0;
         Status = "Lettura header FITS/XISF…";
@@ -422,12 +489,17 @@ public sealed class MainViewModel : BindableBase
             RefreshIntelligence();
             RebuildTree();
             Status = $"{TotalFiles} file analizzati · {_scanner.LastCacheHits} da cache · {_scanner.LastParsedFiles} letti · {TotalIssues} segnalazioni";
-            _eventLog.Write("Information", "AF-SCAN-OK", $"Scansione completata: {TotalFiles} file, {TotalIssues} segnalazioni");
             Raise(nameof(TotalFiles)); Raise(nameof(TotalIssues)); Raise(nameof(OverrideCount));
             ApplyLibraryOffsetCommand.RaiseCanExecuteChanged();
             ApplyProjectDefaultsCommand.RaiseCanExecuteChanged();
             ClearProjectCommand.RaiseCanExecuteChanged();
             SaveState();
+            tracked.Complete("AF-SCAN-OK", $"Analisi completata: {TotalFiles} file, {TotalIssues} segnalazioni");
+        }
+        catch (Exception exception)
+        {
+            tracked.Fail("AF-SCAN-001", "Analisi progetto non completata", exception);
+            throw;
         }
         finally
         {
@@ -462,8 +534,55 @@ public sealed class MainViewModel : BindableBase
 
     public string SupportBundlePreview => string.Join(Environment.NewLine, SupportBundleBuilder.PreviewEntries.Select(entry => $"• {entry}"));
 
+    public void RefreshDiagnostics()
+    {
+        var events = _eventLog.ReadRecent();
+        DiagnosticEvents.Clear();
+        foreach (var item in events)
+            DiagnosticEvents.Add(new(
+                item.Timestamp.ToLocalTime().ToString("dd MMM HH:mm:ss"),
+                item.Level,
+                item.Code,
+                item.Operation ?? "—",
+                string.IsNullOrWhiteSpace(item.OperationId) ? "—" : item.OperationId[..Math.Min(8, item.OperationId.Length)],
+                item.Message,
+                item.ExceptionType ?? ""));
+        var errors = events.Count(item => item.Level is "Error" or "Critical");
+        var operations = events.Where(item => !string.IsNullOrWhiteSpace(item.OperationId)).Select(item => item.OperationId).Distinct(StringComparer.Ordinal).Count();
+        DiagnosticsSummary = $"{events.Count} eventi recenti · {errors} errori · {operations} operazioni correlate";
+    }
+
+    public async Task RestoreRecoveryAsync(CancellationToken cancellationToken = default)
+    {
+        if (_pendingRecovery is null) return;
+        var recovery = _pendingRecovery;
+        ApplyProjectDocument(recovery.Snapshot.Document, recovery.Snapshot.ProjectFile);
+        _recoveryJournal.Discard();
+        _pendingRecovery = null;
+        Raise(nameof(HasRecoverySnapshot));
+        Raise(nameof(CanRunProjectOperations));
+        Raise(nameof(RecoverySummary));
+        _eventLog.Write("Information", "AF-RECOVERY-RESTORED", "Fotografia progetto ripristinata", operationId: recovery.OperationId, operation: recovery.Operation);
+        Status = "Progetto ripristinato dal recovery journal";
+        if (SourcePaths.Count > 0) await ScanAsync(cancellationToken); else SaveState();
+    }
+
+    public void DiscardRecovery()
+    {
+        if (_pendingRecovery is null) return;
+        var recovery = _pendingRecovery;
+        _recoveryJournal.Discard();
+        _pendingRecovery = null;
+        Raise(nameof(HasRecoverySnapshot));
+        Raise(nameof(CanRunProjectOperations));
+        Raise(nameof(RecoverySummary));
+        _eventLog.Write("Information", "AF-RECOVERY-DISCARDED", "Fotografia di recupero ignorata", operationId: recovery.OperationId, operation: recovery.Operation);
+        Status = "Recovery journal ignorato · progetto corrente invariato";
+    }
+
     public async Task<string> ExportSupportBundleAsync(string outputPath, CancellationToken cancellationToken = default)
     {
+        using var operation = _eventLog.BeginOperation("Pacchetto diagnostico", "AF-SUPPORT-START", "Creazione pacchetto diagnostico avviata");
         var allFrames = _frames.Concat(_masterLibraryFrames).DistinctBy(frame => frame.Path, StringComparer.OrdinalIgnoreCase).ToArray();
         var issues = allFrames.SelectMany(frame => frame.Issues).GroupBy(issue => new { issue.Code, issue.Severity })
             .Select(group => new SupportIssueSummary(group.Key.Code, group.Key.Severity.ToString(), group.Count())).OrderBy(item => item.Code).ToArray();
@@ -487,14 +606,24 @@ public sealed class MainViewModel : BindableBase
             ["unresolvedCalibrationCount"] = UnresolvedCalibrations,
             ["hasAnalysis"] = _analysis is not null,
             ["hasExportPlan"] = _plan is not null,
+            ["recoverySnapshotAvailable"] = HasRecoverySnapshot,
+            ["recentCorrelatedOperationCount"] = _eventLog.ReadRecent().Where(item => !string.IsNullOrWhiteSpace(item.OperationId)).Select(item => item.OperationId).Distinct(StringComparer.Ordinal).Count(),
             ["headerCacheHitsLastScan"] = _scanner.LastCacheHits,
             ["headersParsedLastScan"] = _scanner.LastParsedFiles
         };
         var version = typeof(MainViewModel).Assembly.GetName().Version?.ToString() ?? "unknown";
-        var result = await SupportBundleBuilder.BuildAsync(new(outputPath, version, settings, diagnostics, issues, _eventLog.Files), cancellationToken);
-        _eventLog.Write("Information", "AF-SUPPORT-EXPORTED", $"Pacchetto diagnostico creato con {result.Entries.Count} elementi");
-        Status = $"Pacchetto diagnostico creato · {result.Entries.Count} elementi";
-        return result.Path;
+        try
+        {
+            var result = await SupportBundleBuilder.BuildAsync(new(outputPath, version, settings, diagnostics, issues, _eventLog.Files), cancellationToken);
+            operation.Complete("AF-SUPPORT-EXPORTED", $"Pacchetto diagnostico creato con {result.Entries.Count} elementi");
+            Status = $"Pacchetto diagnostico creato · {result.Entries.Count} elementi";
+            return result.Path;
+        }
+        catch (Exception exception)
+        {
+            operation.Fail("AF-SUPPORT-001", "Pacchetto diagnostico non creato", exception);
+            throw;
+        }
     }
 
     public void RecordError(string code, Exception exception) => _eventLog.Write("Error", code, "Operazione non completata", exception);
@@ -624,6 +753,7 @@ public sealed class MainViewModel : BindableBase
     public async Task<string> ExportAsync(CancellationToken cancellationToken = default)
     {
         if (_plan is null) BuildPlan();
+        using var tracked = BeginTrackedOperation("Esportazione progetto", "AF-EXPORT-START", "Esportazione verificata avviata");
         IsScanning = true;
         try
         {
@@ -634,7 +764,13 @@ public sealed class MainViewModel : BindableBase
             });
             var output = await ProjectExporter.ExecuteAsync(_plan!, progress, cancellationToken);
             Status = $"Progetto verificato: {output}";
+            tracked.Complete("AF-EXPORT-OK", $"Esportazione verificata completata: {_plan!.Files.Count} file");
             return output;
+        }
+        catch (Exception exception)
+        {
+            tracked.Fail("AF-EXPORT-001", "Esportazione progetto non completata", exception);
+            throw;
         }
         finally { IsScanning = false; }
     }
@@ -1246,9 +1382,47 @@ public sealed class MainViewModel : BindableBase
     }
     private static string Csv(string? value) => $"\"{(value ?? "").Replace("\"", "\"\"")}\"";
     private static string Number(double? value) => value?.ToString("0.######", CultureInfo.InvariantCulture) ?? "";
+
+    private sealed class TrackedOperation : IDisposable
+    {
+        private readonly StructuredLogOperation _log;
+        private readonly RecoveryJournalStore _journal;
+        private readonly string _operationId;
+        private bool _finished;
+
+        public TrackedOperation(StructuredLogOperation log, RecoveryJournalStore journal, string operationId)
+        {
+            _log = log;
+            _journal = journal;
+            _operationId = operationId;
+        }
+
+        public void Complete(string code, string message)
+        {
+            if (_finished) return;
+            _log.Complete(code, message);
+            _journal.Complete(_operationId);
+            _finished = true;
+        }
+
+        public void Fail(string code, string message, Exception exception)
+        {
+            if (_finished) return;
+            _log.Fail(code, message, exception);
+            _journal.Complete(_operationId);
+            _finished = true;
+        }
+
+        public void Dispose()
+        {
+            if (_finished) return;
+            _log.Dispose();
+        }
+    }
 }
 
 public sealed record WbppKeywordRow(string Keyword, string Pre, string Post, string Reason);
+public sealed record DiagnosticEventRow(string Timestamp, string Level, string Code, string Operation, string Correlation, string Message, string ExceptionType);
 public sealed record FlatSetOption(CalibrationGroup Group, string LinkId, string Filter, string Display)
 {
     public override string ToString() => Display;

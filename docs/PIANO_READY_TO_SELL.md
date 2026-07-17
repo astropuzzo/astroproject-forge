@@ -59,12 +59,13 @@ economico è basso.
 | Statistiche progetto | ✅ Implementato | Ore per filtro, sessione e notte; copertura e stato calibrazioni |
 | Override e persistenza preferenze | ✅ Implementato | Singolo, batch, undo e provenienza valori |
 | File progetto `.astroforge` | ✅ Implementato | Documento portabile v1, apertura/salvataggio atomico e autosalvataggio dopo le modifiche |
-| Coda di revisione | 🟡 Parziale | Diagnostiche disponibili; manca workflow dedicato candidato-per-candidato |
+| Coda di revisione | ✅ Implementato | Workflow candidato-per-candidato, confronto tecnico e assegnazione per Light/notte/firma |
 | Gestore multi-libreria | 🟡 Implementato v1 | Più radici, priorità e stato online/offline; profili per ruolo ancora da completare |
 | Export verificato | 🟡 Parziale | SHA-256 e resume presenti; mancano preflight disco/rete e macchina a stati completa |
 | Cache incrementale | 🟡 Implementata v1 | Header indicizzati per path, dimensione e data modifica; invalidazione e pulizia manuale operative. Da migrare a SQLite per dataset estremi |
 | Installer/updates/firma | ❌ Mancante | Disponibile EXE autonomo, non ancora distribuzione commerciale |
-| Support bundle/privacy/licensing | ❌ Mancante | Da progettare prima della beta pubblica |
+| Diagnostica e support bundle | ✅ Implementato | Log ruotati e redatti, Centro diagnostica, correlazione operazioni, recovery journal e ZIP locale privacy-safe |
+| Privacy/licensing | 🟡 Parziale | Privacy tecnica applicata; documenti legali e licensing commerciale restano in P0.15/P0.16 |
 
 ## Roadmap ottimizzata per release
 
@@ -523,6 +524,8 @@ Il pacchetto deve essere creato localmente. L’invio al supporto è sempre una
 scelta separata dell’utente.
 
 **Avanzamento 16 luglio 2026 — diagnostica v1:** introdotto un registro JSONL locale con timestamp UTC, livello, codice evento, messaggio controllato e tipo eccezione. I log ruotano automaticamente e oscurano percorsi Windows e nomi FITS/XISF prima della scrittura. Tutti gli errori intercettati dai flussi principali mostrano ora un codice `AF-*` ricercabile e lo registrano localmente; anche le eccezioni UI impreviste hanno recovery e codice dedicato. Dal menu progetto è disponibile `Esporta diagnostica`: prima del salvataggio mostra l'inventario esatto, poi crea localmente uno ZIP con versioni di app/Windows/runtime, impostazioni tecniche non sensibili, soli conteggi diagnostici, codici/severità degli errori e log recenti. Sono esclusi immagini, pixel, target, coordinate, nomi file, percorsi, header grezzi e dettagli dei Master. Testate rotazione, inventario ZIP e redazione di percorsi/nomi astronomici. Restano una vista log interna, correlazione per singola operazione e recovery journal del progetto per chiudere P0.12.
+
+**Diagnostica e recovery v2 — 17 luglio 2026:** P0.12 è funzionalmente chiuso. Il nuovo Centro diagnostica mostra gli eventi recenti già redatti, con livello, codice ricercabile, operazione e ID breve di correlazione. Analisi progetto, export verificato, scansione/organizzazione/rollback delle Master Library e creazione del support bundle registrano inizio ed esito con lo stesso ID. Prima delle operazioni lunghe o mutative viene scritto atomicamente un recovery journal locale contenente una fotografia del documento progetto; viene eliminato soltanto alla conclusione e, dopo un'interruzione reale, compare una barra che permette di ripristinare o ignorare consapevolmente la fotografia. Finché la scelta non viene risolta, le operazioni che potrebbero sovrascriverla restano bloccate. Test automatici coprono persistenza, protezione da ID estranei, completamento, lettura degli eventi correlati e redazione del support bundle. Resta l'audit finale DPI/tastiera previsto da P0.11/P0.13, non lavoro funzionale su P0.12.
 
 ### Criteri di accettazione
 

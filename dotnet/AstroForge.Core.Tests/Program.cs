@@ -152,6 +152,16 @@ try
     var diagnosticLog = new StructuredEventLog(Path.Combine(exportRoot, "logs"), 4096, 2);
     for (var index = 0; index < 80; index++) diagnosticLog.Write("Error", "AF-TEST-001", $@"Errore controllato {index} in C:\secret\target-{index}.fits", new IOException("private detail"));
     Assert(diagnosticLog.Files.Count is >= 2 and <= 3, "Rotazione log strutturato non applicata.");
+    using (var correlatedOperation = diagnosticLog.BeginOperation("Test correlazione", "AF-TEST-START", "Operazione test avviata", "test-operation-id"))
+        correlatedOperation.Complete("AF-TEST-OK", "Operazione test completata");
+    var correlatedEvents = diagnosticLog.ReadRecent().Where(item => item.OperationId == "test-operation-id").ToArray();
+    Assert(correlatedEvents.Length == 2 && correlatedEvents.All(item => item.Operation == "Test correlazione"), "Eventi della stessa operazione non correlati correttamente.");
+    var recoveryStore = new RecoveryJournalStore(Path.Combine(exportRoot, "recovery", "current.json"));
+    var recoveryEntry = recoveryStore.Begin("Analisi progetto", new Dictionary<string, int> { ["sourceCount"] = 3 }, "recovery-operation-id");
+    var recoveredEntry = recoveryStore.Read<Dictionary<string, int>>();
+    Assert(recoveredEntry?.OperationId == recoveryEntry.OperationId && recoveredEntry.Snapshot["sourceCount"] == 3, "Recovery journal atomico non rileggibile.");
+    Assert(!recoveryStore.Complete("wrong-operation-id") && recoveryStore.Read<Dictionary<string, int>>() is not null, "Un'operazione diversa non deve eliminare il recovery journal corrente.");
+    Assert(recoveryStore.Complete(recoveryEntry.OperationId) && recoveryStore.Read<Dictionary<string, int>>() is null, "Recovery journal non rimosso dopo il completamento.");
     var supportZip = Path.Combine(exportRoot, "support.zip");
     var support = await SupportBundleBuilder.BuildAsync(new(supportZip, "test", new Dictionary<string, object?> { ["uiDensity"] = "Comoda" }, new Dictionary<string, object?> { ["frameCount"] = 2 }, [new("image.unreadable", "Error", 1)], diagnosticLog.Files));
     using (var supportArchive = ZipFile.OpenRead(support.Path))

@@ -62,7 +62,7 @@ flowchart LR
 ### Project Intelligence
 
 - parser FITS e XISF;
-- diagnostica locale privacy-safe con codici errore ricercabili e pacchetto ZIP;
+- diagnostica locale privacy-safe con codici errore ricercabili, operazioni correlate, Centro diagnostica interno e pacchetto ZIP;
 - classificazione Light, Flat, Dark, Bias e Dark-flat;
 - notte astronomica configurabile: i file dopo mezzanotte possono restare nella
   sessione della sera precedente;
@@ -91,6 +91,7 @@ flowchart LR
 - verifica SHA-256;
 - file progetto portabile `.astroforge` con salvataggio atomico;
 - autosalvataggio dopo il primo salvataggio esplicito;
+- recovery journal atomico con scelta esplicita Ripristina/Ignora dopo un'interruzione;
 - cache incrementale degli header con invalidazione dei soli file modificati;
 - comando `Pulisci cache` che non elimina immagini astronomiche.
 - Master Library Lab con compilazione guidata dei metadati mancanti, nuova

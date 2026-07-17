@@ -63,7 +63,7 @@ flowchart LR
 ### Project intelligence
 
 - FITS and XISF parsing;
-- local privacy-safe diagnostics with searchable error codes and support ZIP export;
+- local privacy-safe diagnostics with searchable error codes, correlated operations, an in-app event center, and support ZIP export;
 - Light, Flat, Dark, Bias, and Dark-flat classification;
 - configurable astronomical-night boundary across midnight;
 - automatic Flat Epochs and manual multi-session Flat linking;
@@ -90,6 +90,7 @@ flowchart LR
 - resumable staging export with SHA-256 verification;
 - portable `.astroforge` document with atomic saves;
 - autosave after the first explicit project save;
+- atomic recovery journal with an explicit restore/discard banner after an interrupted operation;
 - incremental header cache that invalidates only changed files;
 - safe cache cleanup that cannot delete astronomical images.
 - Master Library Lab with guided missing-metadata entry, normalized copy layout,

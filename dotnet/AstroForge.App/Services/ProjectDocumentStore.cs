@@ -20,6 +20,12 @@ public sealed class AstroForgeProjectDocument
     public Dictionary<string, FrameOverrides> Overrides { get; set; } = new(StringComparer.OrdinalIgnoreCase);
 }
 
+public sealed class ProjectRecoverySnapshot
+{
+    public string ProjectFile { get; set; } = "";
+    public AstroForgeProjectDocument Document { get; set; } = new();
+}
+
 public static class ProjectDocumentStore
 {
     private static readonly JsonSerializerOptions Options = new() { WriteIndented = true };

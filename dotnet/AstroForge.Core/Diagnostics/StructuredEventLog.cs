@@ -3,7 +3,14 @@ using System.Text.RegularExpressions;
 
 namespace AstroForge.Core.Diagnostics;
 
-public sealed record StructuredLogEvent(DateTimeOffset Timestamp, string Level, string Code, string Message, string? ExceptionType = null);
+public sealed record StructuredLogEvent(
+    DateTimeOffset Timestamp,
+    string Level,
+    string Code,
+    string Message,
+    string? ExceptionType = null,
+    string? OperationId = null,
+    string? Operation = null);
 
 public sealed class StructuredEventLog
 {
@@ -23,18 +30,59 @@ public sealed class StructuredEventLog
     }
 
     public IReadOnlyList<string> Files => Directory.Exists(_directory)
-        ? Directory.EnumerateFiles(_directory, "events*.jsonl").OrderBy(path => path, StringComparer.OrdinalIgnoreCase).ToArray()
+        ? Directory.EnumerateFiles(_directory, "events*.jsonl").OrderBy(File.GetLastWriteTimeUtc).ThenBy(path => path, StringComparer.OrdinalIgnoreCase).ToArray()
         : [];
 
-    public void Write(string level, string code, string message, Exception? exception = null)
+    public StructuredLogOperation BeginOperation(string operation, string startCode, string message, string? operationId = null)
+    {
+        var id = string.IsNullOrWhiteSpace(operationId) ? Guid.NewGuid().ToString("N") : operationId;
+        Write("Information", startCode, message, operationId: id, operation: operation);
+        return new(this, id, operation);
+    }
+
+    public void Write(string level, string code, string message, Exception? exception = null, string? operationId = null, string? operation = null)
     {
         lock (_gate)
         {
-            Directory.CreateDirectory(_directory);
-            RotateIfNeeded();
-            var safeMessage = AstroFile.Replace(WindowsPath.Replace(message, "[PATH]"), "[ASTRO-FILE]");
-            var entry = new StructuredLogEvent(DateTimeOffset.UtcNow, level, code, safeMessage, exception?.GetType().FullName);
-            File.AppendAllText(CurrentPath, JsonSerializer.Serialize(entry, _json) + Environment.NewLine);
+            try
+            {
+                Directory.CreateDirectory(_directory);
+                RotateIfNeeded();
+                var safeMessage = AstroFile.Replace(WindowsPath.Replace(message, "[PATH]"), "[ASTRO-FILE]");
+                var entry = new StructuredLogEvent(DateTimeOffset.UtcNow, level, code, safeMessage, exception?.GetType().FullName, operationId, operation);
+                File.AppendAllText(CurrentPath, JsonSerializer.Serialize(entry, _json) + Environment.NewLine);
+            }
+            catch (IOException) { }
+            catch (UnauthorizedAccessException) { }
+        }
+    }
+
+    public IReadOnlyList<StructuredLogEvent> ReadRecent(int maximumEvents = 250)
+    {
+        if (maximumEvents <= 0) return [];
+        lock (_gate)
+        {
+            var events = new List<StructuredLogEvent>();
+            foreach (var path in Files)
+            {
+                try
+                {
+                    using var stream = new FileStream(path, FileMode.Open, FileAccess.Read, FileShare.ReadWrite | FileShare.Delete);
+                    using var reader = new StreamReader(stream);
+                    while (reader.ReadLine() is { } line)
+                    {
+                        try
+                        {
+                            var item = JsonSerializer.Deserialize<StructuredLogEvent>(line, _json);
+                            if (item is not null) events.Add(item);
+                        }
+                        catch (JsonException) { }
+                    }
+                }
+                catch (IOException) { }
+                catch (UnauthorizedAccessException) { }
+            }
+            return events.OrderByDescending(item => item.Timestamp).Take(maximumEvents).ToArray();
         }
     }
 
@@ -51,5 +99,39 @@ public sealed class StructuredEventLog
             if (File.Exists(source)) File.Move(source, Path.Combine(_directory, $"events.{index + 1}.jsonl"), true);
         }
         File.Move(CurrentPath, Path.Combine(_directory, "events.1.jsonl"), true);
+    }
+}
+
+public sealed class StructuredLogOperation : IDisposable
+{
+    private readonly StructuredEventLog _log;
+    private int _finished;
+
+    internal StructuredLogOperation(StructuredEventLog log, string id, string operation)
+    {
+        _log = log;
+        Id = id;
+        Operation = operation;
+    }
+
+    public string Id { get; }
+    public string Operation { get; }
+
+    public void Complete(string code, string message)
+    {
+        if (Interlocked.Exchange(ref _finished, 1) != 0) return;
+        _log.Write("Information", code, message, operationId: Id, operation: Operation);
+    }
+
+    public void Fail(string code, string message, Exception exception)
+    {
+        if (Interlocked.Exchange(ref _finished, 1) != 0) return;
+        _log.Write("Error", code, message, exception, Id, Operation);
+    }
+
+    public void Dispose()
+    {
+        if (Interlocked.Exchange(ref _finished, 1) != 0) return;
+        _log.Write("Warning", "AF-OP-ABANDONED", "Operazione terminata senza esito registrato", operationId: Id, operation: Operation);
     }
 }
