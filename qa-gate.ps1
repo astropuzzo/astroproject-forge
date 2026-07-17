@@ -35,7 +35,7 @@ $status = 'failed'
 try {
     Push-Location $root
     Invoke-GateStep 'core-regression-suite' { & $dotnet run --project $testProject -c Release }
-    Invoke-GateStep 'wpf-release-build' { & $dotnet build $appProject -c Release --no-restore }
+    Invoke-GateStep 'wpf-release-build' { & $dotnet build $appProject -c Release }
     if (-not $SkipPublish) {
         Invoke-GateStep 'self-contained-publish' {
             & $dotnet publish $appProject -c Release -r win-x64 --self-contained true -p:PublishSingleFile=true -p:DebugType=None -p:DebugSymbols=false -o $output
