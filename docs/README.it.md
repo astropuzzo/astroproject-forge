@@ -14,7 +14,7 @@ WeightedBatchPreprocessing.
 > Correttezza delle calibrazioni e sicurezza degli originali hanno precedenza
 > sulla quantità di funzioni.
 
-![Dashboard delle acquisizioni](docs/images/acquisition-dashboard.png)
+![Mappa progetto di AstroProject Forge](images/project-map.jpg)
 
 ## Il problema che risolve
 
@@ -57,6 +57,22 @@ flowchart LR
    `Pre/Post` per `FLATSET`, `DARKSET`, `BIASSET` e `TARGET`.
 7. L'esportazione genera una cartella pronta da controllare in PixInsight.
 
+## Dentro l'app
+
+La dashboard trasforma il progetto in dati osservativi utili: integrazione
+totale, ore per filtro, sessioni di configurazione, notti astronomiche, Gain,
+temperatura e copertura delle calibrazioni sono leggibili senza aprire un foglio
+di calcolo.
+
+![Dashboard con integrazione per filtro](images/acquisition-dashboard.jpg)
+
+Master Library Lab è un ambiente separato, non l'ultimo passaggio obbligatorio
+del progetto. Può inventariare le librerie Dark/Bias abilitate anche senza Light,
+completare i metadati mancanti e mostrare in anteprima una struttura normalizzata
+che parte dalla camera prima di creare qualunque copia verificata.
+
+![Inventario di Master Library Lab](images/master-library-lab.jpg)
+
 ## Funzioni implementate
 
 ### Project Intelligence
@@ -72,8 +88,9 @@ flowchart LR
 - dashboard con ore per filtro, sessione e notte;
 - intervalli temporali, Gain, temperatura e copertura calibrazioni;
 - esportazione statistiche CSV e JSON.
-- interfaccia Windows glass premium con animazioni coerenti, tabelle, alberi,
-  input e gerarchia visiva progettata per la revisione delle calibrazioni.
+- workspace Windows nativo con title bar scura integrata, pannelli Sorgenti e
+  Inspector responsivi, stati vuoti contestuali, movimento sobrio e gerarchia
+  visiva progettata per le decisioni di calibrazione;
 
 ### PixInsight WBPP
 

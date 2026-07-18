@@ -79,21 +79,29 @@ public partial class MainWindow : Window
     }
     private void ApplyResponsiveLayout()
     {
-        var compact = ActualWidth < 1250;
-        var narrowHeader = ActualWidth < 1080;
-        SourcesColumn.Width = _sourcesVisible ? new GridLength(compact ? 220 : 270) : new GridLength(0);
-        InspectorColumn.Width = _inspectorVisible && !_masterLabActive ? new GridLength(compact ? 330 : 430) : new GridLength(0);
+        var compact = ActualWidth < 1320;
+        var narrowHeader = ActualWidth < 1120;
+        SourcesColumn.Width = _sourcesVisible ? new GridLength(compact ? 232 : 260) : new GridLength(0);
+        InspectorColumn.Width = _inspectorVisible && !_masterLabActive ? new GridLength(compact ? 340 : 390) : new GridLength(0);
         BrandText.Visibility = narrowHeader ? Visibility.Collapsed : Visibility.Visible;
-        ProjectStatusBadge.Visibility = ActualWidth < 1380 ? Visibility.Collapsed : Visibility.Visible;
-        SourceToggleButton.Content = narrowHeader ? "☰" : "☰  Sorgenti";
+        ProjectStatusBadge.Visibility = ActualWidth < 1420 ? Visibility.Collapsed : Visibility.Visible;
+        SourceToggleButton.Content = narrowHeader ? "☰" : "Sorgenti";
         SourceToggleButton.Width = narrowHeader ? 44 : double.NaN;
         SourceToggleButton.Padding = narrowHeader ? new Thickness(0) : new Thickness(13, 0, 13, 0);
-        InspectorToggleButton.Content = narrowHeader ? "◫" : "Inspector  ◫";
+        InspectorToggleButton.Content = narrowHeader ? "◫" : "Inspector";
         InspectorToggleButton.Width = narrowHeader ? 44 : double.NaN;
         InspectorToggleButton.Padding = narrowHeader ? new Thickness(0) : new Thickness(13, 0, 13, 0);
-        OpenProjectButton.Content = narrowHeader ? "Apri" : "Apri progetto";
-        SaveProjectButton.Content = narrowHeader ? "Salva" : "Salva progetto";
+        OpenProjectButton.Content = "Apri";
+        SaveProjectButton.Content = "Salva";
+        SettingsButton.Content = narrowHeader ? "⚙" : "Impostazioni";
+        SettingsButton.Width = narrowHeader ? 44 : double.NaN;
+        SettingsButton.Padding = narrowHeader ? new Thickness(0) : new Thickness(13, 0, 13, 0);
     }
+
+    private void MinimizeWindow_Click(object sender, RoutedEventArgs e) => WindowState = WindowState.Minimized;
+    private void MaximizeWindow_Click(object sender, RoutedEventArgs e) =>
+        WindowState = WindowState == WindowState.Maximized ? WindowState.Normal : WindowState.Maximized;
+    private void CloseWindow_Click(object sender, RoutedEventArgs e) => Close();
 
     private void More_Click(object sender, RoutedEventArgs e) { SettingsPopup.IsOpen = false; MorePopup.IsOpen = !MorePopup.IsOpen; }
     private void CloseMore_Click(object sender, RoutedEventArgs e) => MorePopup.IsOpen = false;
@@ -214,6 +222,19 @@ public partial class MainWindow : Window
         if (e.Source != WorkspaceTabs) return;
         _masterLabActive = (WorkspaceTabs.SelectedItem as System.Windows.Controls.TabItem)?.Header?.ToString()?.Contains("MASTER LIBRARY", StringComparison.OrdinalIgnoreCase) == true;
         ApplyResponsiveLayout();
+        AnimateWorkspaceTransition();
+    }
+
+    private void AnimateWorkspaceTransition()
+    {
+        if (_viewModel.ReducedMotion || WorkspaceTabs.SelectedContent is not FrameworkElement content) return;
+        var translate = content.RenderTransform as System.Windows.Media.TranslateTransform ?? new System.Windows.Media.TranslateTransform();
+        content.RenderTransform = translate;
+        content.Opacity = 0;
+        translate.Y = 7;
+        var ease = new CubicEase { EasingMode = EasingMode.EaseOut };
+        content.BeginAnimation(OpacityProperty, new DoubleAnimation(0, 1, TimeSpan.FromMilliseconds(180)) { EasingFunction = ease });
+        translate.BeginAnimation(System.Windows.Media.TranslateTransform.YProperty, new DoubleAnimation(7, 0, TimeSpan.FromMilliseconds(220)) { EasingFunction = ease });
     }
 
     private void ChooseDestination_Click(object sender, RoutedEventArgs e)

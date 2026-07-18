@@ -194,6 +194,7 @@ public sealed class MainViewModel : BindableBase
     public string StatisticsDateRange => _statistics?.FirstCapture is null ? "Nessun intervallo temporale" : $"{_statistics.FirstCapture.Value.ToLocalTime():dd MMM yyyy} → {_statistics.LastCapture!.Value.ToLocalTime():dd MMM yyyy}";
     public string SelectionTitle => SelectedNode?.Name ?? "Nessuna selezione";
     public string SelectionDetail => SelectedNode is null ? "Seleziona un nodo dell'albero" : $"{SelectedNode.Count} frame · {SelectedNode.IssueCount} segnalazioni";
+    public bool HasSelection => SelectedNode is not null;
     public string ApplyLabel => SelectedNode is null ? "Applica" : $"Applica a {SelectedNode.Count} frame";
     public string GainSource => AggregateSource(SelectedNode?.Frames, frame => frame.Gain.Source);
     public string OffsetSource => AggregateSource(SelectedNode?.Frames, frame => frame.Offset.Source);
@@ -1075,7 +1076,7 @@ public sealed class MainViewModel : BindableBase
     private void RaiseSelectionProperties()
     {
         UpdateCalibrationSummary();
-        Raise(nameof(SelectionTitle)); Raise(nameof(SelectionDetail)); Raise(nameof(ApplyLabel)); Raise(nameof(ManualLinkSelectionText)); Raise(nameof(GainSource)); Raise(nameof(OffsetSource)); Raise(nameof(TemperatureSource)); Raise(nameof(FilterSource)); Raise(nameof(FlatSetSource)); Raise(nameof(SessionSource)); Raise(nameof(RawHeaders));
+        Raise(nameof(SelectionTitle)); Raise(nameof(SelectionDetail)); Raise(nameof(HasSelection)); Raise(nameof(ApplyLabel)); Raise(nameof(ManualLinkSelectionText)); Raise(nameof(GainSource)); Raise(nameof(OffsetSource)); Raise(nameof(TemperatureSource)); Raise(nameof(FilterSource)); Raise(nameof(FlatSetSource)); Raise(nameof(SessionSource)); Raise(nameof(RawHeaders));
     }
 
     private static string Aggregate<T>(IReadOnlyList<FrameMetadata> frames, Func<FrameMetadata, T> selector, Func<T, string> formatter)
@@ -1238,7 +1239,7 @@ public sealed class MainViewModel : BindableBase
         var maximumHours = Math.Max(0.001, _statistics.Filters.Select(item => item.ExposureHours).DefaultIfEmpty().Max());
         foreach (var item in _statistics.Filters)
         {
-            var gain = item.Gains.Count == 0 ? "Gain non disponibile" : $"Gain {string.Join(", ", item.Gains.Select(value => value.ToString("0.###")))}";
+            var gain = item.Gains.Count == 0 ? "—" : string.Join(", ", item.Gains.Select(value => value.ToString("0.###")));
             var temperature = TemperatureRange(item.MinimumTemperatureC, item.MaximumTemperatureC);
             FilterStatistics.Add(new(item.Filter, FormatHours(item.ExposureSeconds), item.LightCount, item.NightCount, item.ConfigurationSessionCount,
                 $"{item.FlatFrameCount} Flat · {item.DarkMasterCount} Dark · {item.BiasMasterCount} Bias", gain, temperature,
@@ -1364,8 +1365,8 @@ public sealed class MainViewModel : BindableBase
 
     private static string TemperatureRange(double? minimum, double? maximum)
     {
-        if (minimum is null || maximum is null) return "Temperatura non disponibile";
-        return Math.Abs(minimum.Value - maximum.Value) < 0.05 ? $"Temperatura {Signed(minimum.Value)} °C" : $"Temperatura {Signed(minimum.Value)}…{Signed(maximum.Value)} °C";
+        if (minimum is null || maximum is null) return "—";
+        return Math.Abs(minimum.Value - maximum.Value) < 0.05 ? $"{Signed(minimum.Value)} °C" : $"{Signed(minimum.Value)}…{Signed(maximum.Value)} °C";
     }
 
     private static string Signed(double value) => value.ToString("0.#", CultureInfo.CurrentCulture).Replace("-", "−");

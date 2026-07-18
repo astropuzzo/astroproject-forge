@@ -13,7 +13,7 @@ PixInsight WeightedBatchPreprocessing.
 > Active pre-release development. Calibration correctness and source-file
 > safety take priority over feature count. This is not yet a commercial build.
 
-![Acquisition dashboard](docs/images/acquisition-dashboard.png)
+![AstroProject Forge project map](docs/images/project-map.jpg)
 
 ## The problem
 
@@ -58,6 +58,22 @@ flowchart LR
 7. Export creates a resumable, verified project ready for final inspection in
    PixInsight.
 
+## Inside the app
+
+The acquisition dashboard turns the project into useful observing data: total
+integration, time per filter, configuration sessions, astronomical nights,
+Gain, temperature and calibration coverage are visible without opening a
+spreadsheet.
+
+![Acquisition dashboard with integration time per filter](docs/images/acquisition-dashboard.jpg)
+
+Master Library Lab is a separate workspace, not a required final project step.
+It inventories enabled Dark/Bias libraries even when no Light folder is loaded,
+lets missing metadata be completed, and previews a camera-first normalized
+layout before any verified copy is created.
+
+![Master Library Lab inventory](docs/images/master-library-lab.jpg)
+
 ## Implemented capabilities
 
 ### Project intelligence
@@ -72,8 +88,9 @@ flowchart LR
 - integration time by filter, session, and night;
 - date ranges, Gain, temperature, and calibration coverage;
 - CSV and JSON statistics export.
-- premium glass-based Windows UI with consistent motion, tables, trees, inputs,
-  status surfaces, and calibration-focused visual hierarchy.
+- native Windows workspace with integrated dark window chrome, responsive
+  source/inspector panels, contextual empty states, restrained motion and a
+  calibration-focused visual hierarchy;
 
 ### Calibration review and WBPP
 
