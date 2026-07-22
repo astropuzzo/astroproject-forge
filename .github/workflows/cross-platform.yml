@@ -77,6 +77,9 @@ jobs:
       - name: Package macOS app bundle
         if: runner.os == 'macOS'
         run: |
+          dotnet nuget locals all --clear || true
+          find dotnet -type d \( -name bin -o -name obj \) -prune -exec rm -rf {} +
+          rm -rf "$DOTNET_ROOT"
           mkdir -p "AstroProject Forge.app/Contents/MacOS"
           mv publish/* "AstroProject Forge.app/Contents/MacOS/"
           rmdir publish
