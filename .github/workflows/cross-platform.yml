@@ -111,7 +111,7 @@ jobs:
           mkdir dmg-root
           mv "AstroProject Forge.app" dmg-root/
           ln -s /Applications dmg-root/Applications
-          hdiutil create -volname "AstroProject Forge" -srcfolder dmg-root -ov -format UDZO AstroProjectForge-${{ matrix.rid }}.dmg
+          hdiutil create -volname "AstroProject Forge" -srcfolder dmg-root -size 512m -ov -format UDZO AstroProjectForge-${{ matrix.rid }}.dmg
           mv "dmg-root/AstroProject Forge.app" .
           rm -rf dmg-root
           ditto -c -k --sequesterRsrc --keepParent "AstroProject Forge.app" AstroProjectForge-${{ matrix.rid }}.zip
