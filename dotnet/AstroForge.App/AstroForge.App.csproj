@@ -11,6 +11,7 @@
   <ItemGroup>
     <ProjectReference Include="..\AstroForge.Core\AstroForge.Core.csproj" />
     <Resource Include="..\..\assets\astroforge.ico" Link="Assets\astroforge.ico" />
+    <EmbeddedResource Include="..\..\assets\i18n\en.json" LogicalName="AstroForge.Localization.en.json" />
   </ItemGroup>
 </Project>
 

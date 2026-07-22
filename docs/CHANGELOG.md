@@ -1,5 +1,13 @@
 # AstroProject Forge — note di rilascio
 
+## 0.9.0-beta.3 — 22 luglio 2026
+
+- Aggiunto il selettore lingua in `Impostazioni → Lingua / Language` su Windows, Linux e macOS.
+- Il passaggio italiano/inglese è immediato, persistente e comprende navigazione, pannelli, azioni, stati numerici, messaggi e tooltip.
+- I valori interni stabili, come densità dell’interfaccia e canale release, non dipendono più dalla lingua visualizzata.
+- La localizzazione viene riapplicata quando cambiano dati o workspace, evitando pannelli misti dopo analisi e navigazione.
+- Le release pubbliche espongono soltanto installer e pacchetti portable; sorgenti ZIP/TAR.GZ sono generati automaticamente da GitHub, mentre report QA, manifest e SBOM restano artefatti interni.
+
 ## 0.9.0-beta.2 — 22 luglio 2026
 
 - Linea di soglia, punti arancioni, conteggio e lista dei sospetti usano ora lo stesso score aggregato.

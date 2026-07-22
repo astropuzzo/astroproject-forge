@@ -83,6 +83,10 @@ La prima beta pubblica è distribuita tramite [GitHub Releases](https://github.c
 
 I pacchetti pubblicati sono self-contained: non serve installare .NET. PixInsight non è necessario per inventariare o organizzare il progetto.
 
+L’interfaccia dell’app è disponibile in italiano e inglese. La lingua si cambia in qualsiasi momento da **Impostazioni → Lingua / Language**; la modifica è immediata e viene ricordata al riavvio.
+
+Ogni release GitHub contiene soltanto i pacchetti installabili e portable elencati sopra. GitHub aggiunge automaticamente gli archivi ZIP e TAR.GZ del `Source code`. Report QA, manifest, checksum e SBOM restano artefatti interni della build e non affollano i download pubblici.
+
 ## Avvio rapido
 
 1. Aggiungi file o cartelle contenenti Light e Flat.

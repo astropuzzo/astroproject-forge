@@ -32,11 +32,14 @@ public partial class MainWindow : Window
     private Point _qualityPanStart;
     private double _qualityPanHorizontal;
     private double _qualityPanVertical;
+    private bool _localizationPending;
 
     public MainWindow()
     {
         InitializeComponent();
         DataContext = _viewModel;
+        _viewModel.UiLanguageChanged += (_, _) => ScheduleLocalization();
+        _viewModel.PropertyChanged += (_, _) => ScheduleLocalization();
         _sourcePanelWidth = _viewModel.SourcePanelWidth;
         _inspectorPanelWidth = _viewModel.InspectorPanelWidth;
         Closing += (_, _) => { _qualityCancellation?.Cancel(); _previewCancellation?.Cancel(); _viewModel.SaveState(); };
@@ -205,7 +208,7 @@ public partial class MainWindow : Window
     private void DensitySelector_SelectionChanged(object sender, System.Windows.Controls.SelectionChangedEventArgs e)
     {
         if (!IsLoaded) return;
-        if (DensitySelector.SelectedItem is System.Windows.Controls.ComboBoxItem item) _viewModel.UiDensity = item.Content?.ToString() ?? "Comoda";
+        if (DensitySelector.SelectedItem is System.Windows.Controls.ComboBoxItem item) _viewModel.UiDensity = item.Tag?.ToString() ?? "Comoda";
         ApplyUiPreferences();
     }
     private void ReducedMotion_Click(object sender, RoutedEventArgs e) => ApplyUiPreferences();
@@ -244,6 +247,8 @@ public partial class MainWindow : Window
     {
         ApplyUiPreferences();
         UpdateWorkspaceContext();
+        SelectDensity();
+        ScheduleLocalization();
         if (!_viewModel.ReducedMotion)
         {
             RootSurface.Opacity = 0;
@@ -262,6 +267,7 @@ public partial class MainWindow : Window
         {
             UpdateWorkspaceContext();
             AnimateWorkspaceTransition();
+            ScheduleLocalization();
         }), DispatcherPriority.Loaded);
     }
 
@@ -269,8 +275,25 @@ public partial class MainWindow : Window
     {
         var selectedTab = WorkspaceTabs.SelectedItem as System.Windows.Controls.TabItem;
         _inspectorContextAvailable = string.Equals(selectedTab?.Tag?.ToString(), "Inspector", StringComparison.Ordinal);
-        if (!string.Equals(selectedTab?.Header?.ToString(), "Qualità", StringComparison.Ordinal)) StopBlink();
+        if (WorkspaceTabs.SelectedIndex != 4) StopBlink();
         ApplyResponsiveLayout();
+    }
+
+    private void SelectDensity()
+    {
+        DensitySelector.SelectedItem = DensitySelector.Items.OfType<System.Windows.Controls.ComboBoxItem>()
+            .FirstOrDefault(item => string.Equals(item.Tag?.ToString(), _viewModel.UiDensity, StringComparison.Ordinal));
+    }
+
+    private void ScheduleLocalization()
+    {
+        if (!IsLoaded || _localizationPending) return;
+        _localizationPending = true;
+        Dispatcher.BeginInvoke(new Action(() =>
+        {
+            _localizationPending = false;
+            WpfLocalizationAdapter.Apply(this, _viewModel.UiLanguage);
+        }), DispatcherPriority.ContextIdle);
     }
 
     private void AnimateWorkspaceTransition()

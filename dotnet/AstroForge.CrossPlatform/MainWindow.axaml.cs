@@ -6,6 +6,7 @@ using Avalonia.Interactivity;
 using Avalonia.Media;
 using Avalonia.Platform.Storage;
 using Avalonia.Threading;
+using AstroForge.App.Services;
 using AstroForge.App.ViewModels;
 
 namespace AstroForge.CrossPlatform;
@@ -19,6 +20,7 @@ public sealed partial class MainWindow : Window
     private bool _sourcesVisible = true;
     private int _blinkIndex = -1;
     private double _qualityZoom = 1;
+    private bool _localizationPending;
 
     private static readonly FilePickerFileType AstroImages = new("Immagini astronomiche")
     {
@@ -29,13 +31,15 @@ public sealed partial class MainWindow : Window
     {
         InitializeComponent();
         DataContext = _viewModel;
+        _viewModel.UiLanguageChanged += (_, _) => ScheduleLocalization();
         _blinkTimer.Tick += BlinkTimer_Tick;
         _viewModel.PropertyChanged += (_, args) =>
         {
             if (args.PropertyName == nameof(MainViewModel.HasSelection)) UpdateInspectorLayout();
+            ScheduleLocalization();
         };
         SizeChanged += (_, args) => ApplyViewportWidth(args.NewSize.Width);
-        Opened += (_, _) => ApplyViewportWidth(ClientSize.Width);
+        Opened += (_, _) => { ApplyViewportWidth(ClientSize.Width); SelectDensity(); ScheduleLocalization(); };
         Closing += (_, _) =>
         {
             _qualityCancellation?.Cancel();
@@ -47,6 +51,30 @@ public sealed partial class MainWindow : Window
         ApplyCommandLine();
         UpdateInspectorLayout();
     }
+
+    private void ScheduleLocalization()
+    {
+        if (_localizationPending) return;
+        _localizationPending = true;
+        Dispatcher.UIThread.Post(() =>
+        {
+            _localizationPending = false;
+            AvaloniaLocalizationAdapter.Apply(this, _viewModel.UiLanguage);
+        }, DispatcherPriority.Background);
+    }
+
+    private void SelectDensity()
+    {
+        DensitySelector.SelectedItem = DensitySelector.Items.OfType<ComboBoxItem>()
+            .FirstOrDefault(item => string.Equals(item.Tag?.ToString(), _viewModel.UiDensity, StringComparison.Ordinal));
+    }
+
+    private void DensitySelector_SelectionChanged(object? sender, SelectionChangedEventArgs e)
+    {
+        if (DensitySelector.SelectedItem is ComboBoxItem item) _viewModel.UiDensity = item.Tag?.ToString() ?? "Comoda";
+    }
+
+    private void WorkspaceTabs_SelectionChanged(object? sender, SelectionChangedEventArgs e) => ScheduleLocalization();
 
     private void UpdateInspectorLayout()
     {

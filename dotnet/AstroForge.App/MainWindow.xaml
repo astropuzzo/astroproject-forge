@@ -121,9 +121,11 @@
                 <StackPanel>
                     <TextBlock Text="Interfaccia" Style="{StaticResource Eyebrow}"/>
                     <TextBlock Text="Impostazioni" FontSize="22" FontWeight="SemiBold" Margin="0,5,0,15"/>
+                    <TextBlock Text="Lingua / Language" Style="{StaticResource MetaLabel}"/>
+                    <ComboBox ItemsSource="{Binding UiLanguages}" SelectedItem="{Binding UiLanguage, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" Margin="0,0,0,13" ToolTip="Cambia immediatamente la lingua dell’interfaccia"/>
                     <TextBlock Text="Densità controlli" Style="{StaticResource MetaLabel}"/>
-                    <ComboBox x:Name="DensitySelector" SelectedValuePath="Content" SelectedValue="{Binding UiDensity, Mode=TwoWay}" SelectionChanged="DensitySelector_SelectionChanged" Margin="0,0,0,13">
-                        <ComboBoxItem Content="Compatta"/><ComboBoxItem Content="Comoda"/><ComboBoxItem Content="Ampia"/>
+                    <ComboBox x:Name="DensitySelector" SelectionChanged="DensitySelector_SelectionChanged" Margin="0,0,0,13">
+                        <ComboBoxItem Tag="Compatta" Content="Compatta"/><ComboBoxItem Tag="Comoda" Content="Comoda"/><ComboBoxItem Tag="Ampia" Content="Ampia"/>
                     </ComboBox>
                     <CheckBox Content="Movimento ridotto" IsChecked="{Binding ReducedMotion, Mode=TwoWay}" Click="ReducedMotion_Click" Margin="0,3,0,7"/>
                     <TextBlock Text="Disattiva le animazioni dell’interfaccia." Style="{StaticResource MutedText}" TextWrapping="Wrap" FontSize="11"/>

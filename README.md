@@ -83,6 +83,10 @@ The first public beta is distributed from [GitHub Releases](https://github.com/a
 
 Published binaries are self-contained; users do not need to install .NET. PixInsight is not required to inventory or organize a project.
 
+The application interface is available in Italian and English. Change it at any time from **Settings → Language / Lingua**; the choice is applied immediately and saved for the next launch.
+
+Each GitHub release contains only the installable and portable packages listed above. GitHub adds the `Source code` ZIP and TAR.GZ automatically. QA reports, manifests, checksums and SBOM files remain internal build artifacts instead of cluttering the public download list.
+
 ## Quick start
 
 1. Add Light/Flat files or acquisition folders.

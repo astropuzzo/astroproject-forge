@@ -1,5 +1,6 @@
 using System.Text.Json;
 using System.IO;
+using System.Globalization;
 using AstroForge.Core.Models;
 using AstroForge.Core.Persistence;
 using AstroForge.Core.IO;
@@ -20,6 +21,7 @@ public sealed class AppState
     public double? ProjectDefaultTemperatureC { get; set; }
     public string LastProjectFile { get; set; } = "";
     public string UiDensity { get; set; } = "Comoda";
+    public string UiLanguage { get; set; } = CultureInfo.CurrentUICulture.TwoLetterISOLanguageName == "it" ? UiLocalization.Italian : UiLocalization.English;
     public bool ReducedMotion { get; set; }
     public bool CheckForUpdates { get; set; }
     public string UpdateChannel { get; set; } = "Beta";

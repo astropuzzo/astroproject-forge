@@ -12,6 +12,7 @@
   </PropertyGroup>
   <ItemGroup>
     <AvaloniaResource Include="..\..\assets\astroforge.ico" Link="Assets\astroforge.ico" />
+    <EmbeddedResource Include="..\..\assets\i18n\en.json" LogicalName="AstroForge.Localization.en.json" />
     <PackageReference Include="Avalonia" Version="12.1.0" />
     <PackageReference Include="Avalonia.Desktop" Version="12.1.0" />
     <PackageReference Include="Avalonia.Themes.Fluent" Version="12.1.0" />
@@ -29,5 +30,6 @@
     <Compile Include="..\AstroForge.App\Services\JsonHeaderCache.cs" Link="Shared\Services\JsonHeaderCache.cs" />
     <Compile Include="..\AstroForge.App\Services\ProjectDocumentStore.cs" Link="Shared\Services\ProjectDocumentStore.cs" />
     <Compile Include="..\AstroForge.App\Services\ReleaseIdentity.cs" Link="Shared\Services\ReleaseIdentity.cs" />
+    <Compile Include="..\AstroForge.App\Services\UiLocalization.cs" Link="Shared\Services\UiLocalization.cs" />
   </ItemGroup>
 </Project>

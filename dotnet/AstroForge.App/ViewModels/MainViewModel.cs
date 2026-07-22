@@ -78,6 +78,7 @@ public sealed class MainViewModel : BindableBase
     private string _currentProjectFile = "";
     private DateTimeOffset _projectCreatedAt = DateTimeOffset.Now;
     private string _uiDensity = "Comoda";
+    private string _uiLanguage = UiLocalization.Italian;
     private bool _reducedMotion;
     private bool _checkForUpdates;
     private string _updateChannel = "Beta";
@@ -113,6 +114,8 @@ public sealed class MainViewModel : BindableBase
     public MainViewModel()
     {
         _state = AppStateStore.Load();
+        _uiLanguage = UiLocalization.NormalizeLanguage(_state.UiLanguage);
+        UiLocalization.ApplyCulture(_uiLanguage);
         _libraryPath = _state.LibraryPath;
         var savedLibraries = _state.MasterLibraries.Count > 0 ? _state.MasterLibraries : string.IsNullOrWhiteSpace(_state.LibraryPath) ? [] : [new() { Name = "Libreria principale", Path = _state.LibraryPath, Priority = 1 }];
         foreach (var library in savedLibraries.OrderBy(item => item.Priority)) AddMasterLibraryItem(new(library.Name, library.Path, library.Priority, library.Enabled));
@@ -184,7 +187,9 @@ public sealed class MainViewModel : BindableBase
     public RelayCommand LinkFlatSetCommand { get; }
     public RelayCommand UnlinkFlatSetCommand { get; }
     public RelayCommand UndoCommand { get; }
+    public event EventHandler? UiLanguageChanged;
     public Array FrameKinds => Enum.GetValues<FrameKind>();
+    public IReadOnlyList<string> UiLanguages => UiLocalization.Languages;
 
     public string LibraryPath { get => MasterLibraries.FirstOrDefault()?.Path ?? _libraryPath; set { _libraryPath = value; if (!string.IsNullOrWhiteSpace(value) && !MasterLibraries.Any(item => PathIdentity.Equals(item.Path, value))) AddMasterLibrary(value); Raise(); } }
     public MasterLibraryItem? SelectedMasterLibrary { get => _selectedMasterLibrary; set => Set(ref _selectedMasterLibrary, value); }
@@ -193,6 +198,19 @@ public sealed class MainViewModel : BindableBase
     public string CurrentProjectFile { get => _currentProjectFile; private set { if (Set(ref _currentProjectFile, value)) Raise(nameof(ProjectDocumentStatus)); } }
     public string ProjectDocumentStatus => string.IsNullOrWhiteSpace(CurrentProjectFile) ? "Progetto non ancora salvato" : Path.GetFileName(CurrentProjectFile);
     public string UiDensity { get => _uiDensity; set => Set(ref _uiDensity, value); }
+    public string UiLanguage
+    {
+        get => _uiLanguage;
+        set
+        {
+            var normalized = UiLocalization.NormalizeLanguage(value);
+            if (!Set(ref _uiLanguage, normalized)) return;
+            UiLocalization.ApplyCulture(normalized);
+            _state.UiLanguage = normalized;
+            AppStateStore.Save(_state);
+            UiLanguageChanged?.Invoke(this, EventArgs.Empty);
+        }
+    }
     public bool ReducedMotion { get => _reducedMotion; set => Set(ref _reducedMotion, value); }
     public bool CheckForUpdates { get => _checkForUpdates; set { if (Set(ref _checkForUpdates, value)) UpdateStatus = value ? $"Controllo {UpdateChannel} attivo · nessun download automatico" : "Controllo automatico disattivato"; } }
     public string UpdateChannel { get => _updateChannel; set { var normalized = value == "Stable" ? "Stable" : "Beta"; if (Set(ref _updateChannel, normalized) && CheckForUpdates) UpdateStatus = $"Controllo {normalized} attivo · nessun download automatico"; } }
@@ -696,6 +714,7 @@ public sealed class MainViewModel : BindableBase
         _state.ProjectDefaultTemperatureC = ParseDefault(ProjectDefaultTemperature);
         _state.LastProjectFile = CurrentProjectFile;
         _state.UiDensity = UiDensity;
+        _state.UiLanguage = UiLanguage;
         _state.ReducedMotion = ReducedMotion;
         _state.CheckForUpdates = CheckForUpdates;
         _state.UpdateChannel = UpdateChannel;
