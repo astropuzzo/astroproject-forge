@@ -39,11 +39,11 @@ if (-not $SkipQa) { & (Join-Path $root 'qa-gate.ps1'); if ($LASTEXITCODE -ne 0) 
 if ($LASTEXITCODE -ne 0) { throw 'Publish distribuzione fallita.' }
 $app = Join-Path $stage 'AstroForge.App.exe'
 Copy-Item -LiteralPath (Join-Path $root 'docs\CHANGELOG.md') -Destination (Join-Path $stage 'RELEASE-NOTES.md')
-& $dotnet list $appProject package --include-transitive --format json | Set-Content -LiteralPath (Join-Path $stage 'sbom-dotnet.json') -Encoding utf8
+& $dotnet list $appProject package --include-transitive --format json | Set-Content -LiteralPath (Join-Path $distribution 'sbom-dotnet.json') -Encoding utf8
 if ($LASTEXITCODE -ne 0) { throw 'Generazione SBOM fallita.' }
 $qaReportSource = Join-Path $root 'artifacts\qa\qa-report.json'
 $qaReportFile = if (Test-Path -LiteralPath $qaReportSource) { 'qa-report.json' } else { $null }
-if ($qaReportFile) { Copy-Item -LiteralPath $qaReportSource -Destination (Join-Path $stage $qaReportFile) }
+if ($qaReportFile) { Copy-Item -LiteralPath $qaReportSource -Destination (Join-Path $distribution $qaReportFile) }
 
 function Get-SignTool {
     if ($env:ASTROFORGE_SIGNTOOL -and (Test-Path -LiteralPath $env:ASTROFORGE_SIGNTOOL)) { return $env:ASTROFORGE_SIGNTOOL }
@@ -68,7 +68,7 @@ $preManifest = [ordered]@{
     executable = [ordered]@{ fileName = 'AstroForge.App.exe'; sha256 = (Get-FileHash $app -Algorithm SHA256).Hash.ToLowerInvariant(); sizeBytes = (Get-Item $app).Length; signed = $appSigned }
     qaReport = $qaReportFile; sbom = 'sbom-dotnet.json'; releaseEligible = $false
 }
-$preManifest | ConvertTo-Json -Depth 8 | Set-Content -LiteralPath (Join-Path $stage 'release-manifest.json') -Encoding utf8
+$preManifest | ConvertTo-Json -Depth 8 | Set-Content -LiteralPath (Join-Path $distribution 'release-manifest.json') -Encoding utf8
 Compress-Archive -Path (Join-Path $stage '*') -DestinationPath (Join-Path $distribution $portableName) -CompressionLevel Optimal
 
 if (-not $InnoCompiler) {
@@ -109,8 +109,6 @@ if (Test-Path -LiteralPath $installerPath) {
     $feed | ConvertTo-Json -Depth 8 | Set-Content -LiteralPath (Join-Path $distribution "$($Channel.ToLowerInvariant()).json") -Encoding utf8
 }
 
-Copy-Item -LiteralPath (Join-Path $stage 'sbom-dotnet.json') -Destination $distribution
-if ($qaReportFile) { Copy-Item -LiteralPath $qaReportSource -Destination $distribution }
 $hashLines = Get-ChildItem -LiteralPath $distribution -File | Where-Object Name -NotIn @('SHA256SUMS.txt') | Sort-Object Name | ForEach-Object { "{0}  {1}" -f (Get-FileHash $_.FullName -Algorithm SHA256).Hash.ToLowerInvariant(), $_.Name }
 $hashLines | Set-Content -LiteralPath (Join-Path $distribution 'SHA256SUMS.txt') -Encoding ascii
 
