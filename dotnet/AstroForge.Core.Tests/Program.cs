@@ -7,7 +7,13 @@ using AstroForge.Core.Export;
 using AstroForge.Core.Models;
 using AstroForge.Core.Matching;
 using AstroForge.Core.Diagnostics;
+using AstroForge.Core.IO;
 using System.IO.Compression;
+
+Assert(PathIdentity.Comparer.Equals("Frame.fit", "frame.fit") == (OperatingSystem.IsWindows() || OperatingSystem.IsMacOS()), "La semantica dei path deve seguire il filesystem host.");
+var pathRoot = Path.Combine(Path.GetTempPath(), "AstroForge-PathRoot");
+Assert(PathIdentity.IsWithin(Path.Combine(pathRoot, "nested", "frame.fit"), pathRoot), "Il controllo di contenimento path non riconosce un discendente valido.");
+Assert(!PathIdentity.IsWithin(pathRoot + "-other", pathRoot), "Il controllo di contenimento path accetta un prefisso fratello.");
 
 var lightBeforeMidnight = Synthetic(FrameKind.Light, "2026-06-15_00-21-26_SIOIII.fits", "SIOIII", new DateTimeOffset(2026, 6, 15, 0, 21, 26, TimeSpan.Zero));
 lightBeforeMidnight.SetTemperatureC.SetOriginal(-10, MetadataSource.Header);

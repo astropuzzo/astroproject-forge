@@ -2,6 +2,7 @@ using System.Text.Json;
 using System.IO;
 using AstroForge.Core.Models;
 using AstroForge.Core.Persistence;
+using AstroForge.Core.IO;
 
 namespace AstroForge.App.Services;
 
@@ -32,7 +33,7 @@ public sealed class AppState
     public double SourcePanelWidth { get; set; } = 260;
     public double InspectorPanelWidth { get; set; } = 390;
     public bool HasCompletedOnboarding { get; set; }
-    public Dictionary<string, FrameOverrides> Overrides { get; set; } = new(StringComparer.OrdinalIgnoreCase);
+    public Dictionary<string, FrameOverrides> Overrides { get; set; } = new(PathIdentity.Comparer);
 }
 
 public sealed class MasterLibraryDefinition
@@ -76,6 +77,7 @@ public static class AppStateStore
         {
             if (!File.Exists(FilePath)) return new();
             var state = JsonSerializer.Deserialize<AppState>(SettingsMigration.Migrate(File.ReadAllText(FilePath)), Options) ?? new();
+            state.Overrides = new(state.Overrides, PathIdentity.Comparer);
             if (state.UpdateChannel is not ("Stable" or "Beta")) state.UpdateChannel = "Beta";
             return state;
         }

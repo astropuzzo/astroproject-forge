@@ -1,5 +1,6 @@
 using AstroForge.Core.Matching;
 using AstroForge.Core.Models;
+using AstroForge.Core.IO;
 
 namespace AstroForge.Core.Analysis;
 
@@ -29,7 +30,7 @@ public static class ProjectAnalyzer
         var frames = source.ToArray();
         var flatGroups = GroupFlats(frames.Where(frame => frame.Kind == FrameKind.Flat));
         var representatives = flatGroups.Select(group => group.Representative).ToArray();
-        var groupByPath = flatGroups.ToDictionary(group => group.Representative.Path, StringComparer.OrdinalIgnoreCase);
+        var groupByPath = flatGroups.ToDictionary(group => group.Representative.Path, PathIdentity.Comparer);
         var darks = frames.Where(frame => frame.Kind == FrameKind.Dark).ToArray();
         var biases = frames.Where(frame => frame.Kind == FrameKind.Bias).ToArray();
         var lightFrames = frames.Where(frame => frame.Kind == FrameKind.Light).ToArray();
@@ -50,7 +51,7 @@ public static class ProjectAnalyzer
     private static MatchResult ResolveManual(MatchResult automatic, string? requestedPath)
     {
         if (string.IsNullOrWhiteSpace(requestedPath)) return automatic;
-        var selected = automatic.Candidates.FirstOrDefault(candidate => candidate.Frame.Path.Equals(requestedPath, StringComparison.OrdinalIgnoreCase));
+        var selected = automatic.Candidates.FirstOrDefault(candidate => PathIdentity.Equals(candidate.Frame.Path, requestedPath));
         if (selected is null || !selected.Compatible)
             return new(automatic.RequestedKind, MatchStatus.Incompatible, null, automatic.Candidates);
         selected.Reasons.Add("Master assegnato manualmente dall'utente");
@@ -85,7 +86,7 @@ public static class ProjectAnalyzer
         IReadOnlyList<FrameMetadata> representatives,
         CalibrationPolicy? policy)
     {
-        var output = new Dictionary<string, FlatResolution>(StringComparer.OrdinalIgnoreCase);
+        var output = new Dictionary<string, FlatResolution>(PathIdentity.Comparer);
         foreach (var epoch in lights.GroupBy(LightEpochKey))
         {
             var epochLights = epoch.ToArray();
@@ -102,7 +103,7 @@ public static class ProjectAnalyzer
         if (string.IsNullOrWhiteSpace(light.FlatSetId.Value)) return null;
         var requested = Normalize(light.FlatSetId.Value);
         var candidates = initial.Candidates.Where(candidate => candidate.Compatible && candidate.MissingRequired.Count == 0)
-            .Where(candidate => groups.First(group => group.Representative.Path.Equals(candidate.Frame.Path, StringComparison.OrdinalIgnoreCase)).Frames.Any(flat => Normalize(flat.FlatSetId.Value) == requested)).ToArray();
+            .Where(candidate => groups.First(group => PathIdentity.Equals(group.Representative.Path, candidate.Frame.Path)).Frames.Any(flat => Normalize(flat.FlatSetId.Value) == requested)).ToArray();
         if (candidates.Length == 1)
         {
             candidates[0].Reasons.Add($"Flat Epoch imposto dall'utente: {light.FlatSetId.Value}");
@@ -122,7 +123,7 @@ public static class ProjectAnalyzer
         var ranked = initial.Candidates.Where(candidate => candidate.Compatible && candidate.MissingRequired.Count == 0)
             .Select(candidate =>
             {
-                var group = groups.First(group => group.Representative.Path.Equals(candidate.Frame.Path, StringComparison.OrdinalIgnoreCase));
+                var group = groups.First(group => PathIdentity.Equals(group.Representative.Path, candidate.Frame.Path));
                 var flatTime = MedianTime(group.Frames.Select(flat => flat.CapturedAt.Value));
                 return new { Candidate = candidate, Group = group, FlatTime = flatTime, Distance = flatTime is null ? TimeSpan.MaxValue : (flatTime.Value - epochTime.Value).Duration() };
             })

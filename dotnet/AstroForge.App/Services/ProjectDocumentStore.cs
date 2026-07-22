@@ -1,5 +1,6 @@
 using System.Text.Json;
 using System.IO;
+using AstroForge.Core.IO;
 
 namespace AstroForge.App.Services;
 
@@ -19,7 +20,7 @@ public sealed class AstroForgeProjectDocument
     public double? DefaultTemperatureC { get; set; }
     public double QualitySigmaThreshold { get; set; } = 3.5;
     public List<string> ExcludedQualityPaths { get; set; } = [];
-    public Dictionary<string, FrameOverrides> Overrides { get; set; } = new(StringComparer.OrdinalIgnoreCase);
+    public Dictionary<string, FrameOverrides> Overrides { get; set; } = new(PathIdentity.Comparer);
 }
 
 public sealed class ProjectRecoverySnapshot
@@ -36,6 +37,7 @@ public static class ProjectDocumentStore
         var document = JsonSerializer.Deserialize<AstroForgeProjectDocument>(File.ReadAllText(path), Options)
             ?? throw new InvalidDataException("Il file progetto è vuoto o non valido.");
         if (document.SchemaVersion != 1) throw new InvalidDataException($"Versione progetto non supportata: {document.SchemaVersion}.");
+        document.Overrides = new(document.Overrides, PathIdentity.Comparer);
         return document;
     }
     public static void Save(string path, AstroForgeProjectDocument document)

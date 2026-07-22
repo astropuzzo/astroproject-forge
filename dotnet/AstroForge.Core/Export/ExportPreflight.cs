@@ -1,4 +1,5 @@
 using System.Security.Cryptography;
+using AstroForge.Core.IO;
 
 namespace AstroForge.Core.Export;
 
@@ -60,7 +61,7 @@ public static class ProjectExportPreflight
         var destinationRoot = Path.GetFullPath(plan.DestinationRoot);
         var projectRoot = Path.GetFullPath(plan.ProjectRoot);
         var stagingRoot = Path.GetFullPath(Path.Combine(destinationRoot, $".{plan.ProjectName}.astroforge-staging"));
-        var comparer = StringComparer.OrdinalIgnoreCase;
+        var comparer = PathIdentity.Comparer;
         var destinations = new HashSet<string>(comparer);
         var totalBytes = 0L;
         var resumeBytes = 0L;
@@ -149,7 +150,9 @@ public static class ProjectExportPreflight
         }
 
         if (longPaths > 0)
-            findings.Add(Warning("path.long", "Percorsi lunghi", $"{longPaths} destinazioni superano 240 caratteri. Windows moderno le supporta, ma strumenti esterni potrebbero non farlo."));
+            findings.Add(Warning("path.long", "Percorsi lunghi", OperatingSystem.IsWindows()
+                ? $"{longPaths} destinazioni superano 240 caratteri. Windows moderno le supporta, ma strumenti esterni potrebbero non farlo."
+                : $"{longPaths} destinazioni superano 240 caratteri. Il filesystem può supportarle, ma PixInsight o supporti condivisi potrebbero imporre limiti inferiori."));
         if (partialFiles > 0)
             findings.Add(Warning("resume.partial", "Copie parziali rilevate", $"{partialFiles} file .partial verranno ricreati; le copie già verificate restano riutilizzabili."));
         if (resumeFiles > 0)
@@ -165,7 +168,7 @@ public static class ProjectExportPreflight
             findings.Add(Warning("space.unknown", "Spazio libero non verificabile", "La destinazione di rete o il provider filesystem non espongono lo spazio disponibile. Verificalo prima dell’export.", destinationRoot));
 
         CheckDestinationReparsePoints(destinationRoot, findings);
-        findings.Add(Info("dry_run.clean", "Dry-run completato", "Il preflight non ha creato, modificato o eliminato file nella destinazione."));
+        findings.Add(Info("preflight.read_only", "Controlli completati", "La verifica non ha creato, modificato o eliminato file nella destinazione."));
         var seconds = bytesToCopy / (options.EstimatedThroughputMiBPerSecond * 1024d * 1024d);
         return new(DateTimeOffset.UtcNow, projectRoot, stagingRoot, kind, plan.Files.Count, totalBytes, resumeFiles, resumeBytes,
             bytesToCopy, freeBytes, requiredFree, TimeSpan.FromSeconds(seconds), findings);
@@ -228,9 +231,7 @@ public static class ProjectExportPreflight
 
     private static bool IsWithin(string candidate, string parent)
     {
-        candidate = Path.TrimEndingDirectorySeparator(Path.GetFullPath(candidate));
-        parent = Path.TrimEndingDirectorySeparator(Path.GetFullPath(parent));
-        return candidate.Equals(parent, StringComparison.OrdinalIgnoreCase) || candidate.StartsWith(parent + Path.DirectorySeparatorChar, StringComparison.OrdinalIgnoreCase);
+        return PathIdentity.IsWithin(candidate, parent);
     }
 
     private static async Task<byte[]> HashAsync(string path, CancellationToken cancellationToken)

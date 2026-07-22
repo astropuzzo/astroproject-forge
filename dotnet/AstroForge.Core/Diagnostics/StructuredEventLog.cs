@@ -15,6 +15,7 @@ public sealed record StructuredLogEvent(
 public sealed class StructuredEventLog
 {
     private static readonly Regex WindowsPath = new(@"(?i)(?:[a-z]:\\|\\\\)[^\""\r\n]+", RegexOptions.Compiled);
+    private static readonly Regex UnixPath = new(@"(?<![\w.])/(?:[^/\s\""']+/)*[^\s\""']*", RegexOptions.Compiled);
     private static readonly Regex AstroFile = new(@"(?i)\b[^\s\""']+\.(?:fit|fits|fts|xisf)\b", RegexOptions.Compiled);
     private readonly object _gate = new();
     private readonly string _directory;
@@ -48,7 +49,7 @@ public sealed class StructuredEventLog
             {
                 Directory.CreateDirectory(_directory);
                 RotateIfNeeded();
-                var safeMessage = AstroFile.Replace(WindowsPath.Replace(message, "[PATH]"), "[ASTRO-FILE]");
+                var safeMessage = AstroFile.Replace(UnixPath.Replace(WindowsPath.Replace(message, "[PATH]"), "[PATH]"), "[ASTRO-FILE]");
                 var entry = new StructuredLogEvent(DateTimeOffset.UtcNow, level, code, safeMessage, exception?.GetType().FullName, operationId, operation);
                 File.AppendAllText(CurrentPath, JsonSerializer.Serialize(entry, _json) + Environment.NewLine);
             }

@@ -3,6 +3,7 @@ using System.Globalization;
 using System.IO;
 using System.Text.Json;
 using AstroForge.Core.Scanning;
+using AstroForge.Core.IO;
 
 namespace AstroForge.App.Services;
 
@@ -16,7 +17,7 @@ public sealed class JsonHeaderCache : IHeaderCache
     public JsonHeaderCache(string? path = null)
     {
         _path = path ?? Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "AstroProjectForge", "header-cache-v1.json");
-        _entries = new(Load(_path), StringComparer.OrdinalIgnoreCase);
+        _entries = new(Load(_path), PathIdentity.Comparer);
     }
 
     public bool TryGet(string path, long length, long lastWriteUtcTicks, out Dictionary<string, object?> headers)

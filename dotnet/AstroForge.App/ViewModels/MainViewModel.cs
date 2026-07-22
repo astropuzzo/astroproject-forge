@@ -13,10 +13,16 @@ using AstroForge.Core.Scanning;
 using AstroForge.Core.Sessions;
 using AstroForge.Core.Validation;
 using AstroForge.Core.Wbpp;
+using AstroForge.Core.IO;
 using AstroForge.Core.Quality;
 using AstroForge.App.Services;
+#if AVALONIA
+using Avalonia.Media.Imaging;
+using BitmapSource = Avalonia.Media.Imaging.Bitmap;
+#else
 using System.Windows.Media;
 using System.Windows.Media.Imaging;
+#endif
 
 namespace AstroForge.App.ViewModels;
 
@@ -29,7 +35,7 @@ public sealed class MainViewModel : BindableBase
     private readonly Stack<Action> _undo = new();
     private readonly AppState _state;
     private RecoveryJournalEntry<ProjectRecoverySnapshot>? _pendingRecovery;
-    private readonly HashSet<string> _kindOverrides = new(StringComparer.OrdinalIgnoreCase);
+    private readonly HashSet<string> _kindOverrides = new(PathIdentity.Comparer);
     private IReadOnlyList<FrameMetadata> _frames = [];
     private IReadOnlyList<FrameMetadata> _masterLibraryFrames = [];
     private ProjectAnalysis? _analysis;
@@ -88,7 +94,7 @@ public sealed class MainViewModel : BindableBase
     private double _exportMarginPercent = 10;
     private double _exportMinimumReserveGiB = 1;
     private double _exportEstimatedThroughputMiBps = 100;
-    private readonly HashSet<string> _excludedQualityPaths = new(StringComparer.OrdinalIgnoreCase);
+    private readonly HashSet<string> _excludedQualityPaths = new(PathIdentity.Comparer);
     private readonly List<QualityFrameRow> _allQualityFrames = [];
     private QualityFrameRow? _selectedQualityFrame;
     private QualitySeriesRow? _selectedQualitySeries;
@@ -180,7 +186,7 @@ public sealed class MainViewModel : BindableBase
     public RelayCommand UndoCommand { get; }
     public Array FrameKinds => Enum.GetValues<FrameKind>();
 
-    public string LibraryPath { get => MasterLibraries.FirstOrDefault()?.Path ?? _libraryPath; set { _libraryPath = value; if (!string.IsNullOrWhiteSpace(value) && !MasterLibraries.Any(item => item.Path.Equals(value, StringComparison.OrdinalIgnoreCase))) AddMasterLibrary(value); Raise(); } }
+    public string LibraryPath { get => MasterLibraries.FirstOrDefault()?.Path ?? _libraryPath; set { _libraryPath = value; if (!string.IsNullOrWhiteSpace(value) && !MasterLibraries.Any(item => PathIdentity.Equals(item.Path, value))) AddMasterLibrary(value); Raise(); } }
     public MasterLibraryItem? SelectedMasterLibrary { get => _selectedMasterLibrary; set => Set(ref _selectedMasterLibrary, value); }
     public string ProjectName { get => _projectName; set { if (Set(ref _projectName, value)) InvalidateExportPlan(); } }
     public string DestinationPath { get => _destinationPath; set { if (Set(ref _destinationPath, value)) InvalidateExportPlan(); } }
@@ -403,7 +409,7 @@ public sealed class MainViewModel : BindableBase
     {
         if (string.IsNullOrWhiteSpace(path)) return;
         path = Path.GetFullPath(path);
-        if (SourcePaths.Contains(path, StringComparer.OrdinalIgnoreCase)) { Status = "Sorgente già collegata"; return; }
+        if (SourcePaths.Contains(path, PathIdentity.Comparer)) { Status = "Sorgente già collegata"; return; }
         var hadAnalysis = _analysis is not null || _frames.Count > 0;
         SourcePaths.Add(path);
         InvalidateProjectAnalysis(hadAnalysis);
@@ -423,7 +429,7 @@ public sealed class MainViewModel : BindableBase
     public void AddMasterLibrary(string path)
     {
         path = Path.GetFullPath(path);
-        if (MasterLibraries.Any(item => item.Path.Equals(path, StringComparison.OrdinalIgnoreCase))) { SelectedMasterLibrary = MasterLibraries.First(item => item.Path.Equals(path, StringComparison.OrdinalIgnoreCase)); return; }
+        if (MasterLibraries.Any(item => PathIdentity.Equals(item.Path, path))) { SelectedMasterLibrary = MasterLibraries.First(item => PathIdentity.Equals(item.Path, path)); return; }
         var item = new MasterLibraryItem(new DirectoryInfo(path).Name, path, MasterLibraries.Count + 1, true);
         AddMasterLibraryItem(item); SelectedMasterLibrary = item; NormalizeLibraryPriorities();
         InvalidateProjectAnalysis(_analysis is not null || _frames.Count > 0);
@@ -632,7 +638,7 @@ public sealed class MainViewModel : BindableBase
 
     private void ApplyMasterOrganizerPlan(IReadOnlyList<MasterOrganizationPlanItem> plan)
     {
-        var bySource = plan.ToDictionary(item => item.Request.Source.Path, StringComparer.OrdinalIgnoreCase);
+        var bySource = plan.ToDictionary(item => item.Request.Source.Path, PathIdentity.Comparer);
         foreach (var item in MasterOrganizerItems)
             item.SetPreflight(bySource.TryGetValue(item.Frame.Path, out var value) ? value.Status == MasterOrganizationPlanStatus.Ready ? "Pronto" : $"CONFLITTO · {value.Message}" : "Non verificato");
     }
@@ -1149,7 +1155,7 @@ public sealed class MainViewModel : BindableBase
     public async Task<string> ExportSupportBundleAsync(string outputPath, CancellationToken cancellationToken = default)
     {
         using var operation = _eventLog.BeginOperation("Pacchetto diagnostico", "AF-SUPPORT-START", "Creazione pacchetto diagnostico avviata");
-        var allFrames = _frames.Concat(_masterLibraryFrames).DistinctBy(frame => frame.Path, StringComparer.OrdinalIgnoreCase).ToArray();
+        var allFrames = _frames.Concat(_masterLibraryFrames).DistinctBy(frame => frame.Path, PathIdentity.Comparer).ToArray();
         var issues = allFrames.SelectMany(frame => frame.Issues).GroupBy(issue => new { issue.Code, issue.Severity })
             .Select(group => new SupportIssueSummary(group.Key.Code, group.Key.Severity.ToString(), group.Count())).OrderBy(item => item.Code).ToArray();
         var settings = new Dictionary<string, object?>
@@ -1203,7 +1209,7 @@ public sealed class MainViewModel : BindableBase
     public void SelectReviewItem(ReviewQueueItem? item)
     {
         if (item is null) return;
-        SelectedNode = Descendants(TreeRoots).FirstOrDefault(node => node.IsLeaf && node.Frames.Any(frame => frame.Path.Equals(item.Frame.Path, StringComparison.OrdinalIgnoreCase)))
+        SelectedNode = Descendants(TreeRoots).FirstOrDefault(node => node.IsLeaf && node.Frames.Any(frame => PathIdentity.Equals(frame.Path, item.Frame.Path)))
             ?? new ProjectTreeNode { Key = $"review:{item.Frame.Path}", Name = item.Frame.FileName, Detail = item.Frame.Path, Icon = "!", Frames = [item.Frame] };
         Status = $"Revisione · {item.Calibration} · {item.Frame.FileName}";
     }
@@ -1403,7 +1409,7 @@ public sealed class MainViewModel : BindableBase
     private void AddOpticalSessionTree(FrameMetadata[] visibleFrames)
     {
         if (_analysis is null) return;
-        var visible = visibleFrames.Select(frame => frame.Path).ToHashSet(StringComparer.OrdinalIgnoreCase);
+        var visible = visibleFrames.Select(frame => frame.Path).ToHashSet(PathIdentity.Comparer);
         var lightItems = _analysis.Lights.Where(item => visible.Contains(item.Light.Path)).ToArray();
         var visibleFlatGroups = _analysis.FlatGroups.Where(group => group.Frames.Any(frame => visible.Contains(frame.Path))).ToArray();
         var filterNames = lightItems.Select(item => DisplayFilter(item.Light.FilterName.Value))
@@ -1458,8 +1464,8 @@ public sealed class MainViewModel : BindableBase
     {
         var available = frames.Where(frame => frame.Kind is FrameKind.Dark or FrameKind.Bias).ToArray();
         if (available.Length == 0) return;
-        var visiblePaths = available.Select(frame => frame.Path).ToHashSet(StringComparer.OrdinalIgnoreCase);
-        var usedPaths = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+        var visiblePaths = available.Select(frame => frame.Path).ToHashSet(PathIdentity.Comparer);
+        var usedPaths = new HashSet<string>(PathIdentity.Comparer);
         var sessionNodes = new List<ProjectTreeNode>();
         if (_analysis is not null)
         {
@@ -1627,7 +1633,7 @@ public sealed class MainViewModel : BindableBase
     {
         if (!TryNumber(MasterLibraryOffset, out var offset)) { Status = "Offset libreria non valido"; return; }
         var roots = MasterLibraries.Where(item => item.Enabled && item.IsOnline).Select(item => Path.GetFullPath(item.Path).TrimEnd(Path.DirectorySeparatorChar) + Path.DirectorySeparatorChar).ToArray();
-        var masters = _frames.Where(frame => frame.IsMaster && roots.Any(root => Path.GetFullPath(frame.Path).StartsWith(root, StringComparison.OrdinalIgnoreCase))).ToArray();
+        var masters = _frames.Where(frame => frame.IsMaster && roots.Any(root => PathIdentity.IsWithin(frame.Path, root))).ToArray();
         if (masters.Length == 0) { Status = "Nessun Master appartenente alla libreria caricata"; return; }
         var undoActions = new List<Action>();
         foreach (var frame in masters) { ApplyField(frame.Offset, offset, undoActions); FrameValidator.Revalidate(frame); }
@@ -1898,7 +1904,7 @@ public sealed class MainViewModel : BindableBase
             CalibrationSummary = "Seleziona uno o più Light per vedere le calibrazioni assegnate.";
             return;
         }
-        var paths = SelectedNode.Frames.Where(frame => frame.Kind == FrameKind.Light).Select(frame => frame.Path).ToHashSet(StringComparer.OrdinalIgnoreCase);
+        var paths = SelectedNode.Frames.Where(frame => frame.Kind == FrameKind.Light).Select(frame => frame.Path).ToHashSet(PathIdentity.Comparer);
         var items = _analysis.Lights.Where(item => paths.Contains(item.Light.Path)).ToArray();
         if (items.Length == 0)
         {
@@ -2091,8 +2097,7 @@ public sealed class QualityFrameRow : BindableBase
         Frame = frame; Metrics = metrics; Error = error; _isExcluded = excluded; ConfigurationSession = configurationSession;
         if (metrics is not null)
         {
-            var bitmap = BitmapSource.Create(metrics.PreviewWidth, metrics.PreviewHeight, 96, 96, PixelFormats.Gray8, null, metrics.PreviewPixels, metrics.PreviewWidth);
-            bitmap.Freeze(); _preview = bitmap; PreviewKey = "analysis";
+            _preview = CreatePlatformBitmap(metrics.PreviewPixels, metrics.PreviewWidth, metrics.PreviewHeight, false); PreviewKey = "analysis";
         }
     }
     public QualityFrameRow(FrameMetadata frame, QualityMetrics metrics, bool excluded, string configurationSession) : this(frame, metrics, null, excluded, configurationSession) { }
@@ -2127,16 +2132,56 @@ public sealed class QualityFrameRow : BindableBase
     public void SetScore(double score, bool suspect, string reason) { OutlierScore = score; IsSuspect = suspect; Reason = reason; }
     public void SetPreview(QualityPreview preview, string key)
     {
-        var format = preview.IsColor ? PixelFormats.Rgb24 : PixelFormats.Gray8;
-        var stride = preview.Width * (preview.IsColor ? 3 : 1);
-        var bitmap = BitmapSource.Create(preview.Width, preview.Height, 96, 96, format, null, preview.Pixels, stride);
-        bitmap.Freeze(); Preview = bitmap; PreviewKey = key;
+        Preview = CreatePlatformBitmap(preview.Pixels, preview.Width, preview.Height, preview.IsColor); PreviewKey = key;
     }
     public void ResetPreview()
     {
         if (Metrics is null) return;
-        var bitmap = BitmapSource.Create(Metrics.PreviewWidth, Metrics.PreviewHeight, 96, 96, PixelFormats.Gray8, null, Metrics.PreviewPixels, Metrics.PreviewWidth);
-        bitmap.Freeze(); Preview = bitmap; PreviewKey = "analysis";
+        Preview = CreatePlatformBitmap(Metrics.PreviewPixels, Metrics.PreviewWidth, Metrics.PreviewHeight, false); PreviewKey = "analysis";
+    }
+
+    private static BitmapSource CreatePlatformBitmap(byte[] pixels, int width, int height, bool color)
+    {
+#if AVALONIA
+        // Avalonia loads the same uncompressed 24-bit BMP on Windows, Linux and macOS.
+        // Encoding here keeps pixel storage out of the shared ViewModel contract.
+        var rowSize = (width * 3 + 3) & ~3;
+        var imageSize = rowSize * height;
+        using var stream = new MemoryStream(54 + imageSize);
+        using (var writer = new BinaryWriter(stream, System.Text.Encoding.UTF8, true))
+        {
+            writer.Write((byte)'B'); writer.Write((byte)'M'); writer.Write(54 + imageSize);
+            writer.Write((short)0); writer.Write((short)0); writer.Write(54);
+            writer.Write(40); writer.Write(width); writer.Write(height); writer.Write((short)1); writer.Write((short)24);
+            writer.Write(0); writer.Write(imageSize); writer.Write(3780); writer.Write(3780); writer.Write(0); writer.Write(0);
+            var padding = new byte[rowSize - width * 3];
+            for (var y = height - 1; y >= 0; y--)
+            {
+                for (var x = 0; x < width; x++)
+                {
+                    if (color)
+                    {
+                        var index = (y * width + x) * 3;
+                        writer.Write(pixels[index + 2]); writer.Write(pixels[index + 1]); writer.Write(pixels[index]);
+                    }
+                    else
+                    {
+                        var value = pixels[y * width + x];
+                        writer.Write(value); writer.Write(value); writer.Write(value);
+                    }
+                }
+                writer.Write(padding);
+            }
+        }
+        stream.Position = 0;
+        return new BitmapSource(stream);
+#else
+        var format = color ? PixelFormats.Rgb24 : PixelFormats.Gray8;
+        var stride = width * (color ? 3 : 1);
+        var bitmap = BitmapSource.Create(width, height, 96, 96, format, null, pixels, stride);
+        bitmap.Freeze();
+        return bitmap;
+#endif
     }
 }
 

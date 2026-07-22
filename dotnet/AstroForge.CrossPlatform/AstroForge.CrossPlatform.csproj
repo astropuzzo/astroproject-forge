@@ -1,0 +1,33 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <OutputType>WinExe</OutputType>
+    <TargetFramework>net10.0</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+    <DefineConstants>$(DefineConstants);AVALONIA</DefineConstants>
+    <AssemblyName>AstroProjectForge</AssemblyName>
+    <ApplicationTitle>AstroProject Forge</ApplicationTitle>
+    <ApplicationIcon>..\..\assets\astroforge.ico</ApplicationIcon>
+    <Version>0.9.0</Version>
+  </PropertyGroup>
+  <ItemGroup>
+    <AvaloniaResource Include="..\..\assets\astroforge.ico" Link="Assets\astroforge.ico" />
+    <PackageReference Include="Avalonia" Version="12.1.0" />
+    <PackageReference Include="Avalonia.Desktop" Version="12.1.0" />
+    <PackageReference Include="Avalonia.Themes.Fluent" Version="12.1.0" />
+    <PackageReference Include="Avalonia.Controls.DataGrid" Version="12.1.0" />
+    <PackageReference Include="Avalonia.Fonts.Inter" Version="12.1.0" />
+    <PackageReference Include="Avalonia.Diagnostics" Version="12.1.0" Condition="'$(Configuration)' == 'Debug'" />
+    <ProjectReference Include="..\AstroForge.Core\AstroForge.Core.csproj" />
+  </ItemGroup>
+  <ItemGroup>
+    <Compile Include="..\AstroForge.App\ViewModels\BindableBase.cs" Link="Shared\ViewModels\BindableBase.cs" />
+    <Compile Include="..\AstroForge.App\ViewModels\RelayCommand.cs" Link="Shared\ViewModels\RelayCommand.cs" />
+    <Compile Include="..\AstroForge.App\ViewModels\ProjectTreeNode.cs" Link="Shared\ViewModels\ProjectTreeNode.cs" />
+    <Compile Include="..\AstroForge.App\ViewModels\MainViewModel.cs" Link="Shared\ViewModels\MainViewModel.cs" />
+    <Compile Include="..\AstroForge.App\Services\AppStateStore.cs" Link="Shared\Services\AppStateStore.cs" />
+    <Compile Include="..\AstroForge.App\Services\JsonHeaderCache.cs" Link="Shared\Services\JsonHeaderCache.cs" />
+    <Compile Include="..\AstroForge.App\Services\ProjectDocumentStore.cs" Link="Shared\Services\ProjectDocumentStore.cs" />
+    <Compile Include="..\AstroForge.App\Services\ReleaseIdentity.cs" Link="Shared\Services\ReleaseIdentity.cs" />
+  </ItemGroup>
+</Project>

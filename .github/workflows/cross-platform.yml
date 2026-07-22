@@ -1,0 +1,120 @@
+name: Cross-platform parity QA
+
+on:
+  push:
+    branches: [master, "agent/**"]
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: ubuntu-latest
+            rid: linux-x64
+            artifact: linux-x64
+          - os: ubuntu-24.04-arm
+            rid: linux-arm64
+            artifact: linux-arm64
+          - os: macos-15-intel
+            rid: osx-x64
+            artifact: macos-x64
+          - os: macos-15
+            rid: osx-arm64
+            artifact: macos-arm64
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: 10.0.x
+      - name: Core regression suite
+        run: dotnet run --project dotnet/AstroForge.Core.Tests/AstroForge.Core.Tests.csproj -c Release
+      - name: Parity contract
+        shell: pwsh
+        run: ./scripts/verify-cross-platform-parity.ps1 -SkipBuild
+      - name: Publish self-contained app
+        run: dotnet publish dotnet/AstroForge.CrossPlatform/AstroForge.CrossPlatform.csproj -c Release -r ${{ matrix.rid }} --self-contained true -p:PublishSingleFile=true -p:DebugType=None -p:DebugSymbols=false -o publish
+      - name: Package Linux
+        if: runner.os == 'Linux'
+        run: |
+          chmod +x publish/AstroProjectForge
+          tar -C publish -czf AstroProjectForge-${{ matrix.rid }}.tar.gz .
+          arch="amd64"; [ "${{ matrix.rid }}" = "linux-arm64" ] && arch="arm64"
+          root="deb/opt/astroproject-forge"
+          mkdir -p "$root" deb/usr/share/applications deb/usr/share/icons/hicolor/scalable/apps deb/usr/share/icons/hicolor/512x512/apps deb/DEBIAN
+          cp -R publish/. "$root/"
+          cp assets/astroforge.svg deb/usr/share/icons/hicolor/scalable/apps/astroproject-forge.svg
+          cp assets/astroforge-512.png deb/usr/share/icons/hicolor/512x512/apps/astroproject-forge.png
+          cat > deb/usr/share/applications/astroproject-forge.desktop <<'DESKTOP'
+          [Desktop Entry]
+          Type=Application
+          Name=AstroProject Forge
+          Comment=Calibration workspace for PixInsight WBPP
+          Exec=/opt/astroproject-forge/AstroProjectForge
+          Icon=astroproject-forge
+          Categories=Graphics;Science;Astronomy;
+          Terminal=false
+          MimeType=application/x-astroforge;
+          DESKTOP
+          cat > deb/DEBIAN/control <<CONTROL
+          Package: astroproject-forge
+          Version: 0.9.0
+          Section: science
+          Priority: optional
+          Architecture: $arch
+          Depends: libgbm1, libgl1, libegl1, libinput10
+          Maintainer: AstroProject Forge
+          Description: Calibration workspace for PixInsight WBPP projects
+          CONTROL
+          dpkg-deb --build --root-owner-group deb AstroProjectForge-${{ matrix.rid }}.deb
+      - name: Package macOS app bundle
+        if: runner.os == 'macOS'
+        run: |
+          mkdir -p "AstroProject Forge.app/Contents/MacOS"
+          cp -R publish/. "AstroProject Forge.app/Contents/MacOS/"
+          chmod +x "AstroProject Forge.app/Contents/MacOS/AstroProjectForge"
+          mkdir -p "AstroProject Forge.app/Contents/Resources" icon.iconset
+          cp assets/astroforge-512.png icon-base.png
+          for size in 16 32 128 256 512; do
+            sips -z $size $size icon-base.png --out "icon.iconset/icon_${size}x${size}.png" >/dev/null
+            double=$((size * 2)); sips -z $double $double icon-base.png --out "icon.iconset/icon_${size}x${size}@2x.png" >/dev/null
+          done
+          iconutil -c icns icon.iconset -o "AstroProject Forge.app/Contents/Resources/astroforge.icns"
+          cat > "AstroProject Forge.app/Contents/Info.plist" <<'PLIST'
+          <?xml version="1.0" encoding="UTF-8"?>
+          <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+          <plist version="1.0"><dict>
+            <key>CFBundleIdentifier</key><string>com.astroprojectforge.desktop</string>
+            <key>CFBundleName</key><string>AstroProject Forge</string>
+            <key>CFBundleDisplayName</key><string>AstroProject Forge</string>
+            <key>CFBundleExecutable</key><string>AstroProjectForge</string>
+            <key>CFBundleIconFile</key><string>astroforge</string>
+            <key>CFBundlePackageType</key><string>APPL</string>
+            <key>CFBundleShortVersionString</key><string>0.9.0</string>
+            <key>NSHighResolutionCapable</key><true/>
+          </dict></plist>
+          PLIST
+          codesign --force --deep --sign - "AstroProject Forge.app"
+          codesign --verify --deep --strict "AstroProject Forge.app"
+          ditto -c -k --sequesterRsrc --keepParent "AstroProject Forge.app" AstroProjectForge-${{ matrix.rid }}.zip
+          mkdir dmg-root
+          cp -R "AstroProject Forge.app" dmg-root/
+          ln -s /Applications dmg-root/Applications
+          hdiutil create -volname "AstroProject Forge" -srcfolder dmg-root -ov -format UDZO AstroProjectForge-${{ matrix.rid }}.dmg
+      - uses: actions/upload-artifact@v4
+        with:
+          name: astroproject-forge-${{ matrix.artifact }}
+          if-no-files-found: error
+          retention-days: 14
+          path: |
+            AstroProjectForge-*.tar.gz
+            AstroProjectForge-*.deb
+            AstroProjectForge-*.dmg
+            AstroProjectForge-*.zip

@@ -2,6 +2,8 @@
 
 > Stato 21 luglio 2026: completato il contratto di soglia del Quality Lab. Score, grafico, lista e conteggi condividono una sola regola; sospetto ed escluso sono separati esplicitamente e la curva gaussiana fuorviante è stata rimossa.
 
+> Stato 22 luglio 2026: il port Avalonia usa lo stesso `MainViewModel` e lo stesso Core della build Windows. Sono presenti sorgenti generiche, albero/Inspector, override e Flat Epoch, WBPP, dati, revisione, Quality Lab, export verificato e Master Library Lab indipendente. Le build Linux x64/ARM64 e macOS Intel/Apple Silicon restano private finché non supera la [matrice di parità e QA nativa](CROSS_PLATFORM_PARITY.md); non verrà pubblicata alcuna edizione ridotta.
+
 ## Scopo
 
 Portare AstroProject Forge dall’attuale build funzionante a un prodotto Windows
@@ -134,7 +136,7 @@ economico è basso.
 - test di interruzione e disco pieno;
 - matrice WBPP per versione;
 - report HTML/PDF professionale;
-- dry-run e support bundle.
+- controlli pre-export in sola lettura e support bundle.
 
 **Avanzamento 21 luglio 2026:** completato il nucleo di export antifragile. L'utente può generare un'anteprima diagnostica facoltativa, mentre `Esporta progetto` esegue direttamente i controlli e procede soltanto se sono superati. Il motore verifica sorgenti mancanti o non leggibili, progetto già esistente, duplicati, path traversal, percorsi lunghi, staging parziali o alterati, spazio libero con margine/riserva configurabili, rete/unità rimovibili, junction e sovrapposizione con cartelle di acquisizione o Master Library. La copia può essere messa in pausa, ripresa o annullata e mostra byte, velocità ed ETA; i file già presenti nello staging vengono riutilizzati solo dopo confronto SHA-256. Manifest schema 2, ricetta, statistiche, guida e `export-preflight.json` sono pubblicati atomicamente. Il motore è stato inoltre verificato su un piano reale da 415 file / 20,51 GB senza scritture durante la sola analisi. Restano la certificazione WBPP per versione, il report PDF e la matrice hardware con disco pieno/cavo rimosso/process kill.
 
@@ -409,7 +411,7 @@ Completare la macchina a stati dell’esportazione:
 - protezione da path traversal, symlink e junction inattese;
 - rilevamento duplicati tramite dimensione/hash, non solo nome;
 - stima tempo, byte copiati e velocità;
-- modalità dry-run;
+- controlli automatici pre-export in sola lettura, senza un flusso separato imposto all’utente;
 - pulizia guidata degli staging incompleti.
 
 Lo spostamento degli originali resta fuori dalla prima release commerciale. Può
@@ -421,7 +423,7 @@ con conferma esplicita e log recuperabile.
 Completati nel prodotto e coperti da test automatici:
 
 - macchina a stati `Non verificato → Preflight → Pronto/Bloccato → Copia/In pausa → Completato/Riprendibile`;
-- dry-run senza creazione di cartelle o file;
+- verifica pre-export senza creazione di cartelle o file;
 - spazio libero, margine percentuale, riserva fissa e stima del tempo;
 - blocco di sorgenti mancanti, destinazioni già esistenti, collisioni, traversal, overlap e staging non coerenti;
 - avvisi per rete, dischi rimovibili, percorsi lunghi e copie `.partial`;
@@ -542,7 +544,7 @@ Completare inoltre:
 Implementare logging strutturato con livelli e rotazione. Aggiungere `Esporta
 pacchetto diagnostico` contenente, previa anteprima:
 
-- versione app, Windows e runtime;
+- versione app, sistema operativo e runtime;
 - impostazioni non sensibili;
 - log recenti;
 - manifest senza contenuto immagine;

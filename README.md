@@ -1,11 +1,13 @@
 # AstroProject Forge
 
+> **Cross-platform work in progress:** Windows remains the current test build. The Linux and macOS frontends now run the same Core and application view-model as Windows; no reduced edition will be published. Native packages stay private until the [parity gate](docs/CROSS_PLATFORM_PARITY.md) passes.
+
 [Italiano](docs/README.it.md) · **English**
 
 **Turn multi-night FITS/XISF acquisitions from any capture software into a reviewable PixInsight WBPP
 project without manually sorting hundreds of files.**
 
-AstroProject Forge is a native Windows application that reads FITS/XISF
+AstroProject Forge is a desktop application under active Windows, Linux and macOS development that reads FITS/XISF
 metadata, reconstructs astronomical nights and optical configurations, matches
 Flat, Dark and Bias calibration frames, and exports a verified structure for
 PixInsight WeightedBatchPreprocessing.
@@ -162,7 +164,10 @@ different concepts. They must not all be reduced to `DATE-OBS`.
 
 ## Prerequisites
 
-- Windows 10 or Windows 11;
+- Windows 10/11 for the current private test build;
+- Linux x64/ARM64 or macOS 13+ Intel/Apple Silicon for unreleased parity builds;
+- on Linux: an X11/XWayland desktop plus `libgbm1`, `libgl1`, `libegl1`, and `libinput10` (the planned `.deb` declares them);
+- published binaries will be self-contained; the .NET runtime is not a user prerequisite;
 - Light folders and their Flat frames;
 - a Dark/Bias Master Library is strongly recommended;
 - PixInsight is not required to scan and organize a project;
@@ -222,8 +227,9 @@ duplicate, or equivalent candidates are sent to the guided Review Queue.
 | Incremental header cache | v1 operational; SQLite planned |
 | Guided Review Queue | v1 operational; candidate comparison expanding |
 | Multiple Master Libraries | v1 operational: priority and online/offline state |
-| Antifragile export | v1 operational: dry-run, preflight, pause/cancel/resume, SHA-256 and atomic reports |
+| Antifragile export | v1 operational: read-only checks, pause/cancel/resume, SHA-256 and atomic reports |
 | Reproducible Windows QA gate | Operational locally + GitHub Actions workflow |
+| Linux/macOS parity | Shared Core + ViewModel and eight workspaces implemented; native QA still blocks publication |
 | Installer, signing, and updates | Beta packaging operational; commercial signing/VM matrix pending |
 | WBPP end-to-end compatibility matrix | Required before sale |
 
@@ -235,6 +241,7 @@ See the detailed acceptance criteria in
 ```powershell
 dotnet run --project dotnet/AstroForge.App/AstroForge.App.csproj
 .\qa-gate.ps1
+.\scripts\verify-cross-platform-parity.ps1
 ```
 
 Self-contained Windows build and full Beta distribution:
@@ -242,6 +249,7 @@ Self-contained Windows build and full Beta distribution:
 ```powershell
 .\build-release.ps1
 .\build-distribution.ps1
+.\scripts\package-cross-platform.ps1
 ```
 
 Tests use synthetic fixtures and never require personal astrophotography data.

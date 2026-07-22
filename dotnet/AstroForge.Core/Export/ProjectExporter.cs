@@ -4,6 +4,7 @@ using System.Text;
 using System.Text.Json;
 using AstroForge.Core.Analysis;
 using AstroForge.Core.Models;
+using AstroForge.Core.IO;
 using AstroForge.Core.Wbpp;
 
 namespace AstroForge.Core.Export;
@@ -38,7 +39,7 @@ public static class ProjectExporter
         if (!analysis.Ready) throw new InvalidOperationException("Il progetto contiene calibrazioni irrisolte.");
         var recipe = WbppRecipeEngine.Recommend(analysis);
         var files = new List<PlannedFile>();
-        var included = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+        var included = new HashSet<string>(PathIdentity.Comparer);
         foreach (var item in analysis.Lights)
         {
             if (excludedQualityPaths?.Contains(item.Light.Path) == true)
@@ -258,17 +259,17 @@ public static class ProjectExporter
     }
     private static void EnsureNoCollisions(IEnumerable<PlannedFile> files)
     {
-        var destinations = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
+        var destinations = new Dictionary<string, string>(PathIdentity.Comparer);
         foreach (var file in files)
         {
-            if (destinations.TryGetValue(file.RelativePath, out var existing) && !existing.Equals(file.Frame.Path, StringComparison.OrdinalIgnoreCase))
+            if (destinations.TryGetValue(file.RelativePath, out var existing) && !PathIdentity.Equals(existing, file.Frame.Path))
                 throw new IOException($"Collisione destinazione: {file.RelativePath}");
             destinations[file.RelativePath] = file.Frame.Path;
         }
     }
     private static void ResolveCollisions(List<PlannedFile> files)
     {
-        var occupied = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+        var occupied = new HashSet<string>(PathIdentity.Comparer);
         for (var index = 0; index < files.Count; index++)
         {
             var item = files[index];

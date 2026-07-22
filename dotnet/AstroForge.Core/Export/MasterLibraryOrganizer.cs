@@ -4,6 +4,7 @@ using System.Text;
 using System.Text.Json;
 using System.Xml.Linq;
 using AstroForge.Core.Models;
+using AstroForge.Core.IO;
 
 namespace AstroForge.Core.Export;
 
@@ -46,11 +47,11 @@ public static class MasterLibraryOrganizer
         {
             var source = Path.GetFullPath(request.Source.Path);
             var destination = Path.GetFullPath(Path.Combine(root, RelativePath(request.Source, request.Metadata)));
-            if (!destination.StartsWith(root, StringComparison.OrdinalIgnoreCase)) throw new InvalidOperationException("Percorso Master non sicuro.");
-            if (source.StartsWith(root, StringComparison.OrdinalIgnoreCase)) throw new InvalidOperationException("La destinazione non può contenere i Master sorgente.");
+            if (!PathIdentity.IsWithin(destination, root)) throw new InvalidOperationException("Percorso Master non sicuro.");
+            if (PathIdentity.IsWithin(source, root)) throw new InvalidOperationException("La destinazione non può contenere i Master sorgente.");
             return (Request: request, Destination: destination);
         }).ToArray();
-        var duplicates = values.GroupBy(value => value.Destination, StringComparer.OrdinalIgnoreCase).Where(group => group.Count() > 1).Select(group => group.Key).ToHashSet(StringComparer.OrdinalIgnoreCase);
+        var duplicates = values.GroupBy(value => value.Destination, PathIdentity.Comparer).Where(group => group.Count() > 1).Select(group => group.Key).ToHashSet(PathIdentity.Comparer);
         IReadOnlyList<MasterOrganizationPlanItem> plan = values.Select(value =>
             duplicates.Contains(value.Destination)
                 ? new MasterOrganizationPlanItem(value.Request, value.Destination, MasterOrganizationPlanStatus.DuplicateDestination, "Più Master generano la stessa destinazione")
@@ -118,7 +119,7 @@ public static class MasterLibraryOrganizer
         foreach (var result in results)
         {
             var destination = Path.GetFullPath(result.DestinationPath);
-            if (!destination.StartsWith(root, StringComparison.OrdinalIgnoreCase)) throw new InvalidDataException("Il manifest contiene un percorso esterno alla libreria.");
+            if (!PathIdentity.IsWithin(destination, root)) throw new InvalidDataException("Il manifest contiene un percorso esterno alla libreria.");
             if (!File.Exists(destination)) throw new IOException($"Rollback interrotto: file mancante {destination}");
             if (!result.DestinationSha256.Equals(await HashAsync(destination, cancellationToken), StringComparison.OrdinalIgnoreCase))
                 throw new IOException($"Rollback interrotto: il file è stato modificato dopo il batch: {destination}");

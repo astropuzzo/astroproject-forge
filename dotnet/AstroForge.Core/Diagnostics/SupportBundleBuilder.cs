@@ -19,7 +19,7 @@ public static class SupportBundleBuilder
     public static readonly IReadOnlyList<string> PreviewEntries =
     [
         "README.txt — contenuto e limiti privacy",
-        "system.json — versione app, Windows e runtime",
+        "system.json — versione app, sistema operativo e runtime",
         "settings.json — sole impostazioni tecniche non sensibili",
         "diagnostics.json — conteggi, mai nomi o percorsi dei file",
         "issues.json — codici, severità e quantità",

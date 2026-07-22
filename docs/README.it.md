@@ -5,7 +5,7 @@
 **Trasforma acquisizioni FITS/XISF multisessione prodotte da qualunque software in un progetto pronto
 per PixInsight WBPP, senza organizzare centinaia di file a mano.**
 
-AstroProject Forge è un'applicazione Windows nativa che legge i metadati
+AstroProject Forge è un'applicazione desktop in sviluppo per Windows, Linux e macOS che legge i metadati
 FITS/XISF, ricostruisce sessioni osservative e configurazioni del treno ottico,
 abbina Flat, Dark e Bias e genera una struttura verificabile per
 WeightedBatchPreprocessing.
@@ -13,6 +13,11 @@ WeightedBatchPreprocessing.
 > Il progetto è in sviluppo attivo e non è ancora una release commerciale.
 > Correttezza delle calibrazioni e sicurezza degli originali hanno precedenza
 > sulla quantità di funzioni.
+
+> Windows resta la build privata di riferimento. Linux e macOS usano lo stesso
+> Core e lo stesso modello applicativo, ma non saranno pubblicati finché non
+> superano la [matrice di parità](CROSS_PLATFORM_PARITY.md); non esisterà una
+> versione ridotta del programma.
 
 ![Mappa progetto di AstroProject Forge](images/project-map.jpg)
 
@@ -105,7 +110,7 @@ che parte dalla camera prima di creare qualunque copia verificata.
 - dashboard con ore per filtro, sessione e notte;
 - intervalli temporali, Gain, temperatura e copertura calibrazioni;
 - esportazione statistiche CSV e JSON.
-- workspace Windows nativo con title bar scura integrata, pannelli Sorgenti e
+- workspace desktop nativo con pannelli Sorgenti e
   Inspector responsivi, stati vuoti contestuali, movimento sobrio e gerarchia
   visiva progettata per le decisioni di calibrazione;
 
@@ -232,13 +237,17 @@ revisione.
 
 ### Requisiti
 
-- Windows 10/11;
+- Windows 10/11 per la build di test attuale;
+- Linux x64/ARM64 o macOS 13+ Intel/Apple Silicon per le build di parità non ancora pubblicate;
+- su Linux: desktop X11/XWayland e `libgbm1`, `libgl1`, `libegl1`, `libinput10` (il pacchetto `.deb` li dichiara);
+- gli eseguibili pubblicati saranno self-contained: il runtime .NET non sarà richiesto all'utente;
 - .NET SDK 10 per compilare;
 - PixInsight non è necessario per analizzare o organizzare i file.
 
 ```powershell
 dotnet run --project dotnet/AstroForge.App/AstroForge.App.csproj
 .\qa-gate.ps1
+.\scripts\verify-cross-platform-parity.ps1
 ```
 
 ### Test
@@ -254,6 +263,7 @@ dotnet run --project dotnet/AstroForge.Core.Tests/AstroForge.Core.Tests.csproj -
 ```powershell
 .\build-release.ps1
 .\build-distribution.ps1
+.\scripts\package-cross-platform.ps1
 ```
 
 ## Principi del progetto
