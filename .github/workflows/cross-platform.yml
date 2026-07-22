@@ -78,7 +78,8 @@ jobs:
         if: runner.os == 'macOS'
         run: |
           mkdir -p "AstroProject Forge.app/Contents/MacOS"
-          cp -R publish/. "AstroProject Forge.app/Contents/MacOS/"
+          mv publish/* "AstroProject Forge.app/Contents/MacOS/"
+          rmdir publish
           chmod +x "AstroProject Forge.app/Contents/MacOS/AstroProjectForge"
           mkdir -p "AstroProject Forge.app/Contents/Resources" icon.iconset
           cp assets/astroforge-512.png icon-base.png
@@ -103,11 +104,14 @@ jobs:
           PLIST
           codesign --force --deep --sign - "AstroProject Forge.app"
           codesign --verify --deep --strict "AstroProject Forge.app"
-          ditto -c -k --sequesterRsrc --keepParent "AstroProject Forge.app" AstroProjectForge-${{ matrix.rid }}.zip
+          rm -rf icon.iconset icon-base.png
           mkdir dmg-root
-          cp -R "AstroProject Forge.app" dmg-root/
+          mv "AstroProject Forge.app" dmg-root/
           ln -s /Applications dmg-root/Applications
           hdiutil create -volname "AstroProject Forge" -srcfolder dmg-root -ov -format UDZO AstroProjectForge-${{ matrix.rid }}.dmg
+          mv "dmg-root/AstroProject Forge.app" .
+          rm -rf dmg-root
+          ditto -c -k --sequesterRsrc --keepParent "AstroProject Forge.app" AstroProjectForge-${{ matrix.rid }}.zip
       - uses: actions/upload-artifact@v4
         with:
           name: astroproject-forge-${{ matrix.artifact }}
