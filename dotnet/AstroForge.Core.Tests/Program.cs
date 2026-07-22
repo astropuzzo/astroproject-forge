@@ -76,8 +76,8 @@ Assert(statistics.LightCount == 2 && Math.Abs(statistics.ExposureSeconds - 1200)
 Assert(statistics.FilterCount == 2 && statistics.NightCount == 2, "Conteggio filtri o notti errato.");
 var sioiii = analysis.Lights.Single(item => item.Light.FilterName.Value == "SIOIII");
 var hoo = analysis.Lights.Single(item => item.Light.FilterName.Value == "HOO");
-Assert(sioiii.Dark.Selected?.Frame.Path.EndsWith(@"GAIN_100\-10\600s.xisf", StringComparison.OrdinalIgnoreCase) == true, "Dark SIOIII errato.");
-Assert(hoo.Dark.Selected?.Frame.Path.EndsWith(@"GAIN_100\0\600s.xisf", StringComparison.OrdinalIgnoreCase) == true, "Dark HOO errato.");
+Assert(ReferenceEquals(sioiii.Dark.Selected?.Frame, darkMinusTen), "Dark SIOIII errato.");
+Assert(ReferenceEquals(hoo.Dark.Selected?.Frame, darkZero), "Dark HOO errato.");
 Assert(sioiii.Bias.Selected?.Frame.FileName == "masterBias100.xisf" && hoo.Bias.Selected?.Frame.FileName == "masterBias100.xisf", "Bias gain 100 errato.");
 var recipe = WbppRecipeEngine.Recommend(analysis);
 Assert(recipe.Keywords.Count == 1 && recipe.Keywords[0].Keyword == "DARKSET" && recipe.Keywords[0].Pre && !recipe.Keywords[0].Post, "Ricetta WBPP adattiva errata.");
