@@ -2,7 +2,9 @@
 
 > Stato 21 luglio 2026: completato il contratto di soglia del Quality Lab. Score, grafico, lista e conteggi condividono una sola regola; sospetto ed escluso sono separati esplicitamente e la curva gaussiana fuorviante è stata rimossa.
 
-> Stato 22 luglio 2026: il port Avalonia usa lo stesso `MainViewModel` e lo stesso Core della build Windows. Sono presenti sorgenti generiche, albero/Inspector, override e Flat Epoch, WBPP, dati, revisione, Quality Lab, export verificato e Master Library Lab indipendente. Le build Linux x64/ARM64 e macOS Intel/Apple Silicon restano private finché non supera la [matrice di parità e QA nativa](CROSS_PLATFORM_PARITY.md); non verrà pubblicata alcuna edizione ridotta.
+> Stato 22 luglio 2026: il port Avalonia usa lo stesso `MainViewModel` e lo stesso Core della build Windows. Sono presenti sorgenti generiche, albero/Inspector, override e Flat Epoch, WBPP, dati, revisione, Quality Lab, export verificato e Master Library Lab indipendente. La matrice CI compila e testa Linux x64/ARM64 e macOS Intel/Apple Silicon; la beta pubblica distribuisce gli stessi workflow funzionali, mentre firma, notarizzazione e QA hardware restano gate commerciali.
+
+> Pubblicazione beta 22 luglio 2026: repository ripulito, README italiano/inglese riscritto, screenshot reali rigenerati senza percorsi sorgente visibili, guida Master Library, SECURITY e CONTRIBUTING aggiunti. Il codice è pubblicamente ispezionabile con licenza proprietaria “all rights reserved”; una licenza open source richiede una decisione esplicita futura.
 
 ## Scopo
 
@@ -70,7 +72,7 @@ economico è basso.
 | Cache incrementale | 🟡 Implementata v1 | Header indicizzati per path, dimensione e data modifica; invalidazione e pulizia manuale operative. Da migrare a SQLite per dataset estremi |
 | Installer/updates/firma | 🟡 Implementato per QA | ZIP portabile, installer Inno Setup per utente, manifest/feed/SBOM/hash e runtime WPF completo; firma Authenticode e licenza commerciale Inno restano gate di vendita |
 | Diagnostica e support bundle | ✅ Implementato | Log ruotati e redatti, Centro diagnostica, correlazione operazioni, recovery journal e ZIP locale privacy-safe |
-| Privacy/licensing | 🟡 Parziale | Privacy tecnica applicata; documenti legali e licensing commerciale restano in P0.15/P0.16 |
+| Privacy/licensing | 🟡 Parziale | Privacy tecnica, SECURITY e licenza proprietaria del sorgente pubblicato presenti; privacy policy commerciale, EULA e licensing del prodotto restano in P0.15/P0.16 |
 
 ## Roadmap ottimizzata per release
 

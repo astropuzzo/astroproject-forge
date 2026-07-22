@@ -1,272 +1,121 @@
 # AstroProject Forge
 
-> **Cross-platform work in progress:** Windows remains the current test build. The Linux and macOS frontends now run the same Core and application view-model as Windows; no reduced edition will be published. Native packages stay private until the [parity gate](docs/CROSS_PLATFORM_PARITY.md) passes.
-
 [Italiano](docs/README.it.md) · **English**
 
-**Turn multi-night FITS/XISF acquisitions from any capture software into a reviewable PixInsight WBPP
-project without manually sorting hundreds of files.**
+**Turn multi-night FITS/XISF acquisitions into an auditable PixInsight WBPP project.**
 
-AstroProject Forge is a desktop application under active Windows, Linux and macOS development that reads FITS/XISF
-metadata, reconstructs astronomical nights and optical configurations, matches
-Flat, Dark and Bias calibration frames, and exports a verified structure for
-PixInsight WeightedBatchPreprocessing.
+AstroProject Forge is a desktop calibration workspace for astrophotographers. It reads image headers, reconstructs astronomical nights and optical-configuration sessions, matches Flat/Dark/Bias frames, highlights ambiguity, and exports a verified project structure with the exact WBPP Grouping Keywords it requires.
 
-> Active pre-release development. Calibration correctness and source-file
-> safety take priority over feature count. This is not yet a commercial build.
+> Beta software. Always review calibration assignments before processing valuable data. Source images are treated as read-only.
 
-![AstroProject Forge project map](docs/images/project-map.jpg)
+![AstroProject Forge project map](docs/images/project-map.png)
 
-## The problem
+## Why it exists
 
-A faint target may require weeks of acquisition. One project can contain
-multiple filters, sessions crossing midnight, optical-train changes, and several
-Flat sets. Grouping everything by calendar date is scientifically unsafe:
+A long integration is not just a folder of files. One target may span several filters, nights across midnight, camera rotations, cleaned optics, changed Gain or temperature, and multiple generations of Flats. Grouping only by date or filter can silently calibrate the wrong Lights.
 
-- six HOO nights may legitimately share one Flat set;
-- changing filter, rotation, focus train, or cleaning an optical surface starts
-  a new optical configuration;
-- returning to HOO later must not apply new Flats to earlier HOO sessions;
-- Dark and Bias masters must match sensor, geometry, Gain, Offset, temperature,
-  exposure, and readout mode.
-
-AstroProject Forge builds an explicit project map and reports anything it cannot
-prove instead of silently guessing.
-
-## Workflow
-
-```mermaid
-flowchart LR
-    A["Files or folders<br/>FITS / XISF"] --> B["Header-first parsing<br/>and validation"]
-    L["Master libraries<br/>Dark / Bias"] --> B
-    B --> C["Filter → optical session<br/>→ astronomical night"]
-    C --> D["Explainable Flat / Dark / Bias matching"]
-    D --> E["Guided review and<br/>non-destructive overrides"]
-    E --> F["Project structure<br/>+ WBPP recipe"]
-    F --> G["SHA-256 verified copy<br/>+ manifest and reports"]
-```
-
-1. Select one or more acquisition folders and a Master Library.
-2. The app reads headers only; image pixels are not loaded during inventory.
-3. Frames are organized as
-   `Filter → Configuration sessions → Nights / Flats / Masters`.
-4. The matcher proposes compatible calibrations and explains missing,
-   incompatible, or ambiguous candidates.
-5. Metadata can be corrected without rewriting the original file. A Flat set
-   can be linked to one night, multiple nights, or a complete session.
-6. The app recommends only the WBPP Grouping Keywords that are actually needed,
-   including the correct `Pre/Post` configuration for `FLATSET`, `DARKSET`,
-   `BIASSET`, and `TARGET`.
-7. `Export project` builds the plan when needed and performs its safety checks
-   automatically before starting the resumable, SHA-256 verified copy. The
-   structure preview remains available, but is not a required ritual.
-8. The completed project includes a versioned manifest, preflight report,
-   statistics, WBPP recipe and a human-readable validation report.
-
-## Inside the app
-
-The acquisition dashboard turns the project into useful observing data: total
-integration, time per filter, configuration sessions, astronomical nights,
-Gain, temperature and calibration coverage are visible without opening a
-spreadsheet.
-
-Quality Lab is an optional pixel-analysis workspace. It measures FWHM,
-eccentricity, background noise, signal-to-noise ratio and detected stars. Each
-filter and calibration session/Flat Set gets an independent analysis, with
-exposure lengths kept in separate statistical groups. Robust outliers can be
-inspected on a readable distribution chart with an adjustable sigma threshold;
-all metric columns sort numerically in both directions. Frame points and
-multi-row selections drive Blink and the preview. Optional asinh stretch and
-temporary Bayer demosaicing use per-channel background neutralization and never
-rewrite the source FITS. Excluded copies are kept outside the WBPP Light set.
-Source and Inspector panels are resizable and remember their widths; Inspector
-appears only in workspaces that can apply overrides. Quality
-Lab has its own table/preview splitter plus cursor-centered zoom, drag-to-pan,
-fit-to-view and an on-demand 2400 px inspection render.
-
-![Acquisition dashboard with integration time per filter](docs/images/acquisition-dashboard.jpg)
-
-Master Library Lab is a separate workspace, not a required final project step.
-It inventories enabled Dark/Bias libraries even when no Light folder is loaded,
-lets missing metadata be completed, and previews a camera-first normalized
-layout before any verified copy is created.
-
-![Master Library Lab inventory](docs/images/master-library-lab.jpg)
-
-## Implemented capabilities
-
-### Project intelligence
-
-- FITS and XISF parsing;
-- local privacy-safe diagnostics with searchable error codes, correlated operations, an in-app event center, and support ZIP export;
-- Light, Flat, Dark, Bias, and Dark-flat classification;
-- configurable astronomical-night boundary across midnight;
-- automatic Flat Epochs and manual multi-session Flat linking;
-- hierarchical project tree instead of a flat file list;
-- individual and batch overrides with value provenance;
-- integration time by filter, session, and night;
-- date ranges, Gain, temperature, and calibration coverage;
-- CSV and JSON statistics export.
-- native Windows workspace with integrated dark window chrome, responsive
-  source/inspector panels, contextual empty states, restrained motion and a
-  calibration-focused visual hierarchy;
-
-### Calibration review and WBPP
-
-- explainable Flat, Dark, and Bias matching;
-- configured Master Library candidates take priority over source-folder copies;
-- guided review queue with reason, candidate count, and suggested action;
-- explicit Dark/Bias assignment to one Light or the complete night;
-- adaptive WBPP Grouping Keywords;
-- final-tree preview, WBPP guide, and decision manifest.
-
-### Safety and recovery
-
-- source images remain read-only;
-- automatic export safety checks without a mandatory extra workflow step;
-- preflight for missing/unreadable sources, free space and configurable reserve,
-  source/destination overlap, existing projects, duplicate destinations, path
-  traversal, long paths, reparse points, removable and network volumes;
-- resumable staging export with SHA-256 verification, pause, resume, cancel,
-  throughput and ETA;
-- a second preflight immediately before execution and atomic export reports;
-- portable `.astroforge` document with atomic saves;
-- autosave after the first explicit project save;
-- atomic recovery journal with an explicit restore/discard banner after an interrupted operation;
-- incremental header cache that invalidates only changed files;
-- safe cache cleanup that cannot delete astronomical images.
-- Master Library Lab with guided missing-metadata entry, normalized copy layout,
-  safe FITS/XISF keyword stamping, SHA-256 verification, and manifest output.
-
-## Project hierarchy
+Forge models the project explicitly:
 
 ```text
-HOO
-└── Sessions
-    ├── Session 01 · Jun 15–28
-    │   ├── Astronomical nights
-    │   ├── Linked Flat set
-    │   ├── Master Dark
-    │   └── Master Bias
-    └── Session 02 · Jul 02–05
-        └── ...
-SIOIII
-└── Sessions
-    └── ...
-No filter
-└── Sensor sessions
-    ├── Dark
-    └── Bias
+Filter
+└── Configuration sessions
+    └── Session
+        ├── Astronomical nights
+        ├── Flat set / Flat epoch
+        ├── Master Dark
+        └── Master Bias
 ```
 
-Calendar date, astronomical night, and optical-configuration session are
-different concepts. They must not all be reduced to `DATE-OBS`.
+Automatic evidence is used when it is strong. Ambiguous files stay visible and editable. A Flat set can also be linked manually to one Light, several nights, or a complete configuration session.
 
-## Prerequisites
+## Highlights
 
-- Windows 10/11 for the current private test build;
-- Linux x64/ARM64 or macOS 13+ Intel/Apple Silicon for unreleased parity builds;
-- on Linux: an X11/XWayland desktop plus `libgbm1`, `libgl1`, `libegl1`, and `libinput10` (the planned `.deb` declares them);
-- published binaries will be self-contained; the .NET runtime is not a user prerequisite;
-- Light folders and their Flat frames;
-- a Dark/Bias Master Library is strongly recommended;
-- PixInsight is not required to scan and organize a project;
-- .NET SDK 10 is required only when building from source.
+- FITS and XISF from N.I.N.A. or any acquisition software that writes usable headers;
+- configurable astronomical-night boundary, so post-midnight frames remain with the preceding observing night;
+- header-first metadata with filename/path fallbacks and visible provenance;
+- explainable Flat, Dark and Bias matching across multiple prioritized Master Libraries;
+- camera-first Master Library inventory, metadata completion, normalization and verified copy;
+- non-destructive per-file and group overrides;
+- integration time by filter, configuration session and night;
+- adaptive PixInsight WBPP Grouping Keywords (`FLATSET`, `DARKSET`, `BIASSET`, `TARGET`);
+- optional Quality Lab for FWHM, eccentricity, noise, SNR, stars, robust outliers, Blink and safe exclusion;
+- resumable project export with preflight checks, SHA-256 verification, manifest and reports;
+- local diagnostics and support bundles without image pixels.
 
-The Master Library location is a user setting. No drive letter or personal path
-is hard-coded.
+## Acquisition intelligence
 
-## Recommended Master Library
+![Acquisition dashboard showing 58 hours across two filters](docs/images/acquisition-dashboard.png)
 
-The ideal structure exposes camera, Gain, Offset, temperature, and exposure:
+The dashboard makes the dataset measurable: total integration, filter coverage, session boundaries, night counts, Gain, temperature and calibration readiness are visible before PixInsight is opened.
+
+## Master Library Lab
+
+![Master Library Lab with camera-first inventory](docs/images/master-library-lab.png)
+
+Master Library Lab is independent from project analysis. It can scan Dark/Bias libraries with no Light folders loaded, ask only for metadata that cannot be proven, preview a normalized camera-first layout, then stamp and copy verified files without touching the originals.
+
+Recommended layout:
 
 ```text
 MasterLibrary/
-├── Camera-ZWO-ASI2600MC/
-│   ├── Gain-100/
-│   │   ├── Offset-50/
-│   │   │   ├── Temp--10C/
-│   │   │   │   ├── Dark/
-│   │   │   │   │   ├── masterDark_60s.xisf
-│   │   │   │   │   ├── masterDark_300s.xisf
-│   │   │   │   │   └── masterDark_600s.xisf
-│   │   │   │   └── Bias/
-│   │   │   │       └── masterBias.xisf
-│   │   │   └── Temp-0C/
-│   │   │       └── ...
-│   │   └── Offset-51/
-│   │       └── ...
-│   └── Gain-0/
-│       └── ...
-└── Secondary-Camera/
-    └── ...
+└── Camera-ZWO-ASI2600MC/
+    └── Gain-100/
+        └── Offset-51/
+            └── Temp--10C/
+                ├── Dark/
+                │   ├── masterDark_300s.xisf
+                │   └── masterDark_600s.xisf
+                └── Bias/
+                    └── masterBias.xisf
 ```
 
-These exact folder names are not mandatory. FITS/XISF headers are authoritative;
-folder and file names are fallback evidence. Reliable masters should identify:
+The exact names are optional. Headers remain authoritative; folders and filenames are fallback evidence. Reliable masters should identify camera/sensor, geometry and binning, Gain, Offset, setpoint, Dark exposure, readout mode, frame type and master status.
 
-- camera/sensor, dimensions, ROI, and binning;
-- acquisition Gain and Offset;
-- temperature setpoint;
-- Dark exposure time;
-- readout mode when the camera provides multiple modes;
-- frame type and whether the file is an integrated Master.
+## Downloads
 
-Project or library defaults may fill genuinely missing Gain, Offset, or
-temperature values. A default never replaces a valid header. Conflicting,
-duplicate, or equivalent candidates are sent to the guided Review Queue.
+The first public beta is distributed from [GitHub Releases](https://github.com/astropuzzo/astroproject-forge/releases).
 
-## Roadmap status
+| Platform | Package | Notes |
+|---|---|---|
+| Windows 10/11 x64 | Installer `.exe` or portable `.zip` | Primary QA build |
+| Linux x64 / ARM64 | `.deb` or portable `.tar.gz` | X11/XWayland; `.deb` declares native dependencies |
+| macOS 13+ Intel / Apple Silicon | `.dmg` or `.zip` | Ad-hoc signed beta; notarization is planned |
 
-| Area | Status |
-|---|---|
-| FITS/XISF analysis and multisession tree | Operational |
-| Flat Epochs and manual linking | Operational |
-| Acquisition dashboard and statistics | Operational |
-| Portable `.astroforge` project | Operational; migrations pending |
-| Incremental header cache | v1 operational; SQLite planned |
-| Guided Review Queue | v1 operational; candidate comparison expanding |
-| Multiple Master Libraries | v1 operational: priority and online/offline state |
-| Antifragile export | v1 operational: read-only checks, pause/cancel/resume, SHA-256 and atomic reports |
-| Reproducible Windows QA gate | Operational locally + GitHub Actions workflow |
-| Linux/macOS parity | Shared Core + ViewModel and eight workspaces implemented; native QA still blocks publication |
-| Installer, signing, and updates | Beta packaging operational; commercial signing/VM matrix pending |
-| WBPP end-to-end compatibility matrix | Required before sale |
+Published binaries are self-contained; users do not need to install .NET. PixInsight is not required to inventory or organize a project.
 
-See the detailed acceptance criteria in
-[PIANO_READY_TO_SELL.md](docs/PIANO_READY_TO_SELL.md).
+## Quick start
 
-## Build and test
+1. Add Light/Flat files or acquisition folders.
+2. Add one or more Dark/Bias Master Libraries and set their priority.
+3. Set project fallbacks only for metadata that headers and paths cannot provide.
+4. Run analysis and review warnings or manual Flat links.
+5. Inspect WBPP keywords and the final structure.
+6. Choose a destination and export the verified project.
+7. Load the generated structure in PixInsight WeightedBatchPreprocessing.
+
+## Safety model
+
+- Originals are never rewritten by project analysis or export.
+- Exclusions move verified copies to a separate project area; they do not delete source files.
+- Export checks missing files, collisions, free space, overlap, path traversal, long paths, reparse points and interrupted operations.
+- Master normalization writes metadata only to new copies and verifies them before completion.
+
+## Build from source
+
+Requirements: [.NET SDK 10](https://dotnet.microsoft.com/download/dotnet/10.0).
 
 ```powershell
-dotnet run --project dotnet/AstroForge.App/AstroForge.App.csproj
-.\qa-gate.ps1
-.\scripts\verify-cross-platform-parity.ps1
+dotnet run --project dotnet/AstroForge.Core.Tests/AstroForge.Core.Tests.csproj -c Release
+dotnet build dotnet/AstroForge.App/AstroForge.App.csproj -c Release
+dotnet build dotnet/AstroForge.CrossPlatform/AstroForge.CrossPlatform.csproj -c Release
 ```
 
-Self-contained Windows build and full Beta distribution:
+Windows uses the WPF workspace. Linux and macOS use the Avalonia shell over the same Core and shared application model. Cross-platform parity is tracked in [docs/CROSS_PLATFORM_PARITY.md](docs/CROSS_PLATFORM_PARITY.md).
 
-```powershell
-.\build-release.ps1
-.\build-distribution.ps1
-.\scripts\package-cross-platform.ps1
-```
+## Project status
 
-Tests use synthetic fixtures and never require personal astrophotography data.
+This repository is public for transparent beta testing. The software remains under active development; signing/notarization, the end-to-end WBPP compatibility matrix and commercial support are still release gates. See the [ready-to-sell plan](docs/PIANO_READY_TO_SELL.md), [product specification](docs/PRODUCT_SPEC.md), [changelog](docs/CHANGELOG.md) and [release process](docs/RELEASE_PROCESS.md).
 
-## Project principles
+## Copyright and contributions
 
-- No scientific match without a reviewable reason.
-- Missing data remains missing until a rule or the user resolves it.
-- Corrections are overlays; original headers are never rewritten.
-- Destructive actions must not resemble cache cleanup or memory-only removal.
-- Personal FITS/XISF data and generated artifacts are never versioned.
-
-## License and distribution
-
-The per-user x64 installer, Stable/Beta identity, update manifest, SBOM and
-integrity hashes are implemented. Commercial publication remains blocked until
-EXE and installer are Authenticode-signed, the clean Windows 10/11 VM matrix is
-completed, and the distribution-tool commercial license is settled. The
-repository remains private during pre-release development. See
-[RELEASE_PROCESS.md](docs/RELEASE_PROCESS.md).
+Copyright © 2026 AstroProject Forge. All rights reserved. Public source access does not grant permission to copy, redistribute, modify or sell the software. See [LICENSE](LICENSE) and [CONTRIBUTING](CONTRIBUTING.md).
