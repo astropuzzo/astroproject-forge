@@ -216,10 +216,13 @@ public static class ProjectExportPreflight
         {
             var current = new DirectoryInfo(destinationRoot);
             while (current is not null && !current.Exists) current = current.Parent;
+            var selectedAnchor = current?.FullName;
             for (; current is not null; current = current.Parent)
                 if ((current.Attributes & FileAttributes.ReparsePoint) != 0)
                 {
-                    findings.Add(Error("destination.reparse", "Destinazione tramite junction o symlink", "Per evitare deviazioni inattese, scegli un percorso fisico o di rete esplicito.", current.FullName));
+                    findings.Add(PathIdentity.Equals(current.FullName, selectedAnchor)
+                        ? Error("destination.reparse", "Destinazione tramite junction o symlink", "Per evitare deviazioni inattese, scegli un percorso fisico o di rete esplicito.", current.FullName)
+                        : Warning("destination.ancestor_link", "Percorso con collegamento di sistema", "Un antenato della destinazione è un junction o symlink. La destinazione selezionata è fisica, ma il percorso canonico può differire.", current.FullName));
                     return;
                 }
         }
