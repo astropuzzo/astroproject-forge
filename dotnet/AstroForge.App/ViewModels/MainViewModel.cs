@@ -225,9 +225,9 @@ public sealed class MainViewModel : BindableBase
     }
     public string AnalysisPromptTitle => _awaitingReanalysis ? "Le sorgenti sono cambiate" : "Sorgenti collegate";
     public string AnalysisPromptDetail => _awaitingReanalysis
-        ? "La mappa precedente è stata ritirata per evitare risultati obsoleti. Rianalizza per includere tutti i percorsi correnti."
-        : "I percorsi sono pronti. L’analisi leggerà gli header e costruirà filtri, notti e sessioni senza modificare gli originali.";
-    public string AnalysisActionLabel => IsScanning ? "ANALISI IN CORSO…" : HasAnalysis || _awaitingReanalysis ? "RIANALIZZA PROGETTO" : "ANALIZZA PROGETTO";
+        ? "Rianalizza per includere le sorgenti correnti."
+        : "Legge gli header e raggruppa i file per filtro, notte e sessione. Gli originali non vengono modificati.";
+    public string AnalysisActionLabel => IsScanning ? "Analisi in corso…" : HasAnalysis || _awaitingReanalysis ? "Rianalizza" : "Analizza";
     public string RecoverySummary => _pendingRecovery is null
         ? "Nessun recupero necessario"
         : $"{_pendingRecovery.Operation} interrotta il {_pendingRecovery.StartedAtUtc.ToLocalTime():dd MMM yyyy 'alle' HH:mm}. Puoi ripristinare la fotografia del progetto precedente all’operazione.";
@@ -605,7 +605,7 @@ public sealed class MainViewModel : BindableBase
         var plan = await MasterLibraryOrganizer.PlanAsync(MasterOrganizerRequests(), MasterOrganizerDestination, cancellationToken);
         ApplyMasterOrganizerPlan(plan);
         var conflicts = plan.Count(item => item.Status != MasterOrganizationPlanStatus.Ready);
-        MasterOrganizerStatus = conflicts == 0 ? $"Preflight superato · {plan.Count} Master pronti" : $"Preflight bloccato · {conflicts} conflitti su {plan.Count} Master";
+        MasterOrganizerStatus = conflicts == 0 ? $"Verifica completata · {plan.Count} Master pronti" : $"Verifica bloccata · {conflicts} conflitti su {plan.Count} Master";
         Status = MasterOrganizerStatus;
     }
 
@@ -616,8 +616,8 @@ public sealed class MainViewModel : BindableBase
         try
         {
             var removed = await MasterLibraryOrganizer.RollbackAsync(MasterOrganizerDestination, cancellationToken);
-            foreach (var item in MasterOrganizerItems) item.SetPreflight("Rollback completato");
-            MasterOrganizerStatus = $"Rollback completato · rimosse {removed} copie verificate · originali intatti";
+            foreach (var item in MasterOrganizerItems) item.SetPreflight("Batch annullato");
+            MasterOrganizerStatus = $"Batch annullato · rimosse {removed} copie verificate · originali intatti";
             Status = MasterOrganizerStatus;
             tracked.Complete("AF-MASTER-ROLLBACK-OK", $"Rollback completato: {removed} copie rimosse");
         }
@@ -784,7 +784,7 @@ public sealed class MainViewModel : BindableBase
     public async Task ScanAsync(CancellationToken cancellationToken = default)
     {
         var availableLibraries = MasterLibraries.Where(item => item.Enabled && item.IsOnline).ToArray();
-        if (SourcePaths.Count == 0) { Status = "Aggiungi almeno una sorgente FITS/XISF. Il Master Library Lab resta disponibile separatamente."; return; }
+        if (SourcePaths.Count == 0) { Status = "Aggiungi almeno una sorgente FITS/XISF. La Libreria Master è disponibile separatamente."; return; }
         using var tracked = BeginTrackedOperation("Analisi progetto", "AF-SCAN-START", "Analisi progetto avviata");
         IsScanning = true;
         Progress = 0;
@@ -1764,7 +1764,7 @@ public sealed class MainViewModel : BindableBase
         foreach (var note in recipe.Notes) WbppNotes.Add(note);
 
         ReadinessText = _analysis.Lights.Count == 0
-            ? $"Modalità Master Library · {_frames.Count(frame => frame.IsMaster)} Master analizzati"
+            ? $"Libreria Master · {_frames.Count(frame => frame.IsMaster)} Master analizzati"
             : _analysis.Ready
                 ? $"Pronto per WBPP · {_analysis.Lights.Count} Light con Flat, Dark e Bias assegnati"
                 : $"Da risolvere · {_analysis.UnresolvedCount} assegnazioni di calibrazione mancanti o ambigue";

@@ -38,7 +38,7 @@ Automatic evidence is used when it is strong. Ambiguous files stay visible and e
 - non-destructive per-file and group overrides;
 - integration time by filter, configuration session and night;
 - adaptive PixInsight WBPP Grouping Keywords (`FLATSET`, `DARKSET`, `BIASSET`, `TARGET`);
-- optional Quality Lab for FWHM, eccentricity, noise, SNR, stars, robust outliers, Blink and safe exclusion;
+- optional Quality analysis for FWHM, eccentricity, noise, SNR, stars, robust outliers, Blink and safe exclusion;
 - resumable project export with preflight checks, SHA-256 verification, manifest and reports;
 - local diagnostics and support bundles without image pixels.
 
@@ -48,11 +48,11 @@ Automatic evidence is used when it is strong. Ambiguous files stay visible and e
 
 The dashboard makes the dataset measurable: total integration, filter coverage, session boundaries, night counts, Gain, temperature and calibration readiness are visible before PixInsight is opened.
 
-## Master Library Lab
+## Master Library
 
-![Master Library Lab with camera-first inventory](docs/images/master-library-lab.png)
+![Master Library with camera-first inventory](docs/images/master-library-lab.png)
 
-Master Library Lab is independent from project analysis. It can scan Dark/Bias libraries with no Light folders loaded, ask only for metadata that cannot be proven, preview a normalized camera-first layout, then stamp and copy verified files without touching the originals.
+Master Library is independent from project analysis. It can scan Dark/Bias libraries with no Light folders loaded, ask only for metadata that cannot be proven, preview a normalized camera-first layout, then stamp and copy verified files without touching the originals.
 
 Recommended layout:
 

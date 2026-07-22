@@ -80,7 +80,7 @@
                     </Border>
                     <StackPanel x:Name="BrandText" VerticalAlignment="Center">
                         <TextBlock Text="ASTROPROJECT FORGE" FontFamily="Segoe UI Variable Display" FontWeight="SemiBold" FontSize="16"/>
-                        <TextBlock Text="CALIBRATION WORKSPACE" Foreground="{StaticResource Subtle}" FontWeight="SemiBold" FontSize="9" Margin="0,2,0,0"/>
+                        <TextBlock Text="PREPARAZIONE WBPP" Foreground="{StaticResource Subtle}" FontWeight="SemiBold" FontSize="9" Margin="0,2,0,0"/>
                     </StackPanel>
                 </StackPanel>
 
@@ -105,7 +105,7 @@
         <Popup x:Name="MorePopup" Grid.Row="1" PlacementTarget="{Binding ElementName=MoreButton}" Placement="Bottom" HorizontalOffset="-260" VerticalOffset="8" StaysOpen="False" AllowsTransparency="True">
             <Border Width="310" Style="{StaticResource Card}" Background="#F2121B28" BorderBrush="#647A94" Padding="12">
                 <StackPanel>
-                    <TextBlock Text="COMANDI PROGETTO" Style="{StaticResource Eyebrow}" Margin="8,5,8,10"/>
+                    <TextBlock Text="Progetto" Style="{StaticResource Eyebrow}" Margin="8,5,8,10"/>
                     <Button Command="{Binding UndoCommand}" Click="CloseMore_Click" HorizontalContentAlignment="Stretch" Margin="0,0,0,6"><Grid><Grid.ColumnDefinitions><ColumnDefinition Width="34"/><ColumnDefinition/></Grid.ColumnDefinitions><TextBlock Text="↶" Foreground="{StaticResource Accent}" FontSize="18" VerticalAlignment="Center"/><StackPanel Grid.Column="1"><TextBlock Text="Annulla ultima modifica" FontWeight="SemiBold"/><TextBlock Text="Ripristina l'ultimo override" Style="{StaticResource MutedText}" FontSize="10"/></StackPanel></Grid></Button>
                     <Button Click="ClearCache_Click" HorizontalContentAlignment="Stretch" Margin="0,0,0,6"><Grid><Grid.ColumnDefinitions><ColumnDefinition Width="34"/><ColumnDefinition/></Grid.ColumnDefinitions><TextBlock Text="⌁" Foreground="{StaticResource Accent}" FontSize="18" VerticalAlignment="Center"/><StackPanel Grid.Column="1"><TextBlock Text="Pulisci cache header" FontWeight="SemiBold"/><TextBlock Text="Non elimina immagini" Style="{StaticResource MutedText}" FontSize="10"/></StackPanel></Grid></Button>
                     <Button Click="OpenDiagnostics_Click" HorizontalContentAlignment="Stretch" Margin="0,0,0,6"><Grid><Grid.ColumnDefinitions><ColumnDefinition Width="34"/><ColumnDefinition/></Grid.ColumnDefinitions><TextBlock Text="◎" Foreground="{StaticResource Accent}" FontSize="18" VerticalAlignment="Center"/><StackPanel Grid.Column="1"><TextBlock Text="Centro diagnostica" FontWeight="SemiBold"/><TextBlock Text="Eventi, errori e operazioni correlate" Style="{StaticResource MutedText}" FontSize="10"/></StackPanel></Grid></Button>
@@ -119,19 +119,19 @@
         <Popup x:Name="SettingsPopup" Grid.Row="1" PlacementTarget="{Binding ElementName=SettingsButton}" Placement="Bottom" HorizontalOffset="-300" VerticalOffset="8" StaysOpen="False" AllowsTransparency="True">
             <Border Width="380" Style="{StaticResource Card}" Background="#F2121B28" BorderBrush="#647A94" Padding="20">
                 <StackPanel>
-                    <TextBlock Text="PREFERENZE INTERFACCIA" Style="{StaticResource Eyebrow}"/>
-                    <TextBlock Text="Aspetto e accessibilità" FontSize="22" FontWeight="SemiBold" Margin="0,5,0,15"/>
+                    <TextBlock Text="Interfaccia" Style="{StaticResource Eyebrow}"/>
+                    <TextBlock Text="Impostazioni" FontSize="22" FontWeight="SemiBold" Margin="0,5,0,15"/>
                     <TextBlock Text="Densità controlli" Style="{StaticResource MetaLabel}"/>
                     <ComboBox x:Name="DensitySelector" SelectedValuePath="Content" SelectedValue="{Binding UiDensity, Mode=TwoWay}" SelectionChanged="DensitySelector_SelectionChanged" Margin="0,0,0,13">
                         <ComboBoxItem Content="Compatta"/><ComboBoxItem Content="Comoda"/><ComboBoxItem Content="Ampia"/>
                     </ComboBox>
                     <CheckBox Content="Movimento ridotto" IsChecked="{Binding ReducedMotion, Mode=TwoWay}" Click="ReducedMotion_Click" Margin="0,3,0,7"/>
-                    <TextBlock Text="Riduce la transizione di ingresso. La densità compatta libera spazio sui display piccoli." Style="{StaticResource MutedText}" TextWrapping="Wrap" FontSize="11"/>
+                    <TextBlock Text="Disattiva le animazioni dell’interfaccia." Style="{StaticResource MutedText}" TextWrapping="Wrap" FontSize="11"/>
                     <Border Height="1" Background="{StaticResource Stroke}" Margin="0,15,0,14"/>
-                    <TextBlock Text="AGGIORNAMENTI" Style="{StaticResource Eyebrow}"/>
+                    <TextBlock Text="Aggiornamenti" Style="{StaticResource Eyebrow}"/>
                     <Grid Margin="0,8,0,9"><Grid.ColumnDefinitions><ColumnDefinition/><ColumnDefinition Width="132"/></Grid.ColumnDefinitions><TextBlock Text="Canale release" VerticalAlignment="Center"/><ComboBox Grid.Column="1" SelectedValuePath="Content" SelectedValue="{Binding UpdateChannel, Mode=TwoWay}"><ComboBoxItem Content="Stable"/><ComboBoxItem Content="Beta"/></ComboBox></Grid>
                     <CheckBox Content="Controlla all'avvio" IsChecked="{Binding CheckForUpdates, Mode=TwoWay}" Margin="0,2,0,5"/>
-                    <TextBlock Text="Il controllo è disattivato di default. Forge scarica solo il manifest; installer e avvio restano sempre scelte esplicite." Style="{StaticResource MutedText}" TextWrapping="Wrap" FontSize="11"/>
+                    <TextBlock Text="Controlla soltanto il manifest. Download e installazione richiedono conferma." Style="{StaticResource MutedText}" TextWrapping="Wrap" FontSize="11"/>
                     <Button Content="Salva preferenze" Click="SaveUiPreferences_Click" Style="{StaticResource PrimaryButton}" Margin="0,16,0,0"/>
                     <Button Content="Riapri configurazione guidata" Click="ReopenOnboarding_Click" Margin="0,8,0,0"/>
                     <Button Content="Informazioni e aggiornamenti" Click="ShowAbout_Click" Margin="0,8,0,0"/>
@@ -156,9 +156,9 @@
                         <RowDefinition Height="Auto"/><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/>
                     </Grid.RowDefinitions>
                     <StackPanel>
-                        <TextBlock Text="PROGETTO" Style="{StaticResource Eyebrow}" />
+                        <TextBlock Text="Progetto" Style="{StaticResource Eyebrow}" />
                         <TextBlock Text="Sorgenti" FontSize="22" FontWeight="SemiBold" Margin="0,5,0,4" />
-                        <TextBlock Text="Le immagini originali restano in sola lettura." Style="{StaticResource MutedText}" TextWrapping="Wrap" />
+                        <TextBlock Text="FITS/XISF sorgenti" Style="{StaticResource MutedText}" TextWrapping="Wrap" />
                     </StackPanel>
                     <Grid Grid.Row="1" Margin="0,18,0,8"><Grid.ColumnDefinitions><ColumnDefinition/><ColumnDefinition/><ColumnDefinition/></Grid.ColumnDefinitions>
                         <Button Content="+ Cartella" Click="AddSource_Click" Margin="0,0,3,0" ToolTip="Importa ricorsivamente FITS e XISF da qualunque software di acquisizione" IsEnabled="{Binding CanRunProjectOperations}" />
@@ -175,7 +175,7 @@
                         </ListBox.ItemTemplate>
                     </ListBox>
                     <StackPanel Grid.Row="3" Margin="0,16,0,0">
-                        <TextBlock Text="LIBRERIE DI CALIBRAZIONE" Style="{StaticResource MetaLabel}" />
+                        <TextBlock Text="Librerie di calibrazione" Style="{StaticResource MetaLabel}" />
                         <ListBox x:Name="MasterLibrariesList" ItemsSource="{Binding MasterLibraries}" SelectedItem="{Binding SelectedMasterLibrary}" Background="Transparent" BorderThickness="0" MaxHeight="170" ScrollViewer.HorizontalScrollBarVisibility="Disabled">
                             <ListBox.ItemTemplate><DataTemplate><Border Background="{StaticResource Bg2}" BorderBrush="{StaticResource Stroke}" BorderThickness="1" CornerRadius="8" Padding="8" Margin="0,0,0,5"><Grid><Grid.ColumnDefinitions><ColumnDefinition Width="22"/><ColumnDefinition/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions><CheckBox IsChecked="{Binding Enabled}" VerticalAlignment="Center" ToolTip="Includi questa libreria nell'analisi"/><StackPanel Grid.Column="1"><TextBlock Text="{Binding Name}" FontWeight="SemiBold" TextTrimming="CharacterEllipsis"/><TextBlock Text="{Binding Path}" Style="{StaticResource MutedText}" FontSize="9" TextTrimming="CharacterEllipsis"/></StackPanel><StackPanel Grid.Column="2" Margin="7,0,0,0"><TextBlock Text="{Binding PriorityLabel}" Foreground="{StaticResource Accent}" FontSize="9" TextAlignment="Right"/><TextBlock Text="{Binding Status}" Style="{StaticResource MutedText}" FontSize="9" TextAlignment="Right"/></StackPanel></Grid></Border></DataTemplate></ListBox.ItemTemplate>
                         </ListBox>
@@ -183,22 +183,22 @@
                         <Button Content="Aggiorna stato librerie" Click="RefreshLibraries_Click" Margin="0,7,0,0" />
                         <Border Style="{StaticResource Card}" Padding="11" Margin="0,8,0,0" Background="{StaticResource RaisedSurface}">
                             <StackPanel>
-                                <TextBlock Text="VALORI PREDEFINITI" Style="{StaticResource Eyebrow}"/>
-                                <TextBlock Text="Usati solo se header e percorso non contengono il valore." Style="{StaticResource MutedText}" TextWrapping="Wrap" FontSize="10" Margin="0,4,0,6"/>
+                        <TextBlock Text="Valori predefiniti" Style="{StaticResource Eyebrow}"/>
+                        <TextBlock Text="Usati solo quando il metadato manca." Style="{StaticResource MutedText}" TextWrapping="Wrap" FontSize="10" Margin="0,4,0,6"/>
                                 <Grid><Grid.ColumnDefinitions><ColumnDefinition/><ColumnDefinition Width="76"/></Grid.ColumnDefinitions><Grid.RowDefinitions><RowDefinition Height="42"/><RowDefinition Height="42"/><RowDefinition Height="42"/></Grid.RowDefinitions>
                                     <TextBlock Text="Gain" VerticalAlignment="Center"/><TextBox Grid.Column="1" Text="{Binding ProjectDefaultGain, UpdateSourceTrigger=PropertyChanged}" HorizontalContentAlignment="Center" VerticalContentAlignment="Center" Margin="0,2"/>
                                     <TextBlock Grid.Row="1" Text="Offset" VerticalAlignment="Center"/><TextBox Grid.Row="1" Grid.Column="1" Text="{Binding ProjectDefaultOffset, UpdateSourceTrigger=PropertyChanged}" HorizontalContentAlignment="Center" VerticalContentAlignment="Center" Margin="0,2"/>
                                     <TextBlock Grid.Row="2" Text="Setpoint °C" VerticalAlignment="Center"/><TextBox Grid.Row="2" Grid.Column="1" Text="{Binding ProjectDefaultTemperature, UpdateSourceTrigger=PropertyChanged}" HorizontalContentAlignment="Center" VerticalContentAlignment="Center" Margin="0,2" ToolTip="Lascia vuoto per usare esclusivamente SET-TEMP, CCD-TEMP o il percorso libreria"/>
                                 </Grid>
-                                <Button Content="Applica fallback e rianalizza" Command="{Binding ApplyProjectDefaultsCommand}" Margin="0,7,0,0" Padding="8,6"/>
+                                <Button Content="Applica valori e rianalizza" Command="{Binding ApplyProjectDefaultsCommand}" Margin="0,7,0,0" Padding="8,6" ToolTip="Usa questi valori soltanto quando mancano nei metadati"/>
                             </StackPanel>
                         </Border>
                     </StackPanel>
                     <Border Grid.Row="4" Style="{StaticResource Card}" Margin="0,14,0,0" Background="{StaticResource RaisedSurface}" BorderBrush="#304155">
                         <StackPanel>
-                            <TextBlock Text="NOTTE ASTRONOMICA" Style="{StaticResource Eyebrow}" />
+                        <TextBlock Text="Notte astronomica" Style="{StaticResource Eyebrow}" />
                             <Grid Margin="0,7,0,5"><Grid.ColumnDefinitions><ColumnDefinition/><ColumnDefinition Width="58"/></Grid.ColumnDefinitions><TextBlock Text="Cambio sessione (ora locale)" VerticalAlignment="Center"/><TextBox Grid.Column="1" Text="{Binding SessionBoundaryHour, UpdateSourceTrigger=PropertyChanged}" HorizontalContentAlignment="Center"/></Grid>
-                            <TextBlock Text="Le ore dopo mezzanotte restano nella sessione della sera precedente." Style="{StaticResource MutedText}" TextWrapping="Wrap" FontSize="11" />
+                        <TextBlock Text="I file acquisiti prima di quest’ora appartengono alla notte precedente." Style="{StaticResource MutedText}" TextWrapping="Wrap" FontSize="11" />
                         </StackPanel>
                     </Border>
                 </Grid>
@@ -212,17 +212,17 @@
                 <Grid.RowDefinitions><RowDefinition Height="Auto"/><RowDefinition Height="*"/></Grid.RowDefinitions>
                 <Border Style="{StaticResource Card}" Padding="15,11" Margin="0,0,0,12" Background="{StaticResource RaisedSurface}" BorderBrush="#314154">
                     <Grid><Grid.ColumnDefinitions><ColumnDefinition/><ColumnDefinition Width="Auto"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions>
-                        <StackPanel><TextBlock Text="PROJECT HEALTH" Style="{StaticResource Eyebrow}"/><TextBlock Text="{Binding ReadinessText}" Margin="0,4,0,0" TextWrapping="Wrap" FontSize="13"/></StackPanel>
+                            <StackPanel><TextBlock Text="Stato progetto" Style="{StaticResource Eyebrow}"/><TextBlock Text="{Binding ReadinessText}" Margin="0,4,0,0" TextWrapping="Wrap" FontSize="13"/></StackPanel>
                         <Border Grid.Column="1" Background="#1C222D3A" BorderBrush="#39465A" BorderThickness="1" CornerRadius="10" Padding="11,5" VerticalAlignment="Center" Visibility="{Binding HasAnalysis, Converter={StaticResource BooleanToVisibility}}"><TextBlock Text="{Binding UnresolvedCalibrations, StringFormat={}{0} da verificare}" Foreground="{StaticResource Warning}" FontSize="12"/></Border>
                         <Button Grid.Column="2" Content="{Binding AnalysisActionLabel}" Click="Scan_Click" Style="{StaticResource PrimaryButton}" IsEnabled="{Binding CanAnalyzeProject}" Visibility="{Binding HasAnalysis, Converter={StaticResource BooleanToVisibility}}" Margin="12,0,0,0" Padding="20,10" FontWeight="SemiBold" ToolTip="Rianalizza le sorgenti usando le librerie di calibrazione attive"/>
                     </Grid>
                 </Border>
 
                 <TabControl x:Name="WorkspaceTabs" Grid.Row="1" Background="Transparent" BorderThickness="0" TabStripPlacement="Top" HorizontalContentAlignment="Stretch" VerticalContentAlignment="Stretch" SelectionChanged="WorkspaceTabs_SelectionChanged">
-                    <TabItem Header="Analisi">
+                    <TabItem Header="Analisi" Tag="Inspector">
                         <Grid Margin="0,14,0,0">
                             <Grid.RowDefinitions><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/><RowDefinition Height="*"/></Grid.RowDefinitions>
-                            <StackPanel><TextBlock Text="Mappa del progetto" Style="{StaticResource Title}"/><TextBlock Text="Correggi un intero gruppo o espandi fino al singolo file. Ogni valore conserva la sua provenienza." Style="{StaticResource MutedText}" TextWrapping="Wrap"/></StackPanel>
+                                <StackPanel><TextBlock Text="Mappa progetto" Style="{StaticResource Title}"/><TextBlock Text="Filtri, sessioni, notti e calibrazioni assegnate." Style="{StaticResource MutedText}" TextWrapping="Wrap"/></StackPanel>
                             <Grid Grid.Row="1" Margin="0,14,0,10"><Grid.ColumnDefinitions><ColumnDefinition/><ColumnDefinition Width="120"/><ColumnDefinition Width="140"/></Grid.ColumnDefinitions>
                                 <TextBox Text="{Binding SearchText, UpdateSourceTrigger=PropertyChanged}" ToolTip="Cerca file, target o filtro" Margin="0,0,8,0" IsEnabled="{Binding HasAnalysis}" />
                                 <Border Grid.Column="1" Style="{StaticResource Card}" Padding="9,7" Margin="0,0,8,0"><TextBlock Text="{Binding TotalFiles, StringFormat=FILE  {0}}"/></Border>
@@ -234,20 +234,20 @@
                                     <TreeView ItemsSource="{Binding TreeRoots}" SelectedItemChanged="Tree_SelectedItemChanged" MouseDoubleClick="Tree_MouseDoubleClick" ToolTip="Doppio click per mostrare il file originale" IsHitTestVisible="{Binding HasVisibleTree}" VirtualizingStackPanel.IsVirtualizing="True" VirtualizingStackPanel.VirtualizationMode="Recycling" ScrollViewer.CanContentScroll="True"/>
                                     <StackPanel Visibility="{Binding ShowImportPrompt, Converter={StaticResource BooleanToVisibility}}" HorizontalAlignment="Center" VerticalAlignment="Center" MaxWidth="560" Margin="28">
                                         <Border Width="54" Height="54" CornerRadius="16" Background="#1B23303D" BorderBrush="#3C4D64" BorderThickness="1" HorizontalAlignment="Center"><Image Source="Assets/astroforge.ico" Width="30" Height="30"/></Border>
-                                        <TextBlock Text="Inizia dalle immagini" FontFamily="Segoe UI Variable Display" FontSize="25" FontWeight="SemiBold" TextAlignment="Center" Margin="0,17,0,7"/>
-                                        <TextBlock Text="Collega cartelle o singoli FITS/XISF. Forge userà gli header per ricostruire la mappa del progetto senza modificare gli originali." Style="{StaticResource MutedText}" TextWrapping="Wrap" TextAlignment="Center" LineHeight="20"/>
+                                        <TextBlock Text="Nessuna sorgente" FontFamily="Segoe UI Variable Display" FontSize="25" FontWeight="SemiBold" TextAlignment="Center" Margin="0,17,0,7"/>
+                                        <TextBlock Text="Aggiungi file o cartelle FITS/XISF." Style="{StaticResource MutedText}" TextWrapping="Wrap" TextAlignment="Center" LineHeight="20"/>
                                         <StackPanel Orientation="Horizontal" HorizontalAlignment="Center" Margin="0,22,0,0">
                                             <Button Content="Scegli cartelle" Click="AddSource_Click" Style="{StaticResource PrimaryButton}" Padding="17,9"/>
                                             <Button Content="Scegli file" Click="AddFiles_Click" Margin="9,0,0,0" Padding="17,9"/>
                                         </StackPanel>
                                         <Border Background="#101923" BorderBrush="{StaticResource Stroke}" BorderThickness="1" CornerRadius="9" Padding="13,9" Margin="0,20,0,0">
-                                            <TextBlock Text="Le Master Library sono opzionali e si gestiscono separatamente nel Master Library Lab." Style="{StaticResource MutedText}" FontSize="11" TextWrapping="Wrap" TextAlignment="Center"/>
+                                        <TextBlock Text="Le librerie Dark/Bias si configurano nel pannello Sorgenti." Style="{StaticResource MutedText}" FontSize="11" TextWrapping="Wrap" TextAlignment="Center"/>
                                         </Border>
                                     </StackPanel>
                                     <Border Visibility="{Binding ShowAnalysisPrompt, Converter={StaticResource BooleanToVisibility}}" Style="{StaticResource Card}" Background="#EE101A25" BorderBrush="#4B647D" HorizontalAlignment="Center" VerticalAlignment="Center" MaxWidth="720" Margin="28" Padding="26">
                                         <Grid>
                                             <Grid.RowDefinitions><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/></Grid.RowDefinitions>
-                                            <TextBlock Text="PRONTE PER LA MAPPA" Style="{StaticResource Eyebrow}"/>
+                                        <TextBlock Text="Sorgenti" Style="{StaticResource Eyebrow}"/>
                                             <TextBlock Grid.Row="1" Text="{Binding AnalysisPromptTitle}" FontFamily="Segoe UI Variable Display" FontSize="27" FontWeight="SemiBold" Margin="0,8,0,7"/>
                                             <TextBlock Grid.Row="2" Text="{Binding AnalysisPromptDetail}" Style="{StaticResource MutedText}" TextWrapping="Wrap" LineHeight="20" MaxWidth="620" HorizontalAlignment="Left"/>
                                             <Grid Grid.Row="3" Margin="0,22,0,0">
@@ -262,8 +262,8 @@
                                     </Border>
                                     <StackPanel Visibility="{Binding ShowNoResultsPrompt, Converter={StaticResource BooleanToVisibility}}" HorizontalAlignment="Center" VerticalAlignment="Center" MaxWidth="520" Margin="28">
                                         <Border Width="50" Height="50" CornerRadius="15" Background="#1B23303D" BorderBrush="#3C4D64" BorderThickness="1" HorizontalAlignment="Center"><TextBlock Text="⌕" Foreground="{StaticResource Violet}" FontSize="23" HorizontalAlignment="Center" VerticalAlignment="Center"/></Border>
-                                        <TextBlock Text="Nessun elemento nella vista" FontSize="23" FontWeight="SemiBold" TextAlignment="Center" Margin="0,16,0,7"/>
-                                        <TextBlock Text="La scansione esiste, ma i filtri correnti non mostrano frame. Azzera ricerca e filtro oppure ripeti l’analisi." Style="{StaticResource MutedText}" TextWrapping="Wrap" TextAlignment="Center" LineHeight="20"/>
+                                        <TextBlock Text="Nessun risultato" FontSize="23" FontWeight="SemiBold" TextAlignment="Center" Margin="0,16,0,7"/>
+                                        <TextBlock Text="Modifica la ricerca o disattiva il filtro." Style="{StaticResource MutedText}" TextWrapping="Wrap" TextAlignment="Center" LineHeight="20"/>
                                         <StackPanel Orientation="Horizontal" HorizontalAlignment="Center" Margin="0,20,0,0"><Button Content="Azzera filtri" Click="ClearAnalysisFilters_Click" Padding="15,8"/><Button Content="Rianalizza" Click="Scan_Click" Style="{StaticResource PrimaryButton}" IsEnabled="{Binding CanAnalyzeProject}" Margin="9,0,0,0" Padding="15,8"/></StackPanel>
                                     </StackPanel>
                                 </Grid>
@@ -271,10 +271,10 @@
                         </Grid>
                     </TabItem>
 
-                    <TabItem Header="Struttura">
+                    <TabItem Header="Esporta" Tag="Inspector">
                         <Grid Margin="0,14,0,0">
                             <Grid.RowDefinitions><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/><RowDefinition Height="*"/></Grid.RowDefinitions>
-                            <StackPanel><TextBlock Text="Esportazione progetto" Style="{StaticResource Title}"/><TextBlock Text="Anteprima facoltativa; spazio, percorsi e integrità vengono controllati automaticamente quando esporti." Style="{StaticResource MutedText}" TextWrapping="Wrap"/></StackPanel>
+                            <StackPanel><TextBlock Text="Esporta progetto" Style="{StaticResource Title}"/><TextBlock Text="Struttura, spazio disponibile e integrità dei file." Style="{StaticResource MutedText}" TextWrapping="Wrap"/></StackPanel>
                             <Grid Grid.Row="1" Margin="0,16,0,10"><Grid.ColumnDefinitions><ColumnDefinition Width="0.42*"/><ColumnDefinition Width="0.58*"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions>
                                 <StackPanel Margin="0,0,8,0"><TextBlock Text="Nome progetto" Style="{StaticResource MetaLabel}"/><TextBox Text="{Binding ProjectName, UpdateSourceTrigger=PropertyChanged}" IsEnabled="{Binding CanRunProjectOperations}"/></StackPanel>
                                 <StackPanel Grid.Column="1" Margin="0,0,8,0"><TextBlock Text="Cartella destinazione" Style="{StaticResource MetaLabel}"/><TextBox Text="{Binding DestinationPath, UpdateSourceTrigger=PropertyChanged}" IsEnabled="{Binding CanRunProjectOperations}"/></StackPanel>
@@ -282,8 +282,8 @@
                             </Grid>
                             <Grid Grid.Row="2" Margin="0,0,0,10"><Grid.ColumnDefinitions><ColumnDefinition/><ColumnDefinition Width="Auto"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions>
                                 <TextBlock Text="{Binding PlanSummary}" Style="{StaticResource MutedText}" VerticalAlignment="Center" TextTrimming="CharacterEllipsis"/>
-                                <Button Grid.Column="1" Content="Anteprima struttura" Click="BuildPlan_Click" Margin="8,0" IsEnabled="{Binding CanRunProjectOperations}"/>
-                                <Button Grid.Column="2" Content="Esporta progetto" Click="Export_Click" Style="{StaticResource PrimaryButton}" IsEnabled="{Binding CanStartExport}" ToolTip="I controlli di sicurezza vengono eseguiti automaticamente"/>
+                                <Button Grid.Column="1" Content="Genera anteprima" Click="BuildPlan_Click" Margin="8,0" IsEnabled="{Binding CanRunProjectOperations}" ToolTip="Calcola cartelle e nomi senza copiare file"/>
+                                <Button Grid.Column="2" Content="Esporta" Click="Export_Click" Style="{StaticResource PrimaryButton}" IsEnabled="{Binding CanStartExport}" ToolTip="Esegue i controlli e copia i file nella destinazione"/>
                             </Grid>
                             <Grid Grid.Row="3">
                                 <Grid.ColumnDefinitions><ColumnDefinition Width="0.56*"/><ColumnDefinition Width="0.44*"/></Grid.ColumnDefinitions>
@@ -323,11 +323,11 @@
                     <TabItem Header="WBPP">
                         <ScrollViewer Margin="0,14,0,0" VerticalScrollBarVisibility="Auto">
                             <StackPanel>
-                                <TextBlock Text="Grouping Keywords consigliate" Style="{StaticResource Title}"/>
-                                <TextBlock Text="Questa tabella è calcolata dagli abbinamenti reali, non da una regola fissa." Style="{StaticResource MutedText}" Margin="0,2,0,14"/>
+                                <TextBlock Text="Grouping Keywords" Style="{StaticResource Title}"/>
+                                <TextBlock Text="Configurazione WBPP calcolata per questo progetto." Style="{StaticResource MutedText}" Margin="0,2,0,14"/>
                                 <Border Style="{StaticResource Card}" Padding="0">
                                     <StackPanel>
-                                        <Grid Background="#172130" Height="36"><Grid.ColumnDefinitions><ColumnDefinition Width="110"/><ColumnDefinition Width="60"/><ColumnDefinition Width="60"/><ColumnDefinition/></Grid.ColumnDefinitions><TextBlock Text="KEYWORD" Style="{StaticResource Eyebrow}" Margin="12,0" VerticalAlignment="Center"/><TextBlock Grid.Column="1" Text="PRE" Style="{StaticResource Eyebrow}" VerticalAlignment="Center"/><TextBlock Grid.Column="2" Text="POST" Style="{StaticResource Eyebrow}" VerticalAlignment="Center"/><TextBlock Grid.Column="3" Text="PERCHÉ" Style="{StaticResource Eyebrow}" VerticalAlignment="Center"/></Grid>
+                                        <Grid Background="#172130" Height="36"><Grid.ColumnDefinitions><ColumnDefinition Width="110"/><ColumnDefinition Width="60"/><ColumnDefinition Width="60"/><ColumnDefinition/></Grid.ColumnDefinitions><TextBlock Text="Keyword" Style="{StaticResource Eyebrow}" Margin="12,0" VerticalAlignment="Center"/><TextBlock Grid.Column="1" Text="Pre" Style="{StaticResource Eyebrow}" VerticalAlignment="Center"/><TextBlock Grid.Column="2" Text="Post" Style="{StaticResource Eyebrow}" VerticalAlignment="Center"/><TextBlock Grid.Column="3" Text="Motivo" Style="{StaticResource Eyebrow}" VerticalAlignment="Center"/></Grid>
                                         <ItemsControl ItemsSource="{Binding WbppKeywords}">
                                         <ItemsControl.ItemTemplate><DataTemplate><Grid MinHeight="48" Margin="12,0"><Grid.ColumnDefinitions><ColumnDefinition Width="98"/><ColumnDefinition Width="60"/><ColumnDefinition Width="60"/><ColumnDefinition/></Grid.ColumnDefinitions><TextBlock Text="{Binding Keyword}" FontWeight="SemiBold" Foreground="{StaticResource Accent}" VerticalAlignment="Center"/><TextBlock Grid.Column="1" Text="{Binding Pre}" VerticalAlignment="Center"/><TextBlock Grid.Column="2" Text="{Binding Post}" VerticalAlignment="Center"/><TextBlock Grid.Column="3" Text="{Binding Reason}" TextWrapping="Wrap" VerticalAlignment="Center"/></Grid></DataTemplate></ItemsControl.ItemTemplate>
                                         </ItemsControl>
@@ -339,11 +339,11 @@
                         </ScrollViewer>
                     </TabItem>
 
-                    <TabItem Header="Dati">
+                    <TabItem Header="Statistiche">
                         <ScrollViewer Margin="0,14,0,0" VerticalScrollBarVisibility="Auto">
                             <StackPanel>
-                                <TextBlock Text="Dati di acquisizione" Style="{StaticResource Title}"/>
-                                <TextBlock Text="Tempo integrato, copertura per filtro, sessioni di configurazione e dettaglio delle singole notti." Style="{StaticResource MutedText}" Margin="0,2,0,14" TextWrapping="Wrap"/>
+                                <TextBlock Text="Statistiche" Style="{StaticResource Title}"/>
+                                <TextBlock Text="Integrazione e copertura per filtro, sessione e notte." Style="{StaticResource MutedText}" Margin="0,2,0,14" TextWrapping="Wrap"/>
                                 <Button Content="Esporta dati CSV + JSON" Click="ExportStatistics_Click" HorizontalAlignment="Right" Margin="0,-48,0,14" Padding="11,7"/>
 
                                 <Grid Margin="0,0,0,16"><Grid.ColumnDefinitions><ColumnDefinition/><ColumnDefinition/><ColumnDefinition/></Grid.ColumnDefinitions>
@@ -394,21 +394,21 @@
                             </StackPanel>
                         </ScrollViewer>
                     </TabItem>
-                    <TabItem Header="Quality Lab">
+                    <TabItem Header="Qualità">
                         <Grid Margin="0,14,0,0">
                             <Grid.RowDefinitions><RowDefinition Height="Auto"/><RowDefinition Height="225"/><RowDefinition Height="*"/></Grid.RowDefinitions>
                             <Grid><Grid.ColumnDefinitions><ColumnDefinition/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions>
-                                <StackPanel><TextBlock Text="Quality Lab" Style="{StaticResource Title}"/><TextBlock Text="Misura, confronta e ispeziona i Light. È opzionale e non modifica mai gli originali." Style="{StaticResource MutedText}" TextWrapping="Wrap"/></StackPanel>
+                                <StackPanel><TextBlock Text="Analisi qualità" Style="{StaticResource Title}"/><TextBlock Text="Misure e ispezione dei Light della serie selezionata." Style="{StaticResource MutedText}" TextWrapping="Wrap"/></StackPanel>
                                 <StackPanel Grid.Column="1" Orientation="Horizontal"><Button Content="Analizza serie" Click="AnalyzeQuality_Click" Style="{StaticResource PrimaryButton}" IsEnabled="{Binding CanRunQualityAnalysis}" ToolTip="Analizza soltanto la serie selezionata; le altre restano indipendenti"/><Button Content="Annulla" Click="CancelQuality_Click" IsEnabled="{Binding IsQualityAnalyzing}" Margin="8,0,0,0"/><Button Content="Escludi selezionati" Click="ExcludeSelectedQuality_Click" IsEnabled="{Binding CanExcludeSelectedQuality}" Margin="8,0,0,0"/><Button Content="{Binding ExcludeQualitySuspectsLabel}" Click="ExcludeQualitySuspects_Click" IsEnabled="{Binding CanExcludeQualitySuspects}" Margin="8,0,0,0"/></StackPanel>
                             </Grid>
                             <Border Grid.Row="1" Style="{StaticResource Card}" Padding="12" Margin="0,12,0,10" Background="#101A25"><Grid><Grid.ColumnDefinitions><ColumnDefinition Width="360"/><ColumnDefinition Width="*"/></Grid.ColumnDefinitions>
                                 <Grid><Grid.RowDefinitions><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/></Grid.RowDefinitions>
-                                    <TextBlock Text="SERIE DI CALIBRAZIONE" Style="{StaticResource Eyebrow}"/>
+                                    <TextBlock Text="Serie" Style="{StaticResource Eyebrow}"/>
                                     <ComboBox Grid.Row="1" ItemsSource="{Binding QualitySeries}" SelectedItem="{Binding SelectedQualitySeries, Mode=TwoWay}" SelectionChanged="QualitySeries_SelectionChanged" Margin="0,6,0,7" ToolTip="Ogni filtro e Flat Set viene analizzato come dataset indipendente">
                                         <ComboBox.ItemTemplate><DataTemplate><TextBlock Text="{Binding Display}" TextTrimming="CharacterEllipsis"/></DataTemplate></ComboBox.ItemTemplate>
                                     </ComboBox>
                                     <TextBlock Grid.Row="2" Text="{Binding QualityStatus}" Foreground="{StaticResource Accent}" TextWrapping="Wrap" TextTrimming="CharacterEllipsis" Margin="0,0,0,9"/>
-                                    <Grid Grid.Row="3"><Grid.ColumnDefinitions><ColumnDefinition/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions><TextBlock Text="SOGLIA DI SCARTO" Style="{StaticResource Eyebrow}"/><TextBlock Grid.Column="1" Text="{Binding QualitySigmaThreshold, StringFormat={}{0:0.0} σ}" Foreground="{StaticResource Warning}" FontWeight="SemiBold"/></Grid>
+                                    <Grid Grid.Row="3"><Grid.ColumnDefinitions><ColumnDefinition/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions><TextBlock Text="Soglia anomalie" Style="{StaticResource Eyebrow}"/><TextBlock Grid.Column="1" Text="{Binding QualitySigmaThreshold, StringFormat={}{0:0.0} σ}" Foreground="{StaticResource Warning}" FontWeight="SemiBold"/></Grid>
                                     <Slider Grid.Row="4" Minimum="2" Maximum="6" TickFrequency="0.1" Value="{Binding QualitySigmaThreshold, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" ValueChanged="QualityThreshold_ValueChanged" Margin="0,7,0,5"/>
                                     <StackPanel Grid.Row="5"><Grid><Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions><TextBlock Text="Uno score oltre la soglia è sospetto; diventa escluso solo dopo conferma." Style="{StaticResource MutedText}" TextWrapping="Wrap"/><TextBlock Grid.Column="1" Text="{Binding QualitySuspectCount, StringFormat={}{0} sospetti}" Foreground="{StaticResource Warning}" Margin="12,0,0,0"/></Grid><ProgressBar Value="{Binding QualityProgress, Mode=OneWay}" Maximum="100" Height="3" Margin="0,6,0,0"/></StackPanel>
                                 </Grid>
@@ -438,11 +438,11 @@
                             </Grid>
                         </Grid>
                     </TabItem>
-                    <TabItem Header="Revisione">
+                    <TabItem Header="Problemi" Tag="Inspector">
                         <Grid Margin="0,14,0,0">
                             <Grid.RowDefinitions><RowDefinition Height="Auto"/><RowDefinition Height="*"/></Grid.RowDefinitions>
                             <Grid>
-                                <StackPanel><TextBlock Text="Coda di revisione" Style="{StaticResource Title}"/><TextBlock Text="Solo decisioni che richiedono dati o conferma. Seleziona una voce per aprirla nell’Inspector." Style="{StaticResource MutedText}" Margin="0,2,0,14"/></StackPanel>
+                                <StackPanel><TextBlock Text="Problemi di calibrazione" Style="{StaticResource Title}"/><TextBlock Text="Assegnazioni mancanti o ambigue." Style="{StaticResource MutedText}" Margin="0,2,0,14"/></StackPanel>
                                 <Border HorizontalAlignment="Right" VerticalAlignment="Top" Background="#172A32" CornerRadius="12" Padding="12,7"><StackPanel Orientation="Horizontal"><TextBlock Text="{Binding ReviewQueueCount}" Foreground="{StaticResource Accent}" FontSize="18" FontWeight="SemiBold"/><TextBlock Text="  da risolvere" Style="{StaticResource MutedText}" VerticalAlignment="Center"/></StackPanel></Border>
                             </Grid>
                             <Grid Grid.Row="1">
@@ -483,16 +483,16 @@
                                     </Border>
                                 </DataTemplate></ListBox.ItemTemplate>
                             </ListBox>
-                            <StackPanel Visibility="{Binding ReviewQueue.Count, Converter={StaticResource EmptyCollectionToVisibility}}" HorizontalAlignment="Center" VerticalAlignment="Center" MaxWidth="430"><Border Width="58" Height="58" CornerRadius="18" Background="#173A3A" HorizontalAlignment="Center"><TextBlock Text="✓" Foreground="{StaticResource Accent}" FontSize="26" FontWeight="Bold" HorizontalAlignment="Center" VerticalAlignment="Center"/></Border><TextBlock Text="Nessuna decisione in sospeso" FontSize="21" FontWeight="SemiBold" TextAlignment="Center" Margin="0,15,0,6"/><TextBlock Text="Dark, Bias e Flat risultano assegnati. Se modifichi metadati, librerie o collegamenti, qui compariranno soltanto i casi che richiedono una scelta." Style="{StaticResource MutedText}" TextWrapping="Wrap" TextAlignment="Center"/></StackPanel>
+                            <StackPanel Visibility="{Binding ReviewQueue.Count, Converter={StaticResource EmptyCollectionToVisibility}}" HorizontalAlignment="Center" VerticalAlignment="Center" MaxWidth="430"><Border Width="58" Height="58" CornerRadius="18" Background="#173A3A" HorizontalAlignment="Center"><TextBlock Text="✓" Foreground="{StaticResource Accent}" FontSize="26" FontWeight="Bold" HorizontalAlignment="Center" VerticalAlignment="Center"/></Border><TextBlock Text="Nessun problema" FontSize="21" FontWeight="SemiBold" TextAlignment="Center" Margin="0,15,0,6"/><TextBlock Text="Tutte le calibrazioni richieste sono assegnate." Style="{StaticResource MutedText}" TextWrapping="Wrap" TextAlignment="Center"/></StackPanel>
                             </Grid>
                         </Grid>
                     </TabItem>
-                    <TabItem Header="Master Library Lab">
+                    <TabItem Header="Libreria Master">
                         <Grid Margin="0,14,0,0"><Grid.RowDefinitions><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/><RowDefinition Height="*"/></Grid.RowDefinitions>
-                            <StackPanel><TextBlock Text="LIBRARY WORKBENCH" Style="{StaticResource Eyebrow}"/><TextBlock Text="Master Library Lab" Style="{StaticResource Title}" Margin="0,4,0,0"/><TextBlock Text="Un ambiente indipendente dal progetto WBPP: legge le librerie abilitate, completa i metadati mancanti e genera copie normalizzate senza toccare gli originali." Style="{StaticResource MutedText}" TextWrapping="Wrap" Margin="0,3,0,14"/></StackPanel>
+                            <StackPanel><TextBlock Text="Libreria Master" Style="{StaticResource Title}" Margin="0,4,0,0"/><TextBlock Text="Inventario, metadati e struttura delle copie normalizzate." Style="{StaticResource MutedText}" TextWrapping="Wrap" Margin="0,3,0,14"/></StackPanel>
                             <Grid Grid.Row="1" Margin="0,0,0,12"><Grid.ColumnDefinitions><ColumnDefinition Width="0.38*"/><ColumnDefinition Width="0.62*"/></Grid.ColumnDefinitions>
-                                <Border Style="{StaticResource Card}" Background="{StaticResource RaisedSurface}" Margin="0,0,6,0"><Grid><Grid.ColumnDefinitions><ColumnDefinition/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions><StackPanel><TextBlock Text="01 · INVENTARIO" Style="{StaticResource Eyebrow}"/><TextBlock Text="Scansiona solo le Master Library" FontWeight="SemiBold" FontSize="16" Margin="0,6,0,3"/><TextBlock Text="Non richiede Light o cartelle di sessione." Style="{StaticResource MutedText}" FontSize="11"/></StackPanel><Button Grid.Column="1" Content="Scansiona" Click="ScanMasterLibraries_Click" Style="{StaticResource PrimaryButton}" Margin="14,0,0,0" Padding="17,9" IsEnabled="{Binding CanRunProjectOperations}"/></Grid></Border>
-                                <Border Grid.Column="1" Style="{StaticResource Card}" Background="{StaticResource RaisedSurface}" Margin="6,0,0,0"><Grid><Grid.RowDefinitions><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/></Grid.RowDefinitions><Grid.ColumnDefinitions><ColumnDefinition/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions><StackPanel><TextBlock Text="02 · PREFLIGHT E DESTINAZIONE" Style="{StaticResource Eyebrow}"/><TextBlock Text="{Binding MasterOrganizerStatus}" Foreground="{StaticResource Text}" FontSize="12" Margin="0,5,12,8" TextWrapping="Wrap"/></StackPanel><Button Grid.Column="1" Content="Rollback" Click="RollbackMasterOrganizer_Click" Width="96" HorizontalAlignment="Right" VerticalAlignment="Top" Padding="10,6" IsEnabled="{Binding CanRunProjectOperations}" ToolTip="Elimina soltanto le copie dell’ultimo batch se gli hash sono ancora invariati"/><TextBox Grid.Row="1" Text="{Binding MasterOrganizerDestination}" IsReadOnly="True" ToolTip="Destinazione nuova Master Library"/><StackPanel Grid.Row="1" Grid.Column="1" Orientation="Horizontal" Margin="8,0,0,0"><Button Content="Destinazione" Click="ChooseMasterOrganizerDestination_Click" Padding="10,7"/><Button Content="Verifica" Click="PreviewMasterOrganizer_Click" Margin="7,0,0,0" Padding="10,7" IsEnabled="{Binding CanRunProjectOperations}"/><Button Content="Organizza copie" Click="OrganizeMasterLibrary_Click" Style="{StaticResource PrimaryButton}" Margin="7,0,0,0" Padding="12,7" IsEnabled="{Binding CanRunProjectOperations}"/></StackPanel></Grid></Border>
+                                <Border Style="{StaticResource Card}" Background="{StaticResource RaisedSurface}" Margin="0,0,6,0"><Grid><Grid.ColumnDefinitions><ColumnDefinition/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions><StackPanel><TextBlock Text="Inventario" Style="{StaticResource Eyebrow}"/><TextBlock Text="Analizza le librerie abilitate" FontWeight="SemiBold" FontSize="16" Margin="0,6,0,3"/><TextBlock Text="Indipendente dal progetto corrente." Style="{StaticResource MutedText}" FontSize="11"/></StackPanel><Button Grid.Column="1" Content="Scansiona" Click="ScanMasterLibraries_Click" Style="{StaticResource PrimaryButton}" Margin="14,0,0,0" Padding="17,9" IsEnabled="{Binding CanRunProjectOperations}" ToolTip="Legge i metadati dei Master senza creare copie"/></Grid></Border>
+                                <Border Grid.Column="1" Style="{StaticResource Card}" Background="{StaticResource RaisedSurface}" Margin="6,0,0,0"><Grid><Grid.RowDefinitions><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/></Grid.RowDefinitions><Grid.ColumnDefinitions><ColumnDefinition/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions><StackPanel><TextBlock Text="02 · VERIFICA E DESTINAZIONE" Style="{StaticResource Eyebrow}"/><TextBlock Text="{Binding MasterOrganizerStatus}" Foreground="{StaticResource Text}" FontSize="12" Margin="0,5,12,8" TextWrapping="Wrap"/></StackPanel><Button Grid.Column="1" Content="Annulla ultimo batch" Click="RollbackMasterOrganizer_Click" Width="142" HorizontalAlignment="Right" VerticalAlignment="Top" Padding="10,6" IsEnabled="{Binding CanRunProjectOperations}" ToolTip="Rimuove soltanto le copie dell’ultimo batch se non sono state modificate"/><TextBox Grid.Row="1" Text="{Binding MasterOrganizerDestination}" IsReadOnly="True" ToolTip="Destinazione nuova Libreria Master"/><StackPanel Grid.Row="1" Grid.Column="1" Orientation="Horizontal" Margin="8,0,0,0"><Button Content="Destinazione" Click="ChooseMasterOrganizerDestination_Click" Padding="10,7"/><Button Content="Verifica" Click="PreviewMasterOrganizer_Click" Margin="7,0,0,0" Padding="10,7" IsEnabled="{Binding CanRunProjectOperations}" ToolTip="Controlla metadati e destinazioni senza copiare file"/><Button Content="Organizza copie" Click="OrganizeMasterLibrary_Click" Style="{StaticResource PrimaryButton}" Margin="7,0,0,0" Padding="12,7" IsEnabled="{Binding CanRunProjectOperations}" ToolTip="Crea copie ordinate e completa i metadati confermati"/></StackPanel></Grid></Border>
                             </Grid>
                             <Grid Grid.Row="2">
                             <DataGrid x:Name="MasterOrganizerGrid" ItemsSource="{Binding MasterOrganizerItems}" MouseDoubleClick="MasterOrganizerGrid_MouseDoubleClick" ToolTip="Doppio click per mostrare il Master originale" AutoGenerateColumns="False" CanUserAddRows="False" HeadersVisibility="Column" Background="{StaticResource Bg1}" Foreground="{StaticResource Text}" GridLinesVisibility="Horizontal" HorizontalGridLinesBrush="{StaticResource Stroke}" RowBackground="{StaticResource Bg2}" AlternatingRowBackground="#101824">
@@ -505,11 +505,11 @@
                                     <DataGridTextColumn Header="TEMP °C" Binding="{Binding Temperature, UpdateSourceTrigger=PropertyChanged}" Width="70"/>
                                     <DataGridTextColumn Header="EXP s" Binding="{Binding Exposure, UpdateSourceTrigger=PropertyChanged}" Width="70"/>
                                     <DataGridTextColumn Header="STATO" Binding="{Binding State}" IsReadOnly="True" Width="1.2*"/>
-                                    <DataGridTextColumn Header="PREFLIGHT" Binding="{Binding Preflight}" IsReadOnly="True" Width="1.3*"/>
+                                    <DataGridTextColumn Header="VERIFICA" Binding="{Binding Preflight}" IsReadOnly="True" Width="1.3*"/>
                                     <DataGridTextColumn Header="DESTINAZIONE" Binding="{Binding SuggestedPath}" IsReadOnly="True" Width="2*"/>
                                 </DataGrid.Columns>
                             </DataGrid>
-                            <StackPanel Visibility="{Binding MasterOrganizerItems.Count, Converter={StaticResource EmptyCollectionToVisibility}}" HorizontalAlignment="Center" VerticalAlignment="Center" MaxWidth="500"><Border Width="52" Height="52" CornerRadius="16" Background="#1B23303D" HorizontalAlignment="Center"><TextBlock Text="◎" Foreground="{StaticResource Violet}" FontSize="23" HorizontalAlignment="Center" VerticalAlignment="Center"/></Border><TextBlock Text="La libreria, finalmente leggibile" FontSize="21" FontWeight="SemiBold" TextAlignment="Center" Margin="0,15,0,6"/><TextBlock Text="Avvia l’inventario per vedere camera, tipo, Gain, Offset, temperatura, esposizione e destinazione proposta. I campi mancanti restano modificabili prima di creare qualunque copia." Style="{StaticResource MutedText}" TextWrapping="Wrap" TextAlignment="Center" LineHeight="20"/></StackPanel>
+                            <StackPanel Visibility="{Binding MasterOrganizerItems.Count, Converter={StaticResource EmptyCollectionToVisibility}}" HorizontalAlignment="Center" VerticalAlignment="Center" MaxWidth="500"><Border Width="52" Height="52" CornerRadius="16" Background="#1B23303D" HorizontalAlignment="Center"><TextBlock Text="◎" Foreground="{StaticResource Violet}" FontSize="23" HorizontalAlignment="Center" VerticalAlignment="Center"/></Border><TextBlock Text="Nessun Master analizzato" FontSize="21" FontWeight="SemiBold" TextAlignment="Center" Margin="0,15,0,6"/><TextBlock Text="Avvia la scansione per leggere metadati e destinazioni proposte." Style="{StaticResource MutedText}" TextWrapping="Wrap" TextAlignment="Center" LineHeight="20"/></StackPanel>
                             </Grid>
                         </Grid>
                     </TabItem>
@@ -522,7 +522,7 @@
             <Border Grid.Column="4" Background="#E9090D13" BorderBrush="#263142" BorderThickness="1,0,0,0">
                 <ScrollViewer VerticalScrollBarVisibility="Auto">
                     <StackPanel Margin="20">
-                        <TextBlock Text="INSPECTOR / OVERRIDE" Style="{StaticResource Eyebrow}" />
+                        <TextBlock Text="Inspector" Style="{StaticResource Eyebrow}" />
                         <TextBlock Text="{Binding SelectionTitle}" FontSize="24" FontWeight="SemiBold" Margin="0,5,0,2" TextTrimming="CharacterEllipsis" />
                         <TextBlock Text="{Binding SelectionDetail}" Style="{StaticResource MutedText}" />
 
@@ -530,11 +530,11 @@
                             <Border.Style><Style TargetType="Border"><Setter Property="Visibility" Value="Visible"/><Style.Triggers><DataTrigger Binding="{Binding HasSelection}" Value="True"><Setter Property="Visibility" Value="Collapsed"/></DataTrigger></Style.Triggers></Style></Border.Style>
                             <StackPanel>
                                 <Border Width="46" Height="46" CornerRadius="14" Background="#1C24313F" HorizontalAlignment="Left"><TextBlock Text="↖" Foreground="{StaticResource Violet}" FontSize="20" HorizontalAlignment="Center" VerticalAlignment="Center"/></Border>
-                                <TextBlock Text="Seleziona dalla mappa" FontSize="18" FontWeight="SemiBold" Margin="0,18,0,7"/>
-                                <TextBlock Text="Apri un filtro, una sessione, una notte o un singolo frame. Qui vedrai provenienza dei metadati, calibrazioni assegnate e override disponibili." Style="{StaticResource MutedText}" TextWrapping="Wrap" LineHeight="20"/>
+                                <TextBlock Text="Nessuna selezione" FontSize="18" FontWeight="SemiBold" Margin="0,18,0,7"/>
+                                <TextBlock Text="Seleziona un elemento della mappa per modificarne metadati e calibrazioni." Style="{StaticResource MutedText}" TextWrapping="Wrap" LineHeight="20"/>
                                 <Border Height="1" Background="{StaticResource Stroke}" Margin="0,20,0,15"/>
-                                <TextBlock Text="DOPPIO CLICK" Style="{StaticResource Eyebrow}"/>
-                                <TextBlock Text="Mostra il file originale in Esplora file." Style="{StaticResource MutedText}" FontSize="11" Margin="0,5,0,0"/>
+                                <TextBlock Text="Doppio clic" Style="{StaticResource Eyebrow}"/>
+                                <TextBlock Text="Apre la posizione del file originale." Style="{StaticResource MutedText}" FontSize="11" Margin="0,5,0,0"/>
                             </StackPanel>
                         </Border>
 
@@ -554,7 +554,7 @@
                                     <TextBox Grid.Row="1" Grid.ColumnSpan="2" Text="{Binding EditFilter, UpdateSourceTrigger=PropertyChanged}" />
                                 </Grid>
                                 <Grid Margin="0,0,0,12"><Grid.ColumnDefinitions><ColumnDefinition/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions><Grid.RowDefinitions><RowDefinition/><RowDefinition/></Grid.RowDefinitions>
-                                    <TextBlock Text="Flat Epoch / Set" Style="{StaticResource MetaLabel}"/><TextBlock Grid.Column="1" Text="{Binding FlatSetSource}" Style="{StaticResource SourceBadge}"/>
+                                    <TextBlock Text="Flat Set" Style="{StaticResource MetaLabel}"/><TextBlock Grid.Column="1" Text="{Binding FlatSetSource}" Style="{StaticResource SourceBadge}" ToolTip="Origine del valore Flat Set"/>
                                     <TextBox Grid.Row="1" Grid.ColumnSpan="2" Text="{Binding EditFlatSet, UpdateSourceTrigger=PropertyChanged}" ToolTip="Imposta lo stesso identificatore sui Light e sui Flat che appartengono alla stessa epoca ottica" />
                                 </Grid>
                                 <Grid Margin="0,0,0,12"><Grid.ColumnDefinitions><ColumnDefinition/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions><Grid.RowDefinitions><RowDefinition/><RowDefinition/></Grid.RowDefinitions>
@@ -576,21 +576,21 @@
                             </StackPanel>
                         </Border>
                         <Button Content="{Binding ApplyLabel}" Command="{Binding ApplyOverridesCommand}" Style="{StaticResource PrimaryButton}" />
-                        <TextBlock Text="Le modifiche sono overlay non distruttivi. Gli originali non vengono riscritti." Style="{StaticResource MutedText}" TextWrapping="Wrap" FontSize="11" Margin="2,8,2,16" />
+                                <TextBlock Text="Le modifiche valgono solo nel progetto; i sorgenti non vengono riscritti." Style="{StaticResource MutedText}" TextWrapping="Wrap" FontSize="11" Margin="2,8,2,16" />
 
                         <Border Style="{StaticResource Card}" Margin="0,0,0,14" Background="#0D1C25">
-                            <StackPanel><TextBlock Text="CALIBRAZIONI ASSEGNATE" Style="{StaticResource Eyebrow}"/><TextBlock Text="{Binding CalibrationSummary}" TextWrapping="Wrap" Margin="0,8,0,0" LineHeight="21"/></StackPanel>
+                                <StackPanel><TextBlock Text="Calibrazioni assegnate" Style="{StaticResource Eyebrow}"/><TextBlock Text="{Binding CalibrationSummary}" TextWrapping="Wrap" Margin="0,8,0,0" LineHeight="21"/></StackPanel>
                         </Border>
 
                         <Border Style="{StaticResource Card}" Margin="0,0,0,14" Background="#10201F" BorderBrush="#27514D">
                             <StackPanel>
-                                <TextBlock Text="LINK MANUALE FLAT EPOCH" Style="{StaticResource Eyebrow}"/>
-                                <TextBlock Text="Seleziona un nodo oppure marca con le checkbox più notti, serie o un'intera sessione dello stesso filtro; poi scegli il Flat Set corretto." Style="{StaticResource MutedText}" TextWrapping="Wrap" FontSize="11" Margin="0,6,0,10"/>
+                                <TextBlock Text="Flat Set manuale" Style="{StaticResource Eyebrow}"/>
+                                <TextBlock Text="Marca file, notti o sessioni dello stesso filtro, quindi scegli il Flat Set." Style="{StaticResource MutedText}" TextWrapping="Wrap" FontSize="11" Margin="0,6,0,10"/>
                                 <TextBlock Text="{Binding ManualLinkSelectionText}" Foreground="{StaticResource Accent}" FontSize="12" Margin="0,0,0,7" TextWrapping="Wrap"/>
                                 <ComboBox ItemsSource="{Binding AvailableFlatSets}" SelectedItem="{Binding SelectedFlatSet}" ToolTip="Flat Set compatibili con il filtro della selezione"/>
                                 <Grid Margin="0,9,0,0"><Grid.ColumnDefinitions><ColumnDefinition/><ColumnDefinition/></Grid.ColumnDefinitions>
                                     <Button Content="Collega alla selezione" Command="{Binding LinkFlatSetCommand}" Style="{StaticResource PrimaryButton}" Margin="0,0,5,0" Padding="8,7"/>
-                                    <Button Grid.Column="1" Content="Torna automatico" Command="{Binding UnlinkFlatSetCommand}" Margin="5,0,0,0" Padding="8,7"/>
+                                <Button Grid.Column="1" Content="Rimuovi collegamento" Command="{Binding UnlinkFlatSetCommand}" Margin="5,0,0,0" Padding="8,7" ToolTip="Ripristina l’assegnazione automatica"/>
                                 </Grid>
                             </StackPanel>
                         </Border>
@@ -631,9 +631,9 @@
                     <Grid Margin="28,24,28,12">
                         <Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions>
                         <StackPanel>
-                            <TextBlock Text="DIAGNOSTICA LOCALE" Style="{StaticResource Eyebrow}"/>
-                            <TextBlock Text="Centro diagnostica" Style="{StaticResource Title}" Margin="0,4,0,3"/>
-                            <TextBlock Text="Eventi tecnici già privati di percorsi e nomi astronomici. La correlazione collega inizio, esito ed errore della stessa operazione." Style="{StaticResource MutedText}" TextWrapping="Wrap"/>
+                        <TextBlock Text="Diagnostica" Style="{StaticResource Eyebrow}"/>
+                        <TextBlock Text="Eventi applicazione" Style="{StaticResource Title}" Margin="0,4,0,3"/>
+                        <TextBlock Text="Log locali con percorsi e nomi sensibili rimossi." Style="{StaticResource MutedText}" TextWrapping="Wrap"/>
                         </StackPanel>
                         <Button Grid.Column="1" Content="×" Click="CloseDiagnostics_Click" Style="{StaticResource ToolbarButton}" Width="42" Height="42" Padding="0" FontSize="20" ToolTip="Chiudi diagnostica"/>
                     </Grid>
@@ -667,10 +667,10 @@
                 <Grid>
                     <Grid.RowDefinitions><RowDefinition Height="7"/><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/></Grid.RowDefinitions>
                     <Border CornerRadius="16,16,0,0" Background="{StaticResource AccentGradient}"/>
-                    <Grid Grid.Row="1" Margin="30,25,30,18"><Grid.ColumnDefinitions><ColumnDefinition/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions><StackPanel><TextBlock Text="ASTROPROJECT FORGE" Style="{StaticResource Eyebrow}"/><TextBlock Text="Informazioni e aggiornamenti" Style="{StaticResource Title}" Margin="0,5,0,4"/><TextBlock Text="Prepara progetti multisessione spiegabili e verificabili per PixInsight WBPP." Style="{StaticResource MutedText}" TextWrapping="Wrap"/></StackPanel><Button Grid.Column="1" Content="×" Click="CloseAbout_Click" Style="{StaticResource ToolbarButton}" Width="42" Height="42" Padding="0" FontSize="20" ToolTip="Chiudi"/></Grid>
+                    <Grid Grid.Row="1" Margin="30,25,30,18"><Grid.ColumnDefinitions><ColumnDefinition/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions><StackPanel><TextBlock Text="ASTROPROJECT FORGE" Style="{StaticResource Eyebrow}"/><TextBlock Text="Informazioni" Style="{StaticResource Title}" Margin="0,5,0,4"/><TextBlock Text="Preparazione di progetti multisessione per PixInsight WBPP." Style="{StaticResource MutedText}" TextWrapping="Wrap"/></StackPanel><Button Grid.Column="1" Content="×" Click="CloseAbout_Click" Style="{StaticResource ToolbarButton}" Width="42" Height="42" Padding="0" FontSize="20" ToolTip="Chiudi"/></Grid>
                     <Grid Grid.Row="2" Margin="30,0,30,18"><Grid.ColumnDefinitions><ColumnDefinition/><ColumnDefinition/></Grid.ColumnDefinitions>
-                        <Border Style="{StaticResource Card}" Background="#102725" Margin="0,0,7,0"><StackPanel><TextBlock Text="VERSIONE INSTALLATA" Style="{StaticResource Eyebrow}"/><TextBlock Text="{Binding VersionDisplay}" FontSize="25" FontWeight="SemiBold" Margin="0,6,0,3"/><TextBlock Text="SemVer incorporato nell'eseguibile e nei manifest di release." Style="{StaticResource MutedText}" TextWrapping="Wrap" FontSize="11"/></StackPanel></Border>
-                        <Border Grid.Column="1" Style="{StaticResource Card}" Background="#101F2A" Margin="7,0,0,0"><StackPanel><TextBlock Text="CANALE SELEZIONATO" Style="{StaticResource Eyebrow}"/><TextBlock Text="{Binding UpdateChannel}" FontSize="25" FontWeight="SemiBold" Margin="0,6,0,3"/><TextBlock Text="{Binding UpdateStatus}" Style="{StaticResource MutedText}" TextWrapping="Wrap" FontSize="11"/></StackPanel></Border>
+                        <Border Style="{StaticResource Card}" Background="#102725" Margin="0,0,7,0"><StackPanel><TextBlock Text="Versione" Style="{StaticResource Eyebrow}"/><TextBlock Text="{Binding VersionDisplay}" FontSize="25" FontWeight="SemiBold" Margin="0,6,0,3"/></StackPanel></Border>
+                        <Border Grid.Column="1" Style="{StaticResource Card}" Background="#101F2A" Margin="7,0,0,0"><StackPanel><TextBlock Text="Canale" Style="{StaticResource Eyebrow}"/><TextBlock Text="{Binding UpdateChannel}" FontSize="25" FontWeight="SemiBold" Margin="0,6,0,3"/><TextBlock Text="{Binding UpdateStatus}" Style="{StaticResource MutedText}" TextWrapping="Wrap" FontSize="11"/></StackPanel></Border>
                     </Grid>
                     <StackPanel Grid.Row="3" Margin="30,0,30,28">
                         <Border Background="#141D2A" BorderBrush="{StaticResource Stroke}" BorderThickness="1" CornerRadius="10" Padding="14" Margin="0,0,0,15"><TextBlock Text="Gli aggiornamenti sono verificati con dimensione, SHA-256 e firma Authenticode valida. Il programma non avvia mai automaticamente un installer. I progetti e le immagini astronomiche restano fuori dal percorso di disinstallazione." Style="{StaticResource MutedText}" TextWrapping="Wrap" LineHeight="19"/></Border>
@@ -692,26 +692,26 @@
                     <Border Grid.Row="0" CornerRadius="16,16,0,0" Background="{StaticResource AccentGradient}"/>
                     <Grid Grid.Row="1" Margin="42,34,42,18">
                         <StackPanel x:Name="OnboardingStep1">
-                            <TextBlock Text="BENVENUTO IN ASTROPROJECT FORGE" Style="{StaticResource Eyebrow}"/>
-                            <TextBlock Text="Dal cielo a WBPP, senza caos." FontSize="38" FontWeight="SemiBold" FontFamily="Segoe UI Variable Display" Margin="0,10,0,12"/>
-                            <TextBlock Text="Forge legge i metadati delle sessioni, separa le configurazioni ottiche, trova Dark e Bias compatibili e prepara una struttura spiegabile per PixInsight." Style="{StaticResource MutedText}" FontSize="15" LineHeight="24" TextWrapping="Wrap" MaxWidth="650" HorizontalAlignment="Left"/>
+                    <TextBlock Text="Configurazione iniziale" Style="{StaticResource Eyebrow}"/>
+                    <TextBlock Text="Prepara il primo progetto" FontSize="38" FontWeight="SemiBold" FontFamily="Segoe UI Variable Display" Margin="0,10,0,12"/>
+                    <TextBlock Text="Configura librerie di calibrazione, notte astronomica e sorgenti FITS/XISF." Style="{StaticResource MutedText}" FontSize="15" LineHeight="24" TextWrapping="Wrap" MaxWidth="650" HorizontalAlignment="Left"/>
                             <Grid Margin="0,28,0,0"><Grid.ColumnDefinitions><ColumnDefinition/><ColumnDefinition/><ColumnDefinition/></Grid.ColumnDefinitions>
-                                <Border Style="{StaticResource Card}" Margin="0,0,8,0" Background="#102725"><StackPanel><TextBlock Text="01" Style="{StaticResource Eyebrow}"/><TextBlock Text="Legge" FontSize="18" FontWeight="SemiBold" Margin="0,6,0,3"/><TextBlock Text="FITS e XISF" Style="{StaticResource MutedText}"/></StackPanel></Border>
-                                <Border Grid.Column="1" Style="{StaticResource Card}" Margin="4,0" Background="#101F2A"><StackPanel><TextBlock Text="02" Style="{StaticResource Eyebrow}"/><TextBlock Text="Decide" FontSize="18" FontWeight="SemiBold" Margin="0,6,0,3"/><TextBlock Text="con motivazioni" Style="{StaticResource MutedText}"/></StackPanel></Border>
-                                <Border Grid.Column="2" Style="{StaticResource Card}" Margin="8,0,0,0" Background="#102725"><StackPanel><TextBlock Text="03" Style="{StaticResource Eyebrow}"/><TextBlock Text="Esporta" FontSize="18" FontWeight="SemiBold" Margin="0,6,0,3"/><TextBlock Text="copie verificate" Style="{StaticResource MutedText}"/></StackPanel></Border>
+                    <Border Style="{StaticResource Card}" Margin="0,0,8,0" Background="#102725"><StackPanel><TextBlock Text="01" Style="{StaticResource Eyebrow}"/><TextBlock Text="Importa" FontSize="18" FontWeight="SemiBold" Margin="0,6,0,3"/><TextBlock Text="FITS e XISF" Style="{StaticResource MutedText}"/></StackPanel></Border>
+                    <Border Grid.Column="1" Style="{StaticResource Card}" Margin="4,0" Background="#101F2A"><StackPanel><TextBlock Text="02" Style="{StaticResource Eyebrow}"/><TextBlock Text="Verifica" FontSize="18" FontWeight="SemiBold" Margin="0,6,0,3"/><TextBlock Text="metadati e calibrazioni" Style="{StaticResource MutedText}"/></StackPanel></Border>
+                    <Border Grid.Column="2" Style="{StaticResource Card}" Margin="8,0,0,0" Background="#102725"><StackPanel><TextBlock Text="03" Style="{StaticResource Eyebrow}"/><TextBlock Text="Esporta" FontSize="18" FontWeight="SemiBold" Margin="0,6,0,3"/><TextBlock Text="progetto WBPP" Style="{StaticResource MutedText}"/></StackPanel></Border>
                             </Grid>
                         </StackPanel>
                         <StackPanel x:Name="OnboardingStep2" Visibility="Collapsed">
-                            <TextBlock Text="PASSO 1 · CALIBRAZIONI" Style="{StaticResource Eyebrow}"/>
-                            <TextBlock Text="Collega la Master Library" FontSize="32" FontWeight="SemiBold" Margin="0,8,0,10"/>
-                            <TextBlock Text="Puoi usare più librerie e ordinarle per priorità. Ogni camera mantiene Master distinti; la struttura normalizzata parte sempre dal nome camera." Style="{StaticResource MutedText}" FontSize="14" LineHeight="22" TextWrapping="Wrap"/>
+                    <TextBlock Text="Passo 1 · Librerie" Style="{StaticResource Eyebrow}"/>
+                    <TextBlock Text="Aggiungi Dark e Bias" FontSize="32" FontWeight="SemiBold" Margin="0,8,0,10"/>
+                    <TextBlock Text="Puoi aggiungere più librerie e ordinarle per priorità." Style="{StaticResource MutedText}" FontSize="14" LineHeight="22" TextWrapping="Wrap"/>
                             <Border Style="{StaticResource Card}" Background="#102725" Margin="0,24,0,14"><Grid><Grid.ColumnDefinitions><ColumnDefinition/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions><StackPanel><TextBlock Text="LIBRERIE COLLEGATE" Style="{StaticResource Eyebrow}"/><TextBlock Text="{Binding MasterLibraries.Count, StringFormat={}{0} configurate}" FontSize="21" FontWeight="SemiBold" Margin="0,6,0,0"/></StackPanel><Button Grid.Column="1" Content="+ Scegli cartella Master" Click="OnboardingChooseLibrary_Click" Style="{StaticResource PrimaryButton}"/></Grid></Border>
-                            <TextBlock Text="Nessuna cartella è codificata: potrai cambiarla, disabilitarla o aggiungerne altre in qualsiasi momento." Style="{StaticResource MutedText}" TextWrapping="Wrap"/>
+                    <TextBlock Text="Le librerie possono essere modificate in seguito." Style="{StaticResource MutedText}" TextWrapping="Wrap"/>
                         </StackPanel>
                         <StackPanel x:Name="OnboardingStep3" Visibility="Collapsed">
-                            <TextBlock Text="PASSO 2 · PROFILO PROGETTO" Style="{StaticResource Eyebrow}"/>
-                            <TextBlock Text="Imposta regole di acquisizione" FontSize="32" FontWeight="SemiBold" Margin="0,8,0,10"/>
-                            <TextBlock Text="I fallback entrano in gioco solo quando header e percorso non dimostrano il valore. Non sovrascrivono metadati validi." Style="{StaticResource MutedText}" TextWrapping="Wrap"/>
+                    <TextBlock Text="Passo 2 · Acquisizione" Style="{StaticResource Eyebrow}"/>
+                    <TextBlock Text="Imposta i valori mancanti" FontSize="32" FontWeight="SemiBold" Margin="0,8,0,10"/>
+                    <TextBlock Text="I valori predefiniti vengono usati solo quando il metadato non è disponibile." Style="{StaticResource MutedText}" TextWrapping="Wrap"/>
                             <Grid Margin="0,24,0,0"><Grid.ColumnDefinitions><ColumnDefinition/><ColumnDefinition/><ColumnDefinition/></Grid.ColumnDefinitions>
                                 <StackPanel Margin="0,0,8,0"><TextBlock Text="Cambio notte (ora locale)" Style="{StaticResource MetaLabel}"/><TextBox Text="{Binding SessionBoundaryHour, UpdateSourceTrigger=PropertyChanged}" HorizontalContentAlignment="Center"/></StackPanel>
                                 <StackPanel Grid.Column="1" Margin="4,0"><TextBlock Text="Gain predefinito" Style="{StaticResource MetaLabel}"/><TextBox Text="{Binding ProjectDefaultGain, UpdateSourceTrigger=PropertyChanged}" HorizontalContentAlignment="Center"/></StackPanel>
@@ -721,8 +721,8 @@
                         </StackPanel>
                         <StackPanel x:Name="OnboardingStep4" Visibility="Collapsed" HorizontalAlignment="Center" VerticalAlignment="Center" MaxWidth="590">
                             <Border Width="74" Height="74" CornerRadius="23" Background="{StaticResource AccentGradient}" HorizontalAlignment="Center" Effect="{StaticResource AccentGlow}"><TextBlock Text="✓" Foreground="#071411" FontSize="34" FontWeight="Bold" HorizontalAlignment="Center" VerticalAlignment="Center"/></Border>
-                            <TextBlock Text="Pronto per la prima analisi" FontSize="34" FontWeight="SemiBold" TextAlignment="Center" Margin="0,20,0,10"/>
-                            <TextBlock Text="Forge non modificherà gli originali. Dopo la scansione vedrai filtri, sessioni, Flat Epoch, ore integrate e ogni calibrazione assegnata." Style="{StaticResource MutedText}" FontSize="14" LineHeight="22" TextWrapping="Wrap" TextAlignment="Center"/>
+                    <TextBlock Text="Configurazione completata" FontSize="34" FontWeight="SemiBold" TextAlignment="Center" Margin="0,20,0,10"/>
+                    <TextBlock Text="Avvia l’analisi per costruire la mappa del progetto." Style="{StaticResource MutedText}" FontSize="14" LineHeight="22" TextWrapping="Wrap" TextAlignment="Center"/>
                         </StackPanel>
                     </Grid>
                     <Border Grid.Row="2" Background="#C9121C29" BorderBrush="#40536B" BorderThickness="0,1,0,0" CornerRadius="0,0,16,16">

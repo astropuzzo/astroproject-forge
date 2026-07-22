@@ -38,7 +38,7 @@ L’automazione viene usata quando le prove sono solide. I file ambigui restano 
 - override non distruttivi sul singolo file o su gruppi;
 - integrazione per filtro, sessione di configurazione e notte;
 - Grouping Keywords PixInsight WBPP adattive (`FLATSET`, `DARKSET`, `BIASSET`, `TARGET`);
-- Quality Lab opzionale con FWHM, eccentricità, rumore, SNR, stelle, outlier robusti, Blink ed esclusione sicura;
+- analisi Qualità opzionale con FWHM, eccentricità, rumore, SNR, stelle, outlier robusti, Blink ed esclusione sicura;
 - export riprendibile con preflight, verifica SHA-256, manifest e report;
 - diagnostica locale e support bundle senza pixel delle immagini.
 
@@ -48,11 +48,11 @@ L’automazione viene usata quando le prove sono solide. I file ambigui restano 
 
 La dashboard rende il dataset misurabile: integrazione totale, copertura per filtro, sessioni, notti, Gain, temperatura e stato delle calibrazioni sono visibili prima di aprire PixInsight.
 
-## Master Library Lab
+## Libreria Master
 
-![Master Library Lab con inventario camera-first](images/master-library-lab.png)
+![Libreria Master con inventario organizzato per camera](images/master-library-lab.png)
 
-Master Library Lab è indipendente dall’analisi del progetto. Può scansionare Dark e Bias senza caricare Light, chiedere soltanto i metadati non dimostrabili, mostrare una struttura normalizzata che parte dalla camera e creare copie verificate senza toccare gli originali.
+La Libreria Master è indipendente dall’analisi del progetto. Può scansionare Dark e Bias senza caricare Light, chiedere soltanto i metadati non dimostrabili, mostrare una struttura normalizzata che parte dalla camera e creare copie verificate senza toccare gli originali.
 
 Struttura consigliata:
 

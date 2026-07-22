@@ -1,11 +1,15 @@
 # AstroProject Forge — note di rilascio
 
-## Unreleased - contratto soglia Quality Lab
+## 0.9.0-beta.2 — 22 luglio 2026
 
 - Linea di soglia, punti arancioni, conteggio e lista dei sospetti usano ora lo stesso score aggregato.
 - Rimossa la curva gaussiana fuorviante: il grafico mostra zone operative accettata/da verificare e un istogramma coerente con la soglia.
 - Aggiunti click sui punti, conteggi separati per sospetti ed esclusi, filtro tabella `Solo sospetti` e azione di esclusione con conteggio esplicito.
 - Il grafico conserva sempre l'intera serie filtro/sessione anche quando la tabella viene filtrata.
+- Terminologia e microcopy riscritte su Windows, Linux e macOS: schede e azioni usano nomi brevi e descrittivi.
+- Tooltip aggiunti alle operazioni non immediate o con conseguenze sui file; rimossi slogan e nomi sperimentali dalla UI.
+- L’Inspector viene nascosto nelle aree che non lo usano, inclusa Libreria Master.
+- Contratto di parità aggiornato per bloccare divergenze future tra le interfacce native.
 
 ## 0.9.0-beta.1 — 17 luglio 2026
 

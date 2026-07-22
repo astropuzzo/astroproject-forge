@@ -18,7 +18,7 @@ $windowText = Get-Content -LiteralPath $window -Raw
 if ($projectText -notmatch 'AstroForge\.App\\ViewModels\\MainViewModel\.cs') { throw 'The cross-platform app is not linked to the shared MainViewModel.' }
 if (Test-Path (Join-Path $root 'dotnet/AstroForge.CrossPlatform/ViewModels/CrossPlatformViewModel.cs')) { throw 'Reduced preview ViewModel must not exist.' }
 
-$requiredWorkspaces = @('Analisi','Struttura','WBPP','Dati','Quality','Revisione','Master Lab','Log')
+$requiredWorkspaces = @('Analisi','Esporta','WBPP','Statistiche','Qualità','Problemi','Libreria Master','Log')
 $missing = @($requiredWorkspaces | Where-Object { $windowText -notmatch [regex]::Escape(('Header="{0}"' -f $_)) })
 if ($missing.Count -gt 0) { throw "Missing workspaces: $($missing -join ', ')" }
 

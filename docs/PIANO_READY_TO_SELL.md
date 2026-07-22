@@ -6,6 +6,8 @@
 
 > Pubblicazione beta 22 luglio 2026: repository ripulito, README italiano/inglese riscritto, screenshot reali rigenerati senza percorsi sorgente visibili, guida Master Library, SECURITY e CONTRIBUTING aggiunti. Il codice è pubblicamente ispezionabile con licenza proprietaria “all rights reserved”; una licenza open source richiede una decisione esplicita futura.
 
+> Beta 0.9.0-beta.2: terminologia e microcopy uniformate su Windows, Linux e macOS; tooltip contestuali aggiunti alle operazioni non immediate; Inspector nascosto fuori dai workspace che lo usano; screenshot e controllo automatico di parità aggiornati. Firma Authenticode e notarizzazione restano bloccate dall’assenza delle credenziali private del titolare.
+
 ## Scopo
 
 Portare AstroProject Forge dall’attuale build funzionante a un prodotto Windows

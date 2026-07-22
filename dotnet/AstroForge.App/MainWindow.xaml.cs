@@ -243,6 +243,7 @@ public partial class MainWindow : Window
     private async void MainWindow_Loaded(object sender, RoutedEventArgs e)
     {
         ApplyUiPreferences();
+        UpdateWorkspaceContext();
         if (!_viewModel.ReducedMotion)
         {
             RootSurface.Opacity = 0;
@@ -256,12 +257,20 @@ public partial class MainWindow : Window
 
     private void WorkspaceTabs_SelectionChanged(object sender, System.Windows.Controls.SelectionChangedEventArgs e)
     {
-        if (e.Source != WorkspaceTabs) return;
-        var header = (WorkspaceTabs.SelectedItem as System.Windows.Controls.TabItem)?.Header?.ToString() ?? "";
-        _inspectorContextAvailable = header is "Analisi" or "Struttura" or "Revisione";
-        if (!header.Contains("QUALITY", StringComparison.OrdinalIgnoreCase)) StopBlink();
+        if (!IsLoaded) return;
+        Dispatcher.BeginInvoke(new Action(() =>
+        {
+            UpdateWorkspaceContext();
+            AnimateWorkspaceTransition();
+        }), DispatcherPriority.Loaded);
+    }
+
+    private void UpdateWorkspaceContext()
+    {
+        var selectedTab = WorkspaceTabs.SelectedItem as System.Windows.Controls.TabItem;
+        _inspectorContextAvailable = string.Equals(selectedTab?.Tag?.ToString(), "Inspector", StringComparison.Ordinal);
+        if (!string.Equals(selectedTab?.Header?.ToString(), "Qualità", StringComparison.Ordinal)) StopBlink();
         ApplyResponsiveLayout();
-        AnimateWorkspaceTransition();
     }
 
     private void AnimateWorkspaceTransition()
@@ -589,9 +598,9 @@ public partial class MainWindow : Window
 
     private async void RollbackMasterOrganizer_Click(object sender, RoutedEventArgs e)
     {
-        if (MessageBox.Show(this, "Annullare l’ultimo batch creato da AstroProject Forge? Verranno eliminate soltanto le copie elencate nel manifest e solo se i loro hash sono invariati. Gli originali non saranno toccati.", "Rollback Master Library", MessageBoxButton.YesNo, MessageBoxImage.Warning) != MessageBoxResult.Yes) return;
-        try { await _viewModel.RollbackMasterOrganizerAsync(); MessageBox.Show(this, _viewModel.MasterOrganizerStatus, "Rollback completato", MessageBoxButton.OK, MessageBoxImage.Information); }
-        catch (Exception exception) { ShowError("AF-MASTER-ROLLBACK-001", "Rollback interrotto", exception, MessageBoxImage.Warning); }
+        if (MessageBox.Show(this, "Annullare l’ultimo batch? Verranno rimosse soltanto le copie elencate nel manifest e solo se non sono state modificate. Gli originali resteranno intatti.", "Annulla ultimo batch", MessageBoxButton.YesNo, MessageBoxImage.Warning) != MessageBoxResult.Yes) return;
+        try { await _viewModel.RollbackMasterOrganizerAsync(); MessageBox.Show(this, _viewModel.MasterOrganizerStatus, "Batch annullato", MessageBoxButton.OK, MessageBoxImage.Information); }
+        catch (Exception exception) { ShowError("AF-MASTER-ROLLBACK-001", "Impossibile annullare il batch", exception, MessageBoxImage.Warning); }
     }
 
     private async void ScanMasterLibraries_Click(object sender, RoutedEventArgs e)
