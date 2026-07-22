@@ -55,7 +55,11 @@ flowchart LR
    più notti o a un'intera sessione.
 6. L'app suggerisce le Grouping Keywords WBPP necessarie, inclusi valori
    `Pre/Post` per `FLATSET`, `DARKSET`, `BIASSET` e `TARGET`.
-7. L'esportazione genera una cartella pronta da controllare in PixInsight.
+7. `Esporta progetto` costruisce il piano quando serve ed esegue automaticamente
+   i controlli di sicurezza prima della copia riprendibile e verificata SHA-256.
+   L'anteprima della struttura resta disponibile, ma non è un passaggio imposto.
+8. Il progetto completato include manifest versionato, report del preflight,
+   statistiche, ricetta WBPP e report di validazione leggibile.
 
 ## Dentro l'app
 
@@ -63,6 +67,19 @@ La dashboard trasforma il progetto in dati osservativi utili: integrazione
 totale, ore per filtro, sessioni di configurazione, notti astronomiche, Gain,
 temperatura e copertura delle calibrazioni sono leggibili senza aprire un foglio
 di calcolo.
+
+Quality Lab è un ambiente opzionale di analisi dei pixel. Misura FWHM,
+eccentricità, rumore di fondo, rapporto segnale/rumore e stelle rilevate, quindi
+confronta soltanto frame della stessa sessione di configurazione e della stessa esposizione. La soglia in σ è
+regolabile e la distribuzione mostra curva di riferimento, soglia e singoli
+frame cliccabili. Ogni filtro e sessione di configurazione/Flat Set ha un'analisi
+separata; le metriche sono ordinabili in entrambi i versi. Selezione multipla,
+Blink, stretch asinh e debayer temporaneo con bilanciamento automatico dei canali
+servono all'ispezione senza modificare gli originali.
+Sorgenti e Inspector sono ridimensionabili e ricordano la larghezza scelta; l'Inspector
+compare soltanto nelle aree che possono applicare override. Il
+Quality Lab ha uno splitter tabella/preview, zoom al cursore, pan trascinabile,
+adattamento alla finestra e dettaglio temporaneo fino a 2400 px.
 
 ![Dashboard con integrazione per filtro](images/acquisition-dashboard.jpg)
 
@@ -104,8 +121,12 @@ che parte dalla camera prima di creare qualunque copia verificata.
 ### Sicurezza e ripresa
 
 - gli originali restano in sola lettura;
-- copia tramite staging riprendibile;
-- verifica SHA-256;
+- controlli di sicurezza automatici durante l'export, senza un passaggio obbligatorio aggiuntivo;
+- preflight di sorgenti mancanti o illeggibili, spazio e riserva configurabile,
+  sovrapposizione sorgente/destinazione, progetto esistente, duplicati, path
+  traversal, percorsi lunghi, junction, dischi rimovibili e rete;
+- staging riprendibile con verifica SHA-256, pausa, riprendi, annulla, velocità ed ETA;
+- secondo preflight subito prima dell'esecuzione e report scritti atomicamente;
 - file progetto portabile `.astroforge` con salvataggio atomico;
 - autosalvataggio dopo il primo salvataggio esplicito;
 - recovery journal atomico con scelta esplicita Ripristina/Ignora dopo un'interruzione;
@@ -151,6 +172,8 @@ diversi e non devono essere ridotti tutti a `DATE-OBS`.
 | Cache incrementale header | v1 operativa, backend SQLite pianificato |
 | Coda di revisione guidata | In sviluppo |
 | Gestore multi-libreria | v1 operativo: priorità e stato online/offline |
+| Export antifragile | v1 operativo: controlli automatici, pausa/annulla/riprendi, SHA-256 e report atomici |
+| Quality Lab opzionale | v1 operativo: FWHM, eccentricità, rumore, SNR, stelle, outlier, Blink ed esclusione non distruttiva |
 | Installer, firma e aggiornamenti | Pianificato |
 | Matrice WBPP end-to-end | Da completare prima della vendita |
 

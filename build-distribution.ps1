@@ -22,6 +22,7 @@ $distribution = Join-Path $root 'artifacts\distribution'
 $stage = Join-Path $root 'artifacts\stage'
 $portableName = "AstroProjectForge-$Channel-$Version-win-x64-portable.zip"
 $setupName = "AstroProjectForge-$Channel-$Version-win-x64-setup.exe"
+$publishedAtUtc = [DateTimeOffset]::UtcNow.ToString('O', [Globalization.CultureInfo]::InvariantCulture)
 $env:DOTNET_CLI_TELEMETRY_OPTOUT = '1'
 $env:DOTNET_NOLOGO = '1'
 
@@ -40,6 +41,9 @@ $app = Join-Path $stage 'AstroForge.App.exe'
 Copy-Item -LiteralPath (Join-Path $root 'docs\CHANGELOG.md') -Destination (Join-Path $stage 'RELEASE-NOTES.md')
 & $dotnet list $appProject package --include-transitive --format json | Set-Content -LiteralPath (Join-Path $stage 'sbom-dotnet.json') -Encoding utf8
 if ($LASTEXITCODE -ne 0) { throw 'Generazione SBOM fallita.' }
+$qaReportSource = Join-Path $root 'artifacts\qa\qa-report.json'
+$qaReportFile = if (Test-Path -LiteralPath $qaReportSource) { 'qa-report.json' } else { $null }
+if ($qaReportFile) { Copy-Item -LiteralPath $qaReportSource -Destination (Join-Path $stage $qaReportFile) }
 
 function Get-SignTool {
     if ($env:ASTROFORGE_SIGNTOOL -and (Test-Path -LiteralPath $env:ASTROFORGE_SIGNTOOL)) { return $env:ASTROFORGE_SIGNTOOL }
@@ -60,9 +64,9 @@ $appSigned = Sign-And-Verify $app
 if ($RequireSignature -and -not $appSigned) { throw 'Release bloccata: certificato o SignTool autentico non configurato.' }
 
 $preManifest = [ordered]@{
-    schema = 1; product = 'AstroProject Forge'; channel = $Channel; version = $Version; publishedAtUtc = [DateTimeOffset]::UtcNow
+    schema = 1; product = 'AstroProject Forge'; channel = $Channel; version = $Version; publishedAtUtc = $publishedAtUtc
     executable = [ordered]@{ fileName = 'AstroForge.App.exe'; sha256 = (Get-FileHash $app -Algorithm SHA256).Hash.ToLowerInvariant(); sizeBytes = (Get-Item $app).Length; signed = $appSigned }
-    qaReport = 'qa-report.json'; sbom = 'sbom-dotnet.json'; releaseEligible = $false
+    qaReport = $qaReportFile; sbom = 'sbom-dotnet.json'; releaseEligible = $false
 }
 $preManifest | ConvertTo-Json -Depth 8 | Set-Content -LiteralPath (Join-Path $stage 'release-manifest.json') -Encoding utf8
 Compress-Archive -Path (Join-Path $stage '*') -DestinationPath (Join-Path $distribution $portableName) -CompressionLevel Optimal
@@ -86,19 +90,19 @@ elseif ($RequireSignature) { throw 'Release bloccata: compilatore Inno Setup non
 else { Write-Warning 'Inno Setup non disponibile: prodotto soltanto il pacchetto portabile.' }
 
 $manifest = [ordered]@{
-    schema = 1; product = 'AstroProject Forge'; channel = $Channel; version = $Version; publishedAtUtc = [DateTimeOffset]::UtcNow
+    schema = 1; product = 'AstroProject Forge'; channel = $Channel; version = $Version; publishedAtUtc = $publishedAtUtc
     signed = ($appSigned -and $installerSigned); releaseEligible = ($appSigned -and $installerSigned -and (Test-Path -LiteralPath $installerPath))
     executable = [ordered]@{ fileName = 'AstroForge.App.exe'; sha256 = (Get-FileHash $app -Algorithm SHA256).Hash.ToLowerInvariant(); sizeBytes = (Get-Item $app).Length; signed = $appSigned }
     portable = [ordered]@{ fileName = $portableName; sha256 = (Get-FileHash (Join-Path $distribution $portableName) -Algorithm SHA256).Hash.ToLowerInvariant(); sizeBytes = (Get-Item (Join-Path $distribution $portableName)).Length }
     installer = if (Test-Path -LiteralPath $installerPath) { [ordered]@{ fileName = $setupName; sha256 = (Get-FileHash $installerPath -Algorithm SHA256).Hash.ToLowerInvariant(); sizeBytes = (Get-Item $installerPath).Length; signed = $installerSigned } } else { $null }
-    sbom = 'sbom-dotnet.json'; qaReport = 'qa-report.json'
+    sbom = 'sbom-dotnet.json'; qaReport = $qaReportFile
 }
 $manifestPath = Join-Path $distribution 'release-manifest.json'
 $manifest | ConvertTo-Json -Depth 8 | Set-Content -LiteralPath $manifestPath -Encoding utf8
 
 if (Test-Path -LiteralPath $installerPath) {
     $feed = [ordered]@{
-        schema = 1; product = 'AstroProject Forge'; channel = $Channel; version = $Version; publishedAtUtc = [DateTimeOffset]::UtcNow
+        schema = 1; product = 'AstroProject Forge'; channel = $Channel; version = $Version; publishedAtUtc = $publishedAtUtc
         installer = [ordered]@{ url = "https://github.com/astropuzzo/astroproject-forge/releases/download/v$Version/$setupName"; sha256 = $manifest.installer.sha256; sizeBytes = $manifest.installer.sizeBytes; fileName = $setupName }
         releaseNotesUrl = "https://github.com/astropuzzo/astroproject-forge/releases/tag/v$Version"; minimumWindowsVersion = '10.0.19045'; signed = $installerSigned
     }
@@ -106,7 +110,7 @@ if (Test-Path -LiteralPath $installerPath) {
 }
 
 Copy-Item -LiteralPath (Join-Path $stage 'sbom-dotnet.json') -Destination $distribution
-if (Test-Path -LiteralPath (Join-Path $root 'artifacts\qa\qa-report.json')) { Copy-Item -LiteralPath (Join-Path $root 'artifacts\qa\qa-report.json') -Destination $distribution }
+if ($qaReportFile) { Copy-Item -LiteralPath $qaReportSource -Destination $distribution }
 $hashLines = Get-ChildItem -LiteralPath $distribution -File | Where-Object Name -NotIn @('SHA256SUMS.txt') | Sort-Object Name | ForEach-Object { "{0}  {1}" -f (Get-FileHash $_.FullName -Algorithm SHA256).Hash.ToLowerInvariant(), $_.Name }
 $hashLines | Set-Content -LiteralPath (Join-Path $distribution 'SHA256SUMS.txt') -Encoding ascii
 

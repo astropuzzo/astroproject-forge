@@ -11,6 +11,7 @@ using AstroForge.Core.Persistence;
 using AstroForge.Core.Releases;
 using AstroForge.Core.Sessions;
 using AstroForge.Core.Wbpp;
+using AstroForge.Core.Quality;
 
 internal static class RegressionQa
 {
@@ -21,9 +22,12 @@ internal static class RegressionQa
         SettingsMigrations();
         LargeSyntheticDataset();
         await ParserFuzzAndLongPathsAsync();
+        await FitsQualityMetricsAsync();
         await UpdateIntegrityAsync();
+        await ExportPreflightSafetyAsync();
+        await ExportExecutionControlAsync();
         await InterruptedExportAsync();
-        Console.WriteLine("PASS QA: 5 vendor, 1.000 confini notte, 10.000 frame, fuzz FITS/XISF, migrazione, update SHA-256/Authenticode ed export interrotto/ripreso.");
+        Console.WriteLine("PASS QA: 5 vendor, 1.000 confini notte, 10.000 frame, fuzz FITS/XISF, metriche Quality FITS, migrazione, update SHA-256/Authenticode, controlli export, pausa e ripresa verificata.");
     }
 
     private static void VendorHeaderMatrix()
@@ -119,6 +123,35 @@ internal static class RegressionQa
         finally { Directory.Delete(root, true); }
     }
 
+    private static async Task FitsQualityMetricsAsync()
+    {
+        var root = Path.Combine(Path.GetTempPath(), $"AstroForge-QA-Quality-{Guid.NewGuid():N}"); Directory.CreateDirectory(root);
+        try
+        {
+            var sharp = Path.Combine(root, "sharp.fits");
+            var soft = Path.Combine(root, "soft.fits");
+            WriteStarFieldFits(sharp, 1.5);
+            WriteStarFieldFits(soft, 2.8);
+            var sharpMetrics = await FitsQualityAnalyzer.AnalyzeAsync(sharp);
+            var softMetrics = await FitsQualityAnalyzer.AnalyzeAsync(soft);
+            Assert(sharpMetrics.StarCount >= 8 && sharpMetrics.FwhmPixels > 1 && sharpMetrics.PreviewPixels.Length > 0, "Il Quality Lab non ha misurato il campo stellare FITS.");
+            Assert(softMetrics.FwhmPixels > sharpMetrics.FwhmPixels, "Il Quality Lab non distingue un frame sfocato da uno più nitido.");
+            Assert(sharpMetrics.Snr > 1 && sharpMetrics.Noise > 0, "SNR o rumore del Quality Lab non validi.");
+            var monoPreview = await FitsQualityAnalyzer.RenderPreviewAsync(sharp, null, false, 4);
+            var colorPreview = await FitsQualityAnalyzer.RenderPreviewAsync(sharp, "RGGB", true, 8);
+            Assert(!monoPreview.IsColor && monoPreview.Pixels.Length == monoPreview.Width * monoPreview.Height, "Preview mono del Quality Lab non valida.");
+            Assert(colorPreview.IsColor && colorPreview.Pixels.Length == colorPreview.Width * colorPreview.Height * 3, "Debayer temporaneo del Quality Lab non valido.");
+            Assert(!monoPreview.Pixels.SequenceEqual(colorPreview.Pixels.Take(monoPreview.Pixels.Length)), "Lo stretch/debayer non ha modificato la preview.");
+            var channelMedians = Enumerable.Range(0, 3).Select(channel =>
+            {
+                var values = colorPreview.Pixels.Where((_, index) => index % 3 == channel).OrderBy(value => value).ToArray();
+                return (int)values[values.Length / 2];
+            }).ToArray();
+            Assert(channelMedians.Max() - channelMedians.Min() <= 8, "Lo stretch RGB non ha neutralizzato il fondo tra i canali Bayer.");
+        }
+        finally { Directory.Delete(root, true); }
+    }
+
     private static async Task UpdateIntegrityAsync()
     {
         var payload = Encoding.UTF8.GetBytes("verified-installer-payload");
@@ -164,10 +197,88 @@ internal static class RegressionQa
             await AssertThrowsAsync<OperationCanceledException>(() => ProjectExporter.ExecuteAsync(plan, progress, cancellation.Token), "L'interruzione export non è stata osservata.");
             var stagingFile = Path.Combine(root, ".Interrupted.astroforge-staging", "Light", "first.fit");
             Assert(File.Exists(stagingFile) && !File.Exists(plan.ProjectRoot), "Lo staging verificato deve restare disponibile dopo l'interruzione.");
+            var resumeReport = await ProjectExportPreflight.AnalyzeAsync(plan, new(0, 0, 100));
+            Assert(resumeReport.IsReady && resumeReport.ResumeFileCount == 1 && resumeReport.ResumeBytes == new FileInfo(first).Length,
+                "Il preflight non ha riconosciuto la copia verificata disponibile per la ripresa.");
             var result = await ProjectExporter.ExecuteAsync(plan);
             Assert(File.Exists(Path.Combine(result, "Light", "first.fit")) && File.Exists(Path.Combine(result, "Dark", "second.fit")), "La ripresa export non ha completato tutti i file.");
+            var controlRoot = Path.Combine(result, "_AstroForge");
+            Assert(File.Exists(Path.Combine(controlRoot, "export-preflight.json")), "Il report preflight non è stato incluso nel progetto finale.");
+            using var manifest = JsonDocument.Parse(await File.ReadAllTextAsync(Path.Combine(controlRoot, "manifest.json")));
+            Assert(manifest.RootElement.GetProperty("schema").GetInt32() == 2 && manifest.RootElement.TryGetProperty("preflight", out _),
+                "Il manifest export non espone lo schema antifragile e il riepilogo preflight.");
         }
         finally { Directory.Delete(root, true); }
+    }
+
+    private static async Task ExportPreflightSafetyAsync()
+    {
+        var root = Path.Combine(Path.GetTempPath(), $"AstroForge-QA-Preflight-{Guid.NewGuid():N}");
+        var sourceRoot = Path.Combine(root, "source");
+        var destinationRoot = Path.Combine(root, "destination");
+        Directory.CreateDirectory(sourceRoot);
+        try
+        {
+            var source = Path.Combine(sourceRoot, "luce_星.fit");
+            await File.WriteAllBytesAsync(source, Enumerable.Repeat((byte)0x5A, 64 * 1024).ToArray());
+            ProjectPlan Plan(string name, string destination, string relative = "Light/luce_星.fit", string? input = null) =>
+                new(name, destination,
+                [new(new FrameMetadata { Path = input ?? source, Kind = FrameKind.Light }, relative, "light")],
+                new WbppRecipe([], ["qa"]));
+            var safeOptions = new ExportPreflightOptions(0, 0, 100, [sourceRoot]);
+
+            var cleanPlan = Plan("Clean", destinationRoot);
+            var clean = await ProjectExportPreflight.AnalyzeAsync(cleanPlan, safeOptions);
+            Assert(clean.IsReady && clean.TotalFiles == 1 && clean.BytesToCopy == new FileInfo(source).Length,
+                "Il preflight ha bloccato un piano valido.");
+            Assert(!Directory.Exists(clean.ProjectRoot) && !Directory.Exists(clean.StagingRoot),
+                "Il dry-run ha scritto nella destinazione.");
+
+            var overlap = await ProjectExportPreflight.AnalyzeAsync(Plan("Nested", Path.Combine(sourceRoot, "output")), safeOptions);
+            Assert(overlap.Findings.Any(item => item.Code == "destination.overlap" && item.Severity == ExportPreflightSeverity.Error),
+                "La sovrapposizione tra sorgente e destinazione non è stata bloccata.");
+
+            var missing = await ProjectExportPreflight.AnalyzeAsync(Plan("Missing", destinationRoot, input: Path.Combine(sourceRoot, "missing.fit")), safeOptions);
+            Assert(missing.Findings.Any(item => item.Code == "source.missing"), "Una sorgente mancante non ha bloccato l'export.");
+
+            var traversal = await ProjectExportPreflight.AnalyzeAsync(Plan("Traversal", destinationRoot, "../escape.fit"), safeOptions);
+            Assert(traversal.Findings.Any(item => item.Code == "path.traversal"), "Un percorso in uscita dallo staging non è stato bloccato.");
+
+            Directory.CreateDirectory(cleanPlan.ProjectRoot);
+            var existing = await ProjectExportPreflight.AnalyzeAsync(cleanPlan, safeOptions);
+            Assert(existing.Findings.Any(item => item.Code == "destination.exists"), "Un progetto esistente non è stato protetto dalla sovrascrittura.");
+            Directory.Delete(cleanPlan.ProjectRoot, true);
+
+            var stagingFile = Path.Combine(clean.StagingRoot, "Light", "luce_星.fit");
+            Directory.CreateDirectory(Path.GetDirectoryName(stagingFile)!);
+            await File.WriteAllBytesAsync(stagingFile, Enumerable.Repeat((byte)0x00, 64 * 1024).ToArray());
+            var tampered = await ProjectExportPreflight.AnalyzeAsync(cleanPlan, safeOptions);
+            Assert(tampered.Findings.Any(item => item.Code == "resume.hash_mismatch"), "Uno staging alterato non è stato rifiutato.");
+            Directory.Delete(clean.StagingRoot, true);
+
+            var free = new DriveInfo(Path.GetPathRoot(root)!).AvailableFreeSpace;
+            var insufficient = await ProjectExportPreflight.AnalyzeAsync(cleanPlan, safeOptions with { MinimumReserveBytes = free });
+            Assert(insufficient.Findings.Any(item => item.Code == "space.insufficient"), "Lo spazio insufficiente non ha bloccato l'export.");
+        }
+        finally { if (Directory.Exists(root)) Directory.Delete(root, true); }
+    }
+
+    private static async Task ExportExecutionControlAsync()
+    {
+        var control = new ExportExecutionControl();
+        control.Pause();
+        var wait = control.WaitIfPausedAsync(CancellationToken.None).AsTask();
+        await Task.Delay(25);
+        Assert(!wait.IsCompleted && control.IsPaused, "La pausa export non ha sospeso il lavoro.");
+        control.Resume();
+        await wait.WaitAsync(TimeSpan.FromSeconds(1));
+        Assert(!control.IsPaused, "La ripresa export non ha riaperto il gate.");
+
+        control.Pause();
+        using var cancellation = new CancellationTokenSource();
+        var cancelledWait = control.WaitIfPausedAsync(cancellation.Token).AsTask();
+        cancellation.Cancel();
+        await AssertThrowsAsync<OperationCanceledException>(() => cancelledWait, "Annulla non interrompe un export in pausa.");
     }
 
     private static async Task MustCompleteAsync(Func<Task<Dictionary<string, object?>>> action, string label)
@@ -189,6 +300,26 @@ internal static class RegressionQa
         var body = Encoding.UTF8.GetBytes(xml); var bytes = new byte[16 + body.Length];
         "XISF0100"u8.CopyTo(bytes); BinaryPrimitives.WriteUInt32LittleEndian(bytes.AsSpan(8, 4), (uint)body.Length); body.CopyTo(bytes, 16);
         File.WriteAllBytes(path, bytes);
+    }
+
+    private static void WriteStarFieldFits(string path, double sigma)
+    {
+        const int width = 160, height = 120;
+        static string Card(string key, string value = "") => (value.Length == 0 ? key : $"{key.PadRight(8)}= {value}").PadRight(80)[..80];
+        var header = Card("SIMPLE", "T") + Card("BITPIX", "16") + Card("NAXIS", "2") + Card("NAXIS1", width.ToString()) + Card("NAXIS2", height.ToString()) + Card("BZERO", "32768") + Card("BSCALE", "1") + Card("END");
+        var headerBytes = Encoding.ASCII.GetBytes(header.PadRight((int)Math.Ceiling(header.Length / 2880d) * 2880));
+        var physical = Enumerable.Repeat(1000d, width * height).ToArray();
+        var random = new Random(4421);
+        for (var index = 0; index < physical.Length; index++) physical[index] += random.NextDouble() * 18 - 9;
+        for (var star = 0; star < 24; star++)
+        {
+            var cx = 10 + (star * 31) % (width - 20); var cy = 10 + (star * 47) % (height - 20); var amplitude = 12000 - star * 180;
+            for (var y = cy - 7; y <= cy + 7; y++) for (var x = cx - 7; x <= cx + 7; x++)
+                physical[y * width + x] += amplitude * Math.Exp(-((x - cx) * (x - cx) + (y - cy) * (y - cy)) / (2 * sigma * sigma));
+        }
+        var data = new byte[width * height * 2];
+        for (var index = 0; index < physical.Length; index++) BinaryPrimitives.WriteInt16BigEndian(data.AsSpan(index * 2, 2), (short)Math.Clamp((int)Math.Round(physical[index] - 32768), short.MinValue, short.MaxValue));
+        using var output = File.Create(path); output.Write(headerBytes); output.Write(data); output.Write(new byte[(2880 - data.Length % 2880) % 2880]);
     }
 
     private static void Assert(bool condition, string message) { if (!condition) throw new InvalidOperationException(message); }

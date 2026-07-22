@@ -55,8 +55,11 @@ flowchart LR
 6. The app recommends only the WBPP Grouping Keywords that are actually needed,
    including the correct `Pre/Post` configuration for `FLATSET`, `DARKSET`,
    `BIASSET`, and `TARGET`.
-7. Export creates a resumable, verified project ready for final inspection in
-   PixInsight.
+7. `Export project` builds the plan when needed and performs its safety checks
+   automatically before starting the resumable, SHA-256 verified copy. The
+   structure preview remains available, but is not a required ritual.
+8. The completed project includes a versioned manifest, preflight report,
+   statistics, WBPP recipe and a human-readable validation report.
 
 ## Inside the app
 
@@ -64,6 +67,20 @@ The acquisition dashboard turns the project into useful observing data: total
 integration, time per filter, configuration sessions, astronomical nights,
 Gain, temperature and calibration coverage are visible without opening a
 spreadsheet.
+
+Quality Lab is an optional pixel-analysis workspace. It measures FWHM,
+eccentricity, background noise, signal-to-noise ratio and detected stars. Each
+filter and calibration session/Flat Set gets an independent analysis, with
+exposure lengths kept in separate statistical groups. Robust outliers can be
+inspected on a readable distribution chart with an adjustable sigma threshold;
+all metric columns sort numerically in both directions. Frame points and
+multi-row selections drive Blink and the preview. Optional asinh stretch and
+temporary Bayer demosaicing use per-channel background neutralization and never
+rewrite the source FITS. Excluded copies are kept outside the WBPP Light set.
+Source and Inspector panels are resizable and remember their widths; Inspector
+appears only in workspaces that can apply overrides. Quality
+Lab has its own table/preview splitter plus cursor-centered zoom, drag-to-pan,
+fit-to-view and an on-demand 2400 px inspection render.
 
 ![Acquisition dashboard with integration time per filter](docs/images/acquisition-dashboard.jpg)
 
@@ -104,7 +121,13 @@ layout before any verified copy is created.
 ### Safety and recovery
 
 - source images remain read-only;
-- resumable staging export with SHA-256 verification;
+- automatic export safety checks without a mandatory extra workflow step;
+- preflight for missing/unreadable sources, free space and configurable reserve,
+  source/destination overlap, existing projects, duplicate destinations, path
+  traversal, long paths, reparse points, removable and network volumes;
+- resumable staging export with SHA-256 verification, pause, resume, cancel,
+  throughput and ETA;
+- a second preflight immediately before execution and atomic export reports;
 - portable `.astroforge` document with atomic saves;
 - autosave after the first explicit project save;
 - atomic recovery journal with an explicit restore/discard banner after an interrupted operation;
@@ -199,6 +222,7 @@ duplicate, or equivalent candidates are sent to the guided Review Queue.
 | Incremental header cache | v1 operational; SQLite planned |
 | Guided Review Queue | v1 operational; candidate comparison expanding |
 | Multiple Master Libraries | v1 operational: priority and online/offline state |
+| Antifragile export | v1 operational: dry-run, preflight, pause/cancel/resume, SHA-256 and atomic reports |
 | Reproducible Windows QA gate | Operational locally + GitHub Actions workflow |
 | Installer, signing, and updates | Beta packaging operational; commercial signing/VM matrix pending |
 | WBPP end-to-end compatibility matrix | Required before sale |

@@ -17,6 +17,8 @@ public sealed class AstroForgeProjectDocument
     public double? DefaultGain { get; set; }
     public double? DefaultOffset { get; set; }
     public double? DefaultTemperatureC { get; set; }
+    public double QualitySigmaThreshold { get; set; } = 3.5;
+    public List<string> ExcludedQualityPaths { get; set; } = [];
     public Dictionary<string, FrameOverrides> Overrides { get; set; } = new(StringComparer.OrdinalIgnoreCase);
 }
 

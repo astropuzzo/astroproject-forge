@@ -6,6 +6,7 @@
     <ImplicitUsings>enable</ImplicitUsings>
     <Nullable>enable</Nullable>
     <ApplicationIcon>..\..\assets\astroforge.ico</ApplicationIcon>
+    <AssemblyName Condition="'$(VisualQaBuild)' == 'true'">AstroForge.VisualQa</AssemblyName>
   </PropertyGroup>
   <ItemGroup>
     <ProjectReference Include="..\AstroForge.Core\AstroForge.Core.csproj" />

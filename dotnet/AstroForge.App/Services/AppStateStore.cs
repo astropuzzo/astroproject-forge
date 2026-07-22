@@ -22,6 +22,15 @@ public sealed class AppState
     public bool ReducedMotion { get; set; }
     public bool CheckForUpdates { get; set; }
     public string UpdateChannel { get; set; } = "Beta";
+    public double ExportMarginPercent { get; set; } = 10;
+    public double ExportMinimumReserveGiB { get; set; } = 1;
+    public double ExportEstimatedThroughputMiBps { get; set; } = 100;
+    public List<string> ExcludedQualityPaths { get; set; } = [];
+    public double QualitySigmaThreshold { get; set; } = 3.5;
+    public double QualityStretchStrength { get; set; } = 6;
+    public bool QualityDebayerPreview { get; set; }
+    public double SourcePanelWidth { get; set; } = 260;
+    public double InspectorPanelWidth { get; set; } = 390;
     public bool HasCompletedOnboarding { get; set; }
     public Dictionary<string, FrameOverrides> Overrides { get; set; } = new(StringComparer.OrdinalIgnoreCase);
 }

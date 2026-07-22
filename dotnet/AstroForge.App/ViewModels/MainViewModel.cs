@@ -1,4 +1,5 @@
 using System.Collections.ObjectModel;
+using System.ComponentModel;
 using System.Globalization;
 using System.IO;
 using System.Text;
@@ -12,7 +13,10 @@ using AstroForge.Core.Scanning;
 using AstroForge.Core.Sessions;
 using AstroForge.Core.Validation;
 using AstroForge.Core.Wbpp;
+using AstroForge.Core.Quality;
 using AstroForge.App.Services;
+using System.Windows.Media;
+using System.Windows.Media.Imaging;
 
 namespace AstroForge.App.ViewModels;
 
@@ -74,13 +78,38 @@ public sealed class MainViewModel : BindableBase
     private string _updateStatus = "Controllo automatico disattivato";
     private bool _showOnboarding;
     private string _diagnosticsSummary = "Nessun evento caricato";
+    private bool _awaitingReanalysis;
+    private ExportPreflightReport? _exportPreflight;
+    private ExportExecutionControl? _exportControl;
+    private CancellationTokenSource? _exportCancellation;
+    private ExportRunState _exportState;
+    private double _exportProgress;
+    private string _exportProgressDetail = "L’anteprima è facoltativa; i controlli vengono eseguiti automaticamente durante l’esportazione.";
+    private double _exportMarginPercent = 10;
+    private double _exportMinimumReserveGiB = 1;
+    private double _exportEstimatedThroughputMiBps = 100;
+    private readonly HashSet<string> _excludedQualityPaths = new(StringComparer.OrdinalIgnoreCase);
+    private readonly List<QualityFrameRow> _allQualityFrames = [];
+    private QualityFrameRow? _selectedQualityFrame;
+    private QualitySeriesRow? _selectedQualitySeries;
+    private string _qualityStatus = "Analisi opzionale: i pixel non vengono letti finché non la avvii.";
+    private double _qualityProgress;
+    private bool _isQualityAnalyzing;
+    private double _qualitySigmaThreshold = 3.5;
+    private double _qualityStretchStrength = 6;
+    private bool _qualityDebayerPreview;
+    private bool _qualityShowOnlySuspects;
+    private int _qualitySelectedCount;
+    private QualityFrameRow? _highResolutionQualityItem;
+    private double _sourcePanelWidth = 260;
+    private double _inspectorPanelWidth = 390;
 
     public MainViewModel()
     {
         _state = AppStateStore.Load();
         _libraryPath = _state.LibraryPath;
         var savedLibraries = _state.MasterLibraries.Count > 0 ? _state.MasterLibraries : string.IsNullOrWhiteSpace(_state.LibraryPath) ? [] : [new() { Name = "Libreria principale", Path = _state.LibraryPath, Priority = 1 }];
-        foreach (var library in savedLibraries.OrderBy(item => item.Priority)) MasterLibraries.Add(new(library.Name, library.Path, library.Priority, library.Enabled));
+        foreach (var library in savedLibraries.OrderBy(item => item.Priority)) AddMasterLibraryItem(new(library.Name, library.Path, library.Priority, library.Enabled));
         _destinationPath = _state.DestinationPath;
         _projectName = _state.ProjectName;
         _sessionBoundaryHour = Math.Clamp(_state.SessionBoundaryHour, 0, 23);
@@ -92,10 +121,24 @@ public sealed class MainViewModel : BindableBase
         _reducedMotion = _state.ReducedMotion;
         _checkForUpdates = _state.CheckForUpdates;
         _updateChannel = _state.UpdateChannel is "Stable" or "Beta" ? _state.UpdateChannel : "Beta";
+        _exportMarginPercent = Math.Clamp(_state.ExportMarginPercent, 0, 100);
+        _exportMinimumReserveGiB = Math.Max(0, _state.ExportMinimumReserveGiB);
+        _exportEstimatedThroughputMiBps = Math.Max(1, _state.ExportEstimatedThroughputMiBps);
+        foreach (var path in _state.ExcludedQualityPaths) _excludedQualityPaths.Add(path);
+        _qualitySigmaThreshold = Math.Clamp(_state.QualitySigmaThreshold, 2, 6);
+        _qualityStretchStrength = Math.Clamp(_state.QualityStretchStrength, 0, 12);
+        _qualityDebayerPreview = _state.QualityDebayerPreview;
+        _sourcePanelWidth = Math.Clamp(_state.SourcePanelWidth, 190, 520);
+        _inspectorPanelWidth = Math.Clamp(_state.InspectorPanelWidth, 280, 680);
         _updateStatus = _checkForUpdates ? $"Controllo { _updateChannel } attivo · nessun download automatico" : "Controllo automatico disattivato";
         _pendingRecovery = _recoveryJournal.Read<ProjectRecoverySnapshot>();
         _showOnboarding = !_state.HasCompletedOnboarding && _pendingRecovery is null;
         foreach (var path in _state.SourcePaths.Where(path => Directory.Exists(path) || File.Exists(path))) SourcePaths.Add(path);
+        if (SourcePaths.Count > 0)
+        {
+            _readinessText = $"{SourceSummary} · analisi richiesta";
+            _status = $"{SourceSummary} · avvia l’analisi per costruire la mappa";
+        }
         foreach (var pair in _state.Overrides.Where(pair => pair.Value.Kind is not null)) _kindOverrides.Add(pair.Key);
         ApplyOverridesCommand = new RelayCommand(ApplyOverrides, () => SelectedNode is not null && !IsScanning);
         ApplyLibraryOffsetCommand = new RelayCommand(ApplyLibraryOffset, () => _frames.Any(frame => frame.IsMaster) && !IsScanning);
@@ -124,6 +167,9 @@ public sealed class MainViewModel : BindableBase
     public ObservableCollection<MasterOrganizerItem> MasterOrganizerItems { get; } = [];
     public ObservableCollection<string> SelectedIssues { get; } = [];
     public ObservableCollection<DiagnosticEventRow> DiagnosticEvents { get; } = [];
+    public ObservableCollection<ExportPreflightFindingRow> ExportPreflightFindings { get; } = [];
+    public ObservableCollection<QualityFrameRow> QualityFrames { get; } = [];
+    public ObservableCollection<QualitySeriesRow> QualitySeries { get; } = [];
     public RelayCommand ApplyOverridesCommand { get; }
     public RelayCommand ApplyLibraryOffsetCommand { get; }
     public RelayCommand ApplyProjectDefaultsCommand { get; }
@@ -136,8 +182,8 @@ public sealed class MainViewModel : BindableBase
 
     public string LibraryPath { get => MasterLibraries.FirstOrDefault()?.Path ?? _libraryPath; set { _libraryPath = value; if (!string.IsNullOrWhiteSpace(value) && !MasterLibraries.Any(item => item.Path.Equals(value, StringComparison.OrdinalIgnoreCase))) AddMasterLibrary(value); Raise(); } }
     public MasterLibraryItem? SelectedMasterLibrary { get => _selectedMasterLibrary; set => Set(ref _selectedMasterLibrary, value); }
-    public string ProjectName { get => _projectName; set => Set(ref _projectName, value); }
-    public string DestinationPath { get => _destinationPath; set => Set(ref _destinationPath, value); }
+    public string ProjectName { get => _projectName; set { if (Set(ref _projectName, value)) InvalidateExportPlan(); } }
+    public string DestinationPath { get => _destinationPath; set { if (Set(ref _destinationPath, value)) InvalidateExportPlan(); } }
     public string CurrentProjectFile { get => _currentProjectFile; private set { if (Set(ref _currentProjectFile, value)) Raise(nameof(ProjectDocumentStatus)); } }
     public string ProjectDocumentStatus => string.IsNullOrWhiteSpace(CurrentProjectFile) ? "Progetto non ancora salvato" : Path.GetFileName(CurrentProjectFile);
     public string UiDensity { get => _uiDensity; set => Set(ref _uiDensity, value); }
@@ -151,10 +197,114 @@ public sealed class MainViewModel : BindableBase
     public bool ShowOnboarding { get => _showOnboarding; private set => Set(ref _showOnboarding, value); }
     public bool HasRecoverySnapshot => _pendingRecovery is not null;
     public bool CanRunProjectOperations => !IsScanning && !HasRecoverySnapshot;
+    public bool CanAnalyzeProject => HasSources && CanRunProjectOperations;
+    public bool HasSources => SourcePaths.Count > 0;
+    public bool HasAnalysis => _analysis is not null;
+    public bool HasVisibleTree => TreeRoots.Count > 0;
+    public bool ShowImportPrompt => !HasSources && !HasAnalysis;
+    public bool ShowAnalysisPrompt => HasSources && !HasAnalysis;
+    public bool ShowNoResultsPrompt => HasAnalysis && TreeRoots.Count == 0;
+    public string SourceSummary => SourcePaths.Count == 1 ? "1 sorgente collegata" : $"{SourcePaths.Count} sorgenti collegate";
+    public string SourceBreakdown
+    {
+        get
+        {
+            var folders = SourcePaths.Count(Directory.Exists);
+            var files = SourcePaths.Count(File.Exists);
+            var parts = new List<string>();
+            if (folders > 0) parts.Add(folders == 1 ? "1 cartella" : $"{folders} cartelle");
+            if (files > 0) parts.Add(files == 1 ? "1 file singolo" : $"{files} file singoli");
+            return parts.Count == 0 ? "Percorsi non più disponibili" : string.Join(" · ", parts);
+        }
+    }
+    public string AnalysisPromptTitle => _awaitingReanalysis ? "Le sorgenti sono cambiate" : "Sorgenti collegate";
+    public string AnalysisPromptDetail => _awaitingReanalysis
+        ? "La mappa precedente è stata ritirata per evitare risultati obsoleti. Rianalizza per includere tutti i percorsi correnti."
+        : "I percorsi sono pronti. L’analisi leggerà gli header e costruirà filtri, notti e sessioni senza modificare gli originali.";
+    public string AnalysisActionLabel => IsScanning ? "ANALISI IN CORSO…" : HasAnalysis || _awaitingReanalysis ? "RIANALIZZA PROGETTO" : "ANALIZZA PROGETTO";
     public string RecoverySummary => _pendingRecovery is null
         ? "Nessun recupero necessario"
         : $"{_pendingRecovery.Operation} interrotta il {_pendingRecovery.StartedAtUtc.ToLocalTime():dd MMM yyyy 'alle' HH:mm}. Puoi ripristinare la fotografia del progetto precedente all’operazione.";
     public string DiagnosticsSummary { get => _diagnosticsSummary; private set => Set(ref _diagnosticsSummary, value); }
+    public double ExportMarginPercent { get => _exportMarginPercent; set { if (Set(ref _exportMarginPercent, value)) InvalidateExportPreflight(); } }
+    public double ExportMinimumReserveGiB { get => _exportMinimumReserveGiB; set { if (Set(ref _exportMinimumReserveGiB, value)) InvalidateExportPreflight(); } }
+    public double ExportEstimatedThroughputMiBps { get => _exportEstimatedThroughputMiBps; set { if (Set(ref _exportEstimatedThroughputMiBps, value)) InvalidateExportPreflight(); } }
+    public bool HasExportPlan => _plan is not null;
+    public bool HasExportPreflight => _exportPreflight is not null;
+    public bool ExportPreflightReady => _exportPreflight?.IsReady == true;
+    public bool CanRunExportPreflight => HasExportPlan && !IsScanning && !HasRecoverySnapshot;
+    public bool CanStartExport => _analysis?.Ready == true && !string.IsNullOrWhiteSpace(ProjectName) && !string.IsNullOrWhiteSpace(DestinationPath) && !IsScanning && !HasRecoverySnapshot && _exportState is not (ExportRunState.Running or ExportRunState.Paused or ExportRunState.Cancelling);
+    public bool CanPauseExport => _exportState == ExportRunState.Running;
+    public bool CanResumeExport => _exportState == ExportRunState.Paused;
+    public bool CanCancelExport => _exportState is ExportRunState.Running or ExportRunState.Paused or ExportRunState.Cancelling;
+    public string ExportStateLabel => _exportState switch
+    {
+        ExportRunState.Preflighting => "PREFLIGHT IN CORSO",
+        ExportRunState.Ready => "PRONTO",
+        ExportRunState.Blocked => "BLOCCATO",
+        ExportRunState.Running => "COPIA + SHA-256",
+        ExportRunState.Paused => "IN PAUSA",
+        ExportRunState.Cancelling => "ANNULLAMENTO…",
+        ExportRunState.Completed => "COMPLETATO",
+        ExportRunState.Cancelled => "RIPRENDIBILE",
+        ExportRunState.Failed => "ERRORE",
+        _ => "NON VERIFICATO"
+    };
+    public string ExportProgressDetail { get => _exportProgressDetail; private set => Set(ref _exportProgressDetail, value); }
+    public string ExportFileSummary => _exportPreflight is null ? "—" : $"{_exportPreflight.TotalFiles} file";
+    public string ExportBytesSummary => _exportPreflight is null ? "—" : $"{HumanSize(_exportPreflight.BytesToCopy)} da copiare";
+    public string ExportSpaceSummary => _exportPreflight?.AvailableFreeBytes is { } value ? $"{HumanSize(value)} liberi" : "Spazio non disponibile";
+    public string ExportEtaSummary => _exportPreflight is null ? "—" : FormatDuration(_exportPreflight.EstimatedDuration);
+    public string ExportResumeSummary => _exportPreflight is null || _exportPreflight.ResumeFileCount == 0 ? "Nessuna ripresa" : $"{_exportPreflight.ResumeFileCount} file · {HumanSize(_exportPreflight.ResumeBytes)} riutilizzabili";
+    public QualityFrameRow? SelectedQualityFrame { get => _selectedQualityFrame; set => Set(ref _selectedQualityFrame, value); }
+    public QualitySeriesRow? SelectedQualitySeries
+    {
+        get => _selectedQualitySeries;
+        set
+        {
+            if (!Set(ref _selectedQualitySeries, value)) return;
+            RebuildQualitySeriesView();
+            Raise(nameof(CanRunQualityAnalysis));
+        }
+    }
+    public string QualityStatus { get => _qualityStatus; private set => Set(ref _qualityStatus, value); }
+    public double QualityProgress { get => _qualityProgress; private set => Set(ref _qualityProgress, value); }
+    public bool IsQualityAnalyzing { get => _isQualityAnalyzing; private set { if (Set(ref _isQualityAnalyzing, value)) { Raise(nameof(CanRunQualityAnalysis)); Raise(nameof(CanChangeQualityExclusions)); Raise(nameof(CanExcludeSelectedQuality)); Raise(nameof(CanExcludeQualitySuspects)); } } }
+    public bool CanRunQualityAnalysis => SelectedQualitySeries?.SourceFrames.Any(IsQualityFits) == true && !IsQualityAnalyzing && !IsScanning;
+    public bool CanChangeQualityExclusions => !IsQualityAnalyzing && SelectedQualitySeries?.Frames.Count > 0;
+    public int QualitySuspectCount => SelectedQualitySeries?.Frames.Count(item => item.IsSuspect) ?? 0;
+    public int QualityExcludedCount => SelectedQualitySeries?.Frames.Count(item => item.IsExcluded) ?? 0;
+    public int QualityPendingSuspectCount => SelectedQualitySeries?.Frames.Count(item => item.IsSuspect && !item.IsExcluded) ?? 0;
+    public bool CanExcludeQualitySuspects => !IsQualityAnalyzing && QualityPendingSuspectCount > 0;
+    public string ExcludeQualitySuspectsLabel => QualityPendingSuspectCount > 0 ? $"Escludi {QualityPendingSuspectCount} sospetti" : "Nessun sospetto da escludere";
+    public string QualityTableSummary => SelectedQualitySeries is null
+        ? "Nessuna serie selezionata"
+        : $"{QualityFrames.Count}/{SelectedQualitySeries.AnalyzedCount} mostrati · {QualitySuspectCount} sospetti · {QualityExcludedCount} esclusi";
+    public IEnumerable<QualityFrameRow> QualityChartFrames => SelectedQualitySeries?.Frames ?? [];
+    public bool QualityShowOnlySuspects
+    {
+        get => _qualityShowOnlySuspects;
+        set { if (Set(ref _qualityShowOnlySuspects, value)) RebuildQualitySeriesView(); }
+    }
+    public double QualitySigmaThreshold
+    {
+        get => _qualitySigmaThreshold;
+        set
+        {
+            if (!Set(ref _qualitySigmaThreshold, Math.Clamp(value, 2, 6))) return;
+            if (_allQualityFrames.Count > 0)
+            {
+                ScoreQualityOutliers();
+                if (QualityShowOnlySuspects) RebuildQualitySeriesView(); else RefreshQualityCounts();
+            }
+        }
+    }
+    public double QualityStretchStrength { get => _qualityStretchStrength; set => Set(ref _qualityStretchStrength, Math.Clamp(value, 0, 12)); }
+    public bool QualityDebayerPreview { get => _qualityDebayerPreview; set => Set(ref _qualityDebayerPreview, value); }
+    public int QualitySelectedCount { get => _qualitySelectedCount; private set { if (Set(ref _qualitySelectedCount, value)) Raise(nameof(CanExcludeSelectedQuality)); } }
+    public bool CanExcludeSelectedQuality => !IsQualityAnalyzing && QualitySelectedCount > 0;
+    public double SourcePanelWidth { get => _sourcePanelWidth; set => Set(ref _sourcePanelWidth, Math.Clamp(value, 190, 520)); }
+    public double InspectorPanelWidth { get => _inspectorPanelWidth; set => Set(ref _inspectorPanelWidth, Math.Clamp(value, 280, 680)); }
     public void OpenOnboarding() => ShowOnboarding = true;
     public void CompleteOnboarding()
     {
@@ -175,11 +325,12 @@ public sealed class MainViewModel : BindableBase
             Status = $"Sessioni ricalcolate con cambio alle {_sessionBoundaryHour:00}:00 locali";
         }
     }
-    public bool IsScanning { get => _isScanning; private set { if (Set(ref _isScanning, value)) { Raise(nameof(CanRunProjectOperations)); ApplyOverridesCommand.RaiseCanExecuteChanged(); ApplyLibraryOffsetCommand.RaiseCanExecuteChanged(); ApplyProjectDefaultsCommand.RaiseCanExecuteChanged(); SaveSettingsCommand.RaiseCanExecuteChanged(); ClearProjectCommand.RaiseCanExecuteChanged(); LinkFlatSetCommand.RaiseCanExecuteChanged(); UnlinkFlatSetCommand.RaiseCanExecuteChanged(); UndoCommand.RaiseCanExecuteChanged(); } } }
+    public bool IsScanning { get => _isScanning; private set { if (Set(ref _isScanning, value)) { Raise(nameof(CanRunProjectOperations)); Raise(nameof(CanAnalyzeProject)); Raise(nameof(AnalysisActionLabel)); Raise(nameof(CanRunQualityAnalysis)); Raise(nameof(CanChangeQualityExclusions)); RaiseExportProperties(); ApplyOverridesCommand.RaiseCanExecuteChanged(); ApplyLibraryOffsetCommand.RaiseCanExecuteChanged(); ApplyProjectDefaultsCommand.RaiseCanExecuteChanged(); SaveSettingsCommand.RaiseCanExecuteChanged(); ClearProjectCommand.RaiseCanExecuteChanged(); LinkFlatSetCommand.RaiseCanExecuteChanged(); UnlinkFlatSetCommand.RaiseCanExecuteChanged(); UndoCommand.RaiseCanExecuteChanged(); } } }
     public bool ShowIssuesOnly { get => _showIssuesOnly; set { if (Set(ref _showIssuesOnly, value)) RebuildTree(); } }
     public string SearchText { get => _searchText; set { if (Set(ref _searchText, value)) RebuildTree(); } }
     public string Status { get => _status; private set => Set(ref _status, value); }
     public double Progress { get => _progress; private set => Set(ref _progress, value); }
+    public double ExportProgress { get => _exportProgress; private set => Set(ref _exportProgress, value); }
     public int TotalFiles => _frames.Count;
     public int TotalIssues => _frames.Sum(frame => frame.Issues.Count);
     public int OverrideCount => _frames.Count(frame => HasAnyOverride(frame));
@@ -250,23 +401,42 @@ public sealed class MainViewModel : BindableBase
 
     public void AddSource(string path)
     {
-        if (!SourcePaths.Contains(path, StringComparer.OrdinalIgnoreCase)) { SourcePaths.Add(path); SaveState(); }
+        if (string.IsNullOrWhiteSpace(path)) return;
+        path = Path.GetFullPath(path);
+        if (SourcePaths.Contains(path, StringComparer.OrdinalIgnoreCase)) { Status = "Sorgente già collegata"; return; }
+        var hadAnalysis = _analysis is not null || _frames.Count > 0;
+        SourcePaths.Add(path);
+        InvalidateProjectAnalysis(hadAnalysis);
+        Status = $"{SourceSummary} · pronta per l’analisi";
+        SaveState();
     }
 
-    public void RemoveSource(string path) { SourcePaths.Remove(path); SaveState(); }
+    public void RemoveSource(string path)
+    {
+        var hadAnalysis = _analysis is not null || _frames.Count > 0;
+        if (!SourcePaths.Remove(path)) return;
+        InvalidateProjectAnalysis(hadAnalysis);
+        Status = HasSources ? $"Sorgente rimossa · {SourceSummary} · rianalizza il progetto" : "Nessuna sorgente collegata";
+        SaveState();
+    }
 
     public void AddMasterLibrary(string path)
     {
         path = Path.GetFullPath(path);
         if (MasterLibraries.Any(item => item.Path.Equals(path, StringComparison.OrdinalIgnoreCase))) { SelectedMasterLibrary = MasterLibraries.First(item => item.Path.Equals(path, StringComparison.OrdinalIgnoreCase)); return; }
         var item = new MasterLibraryItem(new DirectoryInfo(path).Name, path, MasterLibraries.Count + 1, true);
-        MasterLibraries.Add(item); SelectedMasterLibrary = item; NormalizeLibraryPriorities(); SaveState();
+        AddMasterLibraryItem(item); SelectedMasterLibrary = item; NormalizeLibraryPriorities();
+        InvalidateProjectAnalysis(_analysis is not null || _frames.Count > 0);
+        SaveState();
     }
 
     public void RemoveSelectedMasterLibrary()
     {
         if (SelectedMasterLibrary is null) return;
-        MasterLibraries.Remove(SelectedMasterLibrary); SelectedMasterLibrary = null; NormalizeLibraryPriorities(); SaveState();
+        SelectedMasterLibrary.PropertyChanged -= MasterLibraryItem_PropertyChanged;
+        MasterLibraries.Remove(SelectedMasterLibrary); SelectedMasterLibrary = null; NormalizeLibraryPriorities();
+        InvalidateProjectAnalysis(_analysis is not null || _frames.Count > 0);
+        SaveState();
         Status = "Libreria rimossa dal progetto · nessun Master è stato cancellato";
     }
 
@@ -275,10 +445,130 @@ public sealed class MainViewModel : BindableBase
         if (SelectedMasterLibrary is null) return;
         var index = MasterLibraries.IndexOf(SelectedMasterLibrary); var target = index + direction;
         if (target < 0 || target >= MasterLibraries.Count) return;
-        MasterLibraries.Move(index, target); NormalizeLibraryPriorities(); SaveState();
+        MasterLibraries.Move(index, target); NormalizeLibraryPriorities();
+        InvalidateProjectAnalysis(_analysis is not null || _frames.Count > 0);
+        SaveState();
     }
 
     public void RefreshMasterLibraryStates() { foreach (var item in MasterLibraries) item.RefreshState(); Status = $"{MasterLibraries.Count(item => item.IsOnline && item.Enabled)}/{MasterLibraries.Count} librerie disponibili"; }
+
+    private void AddMasterLibraryItem(MasterLibraryItem item)
+    {
+        item.PropertyChanged += MasterLibraryItem_PropertyChanged;
+        MasterLibraries.Add(item);
+    }
+
+    private void MasterLibraryItem_PropertyChanged(object? sender, PropertyChangedEventArgs e)
+    {
+        if (e.PropertyName is not (nameof(MasterLibraryItem.Enabled) or nameof(MasterLibraryItem.Path))) return;
+        InvalidateProjectAnalysis(_analysis is not null || _frames.Count > 0);
+        Status = HasSources ? "Configurazione Master aggiornata · rianalizza il progetto" : "Configurazione Master aggiornata";
+        SaveState();
+    }
+
+    private void InvalidateProjectAnalysis(bool awaitingReanalysis)
+    {
+        _frames = [];
+        _analysis = null;
+        _statistics = null;
+        _undo.Clear();
+        SelectedNode = null;
+        TreeRoots.Clear();
+        InvalidateExportPlan();
+        WbppKeywords.Clear();
+        WbppNotes.Clear();
+        AvailableFlatSets.Clear();
+        FilterStatistics.Clear();
+        SessionStatistics.Clear();
+        NightStatistics.Clear();
+        ReviewQueue.Clear();
+        _allQualityFrames.Clear();
+        QualityFrames.Clear();
+        QualitySeries.Clear();
+        SelectedQualityFrame = null;
+        _selectedQualitySeries = null;
+        Raise(nameof(SelectedQualitySeries));
+        SelectedIssues.Clear();
+        _searchText = "";
+        Raise(nameof(SearchText));
+        _showIssuesOnly = false;
+        Raise(nameof(ShowIssuesOnly));
+        Progress = 0;
+        _awaitingReanalysis = awaitingReanalysis && HasSources;
+        ReadinessText = HasSources ? $"{SourceSummary} · analisi richiesta" : "Aggiungi file o cartelle FITS/XISF";
+        CalibrationSummary = "Seleziona uno o più Light per vedere le calibrazioni assegnate.";
+        Raise(nameof(TotalFiles)); Raise(nameof(TotalIssues)); Raise(nameof(OverrideCount));
+        Raise(nameof(UnresolvedCalibrations)); Raise(nameof(IsProjectReady)); Raise(nameof(PlanSummary));
+        Raise(nameof(TotalIntegrationText)); Raise(nameof(StatisticsSummary)); Raise(nameof(StatisticsDateRange));
+        Raise(nameof(ReviewQueueCount));
+        RaiseProjectWorkflowProperties();
+        ApplyLibraryOffsetCommand.RaiseCanExecuteChanged();
+        ApplyProjectDefaultsCommand.RaiseCanExecuteChanged();
+        ClearProjectCommand.RaiseCanExecuteChanged();
+        LinkFlatSetCommand.RaiseCanExecuteChanged();
+        UnlinkFlatSetCommand.RaiseCanExecuteChanged();
+        UndoCommand.RaiseCanExecuteChanged();
+    }
+
+    private void RaiseProjectWorkflowProperties()
+    {
+        Raise(nameof(HasSources));
+        Raise(nameof(HasAnalysis));
+        Raise(nameof(HasVisibleTree));
+        Raise(nameof(ShowImportPrompt));
+        Raise(nameof(ShowAnalysisPrompt));
+        Raise(nameof(ShowNoResultsPrompt));
+        Raise(nameof(CanAnalyzeProject));
+        Raise(nameof(SourceSummary));
+        Raise(nameof(SourceBreakdown));
+        Raise(nameof(AnalysisPromptTitle));
+        Raise(nameof(AnalysisPromptDetail));
+        Raise(nameof(AnalysisActionLabel));
+    }
+
+    private void InvalidateExportPlan()
+    {
+        if (_exportState is ExportRunState.Running or ExportRunState.Paused or ExportRunState.Cancelling) return;
+        _plan = null;
+        PlannedTreeRoots.Clear();
+        Raise(nameof(PlanSummary));
+        Raise(nameof(HasExportPlan));
+        InvalidateExportPreflight();
+    }
+
+    private void InvalidateExportPreflight()
+    {
+        if (_exportState is ExportRunState.Running or ExportRunState.Paused or ExportRunState.Cancelling) return;
+        _exportPreflight = null;
+        ExportPreflightFindings.Clear();
+        ExportProgress = 0;
+        SetExportState(ExportRunState.Idle);
+        ExportProgressDetail = HasExportPlan ? "Anteprima pronta · controlli automatici inclusi nell’esportazione." : "Anteprima facoltativa · controlli automatici inclusi nell’esportazione.";
+        RaiseExportProperties();
+    }
+
+    private void SetExportState(ExportRunState value)
+    {
+        if (_exportState == value) return;
+        _exportState = value;
+        RaiseExportProperties();
+    }
+
+    private void RaiseExportProperties()
+    {
+        Raise(nameof(HasExportPlan)); Raise(nameof(HasExportPreflight)); Raise(nameof(ExportPreflightReady));
+        Raise(nameof(CanRunExportPreflight)); Raise(nameof(CanStartExport)); Raise(nameof(CanPauseExport));
+        Raise(nameof(CanResumeExport)); Raise(nameof(CanCancelExport)); Raise(nameof(ExportStateLabel));
+        Raise(nameof(ExportFileSummary)); Raise(nameof(ExportBytesSummary)); Raise(nameof(ExportSpaceSummary));
+        Raise(nameof(ExportEtaSummary)); Raise(nameof(ExportResumeSummary));
+    }
+
+    private ExportPreflightOptions CurrentExportOptions() => new(
+        Math.Clamp(ExportMarginPercent, 0, 100),
+        (long)(Math.Max(0, ExportMinimumReserveGiB) * 1024 * 1024 * 1024),
+        Math.Max(1, ExportEstimatedThroughputMiBps),
+        SourcePaths.Concat(MasterLibraries.Where(item => item.Enabled).Select(item => item.Path))
+            .Distinct(StringComparer.OrdinalIgnoreCase).ToArray());
 
     public async Task OrganizeMasterLibraryAsync(CancellationToken cancellationToken = default)
     {
@@ -403,6 +693,15 @@ public sealed class MainViewModel : BindableBase
         _state.ReducedMotion = ReducedMotion;
         _state.CheckForUpdates = CheckForUpdates;
         _state.UpdateChannel = UpdateChannel;
+        _state.ExportMarginPercent = ExportMarginPercent;
+        _state.ExportMinimumReserveGiB = ExportMinimumReserveGiB;
+        _state.ExportEstimatedThroughputMiBps = ExportEstimatedThroughputMiBps;
+        _state.ExcludedQualityPaths = _excludedQualityPaths.OrderBy(path => path, StringComparer.OrdinalIgnoreCase).ToList();
+        _state.QualitySigmaThreshold = QualitySigmaThreshold;
+        _state.QualityStretchStrength = QualityStretchStrength;
+        _state.QualityDebayerPreview = QualityDebayerPreview;
+        _state.SourcePanelWidth = SourcePanelWidth;
+        _state.InspectorPanelWidth = InspectorPanelWidth;
         foreach (var frame in _frames)
         {
             if (!HasAnyOverride(frame) && !_kindOverrides.Contains(frame.Path)) { _state.Overrides.Remove(frame.Path); continue; }
@@ -434,9 +733,10 @@ public sealed class MainViewModel : BindableBase
         _projectCreatedAt = document.CreatedAt;
         SourcePaths.Clear();
         foreach (var source in document.SourcePaths) SourcePaths.Add(source);
+        foreach (var library in MasterLibraries) library.PropertyChanged -= MasterLibraryItem_PropertyChanged;
         MasterLibraries.Clear();
         var projectLibraries = document.MasterLibraries.Count > 0 ? document.MasterLibraries : string.IsNullOrWhiteSpace(document.LibraryPath) ? [] : [new() { Name = "Libreria principale", Path = document.LibraryPath, Priority = 1 }];
-        foreach (var library in projectLibraries.OrderBy(item => item.Priority)) MasterLibraries.Add(new(library.Name, library.Path, library.Priority, library.Enabled));
+        foreach (var library in projectLibraries.OrderBy(item => item.Priority)) AddMasterLibraryItem(new(library.Name, library.Path, library.Priority, library.Enabled));
         _libraryPath = document.LibraryPath;
         Raise(nameof(LibraryPath));
         DestinationPath = document.DestinationPath;
@@ -446,9 +746,12 @@ public sealed class MainViewModel : BindableBase
         ProjectDefaultGain = Input(document.DefaultGain);
         ProjectDefaultOffset = Input(document.DefaultOffset);
         ProjectDefaultTemperature = Input(document.DefaultTemperatureC);
+        _qualitySigmaThreshold = Math.Clamp(document.QualitySigmaThreshold, 2, 6); Raise(nameof(QualitySigmaThreshold));
+        _excludedQualityPaths.Clear(); foreach (var excluded in document.ExcludedQualityPaths) _excludedQualityPaths.Add(excluded);
         _state.Overrides = new(document.Overrides, StringComparer.OrdinalIgnoreCase);
         _kindOverrides.Clear();
         foreach (var pair in _state.Overrides.Where(pair => pair.Value.Kind is not null)) _kindOverrides.Add(pair.Key);
+        InvalidateProjectAnalysis(false);
     }
 
     private AstroForgeProjectDocument CreateProjectDocument() => new()
@@ -456,6 +759,7 @@ public sealed class MainViewModel : BindableBase
         CreatedAt = _projectCreatedAt, ProjectName = ProjectName, SourcePaths = SourcePaths.ToList(), LibraryPath = LibraryPath, MasterLibraries = MasterLibraries.Select(item => item.ToDefinition()).ToList(),
         DestinationPath = DestinationPath, SessionBoundaryHour = SessionBoundaryHour, DefaultGain = ParseDefault(ProjectDefaultGain),
         DefaultOffset = ParseDefault(ProjectDefaultOffset), DefaultTemperatureC = ParseDefault(ProjectDefaultTemperature),
+        QualitySigmaThreshold = QualitySigmaThreshold, ExcludedQualityPaths = _excludedQualityPaths.OrderBy(path => path, StringComparer.OrdinalIgnoreCase).ToList(),
         Overrides = new(_state.Overrides, StringComparer.OrdinalIgnoreCase)
     };
 
@@ -474,7 +778,7 @@ public sealed class MainViewModel : BindableBase
     public async Task ScanAsync(CancellationToken cancellationToken = default)
     {
         var availableLibraries = MasterLibraries.Where(item => item.Enabled && item.IsOnline).ToArray();
-        if (SourcePaths.Count == 0 && availableLibraries.Length == 0) { Status = "Aggiungi una sorgente oppure una Master Library online"; return; }
+        if (SourcePaths.Count == 0) { Status = "Aggiungi almeno una sorgente FITS/XISF. Il Master Library Lab resta disponibile separatamente."; return; }
         using var tracked = BeginTrackedOperation("Analisi progetto", "AF-SCAN-START", "Analisi progetto avviata");
         IsScanning = true;
         Progress = 0;
@@ -503,6 +807,8 @@ public sealed class MainViewModel : BindableBase
                 DestinationPath = Directory.GetParent(SourcePaths[0])?.FullName ?? SourcePaths[0];
             RefreshIntelligence();
             RebuildTree();
+            _awaitingReanalysis = false;
+            RaiseProjectWorkflowProperties();
             Status = $"{TotalFiles} file analizzati · {_scanner.LastCacheHits} da cache · {_scanner.LastParsedFiles} letti · {TotalIssues} segnalazioni";
             Raise(nameof(TotalFiles)); Raise(nameof(TotalIssues)); Raise(nameof(OverrideCount));
             ApplyLibraryOffsetCommand.RaiseCanExecuteChanged();
@@ -527,10 +833,253 @@ public sealed class MainViewModel : BindableBase
         if (_analysis?.Ready != true) throw new InvalidOperationException("Risolvi prima tutte le calibrazioni evidenziate.");
         if (string.IsNullOrWhiteSpace(ProjectName)) throw new InvalidOperationException("Inserisci il nome del progetto.");
         if (string.IsNullOrWhiteSpace(DestinationPath)) throw new InvalidOperationException("Seleziona la cartella di destinazione.");
-        _plan = ProjectExporter.BuildPlan(ProjectName, DestinationPath, _analysis);
+        _plan = ProjectExporter.BuildPlan(ProjectName, DestinationPath, _analysis, _excludedQualityPaths);
         BuildPlannedTree();
-        Raise(nameof(PlanSummary));
-        Status = $"Piano pronto: {_plan.Files.Count} file, {HumanSize(_plan.RequiredBytes)}";
+        InvalidateExportPreflight();
+        Raise(nameof(PlanSummary)); Raise(nameof(HasExportPlan)); Raise(nameof(CanRunExportPreflight));
+        Status = $"Anteprima pronta: {_plan.Files.Count} file, {HumanSize(_plan.RequiredBytes)} · i controlli verranno eseguiti automaticamente";
+    }
+
+    public async Task AnalyzeQualityAsync(CancellationToken cancellationToken = default)
+    {
+        var series = SelectedQualitySeries ?? throw new InvalidOperationException("Seleziona prima una serie di calibrazione.");
+        var lights = series.SourceFrames.Where(IsQualityFits).ToArray();
+        if (lights.Length == 0) throw new InvalidOperationException("La serie selezionata non contiene Light FITS supportati.");
+        foreach (var previous in series.Frames) _allQualityFrames.Remove(previous);
+        series.SetAnalysisResults([]);
+        QualityFrames.Clear();
+        SelectedQualityFrame = null;
+        IsQualityAnalyzing = true;
+        QualityProgress = 0;
+        QualityStatus = $"{series.DisplayName} · analisi pixel di {lights.Length} Light…";
+        var results = new List<QualityFrameRow>(lights.Length);
+        try
+        {
+            for (var index = 0; index < lights.Length; index++)
+            {
+                cancellationToken.ThrowIfCancellationRequested();
+                var frame = lights[index];
+                try
+                {
+                    // Decodifica e misure sono intenzionalmente fuori dal dispatcher WPF:
+                    // Blink, annulla e navigazione devono restare reattivi anche su FITS grandi.
+                    var metrics = await Task.Run(
+                        () => FitsQualityAnalyzer.AnalyzeAsync(frame.Path, cancellationToken),
+                        cancellationToken);
+                    var row = new QualityFrameRow(frame, metrics, _excludedQualityPaths.Contains(frame.Path), series.ConfigurationSession);
+                    results.Add(row); _allQualityFrames.Add(row); QualityFrames.Add(row);
+                }
+                catch (Exception exception) when (exception is InvalidDataException or NotSupportedException or IOException)
+                {
+                    var row = QualityFrameRow.Failed(frame, exception.Message, _excludedQualityPaths.Contains(frame.Path), series.ConfigurationSession);
+                    results.Add(row); _allQualityFrames.Add(row); QualityFrames.Add(row);
+                }
+                QualityProgress = (index + 1) * 100d / lights.Length;
+                QualityStatus = $"{index + 1}/{lights.Length} · {frame.FileName}";
+            }
+            series.SetAnalysisResults(results);
+            ScoreQualityOutliers();
+            RebuildQualitySeriesView();
+            QualityStatus = $"{series.DisplayName} · analisi completata · {results.Count(item => item.Error is null)} misurati · {series.SuspectCount} sospetti";
+            Raise(nameof(QualitySuspectCount)); Raise(nameof(QualityExcludedCount)); Raise(nameof(CanChangeQualityExclusions));
+        }
+        catch (OperationCanceledException)
+        {
+            series.SetAnalysisResults(results);
+            ScoreQualityOutliers();
+            RebuildQualitySeriesView();
+            QualityStatus = $"{series.DisplayName} · analisi annullata · {results.Count} risultati parziali conservati";
+            throw;
+        }
+        finally { IsQualityAnalyzing = false; }
+    }
+
+    public void ExcludeQualitySuspects()
+    {
+        foreach (var item in SelectedQualitySeries?.Frames.Where(item => item.IsSuspect) ?? []) SetQualityExcluded(item, true);
+        SaveState(); InvalidateExportPlan(); RefreshQualityCounts();
+    }
+
+    public void SetQualitySelection(IReadOnlyCollection<QualityFrameRow> rows)
+    {
+        QualitySelectedCount = rows.Count;
+        if (rows.Count > 0 && (SelectedQualityFrame is null || !rows.Contains(SelectedQualityFrame))) SelectedQualityFrame = rows.Last();
+    }
+
+    public void ExcludeSelectedQualityFrames(IEnumerable<QualityFrameRow> rows)
+    {
+        foreach (var item in rows) SetQualityExcluded(item, true);
+        SaveState(); InvalidateExportPlan(); RefreshQualityCounts();
+    }
+
+    public async Task RenderQualityPreviewAsync(QualityFrameRow? item, CancellationToken cancellationToken = default, bool fullResolution = false)
+    {
+        if (item is null || item.Error is not null) return;
+        if (_highResolutionQualityItem is not null && !ReferenceEquals(_highResolutionQualityItem, item))
+        {
+            _highResolutionQualityItem.ResetPreview(); _highResolutionQualityItem = null;
+        }
+        var key = $"{QualityDebayerPreview}|{QualityStretchStrength:0.0}|{(fullResolution ? "full" : "screen")}";
+        if (item.PreviewKey == key) return;
+        var preview = await Task.Run(
+            () => FitsQualityAnalyzer.RenderPreviewAsync(item.Path, item.Frame.BayerPattern.Value, QualityDebayerPreview, QualityStretchStrength, cancellationToken, fullResolution ? 2400 : 960),
+            cancellationToken);
+        item.SetPreview(preview, key);
+        if (fullResolution) _highResolutionQualityItem = item;
+    }
+
+    public void ToggleSelectedQualityExclusion()
+    {
+        if (SelectedQualityFrame is null) return;
+        SetQualityExcluded(SelectedQualityFrame, !SelectedQualityFrame.IsExcluded);
+        SaveState(); InvalidateExportPlan(); RefreshQualityCounts();
+    }
+
+    public void RestoreAllQualityFrames()
+    {
+        foreach (var item in _allQualityFrames) SetQualityExcluded(item, false);
+        SaveState(); InvalidateExportPlan(); RefreshQualityCounts();
+    }
+
+    private void SetQualityExcluded(QualityFrameRow item, bool excluded)
+    {
+        item.IsExcluded = excluded;
+        if (excluded) _excludedQualityPaths.Add(item.Path); else _excludedQualityPaths.Remove(item.Path);
+    }
+
+    private void RefreshQualityCounts()
+    {
+        foreach (var series in QualitySeries) series.RefreshCounts();
+        Raise(nameof(QualitySuspectCount)); Raise(nameof(QualityExcludedCount)); Raise(nameof(QualityPendingSuspectCount));
+        Raise(nameof(CanExcludeQualitySuspects)); Raise(nameof(ExcludeQualitySuspectsLabel)); Raise(nameof(QualityTableSummary));
+        Raise(nameof(QualityChartFrames));
+        QualityStatus = SelectedQualitySeries is null
+            ? $"{_allQualityFrames.Count(item => item.Error is null)} misurati"
+            : $"{SelectedQualitySeries.DisplayName} · {SelectedQualitySeries.Frames.Count(item => item.Error is null)} misurati · {QualitySuspectCount} sospetti · {QualityExcludedCount} esclusi";
+    }
+
+    private void ScoreQualityOutliers()
+    {
+        foreach (var group in _allQualityFrames.Where(item => item.Error is null).GroupBy(item => $"{item.Filter}|{item.ConfigurationSession}|{item.ExposureSeconds:0.###}", StringComparer.OrdinalIgnoreCase))
+        {
+            var rows = group.ToArray();
+            if (rows.Length < 5) { foreach (var row in rows) row.SetScore(0, false, "Serie troppo piccola per rilevare outlier"); continue; }
+            var fwhm = Robust(rows, item => item.Fwhm);
+            var eccentricity = Robust(rows, item => item.Eccentricity);
+            var noise = Robust(rows, item => item.Noise);
+            var snr = Robust(rows, item => item.Snr);
+            var stars = Robust(rows, item => item.StarCount);
+            foreach (var row in rows)
+            {
+                var parts = new[]
+                {
+                    (Name: "FWHM", Z: PositiveZ(row.Fwhm, fwhm)),
+                    (Name: "eccentricità", Z: PositiveZ(row.Eccentricity, eccentricity)),
+                    (Name: "rumore", Z: PositiveZ(row.Noise, noise)),
+                    (Name: "SNR basso", Z: NegativeZ(row.Snr, snr)),
+                    (Name: "poche stelle", Z: NegativeZ(row.StarCount, stars))
+                };
+                var worst = parts.OrderByDescending(item => item.Z).First();
+                var score = parts.Where(item => item.Z > 0).Sum(item => item.Z * item.Z) is var sum ? Math.Sqrt(sum) : 0;
+                // One visible rule: the chart marker, orange points and suspect list all use this exact score threshold.
+                var suspect = score >= QualitySigmaThreshold;
+                row.SetScore(score, suspect, worst.Z >= 2 ? $"Anomalia principale: {worst.Name} ({worst.Z:0.0}σ)" : "Coerente con la serie");
+            }
+        }
+    }
+
+    private void BuildQualitySeriesDefinitions()
+    {
+        _allQualityFrames.Clear();
+        QualityFrames.Clear();
+        QualitySeries.Clear();
+        if (_analysis is null) return;
+        foreach (var group in _analysis.Lights.GroupBy(item => new
+                 {
+                     Filter = string.IsNullOrWhiteSpace(item.Light.FilterName.Value) ? "Senza filtro" : item.Light.FilterName.Value!.Trim(),
+                     Session = item.FlatGroup?.Id ?? "Sessione non risolta"
+                 })
+                 .OrderBy(group => group.Key.Filter, StringComparer.OrdinalIgnoreCase)
+                 .ThenBy(group => group.Key.Session, StringComparer.OrdinalIgnoreCase))
+            QualitySeries.Add(new QualitySeriesRow(group.Key.Filter, group.Key.Session, group.Select(item => item.Light).ToArray()));
+        SelectedQualitySeries = QualitySeries.FirstOrDefault();
+        QualityStatus = QualitySeries.Count == 0
+            ? "Nessuna serie Light disponibile nel progetto."
+            : $"{QualitySeries.Count} serie disponibili · selezionane una e avvia l’analisi pixel";
+        Raise(nameof(CanRunQualityAnalysis));
+    }
+
+    private void RebuildQualitySeriesView()
+    {
+        var previousSelection = SelectedQualityFrame;
+        QualityFrames.Clear();
+        if (SelectedQualitySeries is not null)
+            foreach (var row in SelectedQualitySeries.Frames.Where(row => !QualityShowOnlySuspects || row.IsSuspect)) QualityFrames.Add(row);
+        SelectedQualityFrame = previousSelection is not null && QualityFrames.Contains(previousSelection)
+            ? previousSelection
+            : QualityFrames.OrderByDescending(item => item.OutlierScore).FirstOrDefault();
+        QualitySelectedCount = 0;
+        if (SelectedQualitySeries is null)
+            QualityStatus = "Nessuna serie selezionata.";
+        else if (!SelectedQualitySeries.IsAnalyzed)
+            QualityStatus = $"{SelectedQualitySeries.DisplayName} · {SelectedQualitySeries.FrameCount} Light in {SelectedQualitySeries.NightCount} notti · non ancora analizzata";
+        else
+            RefreshQualityCounts();
+        Raise(nameof(CanChangeQualityExclusions)); Raise(nameof(CanExcludeQualitySuspects)); Raise(nameof(ExcludeQualitySuspectsLabel));
+        Raise(nameof(QualityChartFrames)); Raise(nameof(QualityTableSummary));
+    }
+
+    private static bool IsQualityFits(FrameMetadata frame) =>
+        frame.Kind == FrameKind.Light && new[] { ".fit", ".fits", ".fts" }.Contains(Path.GetExtension(frame.Path), StringComparer.OrdinalIgnoreCase);
+
+    private static (double Median, double Scale) Robust(QualityFrameRow[] rows, Func<QualityFrameRow, double> selector)
+    {
+        var values = rows.Select(selector).OrderBy(value => value).ToArray();
+        var median = values[values.Length / 2];
+        var deviations = values.Select(value => Math.Abs(value - median)).OrderBy(value => value).ToArray();
+        return (median, Math.Max(1e-9, deviations[deviations.Length / 2] * 1.4826));
+    }
+    private static double PositiveZ(double value, (double Median, double Scale) stats) => Math.Max(0, (value - stats.Median) / stats.Scale);
+    private static double NegativeZ(double value, (double Median, double Scale) stats) => Math.Max(0, (stats.Median - value) / stats.Scale);
+
+    public async Task RunExportPreflightAsync(CancellationToken cancellationToken = default)
+    {
+        if (_plan is null) BuildPlan();
+        var plan = _plan ?? throw new InvalidOperationException("Impossibile costruire il piano di esportazione.");
+        SetExportState(ExportRunState.Preflighting);
+        IsScanning = true;
+        ExportProgress = 0;
+        ExportProgressDetail = "Dry-run: sorgenti, staging, spazio e percorsi…";
+        using var operation = _eventLog.BeginOperation("Preflight export", "AF-EXPORT-PREFLIGHT-START", "Dry-run export avviato");
+        try
+        {
+            var report = await ProjectExportPreflight.AnalyzeAsync(plan, CurrentExportOptions(), cancellationToken);
+            ApplyExportPreflight(report);
+            SetExportState(report.IsReady ? ExportRunState.Ready : ExportRunState.Blocked);
+            ExportProgressDetail = report.IsReady
+                ? $"Dry-run superato · {report.WarningCount} avvisi · nessun file scritto"
+                : $"Export bloccato · {report.ErrorCount} errori · {report.WarningCount} avvisi";
+            Status = ExportProgressDetail;
+            if (report.IsReady) operation.Complete("AF-EXPORT-PREFLIGHT-OK", ExportProgressDetail);
+            else operation.Fail("AF-EXPORT-PREFLIGHT-BLOCKED", ExportProgressDetail, new ExportPreflightException(report));
+        }
+        catch (Exception exception)
+        {
+            SetExportState(ExportRunState.Failed);
+            ExportProgressDetail = "Preflight non completato";
+            operation.Fail("AF-EXPORT-PREFLIGHT-001", "Preflight export non completato", exception);
+            throw;
+        }
+        finally { IsScanning = false; RaiseExportProperties(); }
+    }
+
+    private void ApplyExportPreflight(ExportPreflightReport report)
+    {
+        _exportPreflight = report;
+        ExportPreflightFindings.Clear();
+        foreach (var finding in report.Findings)
+            ExportPreflightFindings.Add(new(finding.Severity.ToString(), finding.Code, finding.Title, finding.Detail, finding.Path ?? ""));
+        RaiseExportProperties();
     }
 
     public string ExportStatistics(string destinationRoot)
@@ -576,6 +1125,7 @@ public sealed class MainViewModel : BindableBase
         _pendingRecovery = null;
         Raise(nameof(HasRecoverySnapshot));
         Raise(nameof(CanRunProjectOperations));
+        Raise(nameof(CanAnalyzeProject));
         Raise(nameof(RecoverySummary));
         _eventLog.Write("Information", "AF-RECOVERY-RESTORED", "Fotografia progetto ripristinata", operationId: recovery.OperationId, operation: recovery.Operation);
         Status = "Progetto ripristinato dal recovery journal";
@@ -590,6 +1140,7 @@ public sealed class MainViewModel : BindableBase
         _pendingRecovery = null;
         Raise(nameof(HasRecoverySnapshot));
         Raise(nameof(CanRunProjectOperations));
+        Raise(nameof(CanAnalyzeProject));
         Raise(nameof(RecoverySummary));
         _eventLog.Write("Information", "AF-RECOVERY-DISCARDED", "Fotografia di recupero ignorata", operationId: recovery.OperationId, operation: recovery.Operation);
         Status = "Recovery journal ignorato · progetto corrente invariato";
@@ -691,35 +1242,8 @@ public sealed class MainViewModel : BindableBase
 
     private void ClearProject()
     {
-        _frames = [];
-        _analysis = null;
-        _statistics = null;
-        _plan = null;
-        _undo.Clear();
-        SelectedNode = null;
-        TreeRoots.Clear();
-        PlannedTreeRoots.Clear();
-        WbppKeywords.Clear();
-        WbppNotes.Clear();
-        AvailableFlatSets.Clear();
-        FilterStatistics.Clear();
-        SessionStatistics.Clear();
-        NightStatistics.Clear();
-        ReviewQueue.Clear();
-        SelectedIssues.Clear();
-        SearchText = "";
-        ShowIssuesOnly = false;
-        Progress = 0;
-        ReadinessText = "Non analizzato";
-        CalibrationSummary = "Seleziona uno o più Light per vedere le calibrazioni assegnate.";
+        InvalidateProjectAnalysis(false);
         Status = "Progetto svuotato dalla memoria · nessun file originale è stato cancellato";
-        Raise(nameof(TotalFiles)); Raise(nameof(TotalIssues)); Raise(nameof(OverrideCount));
-        Raise(nameof(UnresolvedCalibrations)); Raise(nameof(IsProjectReady)); Raise(nameof(PlanSummary));
-        Raise(nameof(TotalIntegrationText)); Raise(nameof(StatisticsSummary)); Raise(nameof(StatisticsDateRange));
-        ApplyLibraryOffsetCommand.RaiseCanExecuteChanged();
-        ApplyProjectDefaultsCommand.RaiseCanExecuteChanged();
-        ClearProjectCommand.RaiseCanExecuteChanged();
-        UndoCommand.RaiseCanExecuteChanged();
     }
 
     private bool CanLinkFlatSet()
@@ -768,26 +1292,92 @@ public sealed class MainViewModel : BindableBase
     public async Task<string> ExportAsync(CancellationToken cancellationToken = default)
     {
         if (_plan is null) BuildPlan();
+        var plan = _plan ?? throw new InvalidOperationException("Impossibile costruire il piano di esportazione.");
         using var tracked = BeginTrackedOperation("Esportazione progetto", "AF-EXPORT-START", "Esportazione verificata avviata");
+        _exportCancellation = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
+        _exportControl = new();
+        SetExportState(ExportRunState.Preflighting);
         IsScanning = true;
         try
         {
+            ExportProgressDetail = "Controlli di sicurezza automatici…";
+            var report = await ProjectExportPreflight.AnalyzeAsync(plan, CurrentExportOptions(), _exportCancellation.Token);
+            ApplyExportPreflight(report);
+            if (!report.IsReady) throw new ExportPreflightException(report);
+            SetExportState(ExportRunState.Running);
             var progress = new Progress<ExportProgress>(item =>
             {
-                Progress = item.Total == 0 ? 0 : item.Completed * 100d / item.Total;
-                Status = $"Copia verificata {item.Completed}/{item.Total} · {item.CurrentFile}";
+                ExportProgress = item.Total == 0 ? 0 : item.Completed * 100d / item.Total;
+                var speed = item.MiBPerSecond <= 0 ? "calcolo velocità" : $"{item.MiBPerSecond:0.0} MiB/s";
+                var eta = item.EstimatedRemaining is null ? "ETA —" : $"ETA {FormatDuration(item.EstimatedRemaining.Value)}";
+                var mode = item.Resumed ? "riusato" : "verificato";
+                ExportProgressDetail = $"{item.Completed}/{item.Total} · {HumanSize(item.BytesCopied)} / {HumanSize(item.TotalBytes)} · {speed} · {eta}";
+                Status = $"{mode} · {item.CurrentFile}";
             });
-            var output = await ProjectExporter.ExecuteAsync(_plan!, progress, cancellationToken);
+            var output = await ProjectExporter.ExecuteAsync(plan, progress, _exportCancellation.Token, _exportControl, CurrentExportOptions());
+            SetExportState(ExportRunState.Completed);
+            ExportProgress = 100;
+            ExportProgressDetail = $"Copia e verifica completate · {plan.Files.Count} file";
             Status = $"Progetto verificato: {output}";
-            tracked.Complete("AF-EXPORT-OK", $"Esportazione verificata completata: {_plan!.Files.Count} file");
+            tracked.Complete("AF-EXPORT-OK", $"Esportazione verificata completata: {plan.Files.Count} file");
             return output;
+        }
+        catch (OperationCanceledException) when (_exportCancellation.IsCancellationRequested)
+        {
+            SetExportState(ExportRunState.Cancelled);
+            ExportProgressDetail = "Export annullato · le copie già verificate restano nello staging e saranno riutilizzate";
+            Status = ExportProgressDetail;
+            tracked.Complete("AF-EXPORT-CANCELLED", "Export annullato in modo riprendibile");
+            throw;
+        }
+        catch (ExportPreflightException exception)
+        {
+            ApplyExportPreflight(exception.Report);
+            SetExportState(ExportRunState.Blocked);
+            ExportProgressDetail = $"Export bloccato dal nuovo preflight · {exception.Report.ErrorCount} errori";
+            tracked.Fail("AF-EXPORT-PREFLIGHT-CHANGED", "Le condizioni sono cambiate dopo il dry-run", exception);
+            throw;
         }
         catch (Exception exception)
         {
+            SetExportState(ExportRunState.Failed);
+            ExportProgressDetail = "Export interrotto · staging conservato per diagnosi e ripresa";
             tracked.Fail("AF-EXPORT-001", "Esportazione progetto non completata", exception);
             throw;
         }
-        finally { IsScanning = false; }
+        finally
+        {
+            IsScanning = false;
+            _exportCancellation.Dispose();
+            _exportCancellation = null;
+            _exportControl = null;
+            RaiseExportProperties();
+        }
+    }
+
+    public void PauseExport()
+    {
+        if (_exportState != ExportRunState.Running || _exportControl is null) return;
+        _exportControl.Pause();
+        SetExportState(ExportRunState.Paused);
+        Status = "Export in pausa · nessun file parziale verrà promosso";
+    }
+
+    public void ResumeExport()
+    {
+        if (_exportState != ExportRunState.Paused || _exportControl is null) return;
+        _exportControl.Resume();
+        SetExportState(ExportRunState.Running);
+        Status = "Export ripreso";
+    }
+
+    public void CancelExport()
+    {
+        if (!CanCancelExport || _exportCancellation is null) return;
+        SetExportState(ExportRunState.Cancelling);
+        _exportControl?.Resume();
+        _exportCancellation.Cancel();
+        Status = "Annullamento richiesto · chiusura sicura del file corrente";
     }
 
     private void RebuildTree()
@@ -806,6 +1396,8 @@ public sealed class MainViewModel : BindableBase
         var other = frames.Where(frame => frame.Kind is FrameKind.Unknown or FrameKind.DarkFlat).ToArray();
         if (other.Length > 0) TreeRoots.Add(Category("other", "Altri frame", "?", other, other.Select(Leaf)));
         if (selectedFrames is not null) { LoadEditor(); RaiseSelectionProperties(); }
+        Raise(nameof(HasVisibleTree));
+        Raise(nameof(ShowNoResultsPrompt));
     }
 
     private void AddOpticalSessionTree(FrameMetadata[] visibleFrames)
@@ -1147,6 +1739,7 @@ public sealed class MainViewModel : BindableBase
             frame.Issues.RemoveAll(issue => issue.Code.StartsWith("calibration.", StringComparison.Ordinal));
 
         _analysis = ProjectAnalyzer.Analyze(_frames);
+        BuildQualitySeriesDefinitions();
         RefreshStatistics();
         RefreshFlatSetOptions();
         foreach (var item in _analysis.Lights)
@@ -1169,8 +1762,7 @@ public sealed class MainViewModel : BindableBase
             : _analysis.Ready
                 ? $"Pronto per WBPP · {_analysis.Lights.Count} Light con Flat, Dark e Bias assegnati"
                 : $"Da risolvere · {_analysis.UnresolvedCount} assegnazioni di calibrazione mancanti o ambigue";
-        _plan = null;
-        PlannedTreeRoots.Clear();
+        InvalidateExportPlan();
         Raise(nameof(UnresolvedCalibrations));
         Raise(nameof(IsProjectReady));
         Raise(nameof(PlanSummary));
@@ -1356,6 +1948,14 @@ public sealed class MainViewModel : BindableBase
         return $"{value:0.##} {units[index]}";
     }
 
+    private static string FormatDuration(TimeSpan value)
+    {
+        if (value.TotalSeconds < 1) return "< 1 s";
+        if (value.TotalMinutes < 1) return $"{Math.Ceiling(value.TotalSeconds):0} s";
+        if (value.TotalHours < 1) return $"{(int)value.TotalMinutes} min {value.Seconds:00} s";
+        return $"{(int)value.TotalHours} h {value.Minutes:00} min";
+    }
+
     private static string FormatHours(double seconds)
     {
         var duration = TimeSpan.FromSeconds(Math.Max(0, seconds));
@@ -1437,6 +2037,8 @@ public sealed class MainViewModel : BindableBase
 }
 
 public sealed record WbppKeywordRow(string Keyword, string Pre, string Post, string Reason);
+public enum ExportRunState { Idle, Preflighting, Ready, Blocked, Running, Paused, Cancelling, Completed, Cancelled, Failed }
+public sealed record ExportPreflightFindingRow(string Severity, string Code, string Title, string Detail, string Path);
 public sealed record DiagnosticEventRow(string Timestamp, string Level, string Code, string Operation, string Correlation, string Message, string ExceptionType);
 public sealed record FlatSetOption(CalibrationGroup Group, string LinkId, string Filter, string Display)
 {
@@ -1478,6 +2080,93 @@ public sealed class ReviewQueueItem(FrameMetadata frame, string calibration, str
 public sealed record ReviewCandidateOption(string Path, string FileName, int Score, string Compatibility, string Reasons, string Camera, string Gain, string Offset, string Temperature, string Exposure, string Binning, string Readout)
 {
     public string Display => $"{FileName} · score {Score} · {Compatibility}";
+}
+
+public sealed class QualityFrameRow : BindableBase
+{
+    private bool _isExcluded; private bool _isSuspect; private double _outlierScore; private string _reason = "In attesa del confronto";
+    private BitmapSource? _preview;
+    private QualityFrameRow(FrameMetadata frame, QualityMetrics? metrics, string? error, bool excluded, string configurationSession)
+    {
+        Frame = frame; Metrics = metrics; Error = error; _isExcluded = excluded; ConfigurationSession = configurationSession;
+        if (metrics is not null)
+        {
+            var bitmap = BitmapSource.Create(metrics.PreviewWidth, metrics.PreviewHeight, 96, 96, PixelFormats.Gray8, null, metrics.PreviewPixels, metrics.PreviewWidth);
+            bitmap.Freeze(); _preview = bitmap; PreviewKey = "analysis";
+        }
+    }
+    public QualityFrameRow(FrameMetadata frame, QualityMetrics metrics, bool excluded, string configurationSession) : this(frame, metrics, null, excluded, configurationSession) { }
+    public static QualityFrameRow Failed(FrameMetadata frame, string error, bool excluded, string configurationSession) => new(frame, null, error, excluded, configurationSession);
+    public FrameMetadata Frame { get; }
+    public QualityMetrics? Metrics { get; }
+    public string? Error { get; }
+    public BitmapSource? Preview { get => _preview; private set => Set(ref _preview, value); }
+    public string PreviewKey { get; private set; } = "";
+    public string Path => Frame.Path;
+    public string FileName => Frame.FileName;
+    public string Filter => Frame.FilterName.Value ?? "Senza filtro";
+    public string ConfigurationSession { get; }
+    public string Night => Frame.SessionId.Value ?? "—";
+    public bool HasBayerPattern => new[] { "RGGB", "BGGR", "GRBG", "GBRG" }.Any(pattern => (Frame.BayerPattern.Value ?? "").Contains(pattern, StringComparison.OrdinalIgnoreCase));
+    public double ExposureSeconds => Frame.ExposureSeconds.Value ?? 0;
+    public double Fwhm => Metrics?.FwhmPixels ?? 0;
+    public double Eccentricity => Metrics?.Eccentricity ?? 0;
+    public double Noise => Metrics?.Noise ?? 0;
+    public double Snr => Metrics?.Snr ?? 0;
+    public int StarCount => Metrics?.StarCount ?? 0;
+    public string FwhmText => Error is null ? Fwhm.ToString("0.00") : "—";
+    public string EccentricityText => Error is null ? Eccentricity.ToString("0.000") : "—";
+    public string NoiseText => Error is null ? Noise.ToString("0.##") : "—";
+    public string SnrText => Error is null ? Snr.ToString("0.0") : "—";
+    public string StarsText => Error is null ? StarCount.ToString("N0") : "—";
+    public bool IsExcluded { get => _isExcluded; set { if (Set(ref _isExcluded, value)) Raise(nameof(State)); } }
+    public bool IsSuspect { get => _isSuspect; private set { if (Set(ref _isSuspect, value)) Raise(nameof(State)); } }
+    public double OutlierScore { get => _outlierScore; private set => Set(ref _outlierScore, value); }
+    public string Reason { get => Error ?? _reason; private set => Set(ref _reason, value); }
+    public string State => Error is not null ? "Non analizzato" : IsExcluded ? "Escluso" : IsSuspect ? "Sospetto" : "Valido";
+    public void SetScore(double score, bool suspect, string reason) { OutlierScore = score; IsSuspect = suspect; Reason = reason; }
+    public void SetPreview(QualityPreview preview, string key)
+    {
+        var format = preview.IsColor ? PixelFormats.Rgb24 : PixelFormats.Gray8;
+        var stride = preview.Width * (preview.IsColor ? 3 : 1);
+        var bitmap = BitmapSource.Create(preview.Width, preview.Height, 96, 96, format, null, preview.Pixels, stride);
+        bitmap.Freeze(); Preview = bitmap; PreviewKey = key;
+    }
+    public void ResetPreview()
+    {
+        if (Metrics is null) return;
+        var bitmap = BitmapSource.Create(Metrics.PreviewWidth, Metrics.PreviewHeight, 96, 96, PixelFormats.Gray8, null, Metrics.PreviewPixels, Metrics.PreviewWidth);
+        bitmap.Freeze(); Preview = bitmap; PreviewKey = "analysis";
+    }
+}
+
+public sealed class QualitySeriesRow : BindableBase
+{
+    private IReadOnlyList<QualityFrameRow> _frames = [];
+
+    public QualitySeriesRow(string filter, string configurationSession, IReadOnlyList<FrameMetadata> sourceFrames)
+    {
+        Filter = filter;
+        ConfigurationSession = configurationSession;
+        SourceFrames = sourceFrames;
+    }
+
+    public string Filter { get; }
+    public string ConfigurationSession { get; }
+    public IReadOnlyList<FrameMetadata> SourceFrames { get; }
+    public IReadOnlyList<QualityFrameRow> Frames => _frames;
+    public int FrameCount => SourceFrames.Count;
+    public int AnalyzedCount => Frames.Count;
+    public int NightCount => SourceFrames.Select(frame => frame.SessionId.Value ?? "Notte non definita").Distinct(StringComparer.OrdinalIgnoreCase).Count();
+    public int SuspectCount => Frames.Count(frame => frame.IsSuspect);
+    public int ExcludedCount => Frames.Count(frame => frame.IsExcluded);
+    public bool IsAnalyzed => Frames.Count > 0;
+    public string DisplayName => $"{Filter} · {ConfigurationSession}";
+    public string Display => IsAnalyzed
+        ? $"{DisplayName}   ·   {AnalyzedCount}/{FrameCount} analizzati · {SuspectCount} sospetti"
+        : $"{DisplayName}   ·   {FrameCount} Light / {NightCount} notti · da analizzare";
+    public void SetAnalysisResults(IReadOnlyList<QualityFrameRow> frames) { _frames = frames; RefreshCounts(); Raise(nameof(IsAnalyzed)); Raise(nameof(AnalyzedCount)); }
+    public void RefreshCounts() { Raise(nameof(SuspectCount)); Raise(nameof(ExcludedCount)); Raise(nameof(Display)); }
 }
 
 public sealed class MasterLibraryItem : BindableBase

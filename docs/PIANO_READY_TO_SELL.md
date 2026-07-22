@@ -1,5 +1,7 @@
 # AstroProject Forge — piano di intervento “Ready to Sell”
 
+> Stato 21 luglio 2026: completato il contratto di soglia del Quality Lab. Score, grafico, lista e conteggi condividono una sola regola; sospetto ed escluso sono separati esplicitamente e la curva gaussiana fuorviante è stata rimossa.
+
 ## Scopo
 
 Portare AstroProject Forge dall’attuale build funzionante a un prodotto Windows
@@ -61,9 +63,10 @@ economico è basso.
 | File progetto `.astroforge` | ✅ Implementato | Documento portabile v1, apertura/salvataggio atomico e autosalvataggio dopo le modifiche |
 | Coda di revisione | ✅ Implementato | Workflow candidato-per-candidato, confronto tecnico e assegnazione per Light/notte/firma |
 | Gestore multi-libreria | 🟡 Implementato v1 | Più radici, priorità e stato online/offline; profili per ruolo ancora da completare |
-| Export verificato | 🟡 Parziale | SHA-256 e resume presenti; mancano preflight disco/rete e macchina a stati completa |
+| Export verificato | ✅ Implementato v1 | Controlli automatici disco/percorsi, pausa/annulla/riprendi, ETA, staging SHA-256 e report atomici; anteprima diagnostica facoltativa, restano prove hardware/VM distruttive prima della vendita |
+| Quality Lab | 🟡 Implementato v1 | Analisi FITS opzionale con FWHM, eccentricità, noise/SNR, stelle, outlier robusti, Blink ed esclusioni non distruttive; XISF e cache metriche restano da completare |
 | Cache incrementale | 🟡 Implementata v1 | Header indicizzati per path, dimensione e data modifica; invalidazione e pulizia manuale operative. Da migrare a SQLite per dataset estremi |
-| Installer/updates/firma | ❌ Mancante | Disponibile EXE autonomo, non ancora distribuzione commerciale |
+| Installer/updates/firma | 🟡 Implementato per QA | ZIP portabile, installer Inno Setup per utente, manifest/feed/SBOM/hash e runtime WPF completo; firma Authenticode e licenza commerciale Inno restano gate di vendita |
 | Diagnostica e support bundle | ✅ Implementato | Log ruotati e redatti, Centro diagnostica, correlazione operazioni, recovery journal e ZIP locale privacy-safe |
 | Privacy/licensing | 🟡 Parziale | Privacy tecnica applicata; documenti legali e licensing commerciale restano in P0.15/P0.16 |
 
@@ -132,6 +135,10 @@ economico è basso.
 - matrice WBPP per versione;
 - report HTML/PDF professionale;
 - dry-run e support bundle.
+
+**Avanzamento 21 luglio 2026:** completato il nucleo di export antifragile. L'utente può generare un'anteprima diagnostica facoltativa, mentre `Esporta progetto` esegue direttamente i controlli e procede soltanto se sono superati. Il motore verifica sorgenti mancanti o non leggibili, progetto già esistente, duplicati, path traversal, percorsi lunghi, staging parziali o alterati, spazio libero con margine/riserva configurabili, rete/unità rimovibili, junction e sovrapposizione con cartelle di acquisizione o Master Library. La copia può essere messa in pausa, ripresa o annullata e mostra byte, velocità ed ETA; i file già presenti nello staging vengono riutilizzati solo dopo confronto SHA-256. Manifest schema 2, ricetta, statistiche, guida e `export-preflight.json` sono pubblicati atomicamente. Il motore è stato inoltre verificato su un piano reale da 415 file / 20,51 GB senza scritture durante la sola analisi. Restano la certificazione WBPP per versione, il report PDF e la matrice hardware con disco pieno/cavo rimosso/process kill.
+
+**Semplificazione UX 21 luglio 2026:** il preflight non è più un passaggio imposto all'utente. Anteprima e diagnostica dettagliata restano disponibili, ma il comando `Esporta progetto` costruisce il piano se necessario, esegue automaticamente i controlli e procede quando sono superati. La sicurezza rimane nel motore senza appesantire il flusso normale.
 
 ### Release 0.9 — Commercial Beta
 
@@ -409,6 +416,27 @@ Lo spostamento degli originali resta fuori dalla prima release commerciale. Può
 essere introdotto solo come operazione separata dopo copia e verifica completa,
 con conferma esplicita e log recuperabile.
 
+### Stato implementazione — 21 luglio 2026
+
+Completati nel prodotto e coperti da test automatici:
+
+- macchina a stati `Non verificato → Preflight → Pronto/Bloccato → Copia/In pausa → Completato/Riprendibile`;
+- dry-run senza creazione di cartelle o file;
+- spazio libero, margine percentuale, riserva fissa e stima del tempo;
+- blocco di sorgenti mancanti, destinazioni già esistenti, collisioni, traversal, overlap e staging non coerenti;
+- avvisi per rete, dischi rimovibili, percorsi lunghi e copie `.partial`;
+- pausa e annullamento anche durante hashing/verifica, con staging mantenuto;
+- ripresa solo per file della stessa dimensione e con SHA-256 identico;
+- ricontrollo atomico delle condizioni subito prima dell'esecuzione;
+- manifest schema 2 e report preflight conservato nel progetto esportato.
+
+Non ancora certificati e quindi ancora gate commerciali:
+
+- prove fisiche con rimozione improvvisa di USB/rete e simulazione controllata di disco pieno;
+- terminazione forzata su più punti della pipeline in VM pulite;
+- pulizia guidata e inventario multi-staging (spostato in P0.9);
+- matrice WBPP e report PDF firmabile.
+
 ### Criteri di accettazione
 
 - Test con disco pieno, cavo rimosso, processo terminato e file bloccato.
@@ -662,6 +690,16 @@ di conferma, non devono sovrascrivere gli header in silenzio.
 Modulo separato e opzionale che legge i pixel per calcolare statistiche, stelle,
 FWHM, eccentricità, background e clipping. Deve rimanere distinto dal matching
 di calibrazione e non rallentare la scansione header-only.
+
+**Avanzamento 21 luglio 2026 — Quality Lab v1:** aggiunto un workspace completamente opzionale che legge i pixel solo su richiesta. Per ogni Light FITS misura background robusto, MAD/noise, segnale, SNR, stelle, FWHM ed eccentricità e costruisce una preview dell'intero frame. Gli outlier sono confrontati esclusivamente con frame della stessa coppia filtro/esposizione mediante mediane e deviazione assoluta mediana, evitando soglie assolute fragili. La tabella spiega l'anomalia dominante; Blink scorre prima i sospetti. L'utente può escludere un frame, tutti i sospetti o ripristinarli. Gli originali non vengono spostati: nell'export le copie escluse finiscono in `Excluded/Quality`, separate dai Light caricati in WBPP. La scansione può essere annullata. Restano decoder pixel XISF, persistenza/cache delle metriche, ROI configurabile, mappe tilt e selezione automatica della reference image.
+
+**Avanzamento 21 luglio 2026 — Quality Lab v2:** eliminata la soglia nascosta. L'utente imposta la sensibilità tra 2 e 6 σ e vede immediatamente cambiare sospetti e distribuzione. Il grafico sovrappone istogramma, curva gaussiana di riferimento, soglia, selezione e punti dei singoli frame; un punto è cliccabile e apre la relativa preview. La tabella supporta Ctrl/Shift, esclusione mirata e Blink dei soli frame selezionati. La preview scelta viene rigenerata dal FITS in background con stretch asinh regolabile; per CFA dichiarati negli header è disponibile un debayer temporaneo RGGB/BGGR/GRBG/GBRG. Nessuna di queste operazioni riscrive o demosaicizza gli originali. Verificati su 24 Light reali il calcolo, la curva, la preview selezionata e il debayer. Restano curve separate per metrica/serie, cache persistente, XISF e mappe tilt.
+
+**Avanzamento 21 luglio 2026 — workspace e ispezione v2.1:** Sorgenti e Inspector non hanno più larghezze bloccate: splitter persistenti permettono di assegnare spazio in base al monitor e continuano a integrarsi con i pulsanti mostra/nascondi. Nel Quality Lab un terzo splitter divide tabella e preview. La preview supporta zoom 5–1600%, rotella ancorata al cursore, pan mediante trascinamento, adattamento al viewport e una rigenerazione HD fino a 2400 px. Una sola preview HD viene mantenuta alla volta per evitare crescita incontrollata della memoria durante Blink o selezioni multiple.
+
+**Avanzamento 21 luglio 2026 — Quality Lab v2.2 per serie:** il confronto statistico segue ora la struttura reale del progetto: `Filtro → Sessione di configurazione (Flat Set) → stessa esposizione`. Ogni sessione ha selezione, istogramma, curva, soglia e sospetti separati, quindi due cicli SIOIII con Master differenti non si contaminano. Le colonne metriche ordinano numericamente crescente/decrescente. Il grafico dispone di area più alta, griglia, assi, legenda e rug dei frame separato dalle barre. Il debayer temporaneo calcola black point e white point per ciascun canale, neutralizzando la dominante verde tipica del Bayer non bilanciato. L’Inspector viene rimosso dai workspace che non consumano override.
+
+**Correzione di flusso 21 luglio 2026:** l’inventario delle serie Quality viene costruito dall’analisi degli header e delle assegnazioni di calibrazione, non più come effetto collaterale dell’analisi pixel. Il selettore è quindi disponibile entrando nel Lab e dichiara per ogni serie filtro, Flat Set/sessione, Light e notti. L’analisi è incrementale per singola serie, mostra le righe durante l’elaborazione e conserva i risultati già calcolati per le altre serie.
 
 ## P1.6 — Confronto sessioni
 

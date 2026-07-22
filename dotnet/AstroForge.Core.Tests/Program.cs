@@ -75,6 +75,9 @@ Assert(hoo.Dark.Selected?.Frame.Path.EndsWith(@"GAIN_100\0\600s.xisf", StringCom
 Assert(sioiii.Bias.Selected?.Frame.FileName == "masterBias100.xisf" && hoo.Bias.Selected?.Frame.FileName == "masterBias100.xisf", "Bias gain 100 errato.");
 var recipe = WbppRecipeEngine.Recommend(analysis);
 Assert(recipe.Keywords.Count == 1 && recipe.Keywords[0].Keyword == "DARKSET" && recipe.Keywords[0].Pre && !recipe.Keywords[0].Post, "Ricetta WBPP adattiva errata.");
+var qualityExclusionPlan = ProjectExporter.BuildPlan("quality-exclusion", Path.GetTempPath(), analysis, new HashSet<string>(StringComparer.OrdinalIgnoreCase) { hoo.Light.Path });
+Assert(qualityExclusionPlan.Files.Any(item => item.Frame == hoo.Light && item.Role == "excluded-light" && item.RelativePath.StartsWith(Path.Combine("Excluded", "Quality"))), "Un Light escluso dal Quality Lab non è stato separato dall'insieme WBPP.");
+Assert(!qualityExclusionPlan.Files.Any(item => item.Frame == hoo.Light && item.Role == "light"), "Un Light escluso compare ancora nel dataset WBPP.");
 
 var epochFrames = new List<FrameMetadata>();
 var flippedLight = Synthetic(FrameKind.Light, "flipped-light.fits", "HOO", new DateTimeOffset(2026, 6, 29, 1, 0, 0, TimeSpan.Zero));

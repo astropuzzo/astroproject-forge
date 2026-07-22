@@ -53,8 +53,8 @@ finally {
         product = 'AstroProject Forge'
         version = $version.version
         channel = $version.channel
-        startedAtUtc = $started
-        completedAtUtc = [DateTimeOffset]::UtcNow
+        startedAtUtc = $started.ToString('O', [Globalization.CultureInfo]::InvariantCulture)
+        completedAtUtc = [DateTimeOffset]::UtcNow.ToString('O', [Globalization.CultureInfo]::InvariantCulture)
         os = [Environment]::OSVersion.VersionString
         runtime = (& $dotnet --version)
         machineDataDependency = $false

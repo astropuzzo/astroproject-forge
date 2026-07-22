@@ -1,4 +1,5 @@
 using System.Security.Cryptography;
+using System.Diagnostics;
 using System.Text;
 using System.Text.Json;
 using AstroForge.Core.Analysis;
@@ -13,11 +14,26 @@ public sealed record ProjectPlan(string ProjectName, string DestinationRoot, IRe
     public long RequiredBytes => Files.Sum(file => new FileInfo(file.Frame.Path).Length);
     public string ProjectRoot => Path.Combine(DestinationRoot, ProjectName);
 }
-public sealed record ExportProgress(int Completed, int Total, string CurrentFile, long BytesCopied, long TotalBytes);
+public sealed record ExportProgress(int Completed, int Total, string CurrentFile, long BytesCopied, long TotalBytes, double MiBPerSecond = 0, TimeSpan? EstimatedRemaining = null, bool Resumed = false);
+
+public sealed class ExportExecutionControl
+{
+    private readonly object _sync = new();
+    private TaskCompletionSource? _resume;
+    public bool IsPaused { get { lock (_sync) return _resume is not null; } }
+    public void Pause() { lock (_sync) _resume ??= new(TaskCreationOptions.RunContinuationsAsynchronously); }
+    public void Resume() { TaskCompletionSource? gate; lock (_sync) { gate = _resume; _resume = null; } gate?.TrySetResult(); }
+    public async ValueTask WaitIfPausedAsync(CancellationToken cancellationToken)
+    {
+        Task? wait;
+        lock (_sync) wait = _resume?.Task;
+        if (wait is not null) await wait.WaitAsync(cancellationToken);
+    }
+}
 
 public static class ProjectExporter
 {
-    public static ProjectPlan BuildPlan(string projectName, string destinationRoot, ProjectAnalysis analysis)
+    public static ProjectPlan BuildPlan(string projectName, string destinationRoot, ProjectAnalysis analysis, IReadOnlySet<string>? excludedQualityPaths = null)
     {
         if (!analysis.Ready) throw new InvalidOperationException("Il progetto contiene calibrazioni irrisolte.");
         var recipe = WbppRecipeEngine.Recommend(analysis);
@@ -25,6 +41,13 @@ public static class ProjectExporter
         var included = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
         foreach (var item in analysis.Lights)
         {
+            if (excludedQualityPaths?.Contains(item.Light.Path) == true)
+            {
+                var excludedFilter = Token(item.Light.FilterName.Value ?? "UNKNOWN");
+                var excludedNight = Token(item.Light.SessionId.Value ?? "UNKNOWN");
+                Add(files, included, new(item.Light, Combine(["Excluded", "Quality", $"FILTER_{excludedFilter}", $"NIGHT_{excludedNight}", item.Light.FileName]), "excluded-light", "quality"));
+                continue;
+            }
             if (item.FlatGroup is null || item.Dark.Selected is null || item.Bias.Selected is null)
                 throw new InvalidOperationException($"Calibrazioni incomplete per {item.Light.FileName}.");
             var light = item.Light;
@@ -60,39 +83,47 @@ public static class ProjectExporter
         return new(SafeName(projectName), Path.GetFullPath(destinationRoot), files, recipe, ProjectStatisticsCalculator.Calculate(analysis));
     }
 
-    public static async Task<string> ExecuteAsync(ProjectPlan plan, IProgress<ExportProgress>? progress = null, CancellationToken cancellationToken = default)
+    public static async Task<string> ExecuteAsync(ProjectPlan plan, IProgress<ExportProgress>? progress = null, CancellationToken cancellationToken = default,
+        ExportExecutionControl? control = null, ExportPreflightOptions? preflightOptions = null)
     {
+        var preflight = await ProjectExportPreflight.AnalyzeAsync(plan, preflightOptions, cancellationToken);
+        if (!preflight.IsReady) throw new ExportPreflightException(preflight);
         var projectRoot = plan.ProjectRoot;
         var staging = Path.Combine(plan.DestinationRoot, $".{plan.ProjectName}.astroforge-staging");
-        if (Directory.Exists(projectRoot)) throw new IOException($"La destinazione esiste già: {projectRoot}");
         Directory.CreateDirectory(staging);
-        var totalBytes = plan.RequiredBytes;
+        var totalBytes = preflight.TotalBytes;
         long copiedBytes = 0;
+        long transferredThisRun = 0;
+        var watch = Stopwatch.StartNew();
         var records = new List<object>();
         try
         {
             for (var index = 0; index < plan.Files.Count; index++)
             {
                 cancellationToken.ThrowIfCancellationRequested();
+                if (control is not null) await control.WaitIfPausedAsync(cancellationToken);
                 var item = plan.Files[index];
                 var destination = Path.Combine(staging, item.RelativePath);
                 Directory.CreateDirectory(Path.GetDirectoryName(destination)!);
                 var partial = destination + ".partial";
                 byte[] hash;
+                var resumed = false;
                 if (File.Exists(destination))
                 {
-                    hash = await HashAsync(item.Frame.Path, cancellationToken);
-                    var existingHash = await HashAsync(destination, cancellationToken);
+                    hash = await HashAsync(item.Frame.Path, cancellationToken, control);
+                    var existingHash = await HashAsync(destination, cancellationToken, control);
                     if (!hash.SequenceEqual(existingHash)) throw new IOException($"Il file di ripresa non coincide con l'originale: {destination}");
+                    resumed = true;
                 }
                 else
                 {
                     if (File.Exists(partial)) File.Delete(partial);
-                    hash = await CopyWithHashAsync(item.Frame.Path, partial, cancellationToken);
-                    var verification = await HashAsync(partial, cancellationToken);
+                    hash = await CopyWithHashAsync(item.Frame.Path, partial, control, cancellationToken);
+                    var verification = await HashAsync(partial, cancellationToken, control);
                     if (!hash.SequenceEqual(verification)) throw new IOException($"Verifica SHA-256 fallita: {item.Frame.Path}");
                     File.Move(partial, destination);
                     File.SetLastWriteTimeUtc(destination, File.GetLastWriteTimeUtc(item.Frame.Path));
+                    transferredThisRun += new FileInfo(destination).Length;
                 }
                 copiedBytes += new FileInfo(destination).Length;
                 records.Add(new
@@ -105,20 +136,23 @@ public static class ProjectExporter
                     sha256 = Convert.ToHexString(hash).ToLowerInvariant(),
                     metadata = Snapshot(item.Frame)
                 });
-                progress?.Report(new(index + 1, plan.Files.Count, item.Frame.FileName, copiedBytes, totalBytes));
+                var speed = watch.Elapsed.TotalSeconds <= 0 ? 0 : transferredThisRun / 1024d / 1024d / watch.Elapsed.TotalSeconds;
+                TimeSpan? remaining = speed <= 0 ? null : TimeSpan.FromSeconds(Math.Max(0, totalBytes - copiedBytes) / 1024d / 1024d / speed);
+                progress?.Report(new(index + 1, plan.Files.Count, item.Frame.FileName, copiedBytes, totalBytes, speed, remaining, resumed));
             }
-            var control = Path.Combine(staging, "_AstroForge");
-            Directory.CreateDirectory(control);
+            var controlDirectory = Path.Combine(staging, "_AstroForge");
+            Directory.CreateDirectory(controlDirectory);
             var jsonOptions = new JsonSerializerOptions { WriteIndented = true };
-            await File.WriteAllTextAsync(Path.Combine(control, "manifest.json"), JsonSerializer.Serialize(new { schema = 1, application = "AstroProject Forge", mode = "verified-copy", project_name = plan.ProjectName, created_at = DateTimeOffset.UtcNow, files = records }, jsonOptions), cancellationToken);
-            await File.WriteAllTextAsync(Path.Combine(control, "wbpp-recipe.json"), JsonSerializer.Serialize(new { schema = 1, grouping_keywords = plan.Recipe.Keywords.Select(keyword => new { keyword = keyword.Keyword, pre = keyword.Pre, post = keyword.Post, reason = keyword.Reason }), notes = plan.Recipe.Notes }, jsonOptions), cancellationToken);
+            await WriteAtomicAsync(Path.Combine(controlDirectory, "manifest.json"), JsonSerializer.Serialize(new { schema = 2, application = "AstroProject Forge", mode = "verified-copy", project_name = plan.ProjectName, created_at = DateTimeOffset.UtcNow, preflight = new { preflight.DestinationKind, preflight.TotalBytes, preflight.ResumeBytes, preflight.BytesToCopy, preflight.AvailableFreeBytes, preflight.RequiredFreeBytes }, files = records }, jsonOptions), cancellationToken);
+            await WriteAtomicAsync(Path.Combine(controlDirectory, "wbpp-recipe.json"), JsonSerializer.Serialize(new { schema = 1, grouping_keywords = plan.Recipe.Keywords.Select(keyword => new { keyword = keyword.Keyword, pre = keyword.Pre, post = keyword.Post, reason = keyword.Reason }), notes = plan.Recipe.Notes }, jsonOptions), cancellationToken);
+            await WriteAtomicAsync(Path.Combine(controlDirectory, "export-preflight.json"), JsonSerializer.Serialize(preflight, jsonOptions), cancellationToken);
             if (plan.Statistics is not null)
             {
-                await File.WriteAllTextAsync(Path.Combine(control, "project-statistics.json"), JsonSerializer.Serialize(plan.Statistics, jsonOptions), cancellationToken);
-                await File.WriteAllTextAsync(Path.Combine(control, "project-statistics.csv"), StatisticsCsv(plan.Statistics), new UTF8Encoding(true), cancellationToken);
+                await WriteAtomicAsync(Path.Combine(controlDirectory, "project-statistics.json"), JsonSerializer.Serialize(plan.Statistics, jsonOptions), cancellationToken);
+                await WriteAtomicAsync(Path.Combine(controlDirectory, "project-statistics.csv"), StatisticsCsv(plan.Statistics), cancellationToken, new UTF8Encoding(true));
             }
-            await File.WriteAllTextAsync(Path.Combine(control, "wbpp-guide.md"), Guide(plan), cancellationToken);
-            await File.WriteAllTextAsync(Path.Combine(control, "validation-report.html"), ValidationReport(plan), cancellationToken);
+            await WriteAtomicAsync(Path.Combine(controlDirectory, "wbpp-guide.md"), Guide(plan), cancellationToken);
+            await WriteAtomicAsync(Path.Combine(controlDirectory, "validation-report.html"), ValidationReport(plan), cancellationToken);
             Directory.Move(staging, projectRoot);
             return projectRoot;
         }
@@ -129,7 +163,7 @@ public static class ProjectExporter
         }
     }
 
-    private static async Task<byte[]> CopyWithHashAsync(string source, string destination, CancellationToken cancellationToken)
+    private static async Task<byte[]> CopyWithHashAsync(string source, string destination, ExportExecutionControl? control, CancellationToken cancellationToken)
     {
         using var hasher = IncrementalHash.CreateHash(HashAlgorithmName.SHA256);
         await using var input = new FileStream(source, FileMode.Open, FileAccess.Read, FileShare.Read, 4 * 1024 * 1024, FileOptions.Asynchronous | FileOptions.SequentialScan);
@@ -138,6 +172,7 @@ public static class ProjectExporter
         int read;
         while ((read = await input.ReadAsync(buffer, cancellationToken)) > 0)
         {
+            if (control is not null) await control.WaitIfPausedAsync(cancellationToken);
             await output.WriteAsync(buffer.AsMemory(0, read), cancellationToken);
             hasher.AppendData(buffer, 0, read);
         }
@@ -145,10 +180,25 @@ public static class ProjectExporter
         return hasher.GetHashAndReset();
     }
 
-    private static async Task<byte[]> HashAsync(string path, CancellationToken cancellationToken)
+    private static async Task WriteAtomicAsync(string path, string content, CancellationToken cancellationToken, Encoding? encoding = null)
     {
+        var temporary = path + ".tmp";
+        await File.WriteAllTextAsync(temporary, content, encoding ?? new UTF8Encoding(false), cancellationToken);
+        File.Move(temporary, path, true);
+    }
+
+    private static async Task<byte[]> HashAsync(string path, CancellationToken cancellationToken, ExportExecutionControl? control = null)
+    {
+        using var hasher = IncrementalHash.CreateHash(HashAlgorithmName.SHA256);
         await using var stream = new FileStream(path, FileMode.Open, FileAccess.Read, FileShare.Read, 4 * 1024 * 1024, FileOptions.Asynchronous | FileOptions.SequentialScan);
-        return await SHA256.HashDataAsync(stream, cancellationToken);
+        var buffer = new byte[4 * 1024 * 1024];
+        int read;
+        while ((read = await stream.ReadAsync(buffer, cancellationToken)) > 0)
+        {
+            if (control is not null) await control.WaitIfPausedAsync(cancellationToken);
+            hasher.AppendData(buffer, 0, read);
+        }
+        return hasher.GetHashAndReset();
     }
 
     private static object Snapshot(FrameMetadata frame) => new

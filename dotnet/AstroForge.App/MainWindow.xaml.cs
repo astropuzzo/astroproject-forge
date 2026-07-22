@@ -3,6 +3,8 @@ using System.Diagnostics;
 using System.Net.Http;
 using System.Windows;
 using System.Windows.Media.Animation;
+using System.Windows.Threading;
+using System.Windows.Input;
 using Microsoft.Win32;
 using AstroForge.App.ViewModels;
 using AstroForge.App.Services;
@@ -15,17 +17,31 @@ public partial class MainWindow : Window
     private readonly MainViewModel _viewModel = new();
     private bool _sourcesVisible = true;
     private bool _inspectorVisible = true;
-    private bool _masterLabActive;
+    private bool _inspectorContextAvailable = true;
     private int _onboardingStep = 1;
     private readonly UpdateService _updateService = new();
     private ReleaseManifest? _availableUpdate;
+    private CancellationTokenSource? _qualityCancellation;
+    private CancellationTokenSource? _previewCancellation;
+    private readonly DispatcherTimer _blinkTimer = new() { Interval = TimeSpan.FromMilliseconds(700) };
+    private int _blinkIndex;
+    private double _sourcePanelWidth = 260;
+    private double _inspectorPanelWidth = 390;
+    private double _qualityZoom = 1;
+    private bool _qualityPreviewPanning;
+    private Point _qualityPanStart;
+    private double _qualityPanHorizontal;
+    private double _qualityPanVertical;
 
     public MainWindow()
     {
         InitializeComponent();
         DataContext = _viewModel;
-        Closing += (_, _) => _viewModel.SaveState();
+        _sourcePanelWidth = _viewModel.SourcePanelWidth;
+        _inspectorPanelWidth = _viewModel.InspectorPanelWidth;
+        Closing += (_, _) => { _qualityCancellation?.Cancel(); _previewCancellation?.Cancel(); _viewModel.SaveState(); };
         Loaded += MainWindow_Loaded;
+        _blinkTimer.Tick += BlinkTimer_Tick;
         ApplyCommandLine();
     }
 
@@ -58,6 +74,12 @@ public partial class MainWindow : Window
         if (SourcesList.SelectedItem is string path) _viewModel.RemoveSource(path);
     }
 
+    private void ClearAnalysisFilters_Click(object sender, RoutedEventArgs e)
+    {
+        _viewModel.SearchText = "";
+        _viewModel.ShowIssuesOnly = false;
+    }
+
     private void ChooseLibrary_Click(object sender, RoutedEventArgs e)
     {
         var dialog = new OpenFolderDialog { Title = "Aggiungi libreria Master", InitialDirectory = Directory.Exists(_viewModel.LibraryPath) ? _viewModel.LibraryPath : null };
@@ -79,10 +101,17 @@ public partial class MainWindow : Window
     }
     private void ApplyResponsiveLayout()
     {
-        var compact = ActualWidth < 1320;
         var narrowHeader = ActualWidth < 1120;
-        SourcesColumn.Width = _sourcesVisible ? new GridLength(compact ? 232 : 260) : new GridLength(0);
-        InspectorColumn.Width = _inspectorVisible && !_masterLabActive ? new GridLength(compact ? 340 : 390) : new GridLength(0);
+        var showInspector = _inspectorVisible && _inspectorContextAvailable;
+        SourcesColumn.MinWidth = _sourcesVisible ? 190 : 0;
+        SourcesColumn.Width = _sourcesVisible ? new GridLength(Math.Clamp(_sourcePanelWidth, 190, 520)) : new GridLength(0);
+        SourceSplitterColumn.Width = _sourcesVisible ? new GridLength(5) : new GridLength(0);
+        SourceSplitter.Visibility = _sourcesVisible ? Visibility.Visible : Visibility.Collapsed;
+        InspectorColumn.MinWidth = showInspector ? 280 : 0;
+        InspectorColumn.Width = showInspector ? new GridLength(Math.Clamp(_inspectorPanelWidth, 280, 680)) : new GridLength(0);
+        InspectorSplitterColumn.Width = showInspector ? new GridLength(5) : new GridLength(0);
+        InspectorSplitter.Visibility = showInspector ? Visibility.Visible : Visibility.Collapsed;
+        InspectorToggleButton.Visibility = _inspectorContextAvailable ? Visibility.Visible : Visibility.Collapsed;
         BrandText.Visibility = narrowHeader ? Visibility.Collapsed : Visibility.Visible;
         ProjectStatusBadge.Visibility = ActualWidth < 1420 ? Visibility.Collapsed : Visibility.Visible;
         SourceToggleButton.Content = narrowHeader ? "☰" : "Sorgenti";
@@ -96,6 +125,14 @@ public partial class MainWindow : Window
         SettingsButton.Content = narrowHeader ? "⚙" : "Impostazioni";
         SettingsButton.Width = narrowHeader ? 44 : double.NaN;
         SettingsButton.Padding = narrowHeader ? new Thickness(0) : new Thickness(13, 0, 13, 0);
+    }
+
+    private void PanelSplitter_DragCompleted(object sender, System.Windows.Controls.Primitives.DragCompletedEventArgs e)
+    {
+        if (_sourcesVisible && SourcesColumn.ActualWidth >= 190) _sourcePanelWidth = SourcesColumn.ActualWidth;
+        if (_inspectorVisible && _inspectorContextAvailable && InspectorColumn.ActualWidth >= 280) _inspectorPanelWidth = InspectorColumn.ActualWidth;
+        _viewModel.SourcePanelWidth = _sourcePanelWidth;
+        _viewModel.InspectorPanelWidth = _inspectorPanelWidth;
     }
 
     private void MinimizeWindow_Click(object sender, RoutedEventArgs e) => WindowState = WindowState.Minimized;
@@ -220,7 +257,9 @@ public partial class MainWindow : Window
     private void WorkspaceTabs_SelectionChanged(object sender, System.Windows.Controls.SelectionChangedEventArgs e)
     {
         if (e.Source != WorkspaceTabs) return;
-        _masterLabActive = (WorkspaceTabs.SelectedItem as System.Windows.Controls.TabItem)?.Header?.ToString()?.Contains("MASTER LIBRARY", StringComparison.OrdinalIgnoreCase) == true;
+        var header = (WorkspaceTabs.SelectedItem as System.Windows.Controls.TabItem)?.Header?.ToString() ?? "";
+        _inspectorContextAvailable = header is "Analisi" or "Struttura" or "Revisione";
+        if (!header.Contains("QUALITY", StringComparison.OrdinalIgnoreCase)) StopBlink();
         ApplyResponsiveLayout();
         AnimateWorkspaceTransition();
     }
@@ -249,6 +288,12 @@ public partial class MainWindow : Window
         catch (Exception exception) { ShowError("AF-PLAN-001", "Anteprima non disponibile", exception, MessageBoxImage.Warning); }
     }
 
+    private async void ExportPreflight_Click(object sender, RoutedEventArgs e)
+    {
+        try { await _viewModel.RunExportPreflightAsync(); }
+        catch (Exception exception) { ShowError("AF-EXPORT-PREFLIGHT-001", "Preflight non completato", exception, MessageBoxImage.Warning); }
+    }
+
     private async void Export_Click(object sender, RoutedEventArgs e)
     {
         try
@@ -256,7 +301,168 @@ public partial class MainWindow : Window
             var path = await _viewModel.ExportAsync();
             MessageBox.Show(this, $"Progetto creato e verificato.\n\n{path}", "Esportazione completata", MessageBoxButton.OK, MessageBoxImage.Information);
         }
+        catch (OperationCanceledException) { }
         catch (Exception exception) { ShowError("AF-EXPORT-001", "Esportazione non completata", exception, MessageBoxImage.Error); }
+    }
+
+    private void PauseExport_Click(object sender, RoutedEventArgs e) => _viewModel.PauseExport();
+    private void ResumeExport_Click(object sender, RoutedEventArgs e) => _viewModel.ResumeExport();
+    private void CancelExport_Click(object sender, RoutedEventArgs e) => _viewModel.CancelExport();
+
+    private async void AnalyzeQuality_Click(object sender, RoutedEventArgs e)
+    {
+        StopBlink();
+        _qualityCancellation?.Dispose();
+        _qualityCancellation = new CancellationTokenSource();
+        try
+        {
+            await _viewModel.AnalyzeQualityAsync(_qualityCancellation.Token);
+            QualityChart.Refresh();
+            await RefreshQualityPreviewAsync(fitToViewport: true);
+        }
+        catch (OperationCanceledException) { }
+        catch (Exception exception) { ShowError("AF-QUALITY-001", "Analisi qualità non completata", exception, MessageBoxImage.Warning); }
+        finally { _qualityCancellation.Dispose(); _qualityCancellation = null; }
+    }
+    private void CancelQuality_Click(object sender, RoutedEventArgs e) => _qualityCancellation?.Cancel();
+    private void ExcludeQualitySuspects_Click(object sender, RoutedEventArgs e) => _viewModel.ExcludeQualitySuspects();
+    private void ExcludeSelectedQuality_Click(object sender, RoutedEventArgs e) =>
+        _viewModel.ExcludeSelectedQualityFrames(QualityGrid.SelectedItems.OfType<QualityFrameRow>().ToArray());
+    private void RestoreQuality_Click(object sender, RoutedEventArgs e) => _viewModel.RestoreAllQualityFrames();
+    private void ToggleQualityExclusion_Click(object sender, RoutedEventArgs e) => _viewModel.ToggleSelectedQualityExclusion();
+    private void BlinkQuality_Click(object sender, RoutedEventArgs e)
+    {
+        if (_blinkTimer.IsEnabled) { StopBlink(); return; }
+        if (_viewModel.QualityFrames.Count == 0) return;
+        _blinkIndex = -1; _blinkTimer.Start(); BlinkButton.Content = "Ferma Blink"; BlinkTimer_Tick(this, EventArgs.Empty);
+    }
+    private async void BlinkTimer_Tick(object? sender, EventArgs e)
+    {
+        var selected = QualityGrid.SelectedItems.OfType<QualityFrameRow>().Where(item => item.Preview is not null).ToArray();
+        var rows = selected.Length > 1 ? selected : _viewModel.QualityFrames.Where(item => item.IsSuspect && item.Preview is not null).ToArray();
+        if (rows.Length == 0) rows = _viewModel.QualityFrames.Where(item => item.Preview is not null).ToArray();
+        if (rows.Length == 0) { StopBlink(); return; }
+        _blinkIndex = (_blinkIndex + 1) % rows.Length;
+        _viewModel.SelectedQualityFrame = rows[_blinkIndex];
+        QualityGrid.ScrollIntoView(rows[_blinkIndex]);
+        await RefreshQualityPreviewAsync();
+    }
+    private void StopBlink() { _blinkTimer.Stop(); if (BlinkButton is not null) BlinkButton.Content = "Avvia Blink"; }
+
+    private async void QualityGrid_SelectionChanged(object sender, System.Windows.Controls.SelectionChangedEventArgs e)
+    {
+        var rows = QualityGrid.SelectedItems.OfType<QualityFrameRow>().ToArray();
+        _viewModel.SetQualitySelection(rows);
+        QualityChart?.Refresh();
+        if (!_viewModel.IsQualityAnalyzing) await RefreshQualityPreviewAsync(fitToViewport: true);
+    }
+
+    private void QualityGrid_MouseDoubleClick(object sender, System.Windows.Input.MouseButtonEventArgs e) => Reveal(_viewModel.SelectedQualityFrame?.Path);
+    private void QualityThreshold_ValueChanged(object sender, RoutedPropertyChangedEventArgs<double> e) => QualityChart?.Refresh();
+    private async void QualitySeries_SelectionChanged(object sender, System.Windows.Controls.SelectionChangedEventArgs e)
+    {
+        StopBlink();
+        QualityGrid?.Items.SortDescriptions.Clear();
+        QualityChart?.Refresh();
+        if (IsLoaded && !_viewModel.IsQualityAnalyzing) await RefreshQualityPreviewAsync(fitToViewport: true);
+    }
+    private void QualityChart_FrameSelected(object? sender, QualityFrameRow row)
+    {
+        QualityGrid.SelectedItems.Clear(); QualityGrid.SelectedItem = row; QualityGrid.ScrollIntoView(row);
+    }
+    private async void QualityPreviewOptions_Changed(object sender, RoutedEventArgs e)
+    {
+        if (!IsLoaded) return;
+        await RefreshQualityPreviewAsync(180, true);
+    }
+    private async void QualityStretch_ValueChanged(object sender, RoutedPropertyChangedEventArgs<double> e)
+    {
+        if (!IsLoaded) return;
+        await RefreshQualityPreviewAsync(180, true);
+    }
+
+    private async Task RefreshQualityPreviewAsync(int debounceMilliseconds = 0, bool fitToViewport = false)
+    {
+        _previewCancellation?.Cancel(); _previewCancellation?.Dispose();
+        var cancellation = _previewCancellation = new CancellationTokenSource();
+        try
+        {
+            if (debounceMilliseconds > 0) await Task.Delay(debounceMilliseconds, cancellation.Token);
+            await _viewModel.RenderQualityPreviewAsync(_viewModel.SelectedQualityFrame, cancellation.Token);
+            if (fitToViewport) { QualityPreviewImage.UpdateLayout(); FitQualityPreview(); }
+        }
+        catch (OperationCanceledException) { }
+        catch (Exception exception) { _viewModel.RecordError("AF-QUALITY-PREVIEW-001", exception); }
+        finally { if (ReferenceEquals(_previewCancellation, cancellation)) { _previewCancellation.Dispose(); _previewCancellation = null; } }
+    }
+
+    private void QualityZoomIn_Click(object sender, RoutedEventArgs e) => SetQualityZoom(_qualityZoom * 1.25);
+    private void QualityZoomOut_Click(object sender, RoutedEventArgs e) => SetQualityZoom(_qualityZoom / 1.25);
+    private void QualityZoomFit_Click(object sender, RoutedEventArgs e) => FitQualityPreview();
+    private async void QualityFullResolution_Click(object sender, RoutedEventArgs e)
+    {
+        _previewCancellation?.Cancel(); _previewCancellation?.Dispose();
+        var cancellation = _previewCancellation = new CancellationTokenSource();
+        try
+        {
+            await _viewModel.RenderQualityPreviewAsync(_viewModel.SelectedQualityFrame, cancellation.Token, true);
+            SetQualityZoom(1);
+            QualityPreviewScroll.ScrollToHome();
+        }
+        catch (OperationCanceledException) { }
+        catch (Exception exception) { _viewModel.RecordError("AF-QUALITY-FULLRES-001", exception); }
+        finally { if (ReferenceEquals(_previewCancellation, cancellation)) { _previewCancellation.Dispose(); _previewCancellation = null; } }
+    }
+    private void QualityPreview_MouseWheel(object sender, MouseWheelEventArgs e)
+    {
+        var anchor = e.GetPosition(QualityPreviewScroll);
+        SetQualityZoom(_qualityZoom * (e.Delta > 0 ? 1.18 : 1 / 1.18), anchor);
+        e.Handled = true;
+    }
+    private void QualityPreview_MouseLeftButtonDown(object sender, MouseButtonEventArgs e)
+    {
+        _qualityPreviewPanning = true;
+        _qualityPanStart = e.GetPosition(QualityPreviewScroll);
+        _qualityPanHorizontal = QualityPreviewScroll.HorizontalOffset;
+        _qualityPanVertical = QualityPreviewScroll.VerticalOffset;
+        QualityPreviewImage.CaptureMouse();
+        e.Handled = true;
+    }
+    private void QualityPreview_MouseMove(object sender, MouseEventArgs e)
+    {
+        if (!_qualityPreviewPanning || e.LeftButton != MouseButtonState.Pressed) return;
+        var current = e.GetPosition(QualityPreviewScroll);
+        QualityPreviewScroll.ScrollToHorizontalOffset(_qualityPanHorizontal - (current.X - _qualityPanStart.X));
+        QualityPreviewScroll.ScrollToVerticalOffset(_qualityPanVertical - (current.Y - _qualityPanStart.Y));
+    }
+    private void QualityPreview_MouseLeftButtonUp(object sender, MouseButtonEventArgs e)
+    {
+        _qualityPreviewPanning = false;
+        QualityPreviewImage.ReleaseMouseCapture();
+        e.Handled = true;
+    }
+    private void FitQualityPreview()
+    {
+        if (_viewModel.SelectedQualityFrame?.Preview is not System.Windows.Media.Imaging.BitmapSource bitmap || QualityPreviewScroll.ViewportWidth <= 0 || QualityPreviewScroll.ViewportHeight <= 0) return;
+        var fit = Math.Min((QualityPreviewScroll.ViewportWidth - 10) / bitmap.PixelWidth, (QualityPreviewScroll.ViewportHeight - 10) / bitmap.PixelHeight);
+        SetQualityZoom(Math.Clamp(fit, 0.05, 16));
+        QualityPreviewScroll.ScrollToHome();
+    }
+    private void SetQualityZoom(double value, Point? anchor = null)
+    {
+        var old = _qualityZoom;
+        var next = Math.Clamp(value, 0.05, 16);
+        if (Math.Abs(next - old) < 0.0001) return;
+        var point = anchor ?? new Point(QualityPreviewScroll.ViewportWidth / 2, QualityPreviewScroll.ViewportHeight / 2);
+        var horizontal = QualityPreviewScroll.HorizontalOffset;
+        var vertical = QualityPreviewScroll.VerticalOffset;
+        _qualityZoom = next;
+        QualityPreviewScale.ScaleX = next; QualityPreviewScale.ScaleY = next;
+        QualityZoomText.Text = $"{next * 100:0}%";
+        QualityPreviewImage.UpdateLayout();
+        var factor = next / old;
+        QualityPreviewScroll.ScrollToHorizontalOffset((horizontal + point.X) * factor - point.X);
+        QualityPreviewScroll.ScrollToVerticalOffset((vertical + point.Y) * factor - point.Y);
     }
 
     private void ExportStatistics_Click(object sender, RoutedEventArgs e)

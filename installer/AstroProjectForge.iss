@@ -58,10 +58,9 @@ Name: "english"; MessagesFile: "compiler:Default.isl"
 Name: "desktopicon"; Description: "Crea un collegamento sul desktop"; GroupDescription: "Collegamenti aggiuntivi:"; Flags: unchecked
 
 [Files]
-Source: "{#SourceDir}\AstroForge.App.exe"; DestDir: "{app}"; Flags: ignoreversion
-Source: "{#SourceDir}\RELEASE-NOTES.md"; DestDir: "{app}"; Flags: ignoreversion
-Source: "{#SourceDir}\release-manifest.json"; DestDir: "{app}"; Flags: ignoreversion
-Source: "{#SourceDir}\sbom-dotnet.json"; DestDir: "{app}"; Flags: ignoreversion
+; Install the complete verified publish output. WPF keeps a small set of native
+; runtime DLLs beside the single-file executable on some Windows/.NET builds.
+Source: "{#SourceDir}\*"; DestDir: "{app}"; Flags: ignoreversion recursesubdirs createallsubdirs; Excludes: "*.pdb"
 
 [Icons]
 Name: "{group}\AstroProject Forge{#ChannelSuffix}"; Filename: "{app}\AstroForge.App.exe"
