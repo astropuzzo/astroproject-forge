@@ -1,5 +1,15 @@
 # AstroProject Forge — note di rilascio
 
+## 0.9.0-beta.4 — 26 luglio 2026
+
+- Menu superiore unificato: lingua, dimensione UI, progetto, guida, diagnostica e informazioni sono raccolti in un solo punto.
+- Testi WBPP riscritti come istruzioni operative brevi; la tabella mostra soltanto le keyword realmente necessarie e spiega in una riga cosa separano.
+- Aggiunti autore, copyright, collegamento GitHub e dichiarazione trasparente sullo sviluppo tramite vibe coding assistito da AI.
+- Nuovi collegamenti interni a guida rapida, modulo guidato per i bug e repository.
+- README italiano/inglese, screenshot reali, guide rapide e moduli GitHub aggiornati per utenti senza competenze tecniche.
+- Preferenze di lingua, densità e animazioni applicate e salvate direttamente dal menu.
+- Stessa organizzazione funzionale nella build WPF Windows e nella build Avalonia per Linux/macOS.
+
 ## 0.9.0-beta.3 — 22 luglio 2026
 
 - Aggiunto il selettore lingua in `Impostazioni → Lingua / Language` su Windows, Linux e macOS.

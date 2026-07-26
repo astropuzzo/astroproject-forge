@@ -13,6 +13,9 @@ namespace AstroForge.CrossPlatform;
 
 public sealed partial class MainWindow : Window
 {
+    private const string RepositoryUrl = "https://github.com/astropuzzo/astroproject-forge";
+    private const string GuideUrl = RepositoryUrl + "/wiki";
+    private const string IssueUrl = RepositoryUrl + "/issues/new?template=bug_report.yml";
     private readonly MainViewModel _viewModel = new();
     private readonly DispatcherTimer _blinkTimer = new() { Interval = TimeSpan.FromMilliseconds(700) };
     private CancellationTokenSource? _qualityCancellation;
@@ -71,8 +74,13 @@ public sealed partial class MainWindow : Window
 
     private void DensitySelector_SelectionChanged(object? sender, SelectionChangedEventArgs e)
     {
-        if (DensitySelector.SelectedItem is ComboBoxItem item) _viewModel.UiDensity = item.Tag?.ToString() ?? "Comoda";
+        if (DensitySelector.SelectedItem is ComboBoxItem item)
+        {
+            _viewModel.UiDensity = item.Tag?.ToString() ?? "Comoda";
+            _viewModel.SaveState();
+        }
     }
+    private void UiPreferenceChanged_Click(object? sender, RoutedEventArgs e) => _viewModel.SaveState();
 
     private void WorkspaceTabs_SelectionChanged(object? sender, SelectionChangedEventArgs e) => ScheduleLocalization();
 
@@ -146,6 +154,11 @@ public sealed partial class MainWindow : Window
 
     private void ToggleSettings_Click(object? sender, RoutedEventArgs e) => SettingsPanel.IsVisible = !SettingsPanel.IsVisible;
     private void OpenOnboarding_Click(object? sender, RoutedEventArgs e) { SettingsPanel.IsVisible = false; _viewModel.OpenOnboarding(); }
+    private void OpenGuide_Click(object? sender, RoutedEventArgs e) { SettingsPanel.IsVisible = false; OpenUrl(GuideUrl); }
+    private void OpenRepository_Click(object? sender, RoutedEventArgs e) => OpenUrl(RepositoryUrl);
+    private void ReportIssue_Click(object? sender, RoutedEventArgs e) { SettingsPanel.IsVisible = false; OpenUrl(IssueUrl); }
+    private void OpenDiagnosticsTab_Click(object? sender, RoutedEventArgs e) { SettingsPanel.IsVisible = false; WorkspaceTabs.SelectedIndex = 7; _viewModel.RefreshDiagnostics(); }
+    private static void OpenUrl(string url) => Process.Start(new ProcessStartInfo(url) { UseShellExecute = true });
     private void CompleteOnboarding_Click(object? sender, RoutedEventArgs e) => _viewModel.CompleteOnboarding();
 
     private async void Analyze_Click(object? sender, RoutedEventArgs e) => await RunAsync("AF-SCAN-001", () => _viewModel.ScanAsync());
