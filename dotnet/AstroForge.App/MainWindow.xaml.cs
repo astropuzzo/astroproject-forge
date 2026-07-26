@@ -14,6 +14,9 @@ namespace AstroForge.App;
 
 public partial class MainWindow : Window
 {
+    private const string RepositoryUrl = "https://github.com/astropuzzo/astroproject-forge";
+    private const string GuideUrl = RepositoryUrl + "/wiki";
+    private const string IssueUrl = RepositoryUrl + "/issues/new?template=bug_report.yml";
     private readonly MainViewModel _viewModel = new();
     private bool _sourcesVisible = true;
     private bool _inspectorVisible = true;
@@ -125,9 +128,9 @@ public partial class MainWindow : Window
         InspectorToggleButton.Padding = narrowHeader ? new Thickness(0) : new Thickness(13, 0, 13, 0);
         OpenProjectButton.Content = "Apri";
         SaveProjectButton.Content = "Salva";
-        SettingsButton.Content = narrowHeader ? "⚙" : "Impostazioni";
-        SettingsButton.Width = narrowHeader ? 44 : double.NaN;
-        SettingsButton.Padding = narrowHeader ? new Thickness(0) : new Thickness(13, 0, 13, 0);
+        MoreButton.Content = narrowHeader ? "☰" : "Menu";
+        MoreButton.Width = narrowHeader ? 44 : double.NaN;
+        MoreButton.Padding = narrowHeader ? new Thickness(0) : new Thickness(13, 0, 13, 0);
     }
 
     private void PanelSplitter_DragCompleted(object sender, System.Windows.Controls.Primitives.DragCompletedEventArgs e)
@@ -143,7 +146,7 @@ public partial class MainWindow : Window
         WindowState = WindowState == WindowState.Maximized ? WindowState.Normal : WindowState.Maximized;
     private void CloseWindow_Click(object sender, RoutedEventArgs e) => Close();
 
-    private void More_Click(object sender, RoutedEventArgs e) { SettingsPopup.IsOpen = false; MorePopup.IsOpen = !MorePopup.IsOpen; }
+    private void More_Click(object sender, RoutedEventArgs e) => MorePopup.IsOpen = !MorePopup.IsOpen;
     private void CloseMore_Click(object sender, RoutedEventArgs e) => MorePopup.IsOpen = false;
     private void OpenDiagnostics_Click(object sender, RoutedEventArgs e)
     {
@@ -153,14 +156,16 @@ public partial class MainWindow : Window
     }
     private void CloseDiagnostics_Click(object sender, RoutedEventArgs e) => DiagnosticsOverlay.Visibility = Visibility.Collapsed;
     private void RefreshDiagnostics_Click(object sender, RoutedEventArgs e) => _viewModel.RefreshDiagnostics();
-    private void Settings_Click(object sender, RoutedEventArgs e) { MorePopup.IsOpen = false; SettingsPopup.IsOpen = !SettingsPopup.IsOpen; }
     private void ShowAbout_Click(object sender, RoutedEventArgs e)
     {
         MorePopup.IsOpen = false;
-        SettingsPopup.IsOpen = false;
         AboutOverlay.Visibility = Visibility.Visible;
     }
     private void CloseAbout_Click(object sender, RoutedEventArgs e) => AboutOverlay.Visibility = Visibility.Collapsed;
+    private void OpenGuide_Click(object sender, RoutedEventArgs e) { MorePopup.IsOpen = false; OpenExternalUrl(GuideUrl); }
+    private void OpenRepository_Click(object sender, RoutedEventArgs e) => OpenExternalUrl(RepositoryUrl);
+    private void ReportIssue_Click(object sender, RoutedEventArgs e) { MorePopup.IsOpen = false; OpenExternalUrl(IssueUrl); }
+    private static void OpenExternalUrl(string url) => Process.Start(new ProcessStartInfo(url) { UseShellExecute = true });
     private async void CheckUpdates_Click(object sender, RoutedEventArgs e) => await CheckUpdatesAsync(true);
     private async Task CheckUpdatesAsync(bool interactive)
     {
@@ -210,10 +215,9 @@ public partial class MainWindow : Window
         if (!IsLoaded) return;
         if (DensitySelector.SelectedItem is System.Windows.Controls.ComboBoxItem item) _viewModel.UiDensity = item.Tag?.ToString() ?? "Comoda";
         ApplyUiPreferences();
+        _viewModel.SaveState();
     }
-    private void ReducedMotion_Click(object sender, RoutedEventArgs e) => ApplyUiPreferences();
-    private void SaveUiPreferences_Click(object sender, RoutedEventArgs e) { _viewModel.SaveState(); SettingsPopup.IsOpen = false; }
-    private void ReopenOnboarding_Click(object sender, RoutedEventArgs e) { SettingsPopup.IsOpen = false; _onboardingStep = 1; _viewModel.OpenOnboarding(); UpdateOnboarding(); }
+    private void ReducedMotion_Click(object sender, RoutedEventArgs e) { ApplyUiPreferences(); _viewModel.SaveState(); }
     private void OnboardingChooseLibrary_Click(object sender, RoutedEventArgs e) => ChooseLibrary_Click(sender, e);
     private void OnboardingAddSource_Click(object sender, RoutedEventArgs e) => AddSource_Click(sender, e);
     private void OnboardingAddFiles_Click(object sender, RoutedEventArgs e) => AddFiles_Click(sender, e);

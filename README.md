@@ -2,6 +2,8 @@
 
 [Italiano](docs/README.it.md) · **English**
 
+> **Development transparency:** AstroProject Forge was created entirely through AI-assisted vibe coding by [Gianmarco Spagnoli (@astropuzzo)](https://github.com/astropuzzo), who is not a trained software developer. This public beta can contain mistakes. Use **Menu → Report a problem** in the app or the [guided issue form](https://github.com/astropuzzo/astroproject-forge/issues/new?template=bug_report.yml) to report them. Always review calibration assignments before processing valuable data.
+
 **Turn multi-night FITS/XISF acquisitions into an auditable PixInsight WBPP project.**
 
 AstroProject Forge is a desktop calibration workspace for astrophotographers. It reads image headers, reconstructs astronomical nights and optical-configuration sessions, matches Flat/Dark/Bias frames, highlights ambiguity, and exports a verified project structure with the exact WBPP Grouping Keywords it requires.
@@ -9,6 +11,8 @@ AstroProject Forge is a desktop calibration workspace for astrophotographers. It
 > Beta software. Always review calibration assignments before processing valuable data. Source images are treated as read-only.
 
 ![AstroProject Forge project map](docs/images/project-map.png)
+
+![Unified application menu](docs/images/app-menu.png)
 
 ## Why it exists
 
@@ -83,11 +87,13 @@ The first public beta is distributed from [GitHub Releases](https://github.com/a
 
 Published binaries are self-contained; users do not need to install .NET. PixInsight is not required to inventory or organize a project.
 
-The application interface is available in Italian and English. Change it at any time from **Settings → Language / Lingua**; the choice is applied immediately and saved for the next launch.
+The application interface is available in Italian and English. Change it at any time from **Menu → Language / Lingua**; the choice is applied immediately and saved for the next launch.
 
 Each GitHub release contains only the installable and portable packages listed above. GitHub adds the `Source code` ZIP and TAR.GZ automatically. QA reports, manifests, checksums and SBOM files remain internal build artifacts instead of cluttering the public download list.
 
 ## Quick start
+
+For screenshots and practical examples, open the [simple user guide](https://github.com/astropuzzo/astroproject-forge/wiki) from the app with **Menu → Quick guide**.
 
 1. Add Light/Flat files or acquisition folders.
 2. Add one or more Dark/Bias Master Libraries and set their priority.
@@ -96,6 +102,8 @@ Each GitHub release contains only the installable and portable packages listed a
 5. Inspect WBPP keywords and the final structure.
 6. Choose a destination and export the verified project.
 7. Load the generated structure in PixInsight WeightedBatchPreprocessing.
+
+![WBPP grouping instructions generated from the current project](docs/images/wbpp-settings.png)
 
 ## Safety model
 
@@ -122,4 +130,6 @@ This repository is public for transparent beta testing. The software remains und
 
 ## Copyright and contributions
 
-Copyright © 2026 AstroProject Forge. All rights reserved. Public source access does not grant permission to copy, redistribute, modify or sell the software. See [LICENSE](LICENSE) and [CONTRIBUTING](CONTRIBUTING.md).
+Copyright © 2026 [Gianmarco Spagnoli (@astropuzzo)](https://github.com/astropuzzo). All rights reserved. Public source access does not grant permission to copy, redistribute, modify or sell the software. See [LICENSE](LICENSE) and [CONTRIBUTING](CONTRIBUTING.md).
+
+![About AstroProject Forge](docs/images/about.png)

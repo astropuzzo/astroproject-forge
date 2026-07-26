@@ -15,10 +15,9 @@ public static class WbppRecipeEngine
         var recommendations = new List<GroupingKeywordRecommendation>();
         var notes = new List<string>
         {
-            "FILTER, binning ed esposizione sono gestiti nativamente da WBPP.",
-            "Non usare DATE-OBS: identifica i singoli frame e può attraversare la mezzanotte.",
-            "Le notti osservative sono sotto-livelli della sessione di configurazione e non devono separare l'integrazione.",
-            "FLATSET rappresenta la sessione ottica; DARKSET e BIASSET rappresentano la configurazione sensore."
+            "Aggiungi solo le righe mostrate sopra. Imposta Pre su ON e Post su OFF.",
+            "WBPP separa già filtro, binning ed esposizione: non aggiungerli.",
+            "Non usare DATE-OBS: dividerebbe i file della stessa notte osservativa."
         };
         var flatChoices = new Dictionary<string, HashSet<string>>();
         var darkChoices = new Dictionary<string, HashSet<string>>();
@@ -32,9 +31,9 @@ public static class WbppRecipeEngine
             Add(darkChoices, $"{light.XBin.Value}|{light.YBin.Value}|{light.Width.Value}|{light.Height.Value}|{light.ExposureSeconds.Value:0.###}", item.Dark.Selected?.Frame.Path);
             Add(biasChoices, $"{light.XBin.Value}|{light.YBin.Value}|{light.Width.Value}|{light.Height.Value}", item.Bias.Selected?.Frame.Path);
         }
-        if (flatChoices.Values.Any(values => values.Count > 1)) recommendations.Add(new("FLATSET", true, false, "Lo stesso filtro usa più set Flat."));
-        if (darkChoices.Values.Any(values => values.Count > 1)) recommendations.Add(new("DARKSET", true, false, "Light equivalenti per WBPP richiedono Dark diversi per gain, temperatura o offset."));
-        if (biasChoices.Values.Any(values => values.Count > 1)) recommendations.Add(new("BIASSET", true, false, "La stessa geometria richiede Bias diversi per gain o offset."));
+        if (flatChoices.Values.Any(values => values.Count > 1)) recommendations.Add(new("FLATSET", true, false, "Separa i Light che usano Flat diversi."));
+        if (darkChoices.Values.Any(values => values.Count > 1)) recommendations.Add(new("DARKSET", true, false, "Separa i Light che richiedono Dark diversi."));
+        if (biasChoices.Values.Any(values => values.Count > 1)) recommendations.Add(new("BIASSET", true, false, "Separa i gruppi che richiedono Bias diversi."));
         if (targets.Count > 1) recommendations.Add(new("TARGET", false, true, "Target diversi devono restare separati in registrazione e integrazione."));
         if (recommendations.Count == 0) notes.Insert(0, "Lasciare vuota la tabella Grouping Keywords.");
         return new(recommendations, notes);

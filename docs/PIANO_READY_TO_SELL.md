@@ -1,5 +1,7 @@
 # AstroProject Forge — piano di intervento “Ready to Sell”
 
+> Stato 26 luglio 2026 — beta.4: completato il passaggio “noob proof” della shell. Menu e preferenze sono unificati; WBPP usa istruzioni brevi calcolate dal progetto; autore, copyright, guida, modulo bug e diagnostica sono raggiungibili dall’app. Documentazione bilingue, issue form e screenshot sono aggiornati. Restano gate commerciali firma/notarizzazione, EULA/privacy, QA hardware e compatibilità WBPP su una matrice più ampia.
+
 > Stato 21 luglio 2026: completato il contratto di soglia del Quality Lab. Score, grafico, lista e conteggi condividono una sola regola; sospetto ed escluso sono separati esplicitamente e la curva gaussiana fuorviante è stata rimossa.
 
 > Stato 22 luglio 2026: il port Avalonia usa lo stesso `MainViewModel` e lo stesso Core della build Windows. Sono presenti sorgenti generiche, albero/Inspector, override e Flat Epoch, WBPP, dati, revisione, Quality Lab, export verificato e Master Library Lab indipendente. La matrice CI compila e testa Linux x64/ARM64 e macOS Intel/Apple Silicon; la beta pubblica distribuisce gli stessi workflow funzionali, mentre firma, notarizzazione e QA hardware restano gate commerciali.

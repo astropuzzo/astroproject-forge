@@ -1,0 +1,83 @@
+name: Segnala un problema / Report a problem
+description: Modulo guidato per errori, risultati dubbi o comportamenti inattesi.
+title: "[Bug] "
+labels:
+  - bug
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Grazie. Non servono competenze tecniche: descrivi cosa hai fatto e cosa è successo.
+        Non caricare FITS/XISF privati. Se possibile, allega lo ZIP creato da **Menu → Diagnostica → Esporta ZIP di supporto**.
+  - type: dropdown
+    id: platform
+    attributes:
+      label: Sistema operativo
+      options:
+        - Windows 10/11
+        - macOS Intel
+        - macOS Apple Silicon
+        - Linux x64
+        - Linux ARM64
+    validations:
+      required: true
+  - type: input
+    id: version
+    attributes:
+      label: Versione dell'app
+      description: La trovi in Menu → Informazioni.
+      placeholder: 0.9.0-beta.4
+    validations:
+      required: true
+  - type: dropdown
+    id: area
+    attributes:
+      label: Dove si verifica?
+      options:
+        - Importazione o analisi
+        - Flat, Dark o Bias
+        - Struttura del progetto
+        - WBPP
+        - Statistiche
+        - Analisi qualità e Blink
+        - Libreria Master
+        - Esportazione
+        - Interfaccia o traduzione
+        - Altro
+    validations:
+      required: true
+  - type: textarea
+    id: steps
+    attributes:
+      label: Cosa hai fatto?
+      description: Elenca pochi passaggi, nell'ordine in cui li hai eseguiti.
+      placeholder: |
+        1. Ho aggiunto...
+        2. Ho premuto...
+        3. È comparso...
+    validations:
+      required: true
+  - type: textarea
+    id: expected
+    attributes:
+      label: Cosa ti aspettavi?
+    validations:
+      required: true
+  - type: textarea
+    id: actual
+    attributes:
+      label: Cosa è successo invece?
+    validations:
+      required: true
+  - type: textarea
+    id: attachments
+    attributes:
+      label: Screenshot o diagnostica
+      description: Trascina qui screenshot o ZIP diagnostico. Non allegare immagini astronomiche private.
+  - type: checkboxes
+    id: privacy
+    attributes:
+      label: Controllo privacy
+      options:
+        - label: Ho verificato che gli allegati non contengano immagini astronomiche o dati che non voglio rendere pubblici.
+          required: true
