@@ -1,5 +1,14 @@
 # AstroProject Forge — note di rilascio
 
+## 0.9.0-beta.5 — 27 luglio 2026
+
+- Corretto il controllo aggiornamenti quando il feed Stable/Beta non è ancora stato pubblicato.
+- Aggiunto il fallback sulle release GitHub con selezione SemVer del canale più recente.
+- Le beta non firmate aprono la pagina release nel browser e non entrano nel downloader verificato.
+- I download interni continuano a richiedere dimensione, SHA-256 e firma Authenticode validi.
+- Messaggi di aggiornamento e pulsanti corretti in italiano e inglese.
+- Aggiunto un comando di pubblicazione che blocca feed non firmati e una guida pratica per ottenere firme Windows e macOS.
+
 ## 0.9.0-beta.4 — 26 luglio 2026
 
 - Menu superiore unificato: lingua, dimensione UI, progetto, guida, diagnostica e informazioni sono raccolti in un solo punto.
