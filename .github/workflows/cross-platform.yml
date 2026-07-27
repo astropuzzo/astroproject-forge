@@ -49,7 +49,8 @@ jobs:
         if: runner.os == 'Linux'
         run: |
           VERSION="$(jq -r .version version.json)"
-          DEB_VERSION="${VERSION/-/~}"
+          DEB_VERSION="$(printf '%s' "$VERSION" | sed 's/-/~/')"
+          dpkg --validate-version "$DEB_VERSION"
           chmod +x publish/AstroProjectForge
           tar -C publish -czf AstroProjectForge-${{ matrix.rid }}.tar.gz .
           arch="amd64"; [ "${{ matrix.rid }}" = "linux-arm64" ] && arch="arm64"
