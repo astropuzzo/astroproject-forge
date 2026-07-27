@@ -70,6 +70,12 @@ public static partial class UiLocalization
         if (match.Success) return $"{match.Groups[1].Value} night{(match.Groups[1].Value == "1" ? "" : "s")}";
         match = ConfigurationSessionCount().Match(value);
         if (match.Success) return $"{match.Groups[1].Value} configuration session{(match.Groups[1].Value == "1" ? "" : "s")}";
+        match = UpdateAvailableSigned().Match(value);
+        if (match.Success) return $"AstroProject Forge {match.Groups[1].Value} is available with a signed installer.";
+        match = UpdateAvailableRelease().Match(value);
+        if (match.Success) return $"AstroProject Forge {match.Groups[1].Value} is available. Open the release to download it.";
+        match = ReleaseOpened().Match(value);
+        if (match.Success) return $"Release {match.Groups[1].Value} opened in your browser · manual download";
         return value;
     }
 
@@ -123,6 +129,9 @@ public static partial class UiLocalization
     [GeneratedRegex("^(\\d+) configurate$")] private static partial Regex ConfiguredLibraries();
     [GeneratedRegex("^(\\d+) cartell(?:a|e)$")] private static partial Regex FolderCount();
     [GeneratedRegex("^Priorità (\\d+)$")] private static partial Regex Priority();
+    [GeneratedRegex("^È disponibile AstroProject Forge ([0-9A-Za-z.+-]+), con installer firmato\\.$")] private static partial Regex UpdateAvailableSigned();
+    [GeneratedRegex("^È disponibile AstroProject Forge ([0-9A-Za-z.+-]+)\\. Apri la release per scaricarla\\.$")] private static partial Regex UpdateAvailableRelease();
+    [GeneratedRegex("^Release ([0-9A-Za-z.+-]+) aperta nel browser · download manuale$")] private static partial Regex ReleaseOpened();
     [GeneratedRegex("^(\\d+) nott(?:e|i)$")] private static partial Regex NightCount();
     [GeneratedRegex("^(\\d+) session(?:e|i) configurazione$")] private static partial Regex ConfigurationSessionCount();
     [GeneratedRegex("^(\\d+) linked sources?$")] private static partial Regex EnglishLinkedSources();

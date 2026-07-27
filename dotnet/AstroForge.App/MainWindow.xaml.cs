@@ -174,18 +174,26 @@ public partial class MainWindow : Window
             _viewModel.UpdateStatus = $"Controllo canale {_viewModel.UpdateChannel}…";
             DownloadUpdateButton.Visibility = Visibility.Collapsed;
             var channel = Enum.Parse<ReleaseChannel>(_viewModel.UpdateChannel, true);
-            var decision = await _updateService.CheckAsync(UpdateService.FeedUri(channel), ReleaseIdentity.Version, channel);
+            var decision = await _updateService.CheckChannelAsync(ReleaseIdentity.Version, channel);
             _viewModel.UpdateStatus = decision.Reason;
             _availableUpdate = decision.IsAvailable ? decision.Manifest : null;
             DownloadUpdateButton.Visibility = decision.IsAvailable ? Visibility.Visible : Visibility.Collapsed;
+            DownloadUpdateButton.Content = decision.Manifest.Signed ? "Scarica aggiornamento" : "Apri release";
             if (interactive && !decision.IsAvailable)
-                MessageBox.Show(this, decision.Reason, "Aggiornamenti", MessageBoxButton.OK, MessageBoxImage.Information);
+                MessageBox.Show(this, UiLocalization.Translate(decision.Reason, _viewModel.UiLanguage),
+                    _viewModel.UiLanguage == UiLocalization.English ? "Updates" : "Aggiornamenti",
+                    MessageBoxButton.OK, MessageBoxImage.Information);
         }
         catch (HttpRequestException)
         {
             _availableUpdate = null;
-            _viewModel.UpdateStatus = "Feed non raggiungibile o canale non ancora pubblicato";
-            if (interactive) MessageBox.Show(this, "Il canale selezionato non è raggiungibile o non è ancora stato pubblicato. Nessun file è stato scaricato.", "Aggiornamenti", MessageBoxButton.OK, MessageBoxImage.Information);
+            _viewModel.UpdateStatus = "GitHub Releases non raggiungibile · controlla la connessione";
+            if (interactive) MessageBox.Show(this,
+                _viewModel.UiLanguage == UiLocalization.English
+                    ? "Could not contact GitHub Releases. Check your connection and try again. No file was downloaded."
+                    : "Non è stato possibile contattare GitHub Releases. Controlla la connessione e riprova. Nessun file è stato scaricato.",
+                _viewModel.UiLanguage == UiLocalization.English ? "Updates" : "Aggiornamenti",
+                MessageBoxButton.OK, MessageBoxImage.Information);
         }
         catch (Exception exception)
         {
@@ -197,6 +205,16 @@ public partial class MainWindow : Window
     private async void DownloadUpdate_Click(object sender, RoutedEventArgs e)
     {
         if (_availableUpdate is null) return;
+        if (!_availableUpdate.Signed)
+        {
+            if (Uri.TryCreate(_availableUpdate.ReleaseNotesUrl, UriKind.Absolute, out var releaseUri)
+                && releaseUri.Scheme == Uri.UriSchemeHttps)
+            {
+                OpenExternalUrl(releaseUri.ToString());
+                _viewModel.UpdateStatus = $"Release {_availableUpdate.Version} aperta nel browser · download manuale";
+            }
+            return;
+        }
         var artifact = _availableUpdate.Installer;
         var dialog = new SaveFileDialog { Title = "Salva installer verificato", FileName = artifact.FileName, Filter = "Installer Windows (*.exe)|*.exe", AddExtension = true, DefaultExt = ".exe" };
         if (dialog.ShowDialog(this) != true) return;

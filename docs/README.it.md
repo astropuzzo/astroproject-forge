@@ -126,7 +126,7 @@ Windows usa il workspace WPF. Linux e macOS usano la shell Avalonia sopra lo ste
 
 ## Stato del progetto
 
-Il repository è pubblico per un beta test trasparente. Il software è ancora in sviluppo: firma/notarizzazione, matrice WBPP end-to-end e supporto commerciale restano gate di rilascio. Vedi [piano ready-to-sell](PIANO_READY_TO_SELL.md), [specifica prodotto](PRODUCT_SPEC.md), [changelog](CHANGELOG.md) e [processo di release](RELEASE_PROCESS.md).
+Il repository è pubblico per un beta test trasparente. Il software è ancora in sviluppo: firma/notarizzazione, matrice WBPP end-to-end e supporto commerciale restano gate di rilascio. Vedi [piano ready-to-sell](PIANO_READY_TO_SELL.md), [specifica prodotto](PRODUCT_SPEC.md), [changelog](CHANGELOG.md), [guida alla firma](SIGNING.md) e [processo di release](RELEASE_PROCESS.md).
 
 ## Copyright e contributi
 
