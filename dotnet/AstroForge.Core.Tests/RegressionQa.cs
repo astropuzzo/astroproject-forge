@@ -164,6 +164,53 @@ internal static class RegressionQa
         var service = new UpdateService(new HttpClient(handler), _ => true);
         var decision = await service.CheckAsync(new Uri("https://updates.example.test/beta.json"), "0.9.0-beta.1", ReleaseChannel.Beta);
         Assert(decision.IsAvailable && UpdateService.CompareVersions("1.0.0", "1.0.0-rc.1") > 0, "Ordinamento SemVer/update errato.");
+        var githubRelease = JsonSerializer.Serialize(new[]
+        {
+            new Dictionary<string, object?>
+            {
+                ["draft"] = false,
+                ["prerelease"] = true,
+                ["tag_name"] = "v0.9.0-beta.4",
+                ["html_url"] = "https://github.com/astropuzzo/astroproject-forge/releases/tag/v0.9.0-beta.4",
+                ["published_at"] = "2026-07-26T18:58:13Z",
+                ["assets"] = new[]
+                {
+                    new Dictionary<string, object?>
+                    {
+                        ["name"] = "AstroProjectForge-Beta-0.9.0-beta.4-win-x64-setup.exe",
+                        ["browser_download_url"] = "https://github.com/astropuzzo/astroproject-forge/releases/download/v0.9.0-beta.4/AstroProjectForge-Beta-0.9.0-beta.4-win-x64-setup.exe",
+                        ["size"] = payload.Length,
+                        ["digest"] = $"sha256:{sha}"
+                    }
+                }
+            }
+        });
+        var fallbackHandler = new FakeHandler(request =>
+            request.RequestUri!.Host.Equals("api.github.com", StringComparison.OrdinalIgnoreCase)
+                ? new HttpResponseMessage(HttpStatusCode.OK) { Content = new StringContent(githubRelease, Encoding.UTF8, "application/json") }
+                : new HttpResponseMessage(HttpStatusCode.NotFound));
+        var fallbackService = new UpdateService(new HttpClient(fallbackHandler), _ => false);
+        var fallbackDecision = await fallbackService.CheckChannelAsync("0.9.0-beta.3", ReleaseChannel.Beta);
+        Assert(fallbackDecision.IsAvailable && !fallbackDecision.Manifest.Signed
+            && fallbackDecision.Manifest.ReleaseNotesUrl?.Contains("v0.9.0-beta.4", StringComparison.Ordinal) == true,
+            "Il fallback GitHub non ha rilevato la beta non firmata.");
+        var currentDecision = await fallbackService.CheckChannelAsync("0.9.0-beta.4", ReleaseChannel.Beta);
+        Assert(!currentDecision.IsAvailable && currentDecision.Reason.Contains("aggiornata", StringComparison.OrdinalIgnoreCase),
+            "Il fallback GitHub non riconosce la versione corrente.");
+        var staleManifest = manifest with { Version = "0.9.0-beta.3" };
+        var staleHandler = new FakeHandler(request =>
+            request.RequestUri!.Host.Equals("api.github.com", StringComparison.OrdinalIgnoreCase)
+                ? new HttpResponseMessage(HttpStatusCode.OK) { Content = new StringContent(githubRelease, Encoding.UTF8, "application/json") }
+                : new HttpResponseMessage(HttpStatusCode.OK)
+                {
+                    Content = new StringContent(JsonSerializer.Serialize(staleManifest, new JsonSerializerOptions { PropertyNamingPolicy = JsonNamingPolicy.CamelCase }), Encoding.UTF8, "application/json")
+                });
+        var newestService = new UpdateService(new HttpClient(staleHandler), _ => true);
+        var newestDecision = await newestService.CheckChannelAsync("0.9.0-beta.2", ReleaseChannel.Beta);
+        Assert(newestDecision.Manifest.Version == "0.9.0-beta.4" && !newestDecision.Manifest.Signed,
+            "Un feed firmato ma obsoleto ha nascosto una release GitHub più recente.");
+        AssertThrows<InvalidDataException>(() => UpdateService.Validate(fallbackDecision.Manifest, ReleaseChannel.Beta),
+            "Un manifest non firmato non deve diventare idoneo al download verificato.");
         var root = Path.Combine(Path.GetTempPath(), $"AstroForge-QA-Update-{Guid.NewGuid():N}"); Directory.CreateDirectory(root);
         try
         {

@@ -30,6 +30,16 @@ $env:ASTROFORGE_SIGNTOOL = 'C:\percorso\sicuro\signtool.exe'
 
 Lo script firma e verifica EXE e installer con SHA-256 e timestamp RFC 3161. Certificati, password e segreti non devono mai entrare nel repository.
 
+La procedura per ottenere certificati Windows e macOS è descritta in [`SIGNING.md`](SIGNING.md).
+
+Dopo aver pubblicato la release versionata, aggiornare il feed soltanto se il manifest è firmato:
+
+```powershell
+.\scripts\publish-update-channel.ps1 -Channel Beta
+```
+
+Le beta non firmate non pubblicano il feed: il client usa GitHub Releases come fallback e apre il download manuale nel browser.
+
 ## Collaudo manuale obbligatorio prima della RC
 
 - Windows 10 22H2 e Windows 11 supportato, VM pulite e account standard.

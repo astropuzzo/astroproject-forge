@@ -38,6 +38,28 @@ public sealed partial class UpdateService
     public static Uri FeedUri(ReleaseChannel channel) => new(
         $"https://github.com/astropuzzo/astroproject-forge/releases/download/channel-{channel.ToString().ToLowerInvariant()}/{channel.ToString().ToLowerInvariant()}.json");
 
+    public async Task<UpdateDecision> CheckChannelAsync(string currentVersion, ReleaseChannel channel, CancellationToken cancellationToken = default)
+    {
+        UpdateDecision? feedDecision = null;
+        try
+        {
+            feedDecision = await CheckAsync(FeedUri(channel), currentVersion, channel, cancellationToken);
+        }
+        catch (HttpRequestException) { }
+
+        try
+        {
+            var githubDecision = await CheckGitHubReleasesAsync(currentVersion, channel, cancellationToken);
+            if (feedDecision is null) return githubDecision;
+            var comparison = CompareVersions(githubDecision.Manifest.Version, feedDecision.Manifest.Version);
+            return comparison > 0 ? githubDecision : feedDecision;
+        }
+        catch (HttpRequestException) when (feedDecision is not null)
+        {
+            return feedDecision;
+        }
+    }
+
     public async Task<UpdateDecision> CheckAsync(Uri feed, string currentVersion, ReleaseChannel expectedChannel, CancellationToken cancellationToken = default)
     {
         RequireHttps(feed, "feed");
@@ -45,11 +67,75 @@ public sealed partial class UpdateService
         response.EnsureSuccessStatusCode();
         var manifest = await response.Content.ReadFromJsonAsync<ReleaseManifest>(Json, cancellationToken)
             ?? throw new InvalidDataException("Manifest aggiornamento vuoto.");
-        Validate(manifest, expectedChannel);
+        Validate(manifest, expectedChannel, requireSigned: false);
         var comparison = CompareVersions(manifest.Version, currentVersion);
         return comparison > 0
-            ? new(true, manifest, $"È disponibile AstroProject Forge {manifest.Version}.")
+            ? new(true, manifest, manifest.Signed
+                ? $"È disponibile AstroProject Forge {manifest.Version}, con installer firmato."
+                : $"È disponibile AstroProject Forge {manifest.Version}. Apri la release per scaricarla.")
             : new(false, manifest, comparison == 0 ? "La versione installata è aggiornata." : "La versione installata è più recente del canale selezionato.");
+    }
+
+    private async Task<UpdateDecision> CheckGitHubReleasesAsync(string currentVersion, ReleaseChannel channel, CancellationToken cancellationToken)
+    {
+        using var request = new HttpRequestMessage(HttpMethod.Get, "https://api.github.com/repos/astropuzzo/astroproject-forge/releases?per_page=20");
+        request.Headers.UserAgent.ParseAdd("AstroProject-Forge-Updater/1.0");
+        request.Headers.Accept.ParseAdd("application/vnd.github+json");
+        using var response = await _http.SendAsync(request, HttpCompletionOption.ResponseHeadersRead, cancellationToken);
+        response.EnsureSuccessStatusCode();
+        using var document = JsonDocument.Parse(await response.Content.ReadAsStreamAsync(cancellationToken));
+
+        var candidates = new List<ReleaseManifest>();
+        foreach (var release in document.RootElement.EnumerateArray())
+        {
+            if (release.TryGetProperty("draft", out var draft) && draft.GetBoolean()) continue;
+            var prerelease = release.TryGetProperty("prerelease", out var prereleaseNode) && prereleaseNode.GetBoolean();
+            if (channel == ReleaseChannel.Stable && prerelease) continue;
+            if (!release.TryGetProperty("tag_name", out var tagNode)) continue;
+            var version = tagNode.GetString()?.TrimStart('v');
+            if (string.IsNullOrWhiteSpace(version)) continue;
+            try { _ = ParseVersion(version); }
+            catch (InvalidDataException) { continue; }
+
+            if (!release.TryGetProperty("assets", out var assetsNode)) continue;
+            var installers = assetsNode.EnumerateArray()
+                .Where(asset =>
+                {
+                    var name = asset.TryGetProperty("name", out var nameNode) ? nameNode.GetString() ?? "" : "";
+                    return name.EndsWith(".exe", StringComparison.OrdinalIgnoreCase)
+                        && (name.Contains("setup", StringComparison.OrdinalIgnoreCase) || name.Contains("installer", StringComparison.OrdinalIgnoreCase));
+                })
+                .ToArray();
+            if (installers.Length == 0) continue;
+
+            var installerNode = installers.FirstOrDefault(asset =>
+                (asset.GetProperty("name").GetString() ?? "").Contains("win-x64", StringComparison.OrdinalIgnoreCase));
+            if (installerNode.ValueKind == JsonValueKind.Undefined) installerNode = installers[0];
+
+            var fileName = installerNode.GetProperty("name").GetString()!;
+            var url = installerNode.GetProperty("browser_download_url").GetString()!;
+            var size = installerNode.TryGetProperty("size", out var sizeNode) ? sizeNode.GetInt64() : 0;
+            var digest = installerNode.TryGetProperty("digest", out var digestNode) ? digestNode.GetString() : null;
+            var sha256 = digest?.StartsWith("sha256:", StringComparison.OrdinalIgnoreCase) == true ? digest[7..] : new string('0', 64);
+            var notesUrl = release.TryGetProperty("html_url", out var htmlNode) ? htmlNode.GetString() : null;
+            var published = release.TryGetProperty("published_at", out var publishedNode)
+                && DateTimeOffset.TryParse(publishedNode.GetString(), out var publishedAt) ? publishedAt : DateTimeOffset.MinValue;
+
+            candidates.Add(new ReleaseManifest(1, "AstroProject Forge", channel.ToString(), version, published,
+                new ReleaseArtifact(url, sha256, size, fileName), notesUrl, Signed: false));
+        }
+
+        if (candidates.Count == 0)
+            throw new HttpRequestException($"Nessuna release valida trovata per il canale {channel}.");
+
+        var manifest = candidates.Aggregate((best, candidate) => CompareVersions(candidate.Version, best.Version) > 0 ? candidate : best);
+        Validate(manifest, channel, requireSigned: false);
+        var comparison = CompareVersions(manifest.Version, currentVersion);
+        return comparison > 0
+            ? new(true, manifest, $"È disponibile AstroProject Forge {manifest.Version}. Apri la release per scaricarla.")
+            : new(false, manifest, comparison == 0
+                ? "La versione installata è aggiornata."
+                : "La versione installata è più recente del canale selezionato.");
     }
 
     public async Task<string> DownloadVerifiedAsync(ReleaseArtifact artifact, string destinationPath, IProgress<double>? progress = null, CancellationToken cancellationToken = default)
@@ -97,13 +183,13 @@ public sealed partial class UpdateService
         }
     }
 
-    public static void Validate(ReleaseManifest manifest, ReleaseChannel expectedChannel)
+    public static void Validate(ReleaseManifest manifest, ReleaseChannel expectedChannel, bool requireSigned = true)
     {
         if (manifest.Schema != 1) throw new InvalidDataException($"Schema update non supportato: {manifest.Schema}.");
         if (!manifest.Product.Equals("AstroProject Forge", StringComparison.Ordinal)) throw new InvalidDataException("Prodotto del manifest non valido.");
         if (!Enum.TryParse<ReleaseChannel>(manifest.Channel, true, out var channel) || channel != expectedChannel) throw new InvalidDataException("Canale del manifest inatteso.");
         _ = ParseVersion(manifest.Version);
-        if (!manifest.Signed) throw new InvalidDataException("Il canale ha pubblicato un aggiornamento non firmato.");
+        if (requireSigned && !manifest.Signed) throw new InvalidDataException("Il canale ha pubblicato un aggiornamento non firmato.");
         ValidateArtifact(manifest.Installer);
         if (manifest.ReleaseNotesUrl is { Length: > 0 }) RequireHttps(new Uri(manifest.ReleaseNotesUrl), "release notes");
     }
