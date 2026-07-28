@@ -34,8 +34,8 @@ still requires an interaction test on the named OS; `blocked` prevents publicati
 | First-run onboarding linked to real source/library state | pass | implemented | native QA | native QA | P0 |
 | Signed platform-aware application updates | Windows only | pending redesign | blocked | blocked | commercial |
 | Responsive panels at 980–2560 px and HiDPI | pass | implemented | native QA | native QA | P0 |
-| Keyboard navigation and screen-reader names | partial | partial | blocked | blocked | P0 |
-| English UI/localization | partial | partial | blocked | blocked | P0 |
+| Keyboard navigation and screen-reader names | pass | implemented | native QA | native QA | P0 |
+| English UI/localization | pass | implemented | native QA | native QA | P0 |
 | Linux self-contained x64/ARM64 package | n/a | implemented | native QA | n/a | P0 |
 | macOS Intel/Apple Silicon `.app` bundle | n/a | implemented | n/a | native QA | P0 |
 | macOS signing, hardened runtime and notarization | n/a | prepared only | n/a | blocked | commercial |

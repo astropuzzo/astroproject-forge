@@ -1,4 +1,5 @@
 using System.Windows;
+using System.Windows.Automation;
 using System.Windows.Controls;
 using System.Windows.Controls.Primitives;
 using System.Windows.Media;
@@ -35,11 +36,40 @@ public static class WpfLocalizationAdapter
         if (value is HeaderedItemsControl headeredItems && headeredItems.Header is string itemsHeader)
             Set(headeredItems, HeaderedItemsControl.HeaderProperty, itemsHeader, language);
         if (value is FrameworkElement element && ToolTipService.GetToolTip(element) is string tip)
+        {
             element.SetCurrentValue(ToolTipService.ToolTipProperty, UiLocalization.Translate(tip, language));
+            if (string.IsNullOrWhiteSpace(AutomationProperties.GetHelpText(element)))
+                AutomationProperties.SetHelpText(element, UiLocalization.Translate(tip, language));
+        }
         if (value is DataGrid grid)
             foreach (var column in grid.Columns)
                 if (column.Header is string columnHeader) column.SetCurrentValue(DataGridColumn.HeaderProperty, UiLocalization.Translate(columnHeader, language));
+        if (value is FrameworkElement accessible) ApplyAccessibleName(accessible, language);
     }
+
+    private static void ApplyAccessibleName(FrameworkElement element, string language)
+    {
+        var current = AutomationProperties.GetName(element);
+        if (!string.IsNullOrWhiteSpace(current))
+        {
+            AutomationProperties.SetName(element, UiLocalization.Translate(current, language));
+            return;
+        }
+
+        var candidate = element switch
+        {
+            TextBox textBox when !string.IsNullOrWhiteSpace(textBox.Tag?.ToString()) => textBox.Tag!.ToString(),
+            ContentControl content when content.Content is string contentText && IsMeaningful(contentText) => contentText,
+            HeaderedContentControl headered when headered.Header is string header && IsMeaningful(header) => header,
+            _ when ToolTipService.GetToolTip(element) is string tip && IsMeaningful(tip) => tip,
+            _ => null
+        };
+        if (!string.IsNullOrWhiteSpace(candidate))
+            AutomationProperties.SetName(element, UiLocalization.Translate(candidate, language));
+    }
+
+    private static bool IsMeaningful(string value) =>
+        value.Count(char.IsLetterOrDigit) >= 2;
 
     private static void Set(DependencyObject target, DependencyProperty property, string value, string language)
     {

@@ -78,6 +78,7 @@
                         </Border>
                         <ControlTemplate.Triggers>
                             <Trigger Property="IsMouseOver" Value="True"><Setter TargetName="Border" Property="Background" Value="#FF222B3A"/><Setter TargetName="Border" Property="BorderBrush" Value="#65718A"/></Trigger>
+                            <Trigger Property="IsKeyboardFocused" Value="True"><Setter TargetName="Border" Property="BorderBrush" Value="{StaticResource Accent}"/><Setter TargetName="Border" Property="BorderThickness" Value="2"/></Trigger>
                             <Trigger Property="IsPressed" Value="True"><Setter TargetName="Border" Property="Opacity" Value="0.82"/></Trigger>
                             <Trigger Property="IsEnabled" Value="False"><Setter TargetName="Border" Property="Opacity" Value="0.4" /></Trigger>
                             <EventTrigger RoutedEvent="MouseEnter"><BeginStoryboard><Storyboard><DoubleAnimation Storyboard.TargetName="Border" Storyboard.TargetProperty="RenderTransform.ScaleX" To="1.012" Duration="0:0:0.12"/><DoubleAnimation Storyboard.TargetName="Border" Storyboard.TargetProperty="RenderTransform.ScaleY" To="1.012" Duration="0:0:0.12"/></Storyboard></BeginStoryboard></EventTrigger>
@@ -117,6 +118,9 @@
             <Setter Property="Padding" Value="11,9" />
             <Setter Property="CaretBrush" Value="{StaticResource Accent}" />
             <Setter Property="SelectionBrush" Value="#6741D8C7" />
+            <Style.Triggers>
+                <Trigger Property="IsKeyboardFocusWithin" Value="True"><Setter Property="BorderBrush" Value="{StaticResource Accent}"/><Setter Property="BorderThickness" Value="2"/></Trigger>
+            </Style.Triggers>
         </Style>
         <Style TargetType="ComboBox">
             <Setter Property="Background" Value="#090E16" />
@@ -199,6 +203,7 @@
                         </Border>
                         <ControlTemplate.Triggers>
                             <Trigger Property="IsSelected" Value="True"><Setter TargetName="TabBorder" Property="Background" Value="{StaticResource AccentSoft}"/><Setter TargetName="TabBorder" Property="BorderBrush" Value="#475D8A82"/><Setter Property="Foreground" Value="{StaticResource Text}"/></Trigger>
+                            <Trigger Property="IsKeyboardFocused" Value="True"><Setter TargetName="TabBorder" Property="BorderBrush" Value="{StaticResource Accent}"/><Setter TargetName="TabBorder" Property="BorderThickness" Value="2"/></Trigger>
                             <Trigger Property="IsMouseOver" Value="True"><Setter TargetName="TabBorder" Property="Background" Value="#D01B2330"/></Trigger>
                             <EventTrigger RoutedEvent="MouseEnter"><BeginStoryboard><Storyboard><DoubleAnimation Storyboard.TargetName="TabBorder" Storyboard.TargetProperty="RenderTransform.Y" To="-1" Duration="0:0:0.12"/></Storyboard></BeginStoryboard></EventTrigger>
                             <EventTrigger RoutedEvent="MouseLeave"><BeginStoryboard><Storyboard><DoubleAnimation Storyboard.TargetName="TabBorder" Storyboard.TargetProperty="RenderTransform.Y" To="0" Duration="0:0:0.18"/></Storyboard></BeginStoryboard></EventTrigger>

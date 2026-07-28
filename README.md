@@ -35,6 +35,12 @@ AstroProject Forge reads FITS and XISF metadata, reconstructs observing nights a
 5. Check the suggested WBPP Grouping Keywords.
 6. Export the project and load it in PixInsight WeightedBatchPreprocessing.
 
+### Keyboard
+
+`Ctrl+O` opens a project, `Ctrl+S` saves it, `Ctrl+Shift+S` saves a copy,
+`Ctrl+Enter` analyzes it, `Ctrl+,` opens the menu and `F1` opens the guide.
+Use `Alt+1` through `Alt+8` to move directly between workspaces.
+
 The suggested Master Library layout starts with the camera:
 
 ```text
@@ -75,6 +81,12 @@ AstroProject Forge legge i metadati FITS e XISF, ricostruisce le notti osservati
 4. Risolvi gli elementi da rivedere modificando i metadati o i collegamenti delle calibrazioni.
 5. Controlla le Grouping Keywords WBPP suggerite.
 6. Esporta il progetto e caricalo in PixInsight WeightedBatchPreprocessing.
+
+### Tastiera
+
+`Ctrl+O` apre un progetto, `Ctrl+S` lo salva, `Ctrl+Shift+S` salva una copia,
+`Ctrl+Invio` avvia l'analisi, `Ctrl+,` apre il menu e `F1` apre la guida.
+Usa `Alt+1`–`Alt+8` per passare direttamente da un'area di lavoro all'altra.
 
 ## Downloads
 
