@@ -39,6 +39,9 @@ jobs:
       - name: Parity contract
         shell: pwsh
         run: ./scripts/verify-cross-platform-parity.ps1 -SkipBuild
+      - name: UI accessibility and localization contract
+        shell: pwsh
+        run: ./scripts/check-ui-contract.ps1
       - name: Publish self-contained app
         shell: bash
         run: |

@@ -1,5 +1,14 @@
 # AstroProject Forge — note di rilascio
 
+## 1.1.0 — 28 luglio 2026
+
+- Completata la traduzione inglese delle interfacce Windows, Linux e macOS.
+- Aggiunti nomi e descrizioni accessibili per screen reader e un focus tastiera più visibile.
+- Nuove scorciatoie per apertura, salvataggio, analisi, menu, guida e cambio area di lavoro.
+- `Ctrl+S` salva direttamente il progetto aperto; `Ctrl+Shift+S` apre **Salva con nome**.
+- La QA ora blocca stringhe UI non tradotte e regressioni dei contratti di accessibilità.
+- Ripristinato il piano ready-to-sell come roadmap verificabile e aggiornata.
+
 ## 1.0.3 — 28 luglio 2026
 
 - Le nuove installazioni Windows usano `C:\Program Files\AstroProject Forge`.

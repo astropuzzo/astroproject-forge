@@ -42,6 +42,7 @@ public sealed partial class MainWindow : Window
             ScheduleLocalization();
         };
         SizeChanged += (_, args) => ApplyViewportWidth(args.NewSize.Width);
+        KeyDown += Window_KeyDown;
         Opened += (_, _) => { ApplyViewportWidth(ClientSize.Width); SelectDensity(); ScheduleLocalization(); };
         Closing += (_, _) =>
         {
@@ -81,6 +82,52 @@ public sealed partial class MainWindow : Window
         }
     }
     private void UiPreferenceChanged_Click(object? sender, RoutedEventArgs e) => _viewModel.SaveState();
+
+    private async void Window_KeyDown(object? sender, KeyEventArgs e)
+    {
+        if (e.Key == Key.Escape && SettingsPanel.IsVisible)
+        {
+            SettingsPanel.IsVisible = false;
+            e.Handled = true;
+            return;
+        }
+
+        if (e.Key == Key.F1)
+        {
+            OpenUrl(GuideUrl);
+            e.Handled = true;
+            return;
+        }
+
+        var control = e.KeyModifiers.HasFlag(KeyModifiers.Control);
+        var shift = e.KeyModifiers.HasFlag(KeyModifiers.Shift);
+        var alt = e.KeyModifiers.HasFlag(KeyModifiers.Alt);
+        if (control && e.Key == Key.O)
+        {
+            OpenProject_Click(sender, e);
+            e.Handled = true;
+        }
+        else if (control && e.Key == Key.S)
+        {
+            await SaveProjectAsync(shift);
+            e.Handled = true;
+        }
+        else if (control && e.Key == Key.Enter && _viewModel.CanAnalyzeProject)
+        {
+            await RunAsync("AF-SCAN-001", () => _viewModel.ScanAsync());
+            e.Handled = true;
+        }
+        else if (control && e.Key == Key.OemComma)
+        {
+            SettingsPanel.IsVisible = !SettingsPanel.IsVisible;
+            e.Handled = true;
+        }
+        else if (alt && e.Key >= Key.D1 && e.Key <= Key.D8)
+        {
+            WorkspaceTabs.SelectedIndex = (int)e.Key - (int)Key.D1;
+            e.Handled = true;
+        }
+    }
 
     private void WorkspaceTabs_SelectionChanged(object? sender, SelectionChangedEventArgs e) => ScheduleLocalization();
 
@@ -173,8 +220,16 @@ public sealed partial class MainWindow : Window
         if (files.FirstOrDefault()?.TryGetLocalPath() is { } path) await RunAsync("AF-PROJECT-OPEN-001", () => _viewModel.LoadProjectAsync(path));
     }
 
-    private async void SaveProject_Click(object? sender, RoutedEventArgs e)
+    private async void SaveProject_Click(object? sender, RoutedEventArgs e) => await SaveProjectAsync(false);
+
+    private async Task SaveProjectAsync(bool saveAs)
     {
+        if (!saveAs && !string.IsNullOrWhiteSpace(_viewModel.CurrentProjectFile))
+        {
+            Try("AF-PROJECT-SAVE-001", () => _viewModel.SaveProject(_viewModel.CurrentProjectFile));
+            return;
+        }
+
         var file = await StorageProvider.SaveFilePickerAsync(new FilePickerSaveOptions
         {
             Title = "Salva progetto AstroProject Forge", SuggestedFileName = string.IsNullOrWhiteSpace(_viewModel.ProjectName) ? "Nuovo progetto.astroforge" : _viewModel.ProjectName + ".astroforge",

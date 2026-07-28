@@ -149,6 +149,57 @@ public partial class MainWindow : Window
         WindowState = WindowState == WindowState.Maximized ? WindowState.Normal : WindowState.Maximized;
     private void CloseWindow_Click(object sender, RoutedEventArgs e) => Close();
 
+    private void Window_PreviewKeyDown(object sender, KeyEventArgs e)
+    {
+        var modifiers = Keyboard.Modifiers;
+        if (e.Key == Key.Escape)
+        {
+            if (AboutOverlay.Visibility == Visibility.Visible) AboutOverlay.Visibility = Visibility.Collapsed;
+            else if (DiagnosticsOverlay.Visibility == Visibility.Visible) DiagnosticsOverlay.Visibility = Visibility.Collapsed;
+            else if (MorePopup.IsOpen) MorePopup.IsOpen = false;
+            else return;
+            e.Handled = true;
+            return;
+        }
+        if (e.Key == Key.F1)
+        {
+            OpenGuide_Click(this, new RoutedEventArgs());
+            e.Handled = true;
+            return;
+        }
+        if (modifiers == ModifierKeys.Control && e.Key == Key.O)
+        {
+            OpenProject_Click(this, new RoutedEventArgs());
+            e.Handled = true;
+        }
+        else if (modifiers == ModifierKeys.Control && e.Key == Key.S)
+        {
+            SaveProject(false);
+            e.Handled = true;
+        }
+        else if (modifiers == (ModifierKeys.Control | ModifierKeys.Shift) && e.Key == Key.S)
+        {
+            SaveProject(true);
+            e.Handled = true;
+        }
+        else if (modifiers == ModifierKeys.Control && e.Key == Key.Enter && _viewModel.CanAnalyzeProject)
+        {
+            Scan_Click(this, new RoutedEventArgs());
+            e.Handled = true;
+        }
+        else if (modifiers == ModifierKeys.Control && e.Key == Key.OemComma)
+        {
+            MorePopup.IsOpen = !MorePopup.IsOpen;
+            e.Handled = true;
+        }
+        else if (modifiers == ModifierKeys.Alt && e.Key is >= Key.D1 and <= Key.D8)
+        {
+            var index = (int)e.Key - (int)Key.D1;
+            if (index < WorkspaceTabs.Items.Count) WorkspaceTabs.SelectedIndex = index;
+            e.Handled = true;
+        }
+    }
+
     private void More_Click(object sender, RoutedEventArgs e) => MorePopup.IsOpen = !MorePopup.IsOpen;
     private void CloseMore_Click(object sender, RoutedEventArgs e) => MorePopup.IsOpen = false;
     private void OpenDiagnostics_Click(object sender, RoutedEventArgs e)
@@ -586,10 +637,17 @@ public partial class MainWindow : Window
         catch (Exception exception) { ShowError("AF-PROJECT-OPEN-001", "Progetto non aperto", exception, MessageBoxImage.Error); }
     }
 
-    private void SaveProject_Click(object sender, RoutedEventArgs e)
+    private void SaveProject_Click(object sender, RoutedEventArgs e) => SaveProject(false);
+
+    private void SaveProject(bool saveAs)
     {
         try
         {
+            if (!saveAs && !string.IsNullOrWhiteSpace(_viewModel.CurrentProjectFile))
+            {
+                _viewModel.SaveProject(_viewModel.CurrentProjectFile);
+                return;
+            }
             var dialog = new SaveFileDialog { Title = "Salva progetto AstroProject Forge", Filter = "Progetto AstroProject Forge (*.astroforge)|*.astroforge", AddExtension = true, DefaultExt = ".astroforge", FileName = string.IsNullOrWhiteSpace(_viewModel.ProjectName) ? "Nuovo progetto" : _viewModel.ProjectName };
             if (dialog.ShowDialog(this) == true) _viewModel.SaveProject(dialog.FileName);
         }
