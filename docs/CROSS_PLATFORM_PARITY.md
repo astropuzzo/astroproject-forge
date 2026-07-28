@@ -30,7 +30,7 @@ still requires an interaction test on the named OS; `blocked` prevents publicati
 | Standalone Master Library Lab and editable metadata | pass | implemented | native QA | native QA | P0 |
 | Camera-first Master Library organization | pass | shared Core | automated | automated | P0 |
 | Transactional organization, hash verification, rollback | pass | shared Core | automated | automated | P0 |
-| Settings persistence, diagnostics and privacy-safe bundle | pass | implemented | native QA | native QA | P0 |
+| Settings persistence, diagnostics and support bundle | pass | implemented | native QA | native QA | P0 |
 | First-run onboarding linked to real source/library state | pass | implemented | native QA | native QA | P0 |
 | Signed platform-aware application updates | Windows only | pending redesign | blocked | blocked | commercial |
 | Responsive panels at 980–2560 px and HiDPI | pass | implemented | native QA | native QA | P0 |
@@ -52,7 +52,7 @@ redacted project:
 4. Run one Quality series, sort every metric, click chart outliers, zoom, Blink and exclude.
 5. Scan and normalize a copied Master Library; verify camera-first paths and rollback.
 6. Build a project, run preflight, interrupt export, resume and compare all SHA-256 hashes.
-7. Reveal files in Finder or the Linux file manager and export a privacy-safe support ZIP.
+7. Reveal files in Finder or the Linux file manager and export a support ZIP.
 8. Launch the packaged artifact from a clean standard-user account with no .NET SDK.
 
 ## Publication rule

@@ -1,6 +1,6 @@
 # Contributing to AstroProject Forge
 
-Thank you for testing AstroProject Forge. The most useful contributions during the public beta are reproducible bug reports, metadata edge cases and platform-specific validation.
+Thank you for helping improve AstroProject Forge. The most useful contributions are reproducible bug reports, metadata edge cases and platform-specific validation.
 
 ## Before opening an issue
 
@@ -8,7 +8,7 @@ Thank you for testing AstroProject Forge. The most useful contributions during t
 - never upload proprietary or personal FITS/XISF frames without permission;
 - include the app version, operating system, camera model and acquisition software;
 - describe the expected calibration relationship and what Forge inferred;
-- attach the privacy-safe support ZIP when it helps reproduce the issue.
+- attach the support ZIP when it helps reproduce the issue.
 
 ## Code contributions
 

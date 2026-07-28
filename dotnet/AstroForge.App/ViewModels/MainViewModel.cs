@@ -80,9 +80,9 @@ public sealed class MainViewModel : BindableBase
     private string _uiDensity = "Comoda";
     private string _uiLanguage = UiLocalization.Italian;
     private bool _reducedMotion;
-    private bool _checkForUpdates;
-    private string _updateChannel = "Beta";
-    private string _updateStatus = "Controllo automatico disattivato";
+    private bool _checkForUpdates = true;
+    private string _updateChannel = ReleaseIdentity.Channel;
+    private string _updateStatus = "Controllo aggiornamenti attivo";
     private bool _showOnboarding;
     private string _diagnosticsSummary = "Nessun evento caricato";
     private bool _awaitingReanalysis;
@@ -128,8 +128,8 @@ public sealed class MainViewModel : BindableBase
         _currentProjectFile = _state.LastProjectFile;
         _uiDensity = new[] { "Compatta", "Comoda", "Ampia" }.Contains(_state.UiDensity) ? _state.UiDensity : "Comoda";
         _reducedMotion = _state.ReducedMotion;
-        _checkForUpdates = _state.CheckForUpdates;
-        _updateChannel = _state.UpdateChannel is "Stable" or "Beta" ? _state.UpdateChannel : "Beta";
+        _checkForUpdates = true;
+        _updateChannel = ReleaseIdentity.Channel;
         _exportMarginPercent = Math.Clamp(_state.ExportMarginPercent, 0, 100);
         _exportMinimumReserveGiB = Math.Max(0, _state.ExportMinimumReserveGiB);
         _exportEstimatedThroughputMiBps = Math.Max(1, _state.ExportEstimatedThroughputMiBps);
@@ -139,7 +139,7 @@ public sealed class MainViewModel : BindableBase
         _qualityDebayerPreview = _state.QualityDebayerPreview;
         _sourcePanelWidth = Math.Clamp(_state.SourcePanelWidth, 190, 520);
         _inspectorPanelWidth = Math.Clamp(_state.InspectorPanelWidth, 280, 680);
-        _updateStatus = _checkForUpdates ? $"Controllo { _updateChannel } attivo · nessun download automatico" : "Controllo automatico disattivato";
+        _updateStatus = "Controllo aggiornamenti attivo";
         _pendingRecovery = _recoveryJournal.Read<ProjectRecoverySnapshot>();
         _showOnboarding = !_state.HasCompletedOnboarding && _pendingRecovery is null;
         foreach (var path in _state.SourcePaths.Where(path => Directory.Exists(path) || File.Exists(path))) SourcePaths.Add(path);
@@ -212,8 +212,8 @@ public sealed class MainViewModel : BindableBase
         }
     }
     public bool ReducedMotion { get => _reducedMotion; set => Set(ref _reducedMotion, value); }
-    public bool CheckForUpdates { get => _checkForUpdates; set { if (Set(ref _checkForUpdates, value)) UpdateStatus = value ? $"Controllo {UpdateChannel} attivo · nessun download automatico" : "Controllo automatico disattivato"; } }
-    public string UpdateChannel { get => _updateChannel; set { var normalized = value == "Stable" ? "Stable" : "Beta"; if (Set(ref _updateChannel, normalized) && CheckForUpdates) UpdateStatus = $"Controllo {normalized} attivo · nessun download automatico"; } }
+    public bool CheckForUpdates { get => _checkForUpdates; set => Set(ref _checkForUpdates, value); }
+    public string UpdateChannel { get => _updateChannel; set => Set(ref _updateChannel, value); }
     public string UpdateStatus { get => _updateStatus; set => Set(ref _updateStatus, value); }
     public string VersionDisplay => ReleaseIdentity.Display;
     public string ApplicationVersion => ReleaseIdentity.Version;
@@ -1325,7 +1325,7 @@ public sealed class MainViewModel : BindableBase
         IsScanning = true;
         try
         {
-            ExportProgressDetail = "Controlli di sicurezza automatici…";
+            ExportProgressDetail = "Verifica del progetto…";
             var report = await ProjectExportPreflight.AnalyzeAsync(plan, CurrentExportOptions(), _exportCancellation.Token);
             ApplyExportPreflight(report);
             if (!report.IsReady) throw new ExportPreflightException(report);

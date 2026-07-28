@@ -23,8 +23,8 @@ public sealed class AppState
     public string UiDensity { get; set; } = "Comoda";
     public string UiLanguage { get; set; } = CultureInfo.CurrentUICulture.TwoLetterISOLanguageName == "it" ? UiLocalization.Italian : UiLocalization.English;
     public bool ReducedMotion { get; set; }
-    public bool CheckForUpdates { get; set; }
-    public string UpdateChannel { get; set; } = "Beta";
+    public bool CheckForUpdates { get; set; } = true;
+    public string UpdateChannel { get; set; } = "Stable";
     public double ExportMarginPercent { get; set; } = 10;
     public double ExportMinimumReserveGiB { get; set; } = 1;
     public double ExportEstimatedThroughputMiBps { get; set; } = 100;
@@ -80,7 +80,7 @@ public static class AppStateStore
             if (!File.Exists(FilePath)) return new();
             var state = JsonSerializer.Deserialize<AppState>(SettingsMigration.Migrate(File.ReadAllText(FilePath)), Options) ?? new();
             state.Overrides = new(state.Overrides, PathIdentity.Comparer);
-            if (state.UpdateChannel is not ("Stable" or "Beta")) state.UpdateChannel = "Beta";
+            if (state.UpdateChannel is not ("Stable" or "Beta")) state.UpdateChannel = "Stable";
             return state;
         }
         catch { return new(); }

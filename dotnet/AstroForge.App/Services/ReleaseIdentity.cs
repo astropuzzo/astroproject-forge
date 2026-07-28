@@ -8,6 +8,6 @@ public static class ReleaseIdentity
     public static string Version => Assembly.GetCustomAttribute<AssemblyInformationalVersionAttribute>()?.InformationalVersion.Split('+')[0]
         ?? Assembly.GetName().Version?.ToString(3) ?? "0.0.0";
     public static string Channel => Assembly.GetCustomAttributes<AssemblyMetadataAttribute>()
-        .FirstOrDefault(item => item.Key == "ReleaseChannel")?.Value ?? "Beta";
+        .FirstOrDefault(item => item.Key == "ReleaseChannel")?.Value ?? "Stable";
     public static string Display => $"v{Version} · {Channel}";
 }

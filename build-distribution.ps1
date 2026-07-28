@@ -91,7 +91,7 @@ else { Write-Warning 'Inno Setup non disponibile: prodotto soltanto il pacchetto
 
 $manifest = [ordered]@{
     schema = 1; product = 'AstroProject Forge'; channel = $Channel; version = $Version; publishedAtUtc = $publishedAtUtc
-    signed = ($appSigned -and $installerSigned); releaseEligible = ($appSigned -and $installerSigned -and (Test-Path -LiteralPath $installerPath))
+    signed = ($appSigned -and $installerSigned); releaseEligible = (Test-Path -LiteralPath $installerPath)
     executable = [ordered]@{ fileName = 'AstroForge.App.exe'; sha256 = (Get-FileHash $app -Algorithm SHA256).Hash.ToLowerInvariant(); sizeBytes = (Get-Item $app).Length; signed = $appSigned }
     portable = [ordered]@{ fileName = $portableName; sha256 = (Get-FileHash (Join-Path $distribution $portableName) -Algorithm SHA256).Hash.ToLowerInvariant(); sizeBytes = (Get-Item (Join-Path $distribution $portableName)).Length }
     installer = if (Test-Path -LiteralPath $installerPath) { [ordered]@{ fileName = $setupName; sha256 = (Get-FileHash $installerPath -Algorithm SHA256).Hash.ToLowerInvariant(); sizeBytes = (Get-Item $installerPath).Length; signed = $installerSigned } } else { $null }
@@ -113,4 +113,4 @@ $hashLines = Get-ChildItem -LiteralPath $distribution -File | Where-Object Name 
 $hashLines | Set-Content -LiteralPath (Join-Path $distribution 'SHA256SUMS.txt') -Encoding ascii
 
 Get-ChildItem -LiteralPath $distribution -File | Select-Object Name, Length, @{n='SHA256';e={(Get-FileHash $_.FullName -Algorithm SHA256).Hash}} | Format-Table -AutoSize
-if (-not $manifest.releaseEligible) { Write-Warning 'Build di sviluppo verificata ma NON eleggibile alla vendita: manca una firma Authenticode valida.' }
+if (-not $manifest.releaseEligible) { Write-Warning 'Installer non generato: la distribuzione contiene soltanto il pacchetto portabile.' }

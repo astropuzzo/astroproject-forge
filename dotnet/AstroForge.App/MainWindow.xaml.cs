@@ -178,7 +178,7 @@ public partial class MainWindow : Window
             _viewModel.UpdateStatus = decision.Reason;
             _availableUpdate = decision.IsAvailable ? decision.Manifest : null;
             DownloadUpdateButton.Visibility = decision.IsAvailable ? Visibility.Visible : Visibility.Collapsed;
-            DownloadUpdateButton.Content = decision.Manifest.Signed ? "Scarica aggiornamento" : "Apri release";
+            DownloadUpdateButton.Content = "Scarica aggiornamento";
             if (interactive && !decision.IsAvailable)
                 MessageBox.Show(this, UiLocalization.Translate(decision.Reason, _viewModel.UiLanguage),
                     _viewModel.UiLanguage == UiLocalization.English ? "Updates" : "Aggiornamenti",
@@ -198,35 +198,53 @@ public partial class MainWindow : Window
         catch (Exception exception)
         {
             _availableUpdate = null;
-            _viewModel.UpdateStatus = "Manifest rifiutato: integrità o formato non validi";
-            if (interactive) ShowError("AF-UPDATE-001", "Controllo aggiornamenti non completato", exception, MessageBoxImage.Warning);
+            _viewModel.UpdateStatus = "Controllo aggiornamenti non riuscito";
+            if (interactive) ShowError("AF-UPDATE-001", "Controllo aggiornamenti non riuscito", exception, MessageBoxImage.Warning);
         }
     }
     private async void DownloadUpdate_Click(object sender, RoutedEventArgs e)
     {
         if (_availableUpdate is null) return;
-        if (!_availableUpdate.Signed)
-        {
-            if (Uri.TryCreate(_availableUpdate.ReleaseNotesUrl, UriKind.Absolute, out var releaseUri)
-                && releaseUri.Scheme == Uri.UriSchemeHttps)
-            {
-                OpenExternalUrl(releaseUri.ToString());
-                _viewModel.UpdateStatus = $"Release {_availableUpdate.Version} aperta nel browser · download manuale";
-            }
-            return;
-        }
         var artifact = _availableUpdate.Installer;
-        var dialog = new SaveFileDialog { Title = "Salva installer verificato", FileName = artifact.FileName, Filter = "Installer Windows (*.exe)|*.exe", AddExtension = true, DefaultExt = ".exe" };
-        if (dialog.ShowDialog(this) != true) return;
+        var updatesDirectory = Path.Combine(
+            Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
+            "AstroProjectForge",
+            "Updates");
+        var installerPath = Path.Combine(updatesDirectory, artifact.FileName);
         try
         {
-            _viewModel.UpdateStatus = "Download e verifica SHA-256…";
-            var progress = new Progress<double>(value => _viewModel.UpdateStatus = $"Download verificato · {value:0}%");
-            var path = await _updateService.DownloadVerifiedAsync(artifact, dialog.FileName, progress);
-            _viewModel.UpdateStatus = "Installer verificato e pronto · avvio manuale";
-            MessageBox.Show(this, $"Installer scaricato e verificato.\n\n{path}\n\nForge non lo avvierà automaticamente: chiudi il progetto e avvialo quando vuoi procedere.", "Aggiornamento verificato", MessageBoxButton.OK, MessageBoxImage.Information);
+            DownloadUpdateButton.IsEnabled = false;
+            _viewModel.UpdateStatus = "Download aggiornamento…";
+            var progress = new Progress<double>(value => _viewModel.UpdateStatus = $"Download aggiornamento · {value:0}%");
+            var path = await _updateService.DownloadVerifiedAsync(
+                artifact,
+                installerPath,
+                progress,
+                requireAuthenticode: _availableUpdate.Signed);
+            _viewModel.UpdateStatus = $"AstroProject Forge {_availableUpdate.Version} è pronto";
+            var installNow = MessageBox.Show(
+                this,
+                _viewModel.UiLanguage == UiLocalization.English
+                    ? "The update is ready. Install it now?\n\nThe application will close after starting the installer."
+                    : "L’aggiornamento è pronto. Vuoi installarlo ora?\n\nL’app verrà chiusa dopo l’avvio dell’installer.",
+                _viewModel.UiLanguage == UiLocalization.English ? "Update ready" : "Aggiornamento pronto",
+                MessageBoxButton.YesNo,
+                MessageBoxImage.Information);
+            if (installNow == MessageBoxResult.Yes)
+            {
+                Process.Start(new ProcessStartInfo(path) { UseShellExecute = true });
+                Close();
+            }
         }
-        catch (Exception exception) { ShowError("AF-UPDATE-002", "Download rifiutato", exception, MessageBoxImage.Error); }
+        catch (Exception exception)
+        {
+            _viewModel.UpdateStatus = "Download non riuscito";
+            ShowError("AF-UPDATE-002", "Download non riuscito", exception, MessageBoxImage.Error);
+        }
+        finally
+        {
+            DownloadUpdateButton.IsEnabled = true;
+        }
     }
     private void DensitySelector_SelectionChanged(object sender, System.Windows.Controls.SelectionChangedEventArgs e)
     {
@@ -279,7 +297,7 @@ public partial class MainWindow : Window
             if (RootSurface.RenderTransform is System.Windows.Media.TranslateTransform translate)
                 translate.BeginAnimation(System.Windows.Media.TranslateTransform.YProperty, new DoubleAnimation(8, 0, TimeSpan.FromMilliseconds(420)) { EasingFunction = new CubicEase { EasingMode = EasingMode.EaseOut } });
         }
-        if (_viewModel.CheckForUpdates) await CheckUpdatesAsync(false);
+        await CheckUpdatesAsync(false);
     }
 
     private void WorkspaceTabs_SelectionChanged(object sender, System.Windows.Controls.SelectionChangedEventArgs e)
