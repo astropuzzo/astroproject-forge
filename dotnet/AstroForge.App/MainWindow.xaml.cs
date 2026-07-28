@@ -37,6 +37,7 @@ public partial class MainWindow : Window
     private double _qualityPanHorizontal;
     private double _qualityPanVertical;
     private bool _localizationPending;
+    private bool _updatedOnLaunch;
 
     public MainWindow()
     {
@@ -59,6 +60,7 @@ public partial class MainWindow : Window
         {
             if (args[index] == "--source" && index + 1 < args.Length) _viewModel.AddSource(args[++index]);
             else if (args[index] == "--library" && index + 1 < args.Length) _viewModel.LibraryPath = args[++index];
+            else if (args[index] == "--updated") _updatedOnLaunch = true;
         }
     }
 
@@ -307,7 +309,22 @@ public partial class MainWindow : Window
             if (RootSurface.RenderTransform is System.Windows.Media.TranslateTransform translate)
                 translate.BeginAnimation(System.Windows.Media.TranslateTransform.YProperty, new DoubleAnimation(8, 0, TimeSpan.FromMilliseconds(420)) { EasingFunction = new CubicEase { EasingMode = EasingMode.EaseOut } });
         }
+        if (_updatedOnLaunch) ShowUpdateCompletedToast();
         await CheckUpdatesAsync(false);
+    }
+
+    private async void ShowUpdateCompletedToast()
+    {
+        UpdateCompletedText.Text = _viewModel.UiLanguage == UiLocalization.English
+            ? $"Updated to {ReleaseIdentity.Version}"
+            : $"Aggiornamento {ReleaseIdentity.Version} completato";
+        UpdateCompletedToast.Visibility = Visibility.Visible;
+        UpdateCompletedToast.BeginAnimation(OpacityProperty,
+            new DoubleAnimation(0, 1, TimeSpan.FromMilliseconds(_viewModel.ReducedMotion ? 0 : 220)));
+        await Task.Delay(TimeSpan.FromSeconds(5));
+        var fade = new DoubleAnimation(1, 0, TimeSpan.FromMilliseconds(_viewModel.ReducedMotion ? 0 : 260));
+        fade.Completed += (_, _) => UpdateCompletedToast.Visibility = Visibility.Collapsed;
+        UpdateCompletedToast.BeginAnimation(OpacityProperty, fade);
     }
 
     private void WorkspaceTabs_SelectionChanged(object sender, System.Windows.Controls.SelectionChangedEventArgs e)

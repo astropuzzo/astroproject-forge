@@ -734,5 +734,19 @@
                 </Grid>
             </Border>
         </Grid>
+
+        <Border x:Name="UpdateCompletedToast" Grid.RowSpan="3" Panel.ZIndex="120"
+                HorizontalAlignment="Right" VerticalAlignment="Bottom" Margin="24"
+                Background="#F0152B2A" BorderBrush="{StaticResource Accent}" BorderThickness="1"
+                CornerRadius="12" Padding="16,12" Visibility="Collapsed" IsHitTestVisible="False"
+                Effect="{StaticResource AccentGlow}">
+            <StackPanel Orientation="Horizontal">
+                <TextBlock Text="✓" Foreground="{StaticResource Accent}" FontSize="18" FontWeight="Bold" Margin="0,0,10,0"/>
+                <StackPanel>
+                    <TextBlock x:Name="UpdateCompletedText" Text="Aggiornamento completato" FontWeight="SemiBold"/>
+                    <TextBlock Text="Il progetto è pronto." Style="{StaticResource MutedText}" FontSize="11" Margin="0,2,0,0"/>
+                </StackPanel>
+            </StackPanel>
+        </Border>
     </Grid>
 </Window>
