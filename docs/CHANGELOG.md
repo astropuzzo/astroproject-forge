@@ -1,5 +1,12 @@
 # AstroProject Forge — note di rilascio
 
+## 1.0.1 — 28 luglio 2026
+
+- Il pulsante **Aggiorna e riavvia** scarica e verifica l'installer, aggiorna l'app in modalità silenziosa e riapre automaticamente la nuova versione.
+- Il riavvio usa il percorso effettivo scelto durante l'installazione, anche quando non coincide con quello predefinito.
+- Aggiunto **Download manuale** nella finestra Informazioni per aprire sempre l'ultima release GitHub.
+- In caso di errore prima dell'avvio dell'installer, l'app resta aperta e mostra la diagnostica senza perdere il progetto.
+
 ## 1.0.0 — 28 luglio 2026
 
 - Prima release stabile per Windows, Linux e macOS.

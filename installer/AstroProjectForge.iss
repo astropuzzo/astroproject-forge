@@ -66,6 +66,12 @@ Source: "{#SourceDir}\*"; DestDir: "{app}"; Flags: ignoreversion recursesubdirs 
 Name: "{group}\AstroProject Forge{#ChannelSuffix}"; Filename: "{app}\AstroForge.App.exe"
 Name: "{autodesktop}\AstroProject Forge{#ChannelSuffix}"; Filename: "{app}\AstroForge.App.exe"; Tasks: desktopicon
 
+[Run]
+; Manual installs keep the familiar optional launch checkbox.
+Filename: "{app}\AstroForge.App.exe"; Description: "Avvia AstroProject Forge{#ChannelSuffix}"; Flags: nowait postinstall skipifsilent
+; In-app updates relaunch the exact installed executable, including custom paths.
+Filename: "{app}\AstroForge.App.exe"; Parameters: "--updated"; Flags: nowait; Check: IsAutomaticUpdate
+
 [Registry]
 Root: HKCU; Subkey: "Software\Classes\.astroforge"; ValueType: string; ValueData: "AstroProjectForge.Project"; Flags: uninsdeletevalue
 Root: HKCU; Subkey: "Software\Classes\AstroProjectForge.Project"; ValueType: string; ValueData: "Progetto AstroProject Forge"; Flags: uninsdeletekey
@@ -73,6 +79,11 @@ Root: HKCU; Subkey: "Software\Classes\AstroProjectForge.Project\DefaultIcon"; Va
 Root: HKCU; Subkey: "Software\Classes\AstroProjectForge.Project\shell\open\command"; ValueType: string; ValueData: """{app}\AstroForge.App.exe"" ""%1"""
 
 [Code]
+function IsAutomaticUpdate(): Boolean;
+begin
+  Result := CompareText(ExpandConstant('{param:APFUPDATE|0}'), '1') = 0;
+end;
+
 function InitializeUninstall(): Boolean;
 var
   Choice: Integer;

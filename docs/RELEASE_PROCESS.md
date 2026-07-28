@@ -28,4 +28,4 @@ The `Cross-platform parity QA` GitHub workflow builds:
 
 Create a non-draft, non-prerelease tag matching the version, then attach only installable and portable packages. GitHub adds the source archives automatically.
 
-The Windows updater reads the latest stable GitHub release, checks the published asset size and SHA-256 digest, downloads it into the local application data folder and asks before starting the installer.
+The Windows updater reads the latest stable GitHub release, checks the published asset size and SHA-256 digest, downloads it into the local application data folder, runs the installer silently and restarts the newly installed version. The About window also keeps a separate manual-download link.
