@@ -19,6 +19,7 @@ La stessa logica Core è usata dall'interfaccia Avalonia per Linux e macOS.
 - [x] Salvataggio diretto del progetto già aperto; `Salva con nome` resta esplicito.
 - [x] Nomi e descrizioni per screen reader sui controlli principali.
 - [x] Focus tastiera ad alto contrasto.
+- [x] Avanzamento visibile per download e installazione degli aggiornamenti Windows.
 - [ ] Test manuale completo con Narrator su Windows.
 - [ ] Test manuale tastiera, VoiceOver e Orca sui pacchetti nativi.
 

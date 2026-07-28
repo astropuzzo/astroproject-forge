@@ -53,6 +53,7 @@ $contracts = @{
     'Avalonia accessible names' = $avaloniaAdapter.Contains('AutomationProperties.SetName')
     'Save and Save As behavior (WPF)' = $wpfCode.Contains('SaveProject(bool saveAs)')
     'Save and Save As behavior (Avalonia)' = $avaloniaCode.Contains('SaveProjectAsync(bool saveAs)')
+    'Visible Windows update progress' = $wpfCode.Contains('startInfo.ArgumentList.Add("/SILENT")') -and -not $wpfCode.Contains('startInfo.ArgumentList.Add("/VERYSILENT")')
 }
 
 $failed = @($contracts.GetEnumerator() | Where-Object { -not $_.Value } | ForEach-Object Key)
