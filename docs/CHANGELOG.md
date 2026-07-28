@@ -1,5 +1,12 @@
 # AstroProject Forge — note di rilascio
 
+## 1.0.3 — 28 luglio 2026
+
+- Le nuove installazioni Windows usano `C:\Program Files\AstroProject Forge`.
+- L'installer mantiene lo stesso identificatore e aggiorna direttamente la copia esistente.
+- Le vecchie installazioni per utente vengono migrate dalla cartella `%LOCALAPPDATA%\Programs` senza toccare impostazioni, progetti o immagini.
+- Gli aggiornamenti richiedono soltanto la conferma UAC di Windows; installazione e riavvio proseguono automaticamente.
+
 ## 1.0.2 — 28 luglio 2026
 
 - Mostra una conferma discreta dopo il riavvio automatico, così è immediatamente visibile che l'aggiornamento è riuscito.
