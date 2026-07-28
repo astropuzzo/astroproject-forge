@@ -1,5 +1,11 @@
 # AstroProject Forge — note di rilascio
 
+## 1.1.2 — 28 luglio 2026
+
+- Anche gli aggiornamenti avviati dalle versioni precedenti mostrano ora una finestra
+  di avanzamento compatibile, con fase corrente e percentuale.
+- Le versioni recenti continuano a usare direttamente la finestra nativa di Inno Setup.
+
 ## 1.1.1 — 28 luglio 2026
 
 - Durante l'aggiornamento automatico Windows l'installer mostra ora una finestra con

@@ -56,6 +56,14 @@ DisableProgramGroupPage=yes
 Name: "italian"; MessagesFile: "compiler:Languages\Italian.isl"
 Name: "english"; MessagesFile: "compiler:Default.isl"
 
+[CustomMessages]
+italian.UpdateProgressTitle=Aggiornamento di AstroProject Forge
+italian.UpdateProgressDescription=Installazione in corso. L'app si riavvierà automaticamente.
+italian.UpdateProgressPhase=Aggiornamento dei file…
+english.UpdateProgressTitle=Updating AstroProject Forge
+english.UpdateProgressDescription=Installation in progress. The app will restart automatically.
+english.UpdateProgressPhase=Updating files…
+
 [Tasks]
 Name: "desktopicon"; Description: "Crea un collegamento sul desktop"; GroupDescription: "Collegamenti aggiuntivi:"; Flags: unchecked
 
@@ -84,6 +92,10 @@ Root: HKA; Subkey: "Software\Classes\AstroProjectForge.Project\shell\open\comman
 var
   LegacyInstallDirectories: TArrayOfString;
   LegacyUninstallRegistryKeys: TArrayOfString;
+  UpdateProgressForm: TSetupForm;
+  UpdateProgressBar: TNewProgressBar;
+  UpdateProgressLabel: TNewStaticText;
+  UpdatePercentLabel: TNewStaticText;
 
 function LegacyUninstallId(): String;
 begin
@@ -146,6 +158,52 @@ begin
   Result := True;
 end;
 
+function IsAutomaticUpdate(): Boolean; forward;
+
+function NeedsCompatibilityProgress(): Boolean;
+begin
+  Result :=
+    IsAutomaticUpdate() and
+    (CompareText(ExpandConstant('{param:APFVISIBLE|0}'), '1') <> 0);
+end;
+
+procedure InitializeWizard();
+begin
+  if not NeedsCompatibilityProgress() then
+    Exit;
+
+  UpdateProgressForm := CreateCustomForm(ScaleX(480), ScaleY(150), False, False);
+  UpdateProgressForm.Caption := ExpandConstant('{cm:UpdateProgressTitle}');
+  UpdateProgressForm.Position := poScreenCenter;
+
+  UpdateProgressLabel := TNewStaticText.Create(UpdateProgressForm);
+  UpdateProgressLabel.Parent := UpdateProgressForm;
+  UpdateProgressLabel.Left := ScaleX(24);
+  UpdateProgressLabel.Top := ScaleY(22);
+  UpdateProgressLabel.Width := ScaleX(432);
+  UpdateProgressLabel.Height := ScaleY(42);
+  UpdateProgressLabel.AutoSize := False;
+  UpdateProgressLabel.WordWrap := True;
+  UpdateProgressLabel.Caption := ExpandConstant('{cm:UpdateProgressDescription}');
+
+  UpdateProgressBar := TNewProgressBar.Create(UpdateProgressForm);
+  UpdateProgressBar.Parent := UpdateProgressForm;
+  UpdateProgressBar.Left := ScaleX(24);
+  UpdateProgressBar.Top := ScaleY(82);
+  UpdateProgressBar.Width := ScaleX(432);
+  UpdateProgressBar.Height := ScaleY(18);
+  UpdateProgressBar.Min := 0;
+  UpdateProgressBar.Max := 100;
+
+  UpdatePercentLabel := TNewStaticText.Create(UpdateProgressForm);
+  UpdatePercentLabel.Parent := UpdateProgressForm;
+  UpdatePercentLabel.Left := ScaleX(24);
+  UpdatePercentLabel.Top := ScaleY(111);
+  UpdatePercentLabel.Width := ScaleX(432);
+  UpdatePercentLabel.Alignment := taCenter;
+  UpdatePercentLabel.Caption := ExpandConstant('{cm:UpdateProgressPhase}');
+end;
+
 function ShouldCreateDesktopIcon(): Boolean;
 begin
   Result :=
@@ -171,14 +229,37 @@ procedure CurStepChanged(CurStep: TSetupStep);
 var
   Index: Integer;
 begin
+  if (UpdateProgressForm <> nil) and (CurStep = ssInstall) then
+  begin
+    UpdateProgressForm.Show();
+    UpdateProgressForm.Update();
+  end;
+
   if CurStep = ssPostInstall then
   begin
+    if UpdateProgressForm <> nil then
+      UpdateProgressForm.Hide();
+
     for Index := 0 to GetArrayLength(LegacyInstallDirectories) - 1 do
       DelTree(LegacyInstallDirectories[Index], True, True, True);
 
     for Index := 0 to GetArrayLength(LegacyUninstallRegistryKeys) - 1 do
       RegDeleteKeyIncludingSubkeys(HKU, LegacyUninstallRegistryKeys[Index]);
   end;
+end;
+
+procedure CurInstallProgressChanged(CurProgress, MaxProgress: Integer);
+var
+  Percent: Integer;
+begin
+  if (UpdateProgressForm = nil) or (MaxProgress <= 0) then
+    Exit;
+
+  Percent := (CurProgress * 100) div MaxProgress;
+  UpdateProgressBar.Position := Percent;
+  UpdatePercentLabel.Caption :=
+    ExpandConstant('{cm:UpdateProgressPhase}') + ' ' + IntToStr(Percent) + '%';
+  UpdateProgressForm.Update();
 end;
 
 function InitializeUninstall(): Boolean;
