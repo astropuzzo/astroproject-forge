@@ -1,17 +1,22 @@
-AstroProject Forge Proprietary Source License
+AstroProject Forge Freeware Source-Available License
 
 Copyright (c) 2026 Gianmarco Spagnoli (@astropuzzo). All rights reserved.
 
-The source code and accompanying materials in this repository are made publicly
-available for inspection, evaluation, issue reporting, and authorized
-contribution only.
+Official binary releases may be downloaded and used free of charge for
+personal, educational and non-commercial astrophotography.
+
+The source code and accompanying materials are publicly available for
+inspection, issue reporting and authorized contributions.
 
 No permission is granted to use, copy, modify, merge, publish, distribute,
 sublicense, sell, or create derivative works from the software, in whole or in
 part, without prior written permission from the copyright holder.
 
-Official binary releases may be used for personal evaluation subject to the
-terms published with each release. This repository and its binaries are
-provided "as is", without warranty of any kind, express or implied.
+This permission does not include commercial use, resale, redistribution of
+modified binaries or publication of derivative products. Contact the copyright
+holder for any use outside these terms.
+
+This repository and its binaries are provided "as is", without warranty of any
+kind, express or implied.
 
 Third-party components remain subject to their respective licenses.

@@ -1,5 +1,13 @@
 # AstroProject Forge — note di rilascio
 
+## 1.0.0 — 28 luglio 2026
+
+- Prima release stabile per Windows, Linux e macOS.
+- Gli aggiornamenti Windows vengono rilevati all’avvio e scaricati direttamente nell’app.
+- I pacchetti GitHub vengono verificati tramite dimensione e SHA-256 anche senza firma Authenticode.
+- Interfaccia Informazioni e messaggi di aggiornamento semplificati.
+- README, guida e documentazione ripuliti dai riferimenti alle vecchie beta.
+
 ## 0.9.0-beta.5 — 27 luglio 2026
 
 - Corretto il controllo aggiornamenti quando il feed Stable/Beta non è ancora stato pubblicato.

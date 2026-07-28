@@ -70,9 +70,7 @@ public sealed partial class UpdateService
         Validate(manifest, expectedChannel, requireSigned: false);
         var comparison = CompareVersions(manifest.Version, currentVersion);
         return comparison > 0
-            ? new(true, manifest, manifest.Signed
-                ? $"È disponibile AstroProject Forge {manifest.Version}, con installer firmato."
-                : $"È disponibile AstroProject Forge {manifest.Version}. Apri la release per scaricarla.")
+            ? new(true, manifest, $"È disponibile AstroProject Forge {manifest.Version}.")
             : new(false, manifest, comparison == 0 ? "La versione installata è aggiornata." : "La versione installata è più recente del canale selezionato.");
     }
 
@@ -116,7 +114,8 @@ public sealed partial class UpdateService
             var url = installerNode.GetProperty("browser_download_url").GetString()!;
             var size = installerNode.TryGetProperty("size", out var sizeNode) ? sizeNode.GetInt64() : 0;
             var digest = installerNode.TryGetProperty("digest", out var digestNode) ? digestNode.GetString() : null;
-            var sha256 = digest?.StartsWith("sha256:", StringComparison.OrdinalIgnoreCase) == true ? digest[7..] : new string('0', 64);
+            var sha256 = digest?.StartsWith("sha256:", StringComparison.OrdinalIgnoreCase) == true ? digest[7..] : "";
+            if (!ShaRegex().IsMatch(sha256) || sha256.All(character => character == '0')) continue;
             var notesUrl = release.TryGetProperty("html_url", out var htmlNode) ? htmlNode.GetString() : null;
             var published = release.TryGetProperty("published_at", out var publishedNode)
                 && DateTimeOffset.TryParse(publishedNode.GetString(), out var publishedAt) ? publishedAt : DateTimeOffset.MinValue;
@@ -132,13 +131,18 @@ public sealed partial class UpdateService
         Validate(manifest, channel, requireSigned: false);
         var comparison = CompareVersions(manifest.Version, currentVersion);
         return comparison > 0
-            ? new(true, manifest, $"È disponibile AstroProject Forge {manifest.Version}. Apri la release per scaricarla.")
+            ? new(true, manifest, $"È disponibile AstroProject Forge {manifest.Version}.")
             : new(false, manifest, comparison == 0
                 ? "La versione installata è aggiornata."
                 : "La versione installata è più recente del canale selezionato.");
     }
 
-    public async Task<string> DownloadVerifiedAsync(ReleaseArtifact artifact, string destinationPath, IProgress<double>? progress = null, CancellationToken cancellationToken = default)
+    public async Task<string> DownloadVerifiedAsync(
+        ReleaseArtifact artifact,
+        string destinationPath,
+        IProgress<double>? progress = null,
+        bool requireAuthenticode = false,
+        CancellationToken cancellationToken = default)
     {
         var uri = new Uri(artifact.Url);
         RequireHttps(uri, "installer");
@@ -171,7 +175,8 @@ public sealed partial class UpdateService
             }
             if (artifact.SizeBytes > 0 && total != artifact.SizeBytes) throw new InvalidDataException($"Dimensione non valida: attesi {artifact.SizeBytes} byte, ricevuti {total}.");
             if (!hash.Equals(artifact.Sha256, StringComparison.OrdinalIgnoreCase)) throw new CryptographicException("SHA-256 dell'aggiornamento non valido.");
-            if (!_authenticodeVerifier(partial)) throw new CryptographicException("Firma Authenticode dell'aggiornamento assente o non valida.");
+            if (requireAuthenticode && !_authenticodeVerifier(partial))
+                throw new CryptographicException("Firma Authenticode dell'aggiornamento assente o non valida.");
             File.Move(partial, fullDestination, true);
             progress?.Report(100);
             return fullDestination;
@@ -183,7 +188,7 @@ public sealed partial class UpdateService
         }
     }
 
-    public static void Validate(ReleaseManifest manifest, ReleaseChannel expectedChannel, bool requireSigned = true)
+    public static void Validate(ReleaseManifest manifest, ReleaseChannel expectedChannel, bool requireSigned = false)
     {
         if (manifest.Schema != 1) throw new InvalidDataException($"Schema update non supportato: {manifest.Schema}.");
         if (!manifest.Product.Equals("AstroProject Forge", StringComparison.Ordinal)) throw new InvalidDataException("Prodotto del manifest non valido.");
@@ -227,7 +232,8 @@ public sealed partial class UpdateService
     private static void ValidateArtifact(ReleaseArtifact artifact)
     {
         RequireHttps(new Uri(artifact.Url), "installer");
-        if (!ShaRegex().IsMatch(artifact.Sha256)) throw new InvalidDataException("SHA-256 dell'artefatto non valido.");
+        if (!ShaRegex().IsMatch(artifact.Sha256) || artifact.Sha256.All(character => character == '0'))
+            throw new InvalidDataException("SHA-256 dell'artefatto non valido.");
         if (artifact.SizeBytes < 0) throw new InvalidDataException("Dimensione artefatto non valida.");
         if (string.IsNullOrWhiteSpace(artifact.FileName) || Path.GetFileName(artifact.FileName) != artifact.FileName) throw new InvalidDataException("Nome artefatto non valido.");
     }

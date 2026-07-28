@@ -14,8 +14,8 @@ public static class SettingsMigration
         if (schema > CurrentSchema) throw new InvalidDataException($"Schema impostazioni futuro non supportato: {schema}.");
         if (schema < 2)
         {
-            root["CheckForUpdates"] ??= false;
-            root["UpdateChannel"] ??= "Beta";
+            root["CheckForUpdates"] ??= true;
+            root["UpdateChannel"] ??= "Stable";
         }
         root["SchemaVersion"] = CurrentSchema;
         return root.ToJsonString(new JsonSerializerOptions { WriteIndented = true });

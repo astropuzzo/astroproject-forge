@@ -1,6 +1,6 @@
 {
-  "version": "0.9.0-beta.5",
-  "channel": "Beta",
-  "releaseDate": "2026-07-27",
+  "version": "1.0.0",
+  "channel": "Stable",
+  "releaseDate": "2026-07-28",
   "minimumWindowsBuild": 19045
 }

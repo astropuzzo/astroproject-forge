@@ -67,7 +67,7 @@ internal static class RegressionQa
         using var document = JsonDocument.Parse(migrated);
         var root = document.RootElement;
         Assert(root.GetProperty("SchemaVersion").GetInt32() == 2, "Schema impostazioni non migrato.");
-        Assert(!root.GetProperty("CheckForUpdates").GetBoolean() && root.GetProperty("UpdateChannel").GetString() == "Beta", "Default update non privacy-safe nella migrazione.");
+        Assert(root.GetProperty("CheckForUpdates").GetBoolean() && root.GetProperty("UpdateChannel").GetString() == "Stable", "Default aggiornamenti non migrato.");
         Assert(root.GetProperty("UiDensity").GetString() == "Compatta" && root.GetProperty("ReducedMotion").GetBoolean(), "La migrazione ha perso preferenze esistenti.");
         AssertThrows<InvalidDataException>(() => SettingsMigration.Migrate("{\"SchemaVersion\":99}"), "Uno schema futuro deve essere rifiutato.");
     }
@@ -197,6 +197,34 @@ internal static class RegressionQa
         var currentDecision = await fallbackService.CheckChannelAsync("0.9.0-beta.4", ReleaseChannel.Beta);
         Assert(!currentDecision.IsAvailable && currentDecision.Reason.Contains("aggiornata", StringComparison.OrdinalIgnoreCase),
             "Il fallback GitHub non riconosce la versione corrente.");
+        var stableRelease = JsonSerializer.Serialize(new[]
+        {
+            new Dictionary<string, object?>
+            {
+                ["draft"] = false,
+                ["prerelease"] = false,
+                ["tag_name"] = "v1.0.0",
+                ["html_url"] = "https://github.com/astropuzzo/astroproject-forge/releases/tag/v1.0.0",
+                ["published_at"] = "2026-07-28T00:00:00Z",
+                ["assets"] = new[]
+                {
+                    new Dictionary<string, object?>
+                    {
+                        ["name"] = "AstroProjectForge-Stable-1.0.0-win-x64-setup.exe",
+                        ["browser_download_url"] = "https://github.com/astropuzzo/astroproject-forge/releases/download/v1.0.0/AstroProjectForge-Stable-1.0.0-win-x64-setup.exe",
+                        ["size"] = payload.Length,
+                        ["digest"] = $"sha256:{sha}"
+                    }
+                }
+            }
+        });
+        var stableService = new UpdateService(new HttpClient(new FakeHandler(request =>
+            request.RequestUri!.Host.Equals("api.github.com", StringComparison.OrdinalIgnoreCase)
+                ? new HttpResponseMessage(HttpStatusCode.OK) { Content = new StringContent(stableRelease, Encoding.UTF8, "application/json") }
+                : new HttpResponseMessage(HttpStatusCode.NotFound))), _ => false);
+        var stableDecision = await stableService.CheckChannelAsync("0.9.0-beta.5", ReleaseChannel.Stable);
+        Assert(stableDecision.IsAvailable && stableDecision.Manifest.Version == "1.0.0",
+            "Il canale Stable non ha rilevato la release ufficiale.");
         var staleManifest = manifest with { Version = "0.9.0-beta.3" };
         var staleHandler = new FakeHandler(request =>
             request.RequestUri!.Host.Equals("api.github.com", StringComparison.OrdinalIgnoreCase)
@@ -209,19 +237,28 @@ internal static class RegressionQa
         var newestDecision = await newestService.CheckChannelAsync("0.9.0-beta.2", ReleaseChannel.Beta);
         Assert(newestDecision.Manifest.Version == "0.9.0-beta.4" && !newestDecision.Manifest.Signed,
             "Un feed firmato ma obsoleto ha nascosto una release GitHub più recente.");
-        AssertThrows<InvalidDataException>(() => UpdateService.Validate(fallbackDecision.Manifest, ReleaseChannel.Beta),
-            "Un manifest non firmato non deve diventare idoneo al download verificato.");
+        UpdateService.Validate(fallbackDecision.Manifest, ReleaseChannel.Beta);
         var root = Path.Combine(Path.GetTempPath(), $"AstroForge-QA-Update-{Guid.NewGuid():N}"); Directory.CreateDirectory(root);
         try
         {
             var destination = Path.Combine(root, "installer.exe");
             await service.DownloadVerifiedAsync(manifest.Installer, destination);
             Assert(File.ReadAllBytes(destination).SequenceEqual(payload), "Download update verificato non identico.");
-            var bad = manifest.Installer with { Sha256 = new string('0', 64) };
+            var bad = manifest.Installer with { Sha256 = new string('a', 64) };
             await AssertThrowsAsync<CryptographicException>(() => service.DownloadVerifiedAsync(bad, Path.Combine(root, "bad.exe")), "Un update alterato deve essere rifiutato.");
             Assert(!File.Exists(Path.Combine(root, "bad.exe.partial")), "Il payload update parziale deve essere eliminato dopo il rifiuto.");
             var unsignedService = new UpdateService(new HttpClient(handler), _ => false);
-            await AssertThrowsAsync<CryptographicException>(() => unsignedService.DownloadVerifiedAsync(manifest.Installer, Path.Combine(root, "unsigned.exe")), "Un update senza Authenticode valido deve essere rifiutato.");
+            var unsignedPath = Path.Combine(root, "unsigned.exe");
+            await unsignedService.DownloadVerifiedAsync(manifest.Installer, unsignedPath);
+            Assert(File.ReadAllBytes(unsignedPath).SequenceEqual(payload), "L'update GitHub non firmato ma integro non è stato scaricato.");
+            await AssertThrowsAsync<CryptographicException>(
+                () => unsignedService.DownloadVerifiedAsync(manifest.Installer, Path.Combine(root, "signature-required.exe"), requireAuthenticode: true),
+                "Una release dichiarata firmata deve richiedere Authenticode valido.");
+            AssertThrows<InvalidDataException>(
+                () => UpdateService.Validate(
+                    fallbackDecision.Manifest with { Installer = fallbackDecision.Manifest.Installer with { Sha256 = new string('0', 64) } },
+                    ReleaseChannel.Beta),
+                "Un digest GitHub assente non deve consentire il download automatico.");
         }
         finally { Directory.Delete(root, true); }
     }

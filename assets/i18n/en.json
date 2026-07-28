@@ -175,8 +175,6 @@
   "Versione": "Version",
   "Canale": "Channel",
   "Canale release": "Release channel",
-  "Controlla all'avvio": "Check at startup",
-  "Controlla soltanto il manifest. Download e installazione richiedono conferma.": "Only check the manifest. Download and installation require confirmation.",
   "Libreria principale": "Primary library",
   "Legge gli header e raggruppa i file per filtro, notte e sessione. Gli originali non vengono modificati.": "Reads headers and groups files by filter, night and session. Originals are never modified.",
   "Pronto": "Ready",
@@ -269,12 +267,18 @@
   ,"Organizza sessioni, calibrazioni e progetti PixInsight WBPP.": "Organize sessions, calibration frames and PixInsight WBPP projects."
   ,"Sviluppato da Gianmarco Spagnoli (@astropuzzo)": "Developed by Gianmarco Spagnoli (@astropuzzo)"
   ,"Copyright © 2026 Gianmarco Spagnoli. Tutti i diritti riservati.": "Copyright © 2026 Gianmarco Spagnoli. All rights reserved."
-  ,"Software creato interamente tramite vibe coding assistito da AI. È una beta: verifica sempre le calibrazioni prima di elaborare dati importanti.": "Software created entirely through AI-assisted vibe coding. This is beta software: always verify calibration assignments before processing important data."
-  ,"Creato interamente tramite vibe coding assistito da AI. L’autore non ha una formazione da sviluppatore: segnala gli errori dal menu Aiuto e verifica sempre le calibrazioni.": "Created entirely through AI-assisted vibe coding. The author is not a trained software developer: report errors from the Help menu and always verify calibration assignments."
   ,"Guida": "Guide"
   ,"Scarica aggiornamento": "Download update"
-  ,"Apri release": "Open release"
   ,"Controlla aggiornamenti": "Check for updates"
+  ,"Controllo aggiornamenti attivo": "Automatic update checks are active"
+  ,"Controllo aggiornamenti non riuscito": "Update check failed"
+  ,"Download aggiornamento…": "Downloading update…"
+  ,"Download non riuscito": "Download failed"
+  ,"Automatici": "Automatic"
+  ,"Ideato da Gianmarco Spagnoli (@astropuzzo)": "Created by Gianmarco Spagnoli (@astropuzzo)"
+  ,"Sviluppato con strumenti di programmazione assistita da AI.": "Developed with AI-assisted programming tools."
+  ,"Gli eventi mostrati aiutano a diagnosticare eventuali problemi.": "The displayed events help diagnose problems."
+  ,"Esporta ZIP": "Export ZIP"
   ,"GitHub Releases non raggiungibile · controlla la connessione": "GitHub Releases is unreachable · check your connection"
   ,"La versione installata è aggiornata.": "The installed version is up to date."
   ,"La versione installata è più recente del canale selezionato.": "The installed version is newer than the selected channel."

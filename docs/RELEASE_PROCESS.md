@@ -1,52 +1,31 @@
-# Processo di release
+# Release process
 
-## Gate automatico
+The version and channel are defined in `version.json`.
 
-Eseguire da PowerShell:
+## Validation
 
 ```powershell
 .\qa-gate.ps1
+.\scripts\verify-cross-platform-parity.ps1
 ```
 
-Il comando testa parser, matching, migrazioni, update, recovery ed export, compila WPF in Release, pubblica l'EXE self-contained e scrive `artifacts/qa/qa-report.json`. Non usa `E:` né immagini personali.
-
-## Pacchetto di sviluppo
+## Windows package
 
 ```powershell
-.\build-distribution.ps1
+.\build-distribution.ps1 -Channel Stable -Version 1.0.0
 ```
 
-Produce in `artifacts/distribution` ZIP portabile, SBOM, hash, manifest e — quando Inno Setup 7 è disponibile — installer x64 per utente. Una build non firmata è utile per QA interno, ma `releaseEligible` resta `false`.
+This produces the installer and portable ZIP under `artifacts/distribution`.
 
-## Release commerciale firmata
+## Linux and macOS
 
-Installare SignTool tramite Windows SDK e configurare nel certificate store un certificato code-signing autentico. Impostare soltanto nella sessione protetta di release:
+The `Cross-platform parity QA` GitHub workflow builds:
 
-```powershell
-$env:ASTROFORGE_SIGN_THUMBPRINT = 'THUMBPRINT_DEL_CERTIFICATO'
-$env:ASTROFORGE_SIGNTOOL = 'C:\percorso\sicuro\signtool.exe'
-.\build-distribution.ps1 -RequireSignature
-```
+- Linux x64 and ARM64 `.deb` and `.tar.gz`;
+- macOS Intel and Apple Silicon `.dmg` and `.zip`.
 
-Lo script firma e verifica EXE e installer con SHA-256 e timestamp RFC 3161. Certificati, password e segreti non devono mai entrare nel repository.
+## GitHub release
 
-La procedura per ottenere certificati Windows e macOS è descritta in [`SIGNING.md`](SIGNING.md).
+Create a non-draft, non-prerelease tag matching the version, then attach only installable and portable packages. GitHub adds the source archives automatically.
 
-Dopo aver pubblicato la release versionata, aggiornare il feed soltanto se il manifest è firmato:
-
-```powershell
-.\scripts\publish-update-channel.ps1 -Channel Beta
-```
-
-Le beta non firmate non pubblicano il feed: il client usa GitHub Releases come fallback e apre il download manuale nel browser.
-
-## Collaudo manuale obbligatorio prima della RC
-
-- Windows 10 22H2 e Windows 11 supportato, VM pulite e account standard.
-- Installazione senza SDK .NET e senza richiesta amministratore.
-- Apertura `.astroforge`, import da NTFS, exFAT e percorso di rete.
-- Aggiornamento Stable→Stable, Beta→Beta e downgrade di emergenza con installer conservato.
-- Disinstallazione scegliendo sia “conserva” sia “rimuovi dati locali”; verificare che progetti e FITS/XISF restino intatti.
-- Verifica Authenticode di entrambi gli artefatti e confronto con `SHA256SUMS.txt`.
-
-Conservare il report firmato delle VM insieme agli artefatti della release. Un fallimento P0 blocca la pubblicazione.
+The Windows updater reads the latest stable GitHub release, checks the published asset size and SHA-256 digest, downloads it into the local application data folder and asks before starting the installer.

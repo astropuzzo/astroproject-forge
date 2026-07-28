@@ -644,9 +644,9 @@
                     </DataGrid>
                     <Grid Grid.Row="3" Margin="28,16,28,24">
                         <Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="Auto"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions>
-                        <TextBlock Text="I dati restano sul computer finché non scegli esplicitamente Esporta ZIP." Style="{StaticResource MutedText}" VerticalAlignment="Center" TextWrapping="Wrap"/>
+                        <TextBlock Text="Gli eventi mostrati aiutano a diagnosticare eventuali problemi." Style="{StaticResource MutedText}" VerticalAlignment="Center" TextWrapping="Wrap"/>
                         <Button Grid.Column="1" Content="Aggiorna eventi" Click="RefreshDiagnostics_Click" Margin="12,0,8,0" Padding="16,9"/>
-                        <Button Grid.Column="2" Content="Esporta ZIP privacy-safe" Click="ExportSupportFromDiagnostics_Click" Style="{StaticResource PrimaryButton}" Padding="18,9"/>
+                        <Button Grid.Column="2" Content="Esporta ZIP" Click="ExportSupportFromDiagnostics_Click" Style="{StaticResource PrimaryButton}" Padding="18,9"/>
                     </Grid>
                 </Grid>
             </Border>
@@ -661,14 +661,14 @@
                     <Grid Grid.Row="1" Margin="30,25,30,18"><Grid.ColumnDefinitions><ColumnDefinition/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions><StackPanel><TextBlock Text="ASTROPROJECT FORGE" Style="{StaticResource Eyebrow}"/><TextBlock Text="Informazioni" Style="{StaticResource Title}" Margin="0,5,0,4"/><TextBlock Text="Organizza sessioni, calibrazioni e progetti PixInsight WBPP." Style="{StaticResource MutedText}" TextWrapping="Wrap"/></StackPanel><Button Grid.Column="1" Content="×" Click="CloseAbout_Click" Style="{StaticResource ToolbarButton}" Width="42" Height="42" Padding="0" FontSize="20" ToolTip="Chiudi"/></Grid>
                     <Grid Grid.Row="2" Margin="30,0,30,18"><Grid.ColumnDefinitions><ColumnDefinition/><ColumnDefinition/></Grid.ColumnDefinitions>
                         <Border Style="{StaticResource Card}" Background="#102725" Margin="0,0,7,0"><StackPanel><TextBlock Text="Versione" Style="{StaticResource Eyebrow}"/><TextBlock Text="{Binding VersionDisplay}" FontSize="25" FontWeight="SemiBold" Margin="0,6,0,3"/></StackPanel></Border>
-                        <Border Grid.Column="1" Style="{StaticResource Card}" Background="#101F2A" Margin="7,0,0,0"><StackPanel><TextBlock Text="Canale" Style="{StaticResource Eyebrow}"/><TextBlock Text="{Binding UpdateChannel}" FontSize="25" FontWeight="SemiBold" Margin="0,6,0,3"/><TextBlock Text="{Binding UpdateStatus}" Style="{StaticResource MutedText}" TextWrapping="Wrap" FontSize="11"/></StackPanel></Border>
+                        <Border Grid.Column="1" Style="{StaticResource Card}" Background="#101F2A" Margin="7,0,0,0"><StackPanel><TextBlock Text="Aggiornamenti" Style="{StaticResource Eyebrow}"/><TextBlock Text="Automatici" FontSize="25" FontWeight="SemiBold" Margin="0,6,0,3"/><TextBlock Text="{Binding UpdateStatus}" Style="{StaticResource MutedText}" TextWrapping="Wrap" FontSize="11"/></StackPanel></Border>
                     </Grid>
                     <StackPanel Grid.Row="3" Margin="30,0,30,28">
                         <Border Background="#141D2A" BorderBrush="{StaticResource Stroke}" BorderThickness="1" CornerRadius="10" Padding="14" Margin="0,0,0,12">
-                            <StackPanel><TextBlock Text="Sviluppato da Gianmarco Spagnoli (@astropuzzo)" FontWeight="SemiBold"/><TextBlock Text="Copyright © 2026 Gianmarco Spagnoli. Tutti i diritti riservati." Style="{StaticResource MutedText}" Margin="0,4,0,0"/><TextBlock Text="Creato interamente tramite vibe coding assistito da AI. L’autore non ha una formazione da sviluppatore: segnala gli errori dal menu Aiuto e verifica sempre le calibrazioni." Style="{StaticResource MutedText}" TextWrapping="Wrap" LineHeight="18" Margin="0,8,0,0"/></StackPanel>
+                            <StackPanel><TextBlock Text="Ideato da Gianmarco Spagnoli (@astropuzzo)" FontWeight="SemiBold"/><TextBlock Text="Copyright © 2026 Gianmarco Spagnoli. Tutti i diritti riservati." Style="{StaticResource MutedText}" Margin="0,4,0,0"/><TextBlock Text="Sviluppato con strumenti di programmazione assistita da AI." Style="{StaticResource MutedText}" TextWrapping="Wrap" LineHeight="18" Margin="0,8,0,0"/></StackPanel>
                         </Border>
                         <Grid Margin="0,0,0,12"><Grid.ColumnDefinitions><ColumnDefinition/><ColumnDefinition/><ColumnDefinition/></Grid.ColumnDefinitions><Button Content="GitHub" Click="OpenRepository_Click" Margin="0,0,5,0"/><Button Grid.Column="1" Content="Guida" Click="OpenGuide_Click" Margin="5,0"/><Button Grid.Column="2" Content="Segnala un problema" Click="ReportIssue_Click" Margin="5,0,0,0"/></Grid>
-                        <Grid><Grid.ColumnDefinitions><ColumnDefinition/><ColumnDefinition Width="Auto"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions><TextBlock Text="{Binding UpdateStatus}" Style="{StaticResource MutedText}" VerticalAlignment="Center" TextWrapping="Wrap" Margin="0,0,15,0"/><Button x:Name="DownloadUpdateButton" Grid.Column="1" Content="Scarica aggiornamento" Click="DownloadUpdate_Click" Visibility="Collapsed" Margin="0,0,9,0"/><Button Grid.Column="2" Content="Controlla aggiornamenti" Click="CheckUpdates_Click" Style="{StaticResource PrimaryButton}" MinWidth="160"/></Grid>
+                        <StackPanel Orientation="Horizontal" HorizontalAlignment="Right"><Button x:Name="DownloadUpdateButton" Content="Scarica aggiornamento" Click="DownloadUpdate_Click" Visibility="Collapsed" Margin="0,0,9,0"/><Button Content="Controlla aggiornamenti" Click="CheckUpdates_Click" Style="{StaticResource PrimaryButton}" MinWidth="160"/></StackPanel>
                     </StackPanel>
                 </Grid>
             </Border>
