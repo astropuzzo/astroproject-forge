@@ -29,3 +29,5 @@ The `Cross-platform parity QA` GitHub workflow builds:
 Create a non-draft, non-prerelease tag matching the version, then attach only installable and portable packages. GitHub adds the source archives automatically.
 
 The Windows updater reads the latest stable GitHub release, checks the published asset size and SHA-256 digest, downloads it into the local application data folder, runs the installer silently and restarts the newly installed version. The About window also keeps a separate manual-download link.
+
+Stable Windows installations use `C:\Program Files\AstroProject Forge`. The stable Inno Setup AppId must never change: it identifies an existing installation during upgrades. Releases from 1.0.3 also remove the exact legacy per-user application directory after migration, while preserving settings and projects under local application data.
