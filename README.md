@@ -22,7 +22,7 @@ AstroProject Forge reads FITS and XISF metadata, reconstructs observing nights a
 - project-specific WBPP Grouping Keywords;
 - optional frame-quality analysis with FWHM, eccentricity, noise, SNR, Blink and non-destructive exclusions;
 - Italian and English interface;
-- automatic Windows update download.
+- one-click Windows updates with verified download, silent installation and automatic restart;
 
 ![Acquisition statistics](docs/images/acquisition-dashboard.png)
 
@@ -63,7 +63,7 @@ AstroProject Forge legge i metadati FITS e XISF, ricostruisce le notti osservati
 - Grouping Keywords WBPP calcolate sul progetto;
 - analisi qualità opzionale con FWHM, eccentricità, rumore, SNR, Blink ed esclusioni non distruttive;
 - interfaccia italiana e inglese;
-- download automatico degli aggiornamenti su Windows.
+- aggiornamenti Windows in un clic con download verificato, installazione silenziosa e riavvio automatico.
 
 ![Master Library](docs/images/master-library-lab.png)
 

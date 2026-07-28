@@ -668,7 +668,12 @@
                             <StackPanel><TextBlock Text="Ideato da Gianmarco Spagnoli (@astropuzzo)" FontWeight="SemiBold"/><TextBlock Text="Copyright © 2026 Gianmarco Spagnoli. Tutti i diritti riservati." Style="{StaticResource MutedText}" Margin="0,4,0,0"/><TextBlock Text="Sviluppato con strumenti di programmazione assistita da AI." Style="{StaticResource MutedText}" TextWrapping="Wrap" LineHeight="18" Margin="0,8,0,0"/></StackPanel>
                         </Border>
                         <Grid Margin="0,0,0,12"><Grid.ColumnDefinitions><ColumnDefinition/><ColumnDefinition/><ColumnDefinition/></Grid.ColumnDefinitions><Button Content="GitHub" Click="OpenRepository_Click" Margin="0,0,5,0"/><Button Grid.Column="1" Content="Guida" Click="OpenGuide_Click" Margin="5,0"/><Button Grid.Column="2" Content="Segnala un problema" Click="ReportIssue_Click" Margin="5,0,0,0"/></Grid>
-                        <StackPanel Orientation="Horizontal" HorizontalAlignment="Right"><Button x:Name="DownloadUpdateButton" Content="Scarica aggiornamento" Click="DownloadUpdate_Click" Visibility="Collapsed" Margin="0,0,9,0"/><Button Content="Controlla aggiornamenti" Click="CheckUpdates_Click" Style="{StaticResource PrimaryButton}" MinWidth="160"/></StackPanel>
+                        <Grid>
+                            <Grid.ColumnDefinitions><ColumnDefinition Width="Auto"/><ColumnDefinition Width="*"/><ColumnDefinition Width="Auto"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions>
+                            <Button Grid.Column="0" Content="Download manuale" Click="OpenManualDownload_Click" ToolTip="Apre la release più recente su GitHub" Padding="16,9"/>
+                            <Button Grid.Column="2" x:Name="DownloadUpdateButton" Content="Aggiorna e riavvia" Click="DownloadUpdate_Click" Visibility="Collapsed" Margin="9,0" Padding="16,9"/>
+                            <Button Grid.Column="3" Content="Controlla aggiornamenti" Click="CheckUpdates_Click" Style="{StaticResource PrimaryButton}" MinWidth="170"/>
+                        </Grid>
                     </StackPanel>
                 </Grid>
             </Border>

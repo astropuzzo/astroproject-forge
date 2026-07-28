@@ -15,6 +15,7 @@ namespace AstroForge.App;
 public partial class MainWindow : Window
 {
     private const string RepositoryUrl = "https://github.com/astropuzzo/astroproject-forge";
+    private const string ReleasesUrl = RepositoryUrl + "/releases/latest";
     private const string GuideUrl = RepositoryUrl + "/wiki";
     private const string IssueUrl = RepositoryUrl + "/issues/new?template=bug_report.yml";
     private readonly MainViewModel _viewModel = new();
@@ -164,6 +165,8 @@ public partial class MainWindow : Window
     private void CloseAbout_Click(object sender, RoutedEventArgs e) => AboutOverlay.Visibility = Visibility.Collapsed;
     private void OpenGuide_Click(object sender, RoutedEventArgs e) { MorePopup.IsOpen = false; OpenExternalUrl(GuideUrl); }
     private void OpenRepository_Click(object sender, RoutedEventArgs e) => OpenExternalUrl(RepositoryUrl);
+    private void OpenManualDownload_Click(object sender, RoutedEventArgs e) =>
+        OpenExternalUrl(_availableUpdate?.ReleaseNotesUrl ?? ReleasesUrl);
     private void ReportIssue_Click(object sender, RoutedEventArgs e) { MorePopup.IsOpen = false; OpenExternalUrl(IssueUrl); }
     private static void OpenExternalUrl(string url) => Process.Start(new ProcessStartInfo(url) { UseShellExecute = true });
     private async void CheckUpdates_Click(object sender, RoutedEventArgs e) => await CheckUpdatesAsync(true);
@@ -178,7 +181,9 @@ public partial class MainWindow : Window
             _viewModel.UpdateStatus = decision.Reason;
             _availableUpdate = decision.IsAvailable ? decision.Manifest : null;
             DownloadUpdateButton.Visibility = decision.IsAvailable ? Visibility.Visible : Visibility.Collapsed;
-            DownloadUpdateButton.Content = "Scarica aggiornamento";
+            DownloadUpdateButton.Content = _viewModel.UiLanguage == UiLocalization.English
+                ? "Update and restart"
+                : "Aggiorna e riavvia";
             if (interactive && !decision.IsAvailable)
                 MessageBox.Show(this, UiLocalization.Translate(decision.Reason, _viewModel.UiLanguage),
                     _viewModel.UiLanguage == UiLocalization.English ? "Updates" : "Aggiornamenti",
@@ -221,20 +226,25 @@ public partial class MainWindow : Window
                 installerPath,
                 progress,
                 requireAuthenticode: _availableUpdate.Signed);
-            _viewModel.UpdateStatus = $"AstroProject Forge {_availableUpdate.Version} è pronto";
-            var installNow = MessageBox.Show(
-                this,
-                _viewModel.UiLanguage == UiLocalization.English
-                    ? "The update is ready. Install it now?\n\nThe application will close after starting the installer."
-                    : "L’aggiornamento è pronto. Vuoi installarlo ora?\n\nL’app verrà chiusa dopo l’avvio dell’installer.",
-                _viewModel.UiLanguage == UiLocalization.English ? "Update ready" : "Aggiornamento pronto",
-                MessageBoxButton.YesNo,
-                MessageBoxImage.Information);
-            if (installNow == MessageBoxResult.Yes)
-            {
-                Process.Start(new ProcessStartInfo(path) { UseShellExecute = true });
-                Close();
-            }
+            _viewModel.UpdateStatus = _viewModel.UiLanguage == UiLocalization.English
+                ? "Installing update..."
+                : "Installazione aggiornamento...";
+            _viewModel.SaveState();
+
+            var logPath = Path.Combine(updatesDirectory, "installer.log");
+            var startInfo = new ProcessStartInfo(path) { UseShellExecute = true };
+            startInfo.ArgumentList.Add("/SP-");
+            startInfo.ArgumentList.Add("/VERYSILENT");
+            startInfo.ArgumentList.Add("/SUPPRESSMSGBOXES");
+            startInfo.ArgumentList.Add("/NORESTART");
+            startInfo.ArgumentList.Add("/CLOSEAPPLICATIONS");
+            startInfo.ArgumentList.Add("/FORCECLOSEAPPLICATIONS");
+            startInfo.ArgumentList.Add("/APFUPDATE=1");
+            startInfo.ArgumentList.Add($"/LOG={logPath}");
+            if (Process.Start(startInfo) is null)
+                throw new InvalidOperationException("Impossibile avviare l'installer dell'aggiornamento.");
+
+            Application.Current.Shutdown();
         }
         catch (Exception exception)
         {
