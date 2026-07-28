@@ -1,5 +1,12 @@
 # AstroProject Forge — note di rilascio
 
+## 1.1.1 — 28 luglio 2026
+
+- Durante l'aggiornamento automatico Windows l'installer mostra ora una finestra con
+  avanzamento reale invece di lavorare in modo completamente invisibile.
+- Download, verifica, installazione e riavvio sono riconoscibili come fasi distinte.
+- Gli errori dell'installer non vengono più nascosti.
+
 ## 1.1.0 — 28 luglio 2026
 
 - Completata la traduzione inglese delle interfacce Windows, Linux e macOS.

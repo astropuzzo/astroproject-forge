@@ -287,8 +287,9 @@ public partial class MainWindow : Window
             var logPath = Path.Combine(updatesDirectory, "installer.log");
             var startInfo = new ProcessStartInfo(path) { UseShellExecute = true };
             startInfo.ArgumentList.Add("/SP-");
-            startInfo.ArgumentList.Add("/VERYSILENT");
-            startInfo.ArgumentList.Add("/SUPPRESSMSGBOXES");
+            // /SILENT keeps the native installer progress window visible. The application
+            // closes only after the installer has started, then Inno Setup relaunches it.
+            startInfo.ArgumentList.Add("/SILENT");
             startInfo.ArgumentList.Add("/NORESTART");
             startInfo.ArgumentList.Add("/CLOSEAPPLICATIONS");
             startInfo.ArgumentList.Add("/FORCECLOSEAPPLICATIONS");
