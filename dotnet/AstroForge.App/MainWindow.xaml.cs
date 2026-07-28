@@ -294,6 +294,7 @@ public partial class MainWindow : Window
             startInfo.ArgumentList.Add("/CLOSEAPPLICATIONS");
             startInfo.ArgumentList.Add("/FORCECLOSEAPPLICATIONS");
             startInfo.ArgumentList.Add("/APFUPDATE=1");
+            startInfo.ArgumentList.Add("/APFVISIBLE=1");
             startInfo.ArgumentList.Add($"/LOG={logPath}");
             if (Process.Start(startInfo) is null)
                 throw new InvalidOperationException("Impossibile avviare l'installer dell'aggiornamento.");

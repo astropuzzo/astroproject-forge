@@ -10,6 +10,7 @@ $wpfCodePath = Join-Path $root 'dotnet\AstroForge.App\MainWindow.xaml.cs'
 $avaloniaCodePath = Join-Path $root 'dotnet\AstroForge.CrossPlatform\MainWindow.axaml.cs'
 $wpfAdapterPath = Join-Path $root 'dotnet\AstroForge.App\Services\WpfLocalizationAdapter.cs'
 $avaloniaAdapterPath = Join-Path $root 'dotnet\AstroForge.CrossPlatform\AvaloniaLocalizationAdapter.cs'
+$installerPath = Join-Path $root 'installer\AstroProjectForge.iss'
 
 function Read-Raw([string]$Path) {
     if (-not (Test-Path -LiteralPath $Path)) { throw "File mancante: $Path" }
@@ -44,6 +45,7 @@ $wpfCode = Read-Raw $wpfCodePath
 $avaloniaCode = Read-Raw $avaloniaCodePath
 $wpfAdapter = Read-Raw $wpfAdapterPath
 $avaloniaAdapter = Read-Raw $avaloniaAdapterPath
+$installer = Read-Raw $installerPath
 
 $contracts = @{
     'WPF preview keyboard handler' = $wpfXaml.Contains('PreviewKeyDown="Window_PreviewKeyDown"')
@@ -54,6 +56,7 @@ $contracts = @{
     'Save and Save As behavior (WPF)' = $wpfCode.Contains('SaveProject(bool saveAs)')
     'Save and Save As behavior (Avalonia)' = $avaloniaCode.Contains('SaveProjectAsync(bool saveAs)')
     'Visible Windows update progress' = $wpfCode.Contains('startInfo.ArgumentList.Add("/SILENT")') -and -not $wpfCode.Contains('startInfo.ArgumentList.Add("/VERYSILENT")')
+    'Visible progress from legacy updaters' = $wpfCode.Contains('startInfo.ArgumentList.Add("/APFVISIBLE=1")') -and $installer.Contains('CurInstallProgressChanged') -and $installer.Contains('NeedsCompatibilityProgress')
 }
 
 $failed = @($contracts.GetEnumerator() | Where-Object { -not $_.Value } | ForEach-Object Key)
