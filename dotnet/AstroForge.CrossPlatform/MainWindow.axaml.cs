@@ -21,6 +21,7 @@ public sealed partial class MainWindow : Window
     private CancellationTokenSource? _qualityCancellation;
     private CancellationTokenSource? _previewCancellation;
     private bool _sourcesVisible = true;
+    private int _onboardingStep = 1;
     private int _blinkIndex = -1;
     private double _qualityZoom = 1;
     private bool _localizationPending;
@@ -200,13 +201,58 @@ public sealed partial class MainWindow : Window
     }
 
     private void ToggleSettings_Click(object? sender, RoutedEventArgs e) => SettingsPanel.IsVisible = !SettingsPanel.IsVisible;
-    private void OpenOnboarding_Click(object? sender, RoutedEventArgs e) { SettingsPanel.IsVisible = false; _viewModel.OpenOnboarding(); }
+    private void OpenOnboarding_Click(object? sender, RoutedEventArgs e)
+    {
+        SettingsPanel.IsVisible = false;
+        _onboardingStep = 1;
+        UpdateOnboarding();
+        _viewModel.OpenOnboarding();
+    }
     private void OpenGuide_Click(object? sender, RoutedEventArgs e) { SettingsPanel.IsVisible = false; OpenUrl(GuideUrl); }
     private void OpenRepository_Click(object? sender, RoutedEventArgs e) => OpenUrl(RepositoryUrl);
     private void ReportIssue_Click(object? sender, RoutedEventArgs e) { SettingsPanel.IsVisible = false; OpenUrl(IssueUrl); }
     private void OpenDiagnosticsTab_Click(object? sender, RoutedEventArgs e) { SettingsPanel.IsVisible = false; WorkspaceTabs.SelectedIndex = 7; _viewModel.RefreshDiagnostics(); }
     private static void OpenUrl(string url) => Process.Start(new ProcessStartInfo(url) { UseShellExecute = true });
-    private void CompleteOnboarding_Click(object? sender, RoutedEventArgs e) => _viewModel.CompleteOnboarding();
+    private void OnboardingAddLibrary_Click(object? sender, RoutedEventArgs e) => AddLibrary_Click(sender, e);
+    private void OnboardingAddSources_Click(object? sender, RoutedEventArgs e) => AddSources_Click(sender, e);
+    private void OnboardingAddFiles_Click(object? sender, RoutedEventArgs e) => AddFiles_Click(sender, e);
+    private void OnboardingSkip_Click(object? sender, RoutedEventArgs e) => _viewModel.CompleteOnboarding();
+    private void OnboardingBack_Click(object? sender, RoutedEventArgs e)
+    {
+        _onboardingStep = Math.Max(1, _onboardingStep - 1);
+        UpdateOnboarding();
+    }
+    private async void OnboardingNext_Click(object? sender, RoutedEventArgs e)
+    {
+        if (_onboardingStep == 4)
+        {
+            _viewModel.CompleteOnboarding();
+            if (_viewModel.CanAnalyzeProject)
+                await RunAsync("AF-SCAN-001", () => _viewModel.ScanAsync());
+            return;
+        }
+        _onboardingStep++;
+        UpdateOnboarding();
+    }
+
+    private void UpdateOnboarding()
+    {
+        OnboardingStep1.IsVisible = _onboardingStep == 1;
+        OnboardingStep2.IsVisible = _onboardingStep == 2;
+        OnboardingStep3.IsVisible = _onboardingStep == 3;
+        OnboardingStep4.IsVisible = _onboardingStep == 4;
+        OnboardingProgress.Text = $"{_onboardingStep} / 4";
+        OnboardingBackButton.IsVisible = _onboardingStep > 1;
+        OnboardingNextButton.Content = _onboardingStep switch
+        {
+            1 => "Inizia",
+            2 when _viewModel.MasterLibraries.Count == 0 => "Continua senza libreria",
+            4 when _viewModel.CanAnalyzeProject => "Analizza ora",
+            4 => "Vai al progetto",
+            _ => "Continua"
+        };
+        ScheduleLocalization();
+    }
 
     private async void Analyze_Click(object? sender, RoutedEventArgs e) => await RunAsync("AF-SCAN-001", () => _viewModel.ScanAsync());
 

@@ -221,6 +221,13 @@ public partial class MainWindow : Window
     private void OpenManualDownload_Click(object sender, RoutedEventArgs e) =>
         OpenExternalUrl(_availableUpdate?.ReleaseNotesUrl ?? ReleasesUrl);
     private void ReportIssue_Click(object sender, RoutedEventArgs e) { MorePopup.IsOpen = false; OpenExternalUrl(IssueUrl); }
+    private void OpenOnboarding_Click(object sender, RoutedEventArgs e)
+    {
+        MorePopup.IsOpen = false;
+        _onboardingStep = 1;
+        UpdateOnboarding();
+        _viewModel.OpenOnboarding();
+    }
     private static void OpenExternalUrl(string url) => Process.Start(new ProcessStartInfo(url) { UseShellExecute = true });
     private async void CheckUpdates_Click(object sender, RoutedEventArgs e) => await CheckUpdatesAsync(true);
     private async Task CheckUpdatesAsync(bool interactive)
@@ -326,7 +333,12 @@ public partial class MainWindow : Window
     private void OnboardingBack_Click(object sender, RoutedEventArgs e) { _onboardingStep = Math.Max(1, _onboardingStep - 1); UpdateOnboarding(); }
     private void OnboardingNext_Click(object sender, RoutedEventArgs e)
     {
-        if (_onboardingStep == 4) { _viewModel.CompleteOnboarding(); return; }
+        if (_onboardingStep == 4)
+        {
+            _viewModel.CompleteOnboarding();
+            if (_viewModel.CanAnalyzeProject) Scan_Click(this, new RoutedEventArgs());
+            return;
+        }
         _onboardingStep++;
         UpdateOnboarding();
     }
@@ -338,7 +350,15 @@ public partial class MainWindow : Window
         OnboardingStep4.Visibility = _onboardingStep == 4 ? Visibility.Visible : Visibility.Collapsed;
         OnboardingProgress.Text = $"{_onboardingStep} / 4";
         OnboardingBackButton.Visibility = _onboardingStep > 1 ? Visibility.Visible : Visibility.Collapsed;
-        OnboardingNextButton.Content = _onboardingStep switch { 1 => "Inizia", 4 => "Vai al progetto", _ => "Continua" };
+        OnboardingNextButton.Content = _onboardingStep switch
+        {
+            1 => "Inizia",
+            2 when _viewModel.MasterLibraries.Count == 0 => "Continua senza libreria",
+            4 when _viewModel.CanAnalyzeProject => "Analizza ora",
+            4 => "Vai al progetto",
+            _ => "Continua"
+        };
+        ScheduleLocalization();
     }
     private void ApplyUiPreferences()
     {
