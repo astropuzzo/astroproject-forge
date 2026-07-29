@@ -1,5 +1,15 @@
 # AstroProject Forge — note di rilascio
 
+## 1.2.0 — 29 luglio 2026
+
+- Il primo avvio usa ora un setup rapido in quattro passaggi: introduzione, Master
+  Library facoltativa, importazione FITS/XISF e riepilogo.
+- Dal passaggio finale è possibile avviare immediatamente l'analisi del progetto.
+- La configurazione iniziale può essere riaperta in qualsiasi momento dal menu.
+- La Master Library è ora presentata come funzione principale, con descrizione,
+  conteggio e un comando di aggiunta ben visibile nel pannello Sorgenti.
+- Lo stesso flusso è disponibile nelle interfacce Windows, Linux e macOS.
+
 ## 1.1.2 — 28 luglio 2026
 
 - Anche gli aggiornamenti avviati dalle versioni precedenti mostrano ora una finestra

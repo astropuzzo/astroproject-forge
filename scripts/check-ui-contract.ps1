@@ -57,6 +57,8 @@ $contracts = @{
     'Save and Save As behavior (Avalonia)' = $avaloniaCode.Contains('SaveProjectAsync(bool saveAs)')
     'Visible Windows update progress' = $wpfCode.Contains('startInfo.ArgumentList.Add("/SILENT")') -and -not $wpfCode.Contains('startInfo.ArgumentList.Add("/VERYSILENT")')
     'Visible progress from legacy updaters' = $wpfCode.Contains('startInfo.ArgumentList.Add("/APFVISIBLE=1")') -and $installer.Contains('CurInstallProgressChanged') -and $installer.Contains('NeedsCompatibilityProgress')
+    'WPF operational onboarding' = $wpfXaml.Contains('x:Name="OnboardingStep4"') -and $wpfCode.Contains('if (_viewModel.CanAnalyzeProject) Scan_Click')
+    'Avalonia operational onboarding' = (Read-Raw $avaloniaXamlPath).Contains('x:Name="OnboardingStep4"') -and $avaloniaCode.Contains('if (_viewModel.CanAnalyzeProject)')
 }
 
 $failed = @($contracts.GetEnumerator() | Where-Object { -not $_.Value } | ForEach-Object Key)

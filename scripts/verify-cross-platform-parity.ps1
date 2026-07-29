@@ -30,7 +30,7 @@ $requiredModelCapabilities = @(
 $viewModelText = Get-Content -LiteralPath $viewModel -Raw
 $missing = @($requiredModelCapabilities | Where-Object { $viewModelText -notmatch [regex]::Escape($_) })
 if ($missing.Count -gt 0) { throw "Shared model capabilities missing: $($missing -join ', ')" }
-$requiredUiContracts = @('TreeRoots','PlannedTreeRoots','ApplyOverridesCommand','LinkFlatSetCommand','WbppKeywords','FilterStatistics','QualitySeries','ReviewQueue','MasterOrganizerItems','DiagnosticEvents','Export_Click','RestoreRecovery_Click','ShowOnboarding','CompleteOnboarding_Click')
+$requiredUiContracts = @('TreeRoots','PlannedTreeRoots','ApplyOverridesCommand','LinkFlatSetCommand','WbppKeywords','FilterStatistics','QualitySeries','ReviewQueue','MasterOrganizerItems','DiagnosticEvents','Export_Click','RestoreRecovery_Click','ShowOnboarding','OnboardingNext_Click')
 $missing = @($requiredUiContracts | Where-Object { $windowText -notmatch [regex]::Escape($_) })
 if ($missing.Count -gt 0) { throw "Capabilities not exposed by the cross-platform UI: $($missing -join ', ')" }
 

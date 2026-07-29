@@ -32,9 +32,8 @@
           <ListBox x:Name="SourcesList" ItemsSource="{Binding SourcePaths}" MaxHeight="180">
             <ListBox.ItemTemplate><DataTemplate><Border Classes="pathCard" Margin="0,0,0,5"><TextBlock Text="{Binding}" TextTrimming="CharacterEllipsis" ToolTip.Tip="{Binding}"/></Border></DataTemplate></ListBox.ItemTemplate>
           </ListBox>
-          <Border Height="1" Background="#243146"/>
-          <StackPanel><TextBlock Text="Librerie di calibrazione" Classes="eyebrow"/><TextBlock Text="Indipendenti dal progetto" Classes="muted" FontSize="11"/></StackPanel>
-          <Grid ColumnDefinitions="*,Auto,Auto,Auto" ColumnSpacing="5"><Button Content="+ Libreria" Click="AddLibrary_Click"/><Button Grid.Column="1" Content="↑" Click="MoveLibraryUp_Click"/><Button Grid.Column="2" Content="↓" Click="MoveLibraryDown_Click"/><Button Grid.Column="3" Content="−" Click="RemoveLibrary_Click"/></Grid>
+          <Border Classes="card" Background="#122824" BorderBrush="#397A70" Padding="13"><StackPanel Spacing="8"><Grid ColumnDefinitions="*,Auto"><StackPanel><TextBlock Text="MASTER LIBRARY" Classes="eyebrow"/><TextBlock Text="Dark e Bias automatici" FontSize="17" FontWeight="SemiBold"/></StackPanel><Border Grid.Column="1" Classes="count"><TextBlock Text="{Binding MasterLibraries.Count, StringFormat={}{0} collegate}"/></Border></Grid><TextBlock Text="Camera, gain, offset e temperatura determinano gli abbinamenti." Classes="muted" FontSize="10" TextWrapping="Wrap"/><Button Content="+ Aggiungi Master Library" Classes="primary" ToolTip.Tip="Scegli una cartella contenente Master Dark e Bias" Click="AddLibrary_Click"/></StackPanel></Border>
+          <Grid ColumnDefinitions="*,*,*" ColumnSpacing="5"><Button Content="Rimuovi" Click="RemoveLibrary_Click"/><Button Grid.Column="1" Content="↑ Priorità" Click="MoveLibraryUp_Click"/><Button Grid.Column="2" Content="↓ Priorità" Click="MoveLibraryDown_Click"/></Grid>
           <ListBox ItemsSource="{Binding MasterLibraries}" SelectedItem="{Binding SelectedMasterLibrary}" MaxHeight="170">
             <ListBox.ItemTemplate><DataTemplate><Border Classes="pathCard" Margin="0,0,0,5"><Grid ColumnDefinitions="Auto,*,Auto"><CheckBox IsChecked="{Binding Enabled}"/><StackPanel Grid.Column="1" Margin="7,0"><TextBlock Text="{Binding Name}" FontWeight="SemiBold"/><TextBlock Text="{Binding Path}" Classes="muted" FontSize="10" TextTrimming="CharacterEllipsis" ToolTip.Tip="{Binding Path}"/></StackPanel><TextBlock Grid.Column="2" Text="{Binding Status}" Foreground="#49D9CA"/></Grid></Border></DataTemplate></ListBox.ItemTemplate>
           </ListBox>
@@ -111,6 +110,7 @@
         <CheckBox Content="Riduci animazioni" ToolTip.Tip="Utile su PC meno potenti o se preferisci meno movimento" IsChecked="{Binding ReducedMotion}" Click="UiPreferenceChanged_Click"/>
         <Border Height="1" Background="#33445C" Margin="0,5"/>
         <TextBlock Text="Aiuto" Classes="eyebrow"/>
+        <Button Content="Configurazione iniziale" ToolTip.Tip="Collega librerie, importa immagini e avvia l’analisi" Click="OpenOnboarding_Click"/>
         <Button Content="Guida rapida" Click="OpenGuide_Click"/>
         <Button Content="Segnala un problema" Click="ReportIssue_Click"/>
         <Button Content="GitHub" Click="OpenRepository_Click"/>
@@ -119,8 +119,40 @@
         <Expander Header="Opzioni avanzate"><StackPanel Spacing="9" Margin="0,9,0,0"><TextBlock Text="Margine spazio esportazione (%)"/><NumericUpDown Value="{Binding ExportMarginPercent}" Minimum="0" Maximum="100"/><TextBlock Text="Riserva minima (GiB)"/><NumericUpDown Value="{Binding ExportMinimumReserveGiB}" Minimum="0" Maximum="1000"/><Button Content="Rileggi i metadati" ToolTip.Tip="Forza una nuova lettura alla prossima analisi" Click="ClearCache_Click"/><Button Content="Chiudi progetto" ToolTip.Tip="Rimuove i dati dall'app senza cancellare i file" Command="{Binding ClearProjectCommand}"/></StackPanel></Expander>
       </StackPanel></ScrollViewer>
     </Border>
-    <Border Grid.RowSpan="2" IsVisible="{Binding ShowOnboarding}" Background="#D9080C13" ZIndex="40">
-      <Border Classes="card" Width="680" MaxHeight="610" HorizontalAlignment="Center" VerticalAlignment="Center" Padding="30"><StackPanel Spacing="16"><TextBlock Text="Configurazione iniziale" Classes="eyebrow"/><TextBlock Text="Prepara il primo progetto" FontSize="30" FontWeight="SemiBold" TextWrapping="Wrap"/><TextBlock Text="Importa file FITS/XISF da qualunque software oppure gestisci soltanto la Libreria Master. Gli originali restano in sola lettura." Classes="muted" TextWrapping="Wrap"/><Grid ColumnDefinitions="*,*" ColumnSpacing="10"><Border Classes="note"><StackPanel Spacing="8"><TextBlock Text="1 · Importa" Classes="eyebrow"/><TextBlock Text="Aggiungi file o cartelle FITS/XISF." TextWrapping="Wrap"/><Grid ColumnDefinitions="*,*" ColumnSpacing="6"><Button Content="Aggiungi cartelle" Click="AddSources_Click"/><Button Grid.Column="1" Content="Aggiungi file" Click="AddFiles_Click"/></Grid></StackPanel></Border><Border Grid.Column="1" Classes="note"><StackPanel Spacing="8"><TextBlock Text="2 · Libreria Master" Classes="eyebrow"/><TextBlock Text="Aggiungi una o più librerie di calibrazione. Questa funzione non richiede un progetto." TextWrapping="Wrap"/><Button Content="Aggiungi libreria" Click="AddLibrary_Click"/></StackPanel></Border></Grid><TextBlock Text="Gain e Offset predefiniti vengono usati soltanto quando mancano nei metadati." Classes="muted" TextWrapping="Wrap"/><Grid ColumnDefinitions="*,Auto"><TextBlock Text="Nessun dato viene caricato online." Classes="muted" VerticalAlignment="Center"/><Button Grid.Column="1" Content="Continua" Classes="primary" Click="CompleteOnboarding_Click"/></Grid></StackPanel></Border>
+    <Border Grid.RowSpan="2" IsVisible="{Binding ShowOnboarding}" Background="#E3080C13" ZIndex="40">
+      <Border Classes="card" Width="760" MaxHeight="640" HorizontalAlignment="Center" VerticalAlignment="Center" Padding="0">
+        <Grid RowDefinitions="7,*,74">
+          <Border Background="#49D9CA" CornerRadius="14,14,0,0"/>
+          <Grid Grid.Row="1" Margin="34,28,34,18">
+            <StackPanel x:Name="OnboardingStep1" Spacing="14">
+              <TextBlock Text="Configurazione iniziale" Classes="eyebrow"/>
+              <TextBlock Text="Prepara il primo progetto" FontSize="34" FontWeight="SemiBold" TextWrapping="Wrap"/>
+              <TextBlock Text="Collega le calibrazioni, importa le immagini e avvia la prima analisi. Nessun originale viene modificato." Classes="muted" FontSize="14" TextWrapping="Wrap"/>
+              <Grid ColumnDefinitions="*,*,*" ColumnSpacing="9" Margin="0,15,0,0"><Border Classes="note"><StackPanel Spacing="5"><TextBlock Text="01" Classes="eyebrow"/><TextBlock Text="Master Library" FontSize="17" FontWeight="SemiBold"/><TextBlock Text="facoltativa" Classes="muted"/></StackPanel></Border><Border Grid.Column="1" Classes="note"><StackPanel Spacing="5"><TextBlock Text="02" Classes="eyebrow"/><TextBlock Text="Immagini" FontSize="17" FontWeight="SemiBold"/><TextBlock Text="FITS e XISF" Classes="muted"/></StackPanel></Border><Border Grid.Column="2" Classes="note"><StackPanel Spacing="5"><TextBlock Text="03" Classes="eyebrow"/><TextBlock Text="Analisi" FontSize="17" FontWeight="SemiBold"/><TextBlock Text="sessioni e calibrazioni" Classes="muted"/></StackPanel></Border></Grid>
+            </StackPanel>
+            <StackPanel x:Name="OnboardingStep2" IsVisible="False" Spacing="13">
+              <TextBlock Text="Passo 1 · Calibrazioni" Classes="eyebrow"/>
+              <TextBlock Text="Hai già una Master Library?" FontSize="30" FontWeight="SemiBold" TextWrapping="Wrap"/>
+              <TextBlock Text="Raccoglie Dark e Bias riutilizzabili. Camera, gain, offset, temperatura ed esposizione determinano gli abbinamenti automatici." Classes="muted" FontSize="14" TextWrapping="Wrap"/>
+              <Border Classes="card" Background="#122824" BorderBrush="#397A70" Margin="0,12,0,0"><Grid ColumnDefinitions="*,Auto"><StackPanel Spacing="4"><TextBlock Text="MASTER LIBRARY" Classes="eyebrow"/><TextBlock Text="{Binding MasterLibraries.Count, StringFormat={}{0} collegate}" FontSize="23" FontWeight="SemiBold"/><TextBlock Text="Puoi aggiungerne più di una." Classes="muted"/></StackPanel><Button Grid.Column="1" Content="Sì, aggiungi libreria" Classes="primary" Click="OnboardingAddLibrary_Click"/></Grid></Border>
+              <TextBlock Text="Non ce l’hai? Continua senza: potrai aggiungerla o crearne una in seguito." Classes="muted" TextWrapping="Wrap"/>
+            </StackPanel>
+            <StackPanel x:Name="OnboardingStep3" IsVisible="False" Spacing="13">
+              <TextBlock Text="Passo 2 · Immagini" Classes="eyebrow"/>
+              <TextBlock Text="Importa le acquisizioni" FontSize="30" FontWeight="SemiBold"/>
+              <TextBlock Text="Scegli cartelle complete oppure singoli file FITS/XISF provenienti da qualsiasi software con header utilizzabili." Classes="muted" FontSize="14" TextWrapping="Wrap"/>
+              <Border Classes="card" Background="#101F2A" BorderBrush="#3B607E" Margin="0,12,0,0"><Grid ColumnDefinitions="*,Auto,Auto" ColumnSpacing="8"><StackPanel Spacing="4"><TextBlock Text="IMMAGINI DEL PROGETTO" Classes="eyebrow"/><TextBlock Text="{Binding SourcePaths.Count, StringFormat={}{0} sorgenti importate}" FontSize="23" FontWeight="SemiBold"/><TextBlock Text="Gli originali restano in sola lettura." Classes="muted"/></StackPanel><Button Grid.Column="1" Content="+ Singoli file" Click="OnboardingAddFiles_Click"/><Button Grid.Column="2" Content="+ Cartelle" Classes="primary" Click="OnboardingAddSources_Click"/></Grid></Border>
+            </StackPanel>
+            <StackPanel x:Name="OnboardingStep4" IsVisible="False" Spacing="14" HorizontalAlignment="Center" MaxWidth="580">
+              <Border Width="70" Height="70" CornerRadius="22" Background="#49D9CA" HorizontalAlignment="Center"><TextBlock Text="✓" Foreground="#071411" FontSize="32" FontWeight="Bold" HorizontalAlignment="Center" VerticalAlignment="Center"/></Border>
+              <TextBlock Text="Pronto per la prima analisi" FontSize="31" FontWeight="SemiBold" TextAlignment="Center"/>
+              <TextBlock Text="Il programma leggerà gli header, ricostruirà le notti e proporrà Flat, Dark e Bias." Classes="muted" FontSize="14" TextWrapping="Wrap" TextAlignment="Center"/>
+              <Grid ColumnDefinitions="*,*" ColumnSpacing="9"><Border Classes="note"><StackPanel><TextBlock Text="MASTER LIBRARY" Classes="eyebrow"/><TextBlock Text="{Binding MasterLibraries.Count, StringFormat={}{0} collegate}" FontSize="18" FontWeight="SemiBold"/></StackPanel></Border><Border Grid.Column="1" Classes="note"><StackPanel><TextBlock Text="SORGENTI" Classes="eyebrow"/><TextBlock Text="{Binding SourcePaths.Count, StringFormat={}{0} importate}" FontSize="18" FontWeight="SemiBold"/></StackPanel></Border></Grid>
+            </StackPanel>
+          </Grid>
+          <Border Grid.Row="2" Background="#121C29" BorderBrush="#33445C" BorderThickness="0,1,0,0" CornerRadius="0,0,14,14"><Grid ColumnDefinitions="*,Auto,Auto" Margin="24,0"><StackPanel Orientation="Horizontal" Spacing="10" VerticalAlignment="Center"><TextBlock x:Name="OnboardingProgress" Text="1 / 4" Classes="eyebrow"/><Button Content="Salta" Click="OnboardingSkip_Click"/></StackPanel><Button x:Name="OnboardingBackButton" Grid.Column="1" Content="Indietro" IsVisible="False" Click="OnboardingBack_Click" Margin="0,0,8,0"/><Button x:Name="OnboardingNextButton" Grid.Column="2" Content="Inizia" Classes="primary" Click="OnboardingNext_Click" MinWidth="140"/></Grid></Border>
+        </Grid>
+      </Border>
     </Border>
   </Grid>
 </Window>

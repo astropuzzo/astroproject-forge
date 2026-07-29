@@ -20,6 +20,8 @@ La stessa logica Core è usata dall'interfaccia Avalonia per Linux e macOS.
 - [x] Nomi e descrizioni per screen reader sui controlli principali.
 - [x] Focus tastiera ad alto contrasto.
 - [x] Avanzamento visibile per download e installazione degli aggiornamenti Windows.
+- [x] Setup rapido operativo al primo avvio, riapribile dal menu.
+- [x] Gestione Master Library evidenziata nel pannello Sorgenti.
 - [ ] Test manuale completo con Narrator su Windows.
 - [ ] Test manuale tastiera, VoiceOver e Orca sui pacchetti nativi.
 
