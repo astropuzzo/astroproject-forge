@@ -24,13 +24,13 @@ if ($missing.Count -gt 0) { throw "Missing workspaces: $($missing -join ', ')" }
 
 $requiredModelCapabilities = @(
     'TreeRoots','PlannedTreeRoots','ApplyOverridesCommand','LinkFlatSetCommand','WbppKeywords',
-    'FilterStatistics','QualitySeries','AnalyzeQualityAsync','ReviewQueue','ExportAsync',
+    'FilterStatistics','QualitySeries','AnalyzeQualityAsync','AnalyzeAllQualityAsync','NewProject','ReviewQueue','ExportAsync',
     'MasterOrganizerItems','OrganizeMasterLibraryAsync','DiagnosticEvents','RestoreRecoveryAsync'
 )
 $viewModelText = Get-Content -LiteralPath $viewModel -Raw
 $missing = @($requiredModelCapabilities | Where-Object { $viewModelText -notmatch [regex]::Escape($_) })
 if ($missing.Count -gt 0) { throw "Shared model capabilities missing: $($missing -join ', ')" }
-$requiredUiContracts = @('TreeRoots','PlannedTreeRoots','ApplyOverridesCommand','LinkFlatSetCommand','WbppKeywords','FilterStatistics','QualitySeries','ReviewQueue','MasterOrganizerItems','DiagnosticEvents','Export_Click','RestoreRecovery_Click','ShowOnboarding','OnboardingNext_Click')
+$requiredUiContracts = @('TreeRoots','PlannedTreeRoots','ApplyOverridesCommand','LinkFlatSetCommand','WbppKeywords','FilterStatistics','QualitySeries','ReviewQueue','MasterOrganizerItems','DiagnosticEvents','Export_Click','AnalyzeAllQuality_Click','NewProject_Click','SaveProjectAs_Click','RestoreRecovery_Click','ShowOnboarding','OnboardingNext_Click')
 $missing = @($requiredUiContracts | Where-Object { $windowText -notmatch [regex]::Escape($_) })
 if ($missing.Count -gt 0) { throw "Capabilities not exposed by the cross-platform UI: $($missing -join ', ')" }
 

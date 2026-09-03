@@ -6,7 +6,7 @@ namespace AstroForge.Core.Quality;
 public sealed record QualityMetrics(
     string Path, double Background, double Noise, double Signal, double Snr,
     double FwhmPixels, double Eccentricity, int StarCount,
-    int PreviewWidth, int PreviewHeight, byte[] PreviewPixels);
+    int CoverageZones, int PreviewWidth, int PreviewHeight, byte[] PreviewPixels);
 
 public sealed record QualityAnalysisProgress(int Completed, int Total, string CurrentFile);
 
@@ -14,7 +14,7 @@ public sealed record QualityPreview(int Width, int Height, bool IsColor, byte[] 
 
 public static class FitsQualityAnalyzer
 {
-    private const int CropLimit = 1024;
+    private const int AnalysisTileSize = 384;
     private const int PreviewLimit = 640;
 
     public static async Task<QualityMetrics> AnalyzeAsync(string path, CancellationToken cancellationToken = default)
@@ -34,36 +34,45 @@ public static class FitsQualityAnalyzer
         var bscale = Number(header.Values, "BSCALE", 1);
         var bzero = Number(header.Values, "BZERO", 0);
 
-        var cropWidth = Math.Min(CropLimit, width);
-        var cropHeight = Math.Min(CropLimit, height);
-        var cropX = Math.Max(0, (width - cropWidth) / 2);
-        var cropY = Math.Max(0, (height - cropHeight) / 2);
-        var crop = new float[cropWidth * cropHeight];
-        var rowBytes = new byte[cropWidth * bytesPerPixel];
-        for (var y = 0; y < cropHeight; y++)
+        var tiles = await ReadAnalysisTilesAsync(stream, header.DataOffset, width, height, bitpix, bytesPerPixel, bscale, bzero, cancellationToken);
+        var bayerPattern = NormalizeBayer(HeaderText(header.Values, "BAYERPAT", "COLORTYP"));
+        var backgrounds = new List<double>(tiles.Count);
+        var noises = new List<double>(tiles.Count);
+        var signals = new List<double>(tiles.Count);
+        var stars = new List<(double Fwhm, double Eccentricity, double PeakSnr)>();
+        foreach (var rawTile in tiles)
         {
             cancellationToken.ThrowIfCancellationRequested();
-            stream.Position = checked(header.DataOffset + ((long)(cropY + y) * width + cropX) * bytesPerPixel);
-            await stream.ReadExactlyAsync(rowBytes, cancellationToken);
-            DecodeRow(rowBytes, crop.AsSpan(y * cropWidth, cropWidth), bitpix, bscale, bzero);
+            var tile = bayerPattern is null ? rawTile : CollapseBayer(rawTile);
+            var spatialScale = ReferenceEquals(tile, rawTile) ? 1d : 2d;
+            var sampleStep = Math.Max(1, tile.Pixels.Length / 60_000);
+            var finiteSamples = new List<float>((tile.Pixels.Length + sampleStep - 1) / sampleStep);
+            for (var source = 0; source < tile.Pixels.Length; source += sampleStep)
+                if (float.IsFinite(tile.Pixels[source])) finiteSamples.Add(tile.Pixels[source]);
+            if (finiteSamples.Count < 64) continue;
+            var sample = finiteSamples.ToArray();
+            Array.Sort(sample);
+            var localBackground = Percentile(sample, 0.5);
+            var deviations = new float[sample.Length];
+            for (var index = 0; index < sample.Length; index++) deviations[index] = (float)Math.Abs(sample[index] - localBackground);
+            Array.Sort(deviations);
+            var localNoise = Math.Max(1e-9, Percentile(deviations, 0.5) * 1.4826);
+            var localHigh = Percentile(sample, 0.995);
+            backgrounds.Add(localBackground);
+            noises.Add(localNoise);
+            signals.Add(Math.Max(0, localHigh - localBackground));
+            foreach (var star in DetectStars(tile.Pixels, tile.Width, tile.Height, localBackground, localNoise, Percentile(sample, 0.999)))
+                stars.Add((star.Fwhm * spatialScale, star.Eccentricity, star.PeakSnr));
         }
-
-        var sampleStep = Math.Max(1, crop.Length / 250_000);
-        var sample = new float[(crop.Length + sampleStep - 1) / sampleStep];
-        for (int source = 0, target = 0; source < crop.Length; source += sampleStep) sample[target++] = crop[source];
-        Array.Sort(sample);
-        var background = Percentile(sample, 0.5);
-        var deviations = new float[sample.Length];
-        for (var index = 0; index < sample.Length; index++) deviations[index] = (float)Math.Abs(sample[index] - background);
-        Array.Sort(deviations);
-        var noise = Math.Max(1e-9, Percentile(deviations, 0.5) * 1.4826);
-        var high = Percentile(sample, 0.995);
-        var signal = Math.Max(0, high - background);
-        var stars = DetectStars(crop, cropWidth, cropHeight, background, noise, Percentile(sample, 0.9995));
+        if (backgrounds.Count == 0) throw new InvalidDataException("Il FITS non contiene abbastanza pixel numerici validi.");
+        var background = Median(backgrounds.ToArray());
+        var noise = Math.Max(1e-9, Median(noises.ToArray()));
+        var signal = Median(signals.ToArray());
         var fwhm = stars.Count == 0 ? 0 : Median(stars.Select(item => item.Fwhm).ToArray());
         var eccentricity = stars.Count == 0 ? 0 : Median(stars.Select(item => item.Eccentricity).ToArray());
-        var preview = await ReadPreviewAsync(stream, header.DataOffset, width, height, bitpix, bytesPerPixel, bscale, bzero, background, high, cancellationToken);
-        return new(path, background, noise, signal, signal / noise, fwhm, eccentricity, stars.Count, preview.Width, preview.Height, preview.Pixels);
+        var snr = stars.Count == 0 ? 0 : Median(stars.Select(item => item.PeakSnr).ToArray());
+        var preview = await ReadPreviewAsync(stream, header.DataOffset, width, height, bitpix, bytesPerPixel, bscale, bzero, background, background + Math.Max(signal, noise), cancellationToken);
+        return new(path, background, noise, signal, snr, fwhm, eccentricity, stars.Count, backgrounds.Count, preview.Width, preview.Height, preview.Pixels);
     }
 
     public static async Task<QualityPreview> RenderPreviewAsync(
@@ -173,26 +182,30 @@ public static class FitsQualityAnalyzer
         return (byte)Math.Round(stretched * 255);
     }
 
-    private static List<(double Fwhm, double Eccentricity)> DetectStars(float[] pixels, int width, int height, double background, double noise, double saturation)
+    private static List<(double Fwhm, double Eccentricity, double PeakSnr)> DetectStars(float[] pixels, int width, int height, double background, double noise, double high)
     {
-        var threshold = background + Math.Max(5 * noise, (saturation - background) * 0.04);
+        var threshold = background + Math.Max(5 * noise, (high - background) * 0.03);
         var candidates = new List<(float Peak, int X, int Y)>();
         for (var y = 5; y < height - 5; y++)
         for (var x = 5; x < width - 5; x++)
         {
             var value = pixels[y * width + x];
-            if (value < threshold || value >= saturation) continue;
+            if (!float.IsFinite(value)) continue;
+            if (value < threshold) continue;
             if (value <= pixels[(y - 1) * width + x] || value <= pixels[(y + 1) * width + x] ||
                 value <= pixels[y * width + x - 1] || value <= pixels[y * width + x + 1]) continue;
             candidates.Add((value, x, y));
         }
-        var selected = new List<(double Fwhm, double Eccentricity)>();
+        var selected = new List<(double Fwhm, double Eccentricity, double PeakSnr)>();
+        var positions = new List<(int X, int Y)>();
         foreach (var candidate in candidates.OrderByDescending(item => item.Peak).Take(3000))
         {
+            if (positions.Any(position => (position.X - candidate.X) * (position.X - candidate.X) + (position.Y - candidate.Y) * (position.Y - candidate.Y) < 36)) continue;
             double sum = 0, sx = 0, sy = 0;
             for (var dy = -4; dy <= 4; dy++) for (var dx = -4; dx <= 4; dx++)
             {
-                var weight = Math.Max(0, pixels[(candidate.Y + dy) * width + candidate.X + dx] - background);
+                var pixel = pixels[(candidate.Y + dy) * width + candidate.X + dx];
+                var weight = float.IsFinite(pixel) ? Math.Max(0, pixel - background - 2 * noise) : 0;
                 sum += weight; sx += dx * weight; sy += dy * weight;
             }
             if (sum <= 0) continue;
@@ -200,7 +213,8 @@ public static class FitsQualityAnalyzer
             double xx = 0, yy = 0, xy = 0;
             for (var dy = -4; dy <= 4; dy++) for (var dx = -4; dx <= 4; dx++)
             {
-                var weight = Math.Max(0, pixels[(candidate.Y + dy) * width + candidate.X + dx] - background);
+                var pixel = pixels[(candidate.Y + dy) * width + candidate.X + dx];
+                var weight = float.IsFinite(pixel) ? Math.Max(0, pixel - background - 2 * noise) : 0;
                 var px = dx - cx; var py = dy - cy;
                 xx += weight * px * px; yy += weight * py * py; xy += weight * px * py;
             }
@@ -210,9 +224,61 @@ public static class FitsQualityAnalyzer
             var minor = Math.Max(0, (xx + yy - discriminant) / 2);
             var fwhm = 2.35482 * Math.Sqrt((major + minor) / 2);
             if (fwhm is < 1.2 or > 12 || major <= 0) continue;
-            selected.Add((fwhm, Math.Sqrt(Math.Clamp(1 - minor / major, 0, 1))));
+            selected.Add((fwhm, Math.Sqrt(Math.Clamp(1 - minor / major, 0, 1)), (candidate.Peak - background) / Math.Max(noise, 1e-9)));
+            positions.Add((candidate.X, candidate.Y));
         }
         return selected;
+    }
+
+    private sealed record AnalysisTile(float[] Pixels, int Width, int Height);
+
+    private static AnalysisTile CollapseBayer(AnalysisTile source)
+    {
+        if (source.Width < 4 || source.Height < 4) return source;
+        var width = source.Width / 2;
+        var height = source.Height / 2;
+        var pixels = new float[width * height];
+        for (var y = 0; y < height; y++)
+        for (var x = 0; x < width; x++)
+        {
+            var offset = y * 2 * source.Width + x * 2;
+            var values = new[] { source.Pixels[offset], source.Pixels[offset + 1], source.Pixels[offset + source.Width], source.Pixels[offset + source.Width + 1] };
+            var finite = values.Where(float.IsFinite).ToArray();
+            pixels[y * width + x] = finite.Length == 0 ? float.NaN : finite.Average();
+        }
+        return new(pixels, width, height);
+    }
+
+    private static async Task<List<AnalysisTile>> ReadAnalysisTilesAsync(
+        FileStream stream, long dataOffset, int width, int height, int bitpix, int bytesPerPixel,
+        double bscale, double bzero, CancellationToken cancellationToken)
+    {
+        var tileWidth = Math.Min(AnalysisTileSize, width);
+        var tileHeight = Math.Min(AnalysisTileSize, height);
+        var xStarts = TileStarts(width, tileWidth);
+        var yStarts = TileStarts(height, tileHeight);
+        var tiles = new List<AnalysisTile>(xStarts.Length * yStarts.Length);
+        foreach (var yStart in yStarts)
+        foreach (var xStart in xStarts)
+        {
+            var pixels = new float[tileWidth * tileHeight];
+            var rowBytes = new byte[tileWidth * bytesPerPixel];
+            for (var y = 0; y < tileHeight; y++)
+            {
+                cancellationToken.ThrowIfCancellationRequested();
+                stream.Position = checked(dataOffset + ((long)(yStart + y) * width + xStart) * bytesPerPixel);
+                await stream.ReadExactlyAsync(rowBytes, cancellationToken);
+                DecodeRow(rowBytes, pixels.AsSpan(y * tileWidth, tileWidth), bitpix, bscale, bzero);
+            }
+            tiles.Add(new(pixels, tileWidth, tileHeight));
+        }
+        return tiles;
+    }
+
+    private static int[] TileStarts(int length, int tileLength)
+    {
+        if (length <= tileLength * 2) return [(length - tileLength) / 2];
+        return [0, (length - tileLength) / 2, length - tileLength];
     }
 
     private static async Task<(int Width, int Height, byte[] Pixels)> ReadPreviewAsync(FileStream stream, long dataOffset, int width, int height, int bitpix, int bytesPerPixel, double bscale, double bzero, double low, double high, CancellationToken cancellationToken)
@@ -277,6 +343,8 @@ public static class FitsQualityAnalyzer
 
     private static int Integer(Dictionary<string, string> values, string key) => values.TryGetValue(key, out var text) && int.TryParse(text, NumberStyles.Integer, CultureInfo.InvariantCulture, out var value) ? value : 0;
     private static double Number(Dictionary<string, string> values, string key, double fallback) => values.TryGetValue(key, out var text) && double.TryParse(text.Replace('D', 'E'), NumberStyles.Float, CultureInfo.InvariantCulture, out var value) ? value : fallback;
+    private static string? HeaderText(Dictionary<string, string> values, params string[] keys) =>
+        keys.Select(key => values.TryGetValue(key, out var value) ? value : null).FirstOrDefault(value => !string.IsNullOrWhiteSpace(value));
     private static double Percentile(float[] sorted, double percentile) => sorted.Length == 0 ? 0 : sorted[Math.Clamp((int)Math.Round((sorted.Length - 1) * percentile), 0, sorted.Length - 1)];
     private static double Median(double[] values) { Array.Sort(values); return values.Length == 0 ? 0 : values[values.Length / 2]; }
 }

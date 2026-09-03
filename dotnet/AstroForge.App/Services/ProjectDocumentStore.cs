@@ -1,4 +1,5 @@
 using System.Text.Json;
+using System.Text.Json.Serialization;
 using System.IO;
 using AstroForge.Core.IO;
 
@@ -6,13 +7,17 @@ namespace AstroForge.App.Services;
 
 public sealed class AstroForgeProjectDocument
 {
-    public int SchemaVersion { get; set; } = 1;
+    public int SchemaVersion { get; set; } = 2;
     public DateTimeOffset CreatedAt { get; set; } = DateTimeOffset.Now;
     public DateTimeOffset UpdatedAt { get; set; } = DateTimeOffset.Now;
     public string ProjectName { get; set; } = "";
     public List<string> SourcePaths { get; set; } = [];
-    public string LibraryPath { get; set; } = "";
-    public List<MasterLibraryDefinition> MasterLibraries { get; set; } = [];
+    // Schema 1 compatibility only. Calibration libraries are application settings
+    // and are intentionally omitted from new project documents.
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    public string? LibraryPath { get; set; }
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    public List<MasterLibraryDefinition>? MasterLibraries { get; set; }
     public string DestinationPath { get; set; } = "";
     public int SessionBoundaryHour { get; set; } = 12;
     public double? DefaultGain { get; set; }
@@ -36,7 +41,7 @@ public static class ProjectDocumentStore
     {
         var document = JsonSerializer.Deserialize<AstroForgeProjectDocument>(File.ReadAllText(path), Options)
             ?? throw new InvalidDataException("Il file progetto è vuoto o non valido.");
-        if (document.SchemaVersion != 1) throw new InvalidDataException($"Versione progetto non supportata: {document.SchemaVersion}.");
+        if (document.SchemaVersion is < 1 or > 2) throw new InvalidDataException($"Versione progetto non supportata: {document.SchemaVersion}.");
         document.Overrides = new(document.Overrides, PathIdentity.Comparer);
         return document;
     }

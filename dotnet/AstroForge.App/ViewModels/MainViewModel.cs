@@ -137,7 +137,7 @@ public sealed class MainViewModel : BindableBase
         _qualitySigmaThreshold = Math.Clamp(_state.QualitySigmaThreshold, 2, 6);
         _qualityStretchStrength = Math.Clamp(_state.QualityStretchStrength, 0, 12);
         _qualityDebayerPreview = _state.QualityDebayerPreview;
-        _sourcePanelWidth = Math.Clamp(_state.SourcePanelWidth, 190, 520);
+        _sourcePanelWidth = Math.Clamp(_state.SourcePanelWidth, 300, 520);
         _inspectorPanelWidth = Math.Clamp(_state.InspectorPanelWidth, 280, 680);
         _updateStatus = "Controllo aggiornamenti attivo";
         _pendingRecovery = _recoveryJournal.Read<ProjectRecoverySnapshot>();
@@ -153,7 +153,7 @@ public sealed class MainViewModel : BindableBase
         ApplyLibraryOffsetCommand = new RelayCommand(ApplyLibraryOffset, () => _frames.Any(frame => frame.IsMaster) && !IsScanning);
         ApplyProjectDefaultsCommand = new RelayCommand(ApplyProjectDefaults, () => _frames.Count > 0 && !IsScanning);
         SaveSettingsCommand = new RelayCommand(SaveSettings, () => !IsScanning);
-        ClearProjectCommand = new RelayCommand(ClearProject, () => (_frames.Count > 0 || _plan is not null) && !IsScanning);
+        ClearProjectCommand = new RelayCommand(NewProject, () => !IsScanning);
         LinkFlatSetCommand = new RelayCommand(LinkFlatSet, CanLinkFlatSet);
         UnlinkFlatSetCommand = new RelayCommand(UnlinkFlatSet, () => GetManualLinkFrames().Any(frame => frame.Kind == FrameKind.Light && frame.FlatSetId.HasOverride) && !IsScanning);
         UndoCommand = new RelayCommand(Undo, () => _undo.Count > 0 && !IsScanning);
@@ -193,10 +193,11 @@ public sealed class MainViewModel : BindableBase
 
     public string LibraryPath { get => MasterLibraries.FirstOrDefault()?.Path ?? _libraryPath; set { _libraryPath = value; if (!string.IsNullOrWhiteSpace(value) && !MasterLibraries.Any(item => PathIdentity.Equals(item.Path, value))) AddMasterLibrary(value); Raise(); } }
     public MasterLibraryItem? SelectedMasterLibrary { get => _selectedMasterLibrary; set => Set(ref _selectedMasterLibrary, value); }
-    public string ProjectName { get => _projectName; set { if (Set(ref _projectName, value)) InvalidateExportPlan(); } }
-    public string DestinationPath { get => _destinationPath; set { if (Set(ref _destinationPath, value)) InvalidateExportPlan(); } }
-    public string CurrentProjectFile { get => _currentProjectFile; private set { if (Set(ref _currentProjectFile, value)) Raise(nameof(ProjectDocumentStatus)); } }
+    public string ProjectName { get => _projectName; set { if (Set(ref _projectName, value)) { Raise(nameof(HasProjectContent)); InvalidateExportPlan(); } } }
+    public string DestinationPath { get => _destinationPath; set { if (Set(ref _destinationPath, value)) { Raise(nameof(HasProjectContent)); InvalidateExportPlan(); } } }
+    public string CurrentProjectFile { get => _currentProjectFile; private set { if (Set(ref _currentProjectFile, value)) { Raise(nameof(ProjectDocumentStatus)); Raise(nameof(HasProjectContent)); } } }
     public string ProjectDocumentStatus => string.IsNullOrWhiteSpace(CurrentProjectFile) ? "Progetto non ancora salvato" : Path.GetFileName(CurrentProjectFile);
+    public bool HasProjectContent => SourcePaths.Count > 0 || !string.IsNullOrWhiteSpace(CurrentProjectFile) || !string.IsNullOrWhiteSpace(ProjectName) || !string.IsNullOrWhiteSpace(DestinationPath);
     public string UiDensity { get => _uiDensity; set => Set(ref _uiDensity, value); }
     public string UiLanguage
     {
@@ -208,6 +209,11 @@ public sealed class MainViewModel : BindableBase
             UiLocalization.ApplyCulture(normalized);
             _state.UiLanguage = normalized;
             AppStateStore.Save(_state);
+            Raise(nameof(AstronomicalNightExplanation));
+            Raise(nameof(AstronomicalNightExample));
+            Raise(nameof(MasterLibraryCountLabel));
+            Raise(nameof(ImportedSourceCountLabel));
+            Raise(nameof(TotalIssuesLabel));
             UiLanguageChanged?.Invoke(this, EventArgs.Empty);
         }
     }
@@ -293,8 +299,9 @@ public sealed class MainViewModel : BindableBase
     }
     public string QualityStatus { get => _qualityStatus; private set => Set(ref _qualityStatus, value); }
     public double QualityProgress { get => _qualityProgress; private set => Set(ref _qualityProgress, value); }
-    public bool IsQualityAnalyzing { get => _isQualityAnalyzing; private set { if (Set(ref _isQualityAnalyzing, value)) { Raise(nameof(CanRunQualityAnalysis)); Raise(nameof(CanChangeQualityExclusions)); Raise(nameof(CanExcludeSelectedQuality)); Raise(nameof(CanExcludeQualitySuspects)); } } }
+    public bool IsQualityAnalyzing { get => _isQualityAnalyzing; private set { if (Set(ref _isQualityAnalyzing, value)) { Raise(nameof(CanRunQualityAnalysis)); Raise(nameof(CanRunAllQualityAnalysis)); Raise(nameof(CanChangeQualityExclusions)); Raise(nameof(CanExcludeSelectedQuality)); Raise(nameof(CanExcludeQualitySuspects)); } } }
     public bool CanRunQualityAnalysis => SelectedQualitySeries?.SourceFrames.Any(IsQualityFits) == true && !IsQualityAnalyzing && !IsScanning;
+    public bool CanRunAllQualityAnalysis => QualitySeries.Any(series => series.SourceFrames.Any(IsQualityFits)) && !IsQualityAnalyzing && !IsScanning;
     public bool CanChangeQualityExclusions => !IsQualityAnalyzing && SelectedQualitySeries?.Frames.Count > 0;
     public int QualitySuspectCount => SelectedQualitySeries?.Frames.Count(item => item.IsSuspect) ?? 0;
     public int QualityExcludedCount => SelectedQualitySeries?.Frames.Count(item => item.IsExcluded) ?? 0;
@@ -327,7 +334,7 @@ public sealed class MainViewModel : BindableBase
     public bool QualityDebayerPreview { get => _qualityDebayerPreview; set => Set(ref _qualityDebayerPreview, value); }
     public int QualitySelectedCount { get => _qualitySelectedCount; private set { if (Set(ref _qualitySelectedCount, value)) Raise(nameof(CanExcludeSelectedQuality)); } }
     public bool CanExcludeSelectedQuality => !IsQualityAnalyzing && QualitySelectedCount > 0;
-    public double SourcePanelWidth { get => _sourcePanelWidth; set => Set(ref _sourcePanelWidth, Math.Clamp(value, 190, 520)); }
+    public double SourcePanelWidth { get => _sourcePanelWidth; set => Set(ref _sourcePanelWidth, Math.Clamp(value, 300, 520)); }
     public double InspectorPanelWidth { get => _inspectorPanelWidth; set => Set(ref _inspectorPanelWidth, Math.Clamp(value, 280, 680)); }
     public void OpenOnboarding() => ShowOnboarding = true;
     public void CompleteOnboarding()
@@ -341,7 +348,10 @@ public sealed class MainViewModel : BindableBase
         get => _sessionBoundaryHour;
         set
         {
-            if (!Set(ref _sessionBoundaryHour, Math.Clamp(value, 0, 23)) || _frames.Count == 0) return;
+            if (!Set(ref _sessionBoundaryHour, Math.Clamp(value, 0, 23))) return;
+            Raise(nameof(AstronomicalNightExplanation));
+            Raise(nameof(AstronomicalNightExample));
+            if (_frames.Count == 0) return;
             var settings = new SessionSettings(TimeZoneInfo.Local, new TimeOnly(_sessionBoundaryHour, 0));
             foreach (var frame in _frames) AstronomicalSessionResolver.Apply(frame, settings);
             RefreshIntelligence();
@@ -349,7 +359,13 @@ public sealed class MainViewModel : BindableBase
             Status = $"Sessioni ricalcolate con cambio alle {_sessionBoundaryHour:00}:00 locali";
         }
     }
-    public bool IsScanning { get => _isScanning; private set { if (Set(ref _isScanning, value)) { Raise(nameof(CanRunProjectOperations)); Raise(nameof(CanAnalyzeProject)); Raise(nameof(AnalysisActionLabel)); Raise(nameof(CanRunQualityAnalysis)); Raise(nameof(CanChangeQualityExclusions)); RaiseExportProperties(); ApplyOverridesCommand.RaiseCanExecuteChanged(); ApplyLibraryOffsetCommand.RaiseCanExecuteChanged(); ApplyProjectDefaultsCommand.RaiseCanExecuteChanged(); SaveSettingsCommand.RaiseCanExecuteChanged(); ClearProjectCommand.RaiseCanExecuteChanged(); LinkFlatSetCommand.RaiseCanExecuteChanged(); UnlinkFlatSetCommand.RaiseCanExecuteChanged(); UndoCommand.RaiseCanExecuteChanged(); } } }
+    public string AstronomicalNightExplanation => UiLanguage == UiLocalization.English
+        ? $"A night starts in the evening and may continue after midnight. Frames captured before {SessionBoundaryHour:00}:00 local time are therefore assigned to the previous calendar date."
+        : $"Una notte inizia la sera e può continuare dopo mezzanotte. Per questo i file acquisiti prima delle {SessionBoundaryHour:00}:00 locali vengono assegnati alla data del giorno precedente.";
+    public string AstronomicalNightExample => UiLanguage == UiLocalization.English
+        ? $"Example · Jun 24 at 22:30 + Jun 25 at 03:10 → observing night Jun 24"
+        : $"Esempio · 24 giu ore 22:30 + 25 giu ore 03:10 → notte osservativa 24 giu";
+    public bool IsScanning { get => _isScanning; private set { if (Set(ref _isScanning, value)) { Raise(nameof(CanRunProjectOperations)); Raise(nameof(CanAnalyzeProject)); Raise(nameof(AnalysisActionLabel)); Raise(nameof(CanRunQualityAnalysis)); Raise(nameof(CanRunAllQualityAnalysis)); Raise(nameof(CanChangeQualityExclusions)); RaiseExportProperties(); ApplyOverridesCommand.RaiseCanExecuteChanged(); ApplyLibraryOffsetCommand.RaiseCanExecuteChanged(); ApplyProjectDefaultsCommand.RaiseCanExecuteChanged(); SaveSettingsCommand.RaiseCanExecuteChanged(); ClearProjectCommand.RaiseCanExecuteChanged(); LinkFlatSetCommand.RaiseCanExecuteChanged(); UnlinkFlatSetCommand.RaiseCanExecuteChanged(); UndoCommand.RaiseCanExecuteChanged(); } } }
     public bool ShowIssuesOnly { get => _showIssuesOnly; set { if (Set(ref _showIssuesOnly, value)) RebuildTree(); } }
     public string SearchText { get => _searchText; set { if (Set(ref _searchText, value)) RebuildTree(); } }
     public string Status { get => _status; private set => Set(ref _status, value); }
@@ -357,6 +373,13 @@ public sealed class MainViewModel : BindableBase
     public double ExportProgress { get => _exportProgress; private set => Set(ref _exportProgress, value); }
     public int TotalFiles => _frames.Count;
     public int TotalIssues => _frames.Sum(frame => frame.Issues.Count);
+    public string MasterLibraryCountLabel => UiLanguage == UiLocalization.English
+        ? $"{MasterLibraries.Count} {(MasterLibraries.Count == 1 ? "library" : "libraries")}"
+        : $"{MasterLibraries.Count} {(MasterLibraries.Count == 1 ? "libreria" : "librerie")}";
+    public string ImportedSourceCountLabel => UiLanguage == UiLocalization.English
+        ? $"{SourcePaths.Count} imported"
+        : $"{SourcePaths.Count} importate";
+    public string TotalIssuesLabel => UiLanguage == UiLocalization.English ? $"{TotalIssues} warnings" : $"AVVISI {TotalIssues}";
     public int OverrideCount => _frames.Count(frame => HasAnyOverride(frame));
     public int UnresolvedCalibrations => _analysis?.UnresolvedCount ?? 0;
     public int ReviewQueueCount => ReviewQueue.Count;
@@ -430,6 +453,8 @@ public sealed class MainViewModel : BindableBase
         if (SourcePaths.Contains(path, PathIdentity.Comparer)) { Status = "Sorgente già collegata"; return; }
         var hadAnalysis = _analysis is not null || _frames.Count > 0;
         SourcePaths.Add(path);
+        Raise(nameof(HasProjectContent));
+        Raise(nameof(ImportedSourceCountLabel));
         InvalidateProjectAnalysis(hadAnalysis);
         Status = $"{SourceSummary} · pronta per l’analisi";
         SaveState();
@@ -439,6 +464,8 @@ public sealed class MainViewModel : BindableBase
     {
         var hadAnalysis = _analysis is not null || _frames.Count > 0;
         if (!SourcePaths.Remove(path)) return;
+        Raise(nameof(HasProjectContent));
+        Raise(nameof(ImportedSourceCountLabel));
         InvalidateProjectAnalysis(hadAnalysis);
         Status = HasSources ? $"Sorgente rimossa · {SourceSummary} · rianalizza il progetto" : "Nessuna sorgente collegata";
         SaveState();
@@ -459,9 +486,10 @@ public sealed class MainViewModel : BindableBase
         if (SelectedMasterLibrary is null) return;
         SelectedMasterLibrary.PropertyChanged -= MasterLibraryItem_PropertyChanged;
         MasterLibraries.Remove(SelectedMasterLibrary); SelectedMasterLibrary = null; NormalizeLibraryPriorities();
+        Raise(nameof(MasterLibraryCountLabel));
         InvalidateProjectAnalysis(_analysis is not null || _frames.Count > 0);
         SaveState();
-        Status = "Libreria rimossa dal progetto · nessun Master è stato cancellato";
+        Status = "Libreria rimossa dall’app · nessun Master è stato cancellato";
     }
 
     public void MoveSelectedMasterLibrary(int direction)
@@ -480,6 +508,7 @@ public sealed class MainViewModel : BindableBase
     {
         item.PropertyChanged += MasterLibraryItem_PropertyChanged;
         MasterLibraries.Add(item);
+        Raise(nameof(MasterLibraryCountLabel));
     }
 
     private void MasterLibraryItem_PropertyChanged(object? sender, PropertyChangedEventArgs e)
@@ -523,8 +552,10 @@ public sealed class MainViewModel : BindableBase
         CalibrationSummary = "Seleziona uno o più Light per vedere le calibrazioni assegnate.";
         Raise(nameof(TotalFiles)); Raise(nameof(TotalIssues)); Raise(nameof(OverrideCount));
         Raise(nameof(UnresolvedCalibrations)); Raise(nameof(IsProjectReady)); Raise(nameof(PlanSummary));
+        Raise(nameof(TotalIssuesLabel));
         Raise(nameof(TotalIntegrationText)); Raise(nameof(StatisticsSummary)); Raise(nameof(StatisticsDateRange));
         Raise(nameof(ReviewQueueCount));
+        Raise(nameof(CanRunAllQualityAnalysis));
         RaiseProjectWorkflowProperties();
         ApplyLibraryOffsetCommand.RaiseCanExecuteChanged();
         ApplyProjectDefaultsCommand.RaiseCanExecuteChanged();
@@ -738,7 +769,10 @@ public sealed class MainViewModel : BindableBase
 
     public void SaveProject(string path)
     {
+        if (string.IsNullOrWhiteSpace(path)) throw new ArgumentException("Percorso progetto non valido.", nameof(path));
+        if (!path.EndsWith(".astroforge", StringComparison.OrdinalIgnoreCase)) path += ".astroforge";
         CurrentProjectFile = Path.GetFullPath(path);
+        if (string.IsNullOrWhiteSpace(ProjectName)) ProjectName = Path.GetFileNameWithoutExtension(CurrentProjectFile);
         SaveState();
         Status = $"Progetto salvato · {Path.GetFileName(CurrentProjectFile)}";
     }
@@ -758,12 +792,9 @@ public sealed class MainViewModel : BindableBase
         _projectCreatedAt = document.CreatedAt;
         SourcePaths.Clear();
         foreach (var source in document.SourcePaths) SourcePaths.Add(source);
-        foreach (var library in MasterLibraries) library.PropertyChanged -= MasterLibraryItem_PropertyChanged;
-        MasterLibraries.Clear();
-        var projectLibraries = document.MasterLibraries.Count > 0 ? document.MasterLibraries : string.IsNullOrWhiteSpace(document.LibraryPath) ? [] : [new() { Name = "Libreria principale", Path = document.LibraryPath, Priority = 1 }];
-        foreach (var library in projectLibraries.OrderBy(item => item.Priority)) AddMasterLibraryItem(new(library.Name, library.Path, library.Priority, library.Enabled));
-        _libraryPath = document.LibraryPath;
-        Raise(nameof(LibraryPath));
+        Raise(nameof(ImportedSourceCountLabel));
+        // Master Libraries are application-level resources. Opening a project must
+        // never replace, hide or duplicate the libraries configured by the user.
         DestinationPath = document.DestinationPath;
         ProjectName = document.ProjectName;
         _sessionBoundaryHour = Math.Clamp(document.SessionBoundaryHour, 0, 23);
@@ -781,7 +812,7 @@ public sealed class MainViewModel : BindableBase
 
     private AstroForgeProjectDocument CreateProjectDocument() => new()
     {
-        CreatedAt = _projectCreatedAt, ProjectName = ProjectName, SourcePaths = SourcePaths.ToList(), LibraryPath = LibraryPath, MasterLibraries = MasterLibraries.Select(item => item.ToDefinition()).ToList(),
+        SchemaVersion = 2, CreatedAt = _projectCreatedAt, ProjectName = ProjectName, SourcePaths = SourcePaths.ToList(),
         DestinationPath = DestinationPath, SessionBoundaryHour = SessionBoundaryHour, DefaultGain = ParseDefault(ProjectDefaultGain),
         DefaultOffset = ParseDefault(ProjectDefaultOffset), DefaultTemperatureC = ParseDefault(ProjectDefaultTemperature),
         QualitySigmaThreshold = QualitySigmaThreshold, ExcludedQualityPaths = _excludedQualityPaths.OrderBy(path => path, StringComparer.OrdinalIgnoreCase).ToList(),
@@ -836,6 +867,7 @@ public sealed class MainViewModel : BindableBase
             RaiseProjectWorkflowProperties();
             Status = $"{TotalFiles} file analizzati · {_scanner.LastCacheHits} da cache · {_scanner.LastParsedFiles} letti · {TotalIssues} segnalazioni";
             Raise(nameof(TotalFiles)); Raise(nameof(TotalIssues)); Raise(nameof(OverrideCount));
+            Raise(nameof(TotalIssuesLabel));
             ApplyLibraryOffsetCommand.RaiseCanExecuteChanged();
             ApplyProjectDefaultsCommand.RaiseCanExecuteChanged();
             ClearProjectCommand.RaiseCanExecuteChanged();
@@ -891,12 +923,12 @@ public sealed class MainViewModel : BindableBase
                     var metrics = await Task.Run(
                         () => FitsQualityAnalyzer.AnalyzeAsync(frame.Path, cancellationToken),
                         cancellationToken);
-                    var row = new QualityFrameRow(frame, metrics, _excludedQualityPaths.Contains(frame.Path), series.ConfigurationSession);
+                    var row = new QualityFrameRow(frame, metrics, _excludedQualityPaths.Contains(frame.Path), series.ConfigurationSession, series.ComparisonGroupId);
                     results.Add(row); _allQualityFrames.Add(row); QualityFrames.Add(row);
                 }
                 catch (Exception exception) when (exception is InvalidDataException or NotSupportedException or IOException)
                 {
-                    var row = QualityFrameRow.Failed(frame, exception.Message, _excludedQualityPaths.Contains(frame.Path), series.ConfigurationSession);
+                    var row = QualityFrameRow.Failed(frame, exception.Message, _excludedQualityPaths.Contains(frame.Path), series.ConfigurationSession, series.ComparisonGroupId);
                     results.Add(row); _allQualityFrames.Add(row); QualityFrames.Add(row);
                 }
                 QualityProgress = (index + 1) * 100d / lights.Length;
@@ -917,6 +949,20 @@ public sealed class MainViewModel : BindableBase
             throw;
         }
         finally { IsQualityAnalyzing = false; }
+    }
+
+    public async Task AnalyzeAllQualityAsync(CancellationToken cancellationToken = default)
+    {
+        var series = QualitySeries.Where(item => item.SourceFrames.Any(IsQualityFits)).ToArray();
+        if (series.Length == 0) throw new InvalidOperationException("Il progetto non contiene serie Light FITS analizzabili.");
+        for (var index = 0; index < series.Length; index++)
+        {
+            cancellationToken.ThrowIfCancellationRequested();
+            SelectedQualitySeries = series[index];
+            QualityStatus = $"Serie {index + 1}/{series.Length} · {series[index].DisplayName}";
+            await AnalyzeQualityAsync(cancellationToken);
+        }
+        QualityStatus = $"Analisi completata · {series.Length} serie · {_allQualityFrames.Count(item => item.Error is null)} frame misurati";
     }
 
     public void ExcludeQualitySuspects()
@@ -985,16 +1031,25 @@ public sealed class MainViewModel : BindableBase
 
     private void ScoreQualityOutliers()
     {
-        foreach (var group in _allQualityFrames.Where(item => item.Error is null).GroupBy(item => $"{item.Filter}|{item.ConfigurationSession}|{item.ExposureSeconds:0.###}", StringComparer.OrdinalIgnoreCase))
+        foreach (var group in _allQualityFrames.Where(item => item.Error is null).GroupBy(item => item.ComparisonGroupId, StringComparer.OrdinalIgnoreCase))
         {
             var rows = group.ToArray();
-            if (rows.Length < 5) { foreach (var row in rows) row.SetScore(0, false, "Serie troppo piccola per rilevare outlier"); continue; }
-            var fwhm = Robust(rows, item => item.Fwhm);
-            var eccentricity = Robust(rows, item => item.Eccentricity);
-            var noise = Robust(rows, item => item.Noise);
-            var snr = Robust(rows, item => item.Snr);
-            var stars = Robust(rows, item => item.StarCount);
-            foreach (var row in rows)
+            var measurable = rows.Where(item => item.Fwhm > 0 && item.StarCount >= 3 &&
+                double.IsFinite(item.Fwhm) && double.IsFinite(item.Eccentricity) &&
+                double.IsFinite(item.Noise) && double.IsFinite(item.Snr)).ToArray();
+            foreach (var row in rows.Except(measurable))
+                row.SetScore(QualitySigmaThreshold, true, "Misura da verificare: meno di 3 stelle valide");
+            if (measurable.Length < 8)
+            {
+                foreach (var row in measurable) row.SetScore(0, false, "Servono almeno 8 frame comparabili per classificare gli outlier");
+                continue;
+            }
+            var fwhm = Robust(measurable, item => item.Fwhm, 0.05, 0.015);
+            var eccentricity = Robust(measurable, item => item.Eccentricity, 0.01, 0.02);
+            var noise = Robust(measurable, item => item.Noise, 1e-3, 0.02);
+            var snr = Robust(measurable, item => item.Snr, 0.25, 0.03);
+            var stars = Robust(measurable, item => item.StarCount, 3, 0.03);
+            foreach (var row in measurable)
             {
                 var parts = new[]
                 {
@@ -1005,8 +1060,9 @@ public sealed class MainViewModel : BindableBase
                     (Name: "poche stelle", Z: NegativeZ(row.StarCount, stars))
                 };
                 var worst = parts.OrderByDescending(item => item.Z).First();
-                var score = parts.Where(item => item.Z > 0).Sum(item => item.Z * item.Z) is var sum ? Math.Sqrt(sum) : 0;
-                // One visible rule: the chart marker, orange points and suspect list all use this exact score threshold.
+                // Score = worst robust deviation. The slider, chart and suspect list
+                // therefore express exactly the same threshold in sigma units.
+                var score = worst.Z;
                 var suspect = score >= QualitySigmaThreshold;
                 row.SetScore(score, suspect, worst.Z >= 2 ? $"Anomalia principale: {worst.Name} ({worst.Z:0.0}σ)" : "Coerente con la serie");
             }
@@ -1022,16 +1078,33 @@ public sealed class MainViewModel : BindableBase
         foreach (var group in _analysis.Lights.GroupBy(item => new
                  {
                      Filter = string.IsNullOrWhiteSpace(item.Light.FilterName.Value) ? "Senza filtro" : item.Light.FilterName.Value!.Trim(),
-                     Session = item.FlatGroup?.Id ?? "Sessione non risolta"
+                     Session = item.FlatGroup?.Id ?? $"Non risolta · {item.Light.SessionId.Value ?? "notte sconosciuta"}",
+                     Exposure = Math.Round(item.Light.ExposureSeconds.Value ?? 0, 3),
+                     Camera = NormalizeText(item.Light.Camera.Value),
+                     Gain = Math.Round(item.Light.Gain.Value ?? double.NaN, 3),
+                     Offset = Math.Round(item.Light.Offset.Value ?? double.NaN, 3),
+                     Temperature = Math.Round(item.Light.EffectiveTemperatureC ?? double.NaN, 0),
+                     Width = item.Light.Width.Value,
+                     Height = item.Light.Height.Value,
+                     XBin = item.Light.XBin.Value,
+                     YBin = item.Light.YBin.Value,
+                     Bayer = NormalizeText(item.Light.BayerPattern.Value),
+                     Readout = NormalizeText(item.Light.ReadoutMode.Value)
                  })
                  .OrderBy(group => group.Key.Filter, StringComparer.OrdinalIgnoreCase)
-                 .ThenBy(group => group.Key.Session, StringComparer.OrdinalIgnoreCase))
-            QualitySeries.Add(new QualitySeriesRow(group.Key.Filter, group.Key.Session, group.Select(item => item.Light).ToArray()));
+                 .ThenBy(group => group.Key.Session, StringComparer.OrdinalIgnoreCase)
+                 .ThenBy(group => group.Key.Exposure))
+        {
+            var comparisonGroupId = string.Join('|', group.Key.Filter, group.Key.Session, group.Key.Exposure.ToString("R", System.Globalization.CultureInfo.InvariantCulture),
+                group.Key.Camera, group.Key.Gain, group.Key.Offset, group.Key.Temperature, group.Key.Width, group.Key.Height, group.Key.XBin, group.Key.YBin, group.Key.Bayer, group.Key.Readout);
+            QualitySeries.Add(new QualitySeriesRow(group.Key.Filter, group.Key.Session, group.Key.Exposure, comparisonGroupId, group.Select(item => item.Light).ToArray()));
+        }
         SelectedQualitySeries = QualitySeries.FirstOrDefault();
         QualityStatus = QualitySeries.Count == 0
             ? "Nessuna serie Light disponibile nel progetto."
             : $"{QualitySeries.Count} serie disponibili · selezionane una e avvia l’analisi pixel";
         Raise(nameof(CanRunQualityAnalysis));
+        Raise(nameof(CanRunAllQualityAnalysis));
     }
 
     private void RebuildQualitySeriesView()
@@ -1057,12 +1130,13 @@ public sealed class MainViewModel : BindableBase
     private static bool IsQualityFits(FrameMetadata frame) =>
         frame.Kind == FrameKind.Light && new[] { ".fit", ".fits", ".fts" }.Contains(Path.GetExtension(frame.Path), StringComparer.OrdinalIgnoreCase);
 
-    private static (double Median, double Scale) Robust(QualityFrameRow[] rows, Func<QualityFrameRow, double> selector)
+    private static (double Median, double Scale) Robust(QualityFrameRow[] rows, Func<QualityFrameRow, double> selector, double absoluteFloor, double relativeFloor)
     {
         var values = rows.Select(selector).OrderBy(value => value).ToArray();
         var median = values[values.Length / 2];
         var deviations = values.Select(value => Math.Abs(value - median)).OrderBy(value => value).ToArray();
-        return (median, Math.Max(1e-9, deviations[deviations.Length / 2] * 1.4826));
+        var madScale = deviations[deviations.Length / 2] * 1.4826;
+        return (median, Math.Max(madScale, Math.Max(absoluteFloor, Math.Abs(median) * relativeFloor)));
     }
     private static double PositiveZ(double value, (double Median, double Scale) stats) => Math.Max(0, (value - stats.Median) / stats.Scale);
     private static double NegativeZ(double value, (double Median, double Scale) stats) => Math.Max(0, (stats.Median - value) / stats.Scale);
@@ -1265,10 +1339,21 @@ public sealed class MainViewModel : BindableBase
         Status = "Impostazioni, percorsi e override salvati";
     }
 
-    private void ClearProject()
+    public void NewProject()
     {
+        CurrentProjectFile = "";
+        _projectCreatedAt = DateTimeOffset.Now;
+        SourcePaths.Clear();
+        Raise(nameof(ImportedSourceCountLabel));
+        ProjectName = "";
+        DestinationPath = "";
+        _state.Overrides.Clear();
+        _kindOverrides.Clear();
+        _excludedQualityPaths.Clear();
         InvalidateProjectAnalysis(false);
-        Status = "Progetto svuotato dalla memoria · nessun file originale è stato cancellato";
+        Raise(nameof(HasProjectContent));
+        SaveState();
+        Status = "Nuovo progetto pronto";
     }
 
     private bool CanLinkFlatSet()
@@ -1689,7 +1774,7 @@ public sealed class MainViewModel : BindableBase
         LoadEditor();
     }
 
-    private void RefreshCounts() { Raise(nameof(TotalIssues)); Raise(nameof(OverrideCount)); RaiseSelectionProperties(); }
+    private void RefreshCounts() { Raise(nameof(TotalIssues)); Raise(nameof(TotalIssuesLabel)); Raise(nameof(OverrideCount)); RaiseSelectionProperties(); }
     private void RaiseSelectionProperties()
     {
         UpdateCalibrationSummary();
@@ -2111,16 +2196,16 @@ public sealed class QualityFrameRow : BindableBase
 {
     private bool _isExcluded; private bool _isSuspect; private double _outlierScore; private string _reason = "In attesa del confronto";
     private BitmapSource? _preview;
-    private QualityFrameRow(FrameMetadata frame, QualityMetrics? metrics, string? error, bool excluded, string configurationSession)
+    private QualityFrameRow(FrameMetadata frame, QualityMetrics? metrics, string? error, bool excluded, string configurationSession, string comparisonGroupId)
     {
-        Frame = frame; Metrics = metrics; Error = error; _isExcluded = excluded; ConfigurationSession = configurationSession;
+        Frame = frame; Metrics = metrics; Error = error; _isExcluded = excluded; ConfigurationSession = configurationSession; ComparisonGroupId = comparisonGroupId;
         if (metrics is not null)
         {
             _preview = CreatePlatformBitmap(metrics.PreviewPixels, metrics.PreviewWidth, metrics.PreviewHeight, false); PreviewKey = "analysis";
         }
     }
-    public QualityFrameRow(FrameMetadata frame, QualityMetrics metrics, bool excluded, string configurationSession) : this(frame, metrics, null, excluded, configurationSession) { }
-    public static QualityFrameRow Failed(FrameMetadata frame, string error, bool excluded, string configurationSession) => new(frame, null, error, excluded, configurationSession);
+    public QualityFrameRow(FrameMetadata frame, QualityMetrics metrics, bool excluded, string configurationSession, string comparisonGroupId) : this(frame, metrics, null, excluded, configurationSession, comparisonGroupId) { }
+    public static QualityFrameRow Failed(FrameMetadata frame, string error, bool excluded, string configurationSession, string comparisonGroupId) => new(frame, null, error, excluded, configurationSession, comparisonGroupId);
     public FrameMetadata Frame { get; }
     public QualityMetrics? Metrics { get; }
     public string? Error { get; }
@@ -2130,6 +2215,7 @@ public sealed class QualityFrameRow : BindableBase
     public string FileName => Frame.FileName;
     public string Filter => Frame.FilterName.Value ?? "Senza filtro";
     public string ConfigurationSession { get; }
+    public string ComparisonGroupId { get; }
     public string Night => Frame.SessionId.Value ?? "—";
     public bool HasBayerPattern => new[] { "RGGB", "BGGR", "GRBG", "GBRG" }.Any(pattern => (Frame.BayerPattern.Value ?? "").Contains(pattern, StringComparison.OrdinalIgnoreCase));
     public double ExposureSeconds => Frame.ExposureSeconds.Value ?? 0;
@@ -2138,11 +2224,13 @@ public sealed class QualityFrameRow : BindableBase
     public double Noise => Metrics?.Noise ?? 0;
     public double Snr => Metrics?.Snr ?? 0;
     public int StarCount => Metrics?.StarCount ?? 0;
+    public int CoverageZones => Metrics?.CoverageZones ?? 0;
     public string FwhmText => Error is null ? Fwhm.ToString("0.00") : "—";
     public string EccentricityText => Error is null ? Eccentricity.ToString("0.000") : "—";
     public string NoiseText => Error is null ? Noise.ToString("0.##") : "—";
     public string SnrText => Error is null ? Snr.ToString("0.0") : "—";
     public string StarsText => Error is null ? StarCount.ToString("N0") : "—";
+    public string CoverageText => Error is null ? CoverageZones.ToString() : "—";
     public bool IsExcluded { get => _isExcluded; set { if (Set(ref _isExcluded, value)) Raise(nameof(State)); } }
     public bool IsSuspect { get => _isSuspect; private set { if (Set(ref _isSuspect, value)) Raise(nameof(State)); } }
     public double OutlierScore { get => _outlierScore; private set => Set(ref _outlierScore, value); }
@@ -2208,15 +2296,20 @@ public sealed class QualitySeriesRow : BindableBase
 {
     private IReadOnlyList<QualityFrameRow> _frames = [];
 
-    public QualitySeriesRow(string filter, string configurationSession, IReadOnlyList<FrameMetadata> sourceFrames)
+    public QualitySeriesRow(string filter, string configurationSession, double exposureSeconds, string comparisonGroupId, IReadOnlyList<FrameMetadata> sourceFrames)
     {
         Filter = filter;
         ConfigurationSession = configurationSession;
+        ExposureSeconds = exposureSeconds;
+        ComparisonGroupId = comparisonGroupId;
         SourceFrames = sourceFrames;
     }
 
     public string Filter { get; }
     public string ConfigurationSession { get; }
+    public double ExposureSeconds { get; }
+    public string ComparisonGroupId { get; }
+    public string ExposureText => ExposureSeconds > 0 ? $"{ExposureSeconds:0.###} s" : "EXP —";
     public IReadOnlyList<FrameMetadata> SourceFrames { get; }
     public IReadOnlyList<QualityFrameRow> Frames => _frames;
     public int FrameCount => SourceFrames.Count;
@@ -2225,7 +2318,7 @@ public sealed class QualitySeriesRow : BindableBase
     public int SuspectCount => Frames.Count(frame => frame.IsSuspect);
     public int ExcludedCount => Frames.Count(frame => frame.IsExcluded);
     public bool IsAnalyzed => Frames.Count > 0;
-    public string DisplayName => $"{Filter} · {ConfigurationSession}";
+    public string DisplayName => $"{Filter} · {ConfigurationSession} · {ExposureText}";
     public string Display => IsAnalyzed
         ? $"{DisplayName}   ·   {AnalyzedCount}/{FrameCount} analizzati · {SuspectCount} sospetti"
         : $"{DisplayName}   ·   {FrameCount} Light / {NightCount} notti · da analizzare";

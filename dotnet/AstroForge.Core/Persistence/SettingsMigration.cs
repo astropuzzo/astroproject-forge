@@ -5,7 +5,7 @@ namespace AstroForge.Core.Persistence;
 
 public static class SettingsMigration
 {
-    public const int CurrentSchema = 2;
+    public const int CurrentSchema = 3;
 
     public static string Migrate(string json)
     {
@@ -16,6 +16,12 @@ public static class SettingsMigration
         {
             root["CheckForUpdates"] ??= true;
             root["UpdateChannel"] ??= "Stable";
+        }
+        if (schema < 3)
+        {
+            var sourceWidth = root["SourcePanelWidth"]?.GetValue<double?>() ?? 260;
+            if (sourceWidth <= 260) root["SourcePanelWidth"] = 320;
+            root["HasCompletedOnboarding"] = false;
         }
         root["SchemaVersion"] = CurrentSchema;
         return root.ToJsonString(new JsonSerializerOptions { WriteIndented = true });

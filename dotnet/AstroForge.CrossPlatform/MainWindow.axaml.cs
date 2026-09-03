@@ -49,7 +49,7 @@ public sealed partial class MainWindow : Window
         {
             _qualityCancellation?.Cancel();
             _previewCancellation?.Cancel();
-            if (WorkspaceGrid.ColumnDefinitions[0].ActualWidth >= 190) _viewModel.SourcePanelWidth = WorkspaceGrid.ColumnDefinitions[0].ActualWidth;
+            if (WorkspaceGrid.ColumnDefinitions[0].ActualWidth >= 300) _viewModel.SourcePanelWidth = WorkspaceGrid.ColumnDefinitions[0].ActualWidth;
             if (AnalysisGrid.ColumnDefinitions[2].ActualWidth >= 280) _viewModel.InspectorPanelWidth = AnalysisGrid.ColumnDefinitions[2].ActualWidth;
             _viewModel.SaveState();
         };
@@ -108,6 +108,11 @@ public sealed partial class MainWindow : Window
             OpenProject_Click(sender, e);
             e.Handled = true;
         }
+        else if (control && e.Key == Key.N)
+        {
+            await NewProjectCoreAsync();
+            e.Handled = true;
+        }
         else if (control && e.Key == Key.S)
         {
             await SaveProjectAsync(shift);
@@ -143,7 +148,7 @@ public sealed partial class MainWindow : Window
         RootLayout.Width = width;
         WorkspaceGrid.Width = width;
         HeaderGrid.Width = Math.Max(760, width - 36);
-        if (width < 1100 && _sourcesVisible)
+        if (width < 1200 && _sourcesVisible)
         {
             _sourcesVisible = false;
             SourcesPanel.IsVisible = false;
@@ -216,6 +221,8 @@ public sealed partial class MainWindow : Window
     private void OnboardingAddLibrary_Click(object? sender, RoutedEventArgs e) => AddLibrary_Click(sender, e);
     private void OnboardingAddSources_Click(object? sender, RoutedEventArgs e) => AddSources_Click(sender, e);
     private void OnboardingAddFiles_Click(object? sender, RoutedEventArgs e) => AddFiles_Click(sender, e);
+    private void OnboardingEnglish_Click(object? sender, RoutedEventArgs e) { _viewModel.UiLanguage = UiLocalization.English; UpdateOnboarding(); }
+    private void OnboardingItalian_Click(object? sender, RoutedEventArgs e) { _viewModel.UiLanguage = UiLocalization.Italian; UpdateOnboarding(); }
     private void OnboardingSkip_Click(object? sender, RoutedEventArgs e) => _viewModel.CompleteOnboarding();
     private void OnboardingBack_Click(object? sender, RoutedEventArgs e)
     {
@@ -224,7 +231,7 @@ public sealed partial class MainWindow : Window
     }
     private async void OnboardingNext_Click(object? sender, RoutedEventArgs e)
     {
-        if (_onboardingStep == 4)
+        if (_onboardingStep == 5)
         {
             _viewModel.CompleteOnboarding();
             if (_viewModel.CanAnalyzeProject)
@@ -241,14 +248,16 @@ public sealed partial class MainWindow : Window
         OnboardingStep2.IsVisible = _onboardingStep == 2;
         OnboardingStep3.IsVisible = _onboardingStep == 3;
         OnboardingStep4.IsVisible = _onboardingStep == 4;
-        OnboardingProgress.Text = $"{_onboardingStep} / 4";
+        OnboardingStep5.IsVisible = _onboardingStep == 5;
+        OnboardingProgress.Text = $"{_onboardingStep} / 5";
         OnboardingBackButton.IsVisible = _onboardingStep > 1;
         OnboardingNextButton.Content = _onboardingStep switch
         {
-            1 => "Inizia",
-            2 when _viewModel.MasterLibraries.Count == 0 => "Continua senza libreria",
-            4 when _viewModel.CanAnalyzeProject => "Analizza ora",
-            4 => "Vai al progetto",
+            1 => "Continua",
+            2 => "Inizia",
+            3 when _viewModel.MasterLibraries.Count == 0 => "Continua senza libreria",
+            5 when _viewModel.CanAnalyzeProject => "Analizza ora",
+            5 => "Vai al progetto",
             _ => "Continua"
         };
         ScheduleLocalization();
@@ -258,15 +267,46 @@ public sealed partial class MainWindow : Window
 
     private async void OpenProject_Click(object? sender, RoutedEventArgs e)
     {
+        var english = _viewModel.UiLanguage == UiLocalization.English;
         var files = await StorageProvider.OpenFilePickerAsync(new FilePickerOpenOptions
         {
-            Title = "Apri progetto AstroProject Forge", AllowMultiple = false,
-            FileTypeFilter = [new FilePickerFileType("Progetto AstroProject Forge") { Patterns = ["*.astroforge"] }]
+            Title = english ? "Open AstroProject Forge project" : "Apri progetto AstroProject Forge", AllowMultiple = false,
+            FileTypeFilter = [new FilePickerFileType(english ? "AstroProject Forge project" : "Progetto AstroProject Forge") { Patterns = ["*.astroforge"] }]
         });
-        if (files.FirstOrDefault()?.TryGetLocalPath() is { } path) await RunAsync("AF-PROJECT-OPEN-001", () => _viewModel.LoadProjectAsync(path));
+        if (files.FirstOrDefault()?.TryGetLocalPath() is { } path && await ConfirmProjectReplacementAsync(opening: true)) await RunAsync("AF-PROJECT-OPEN-001", () => _viewModel.LoadProjectAsync(path));
     }
 
     private async void SaveProject_Click(object? sender, RoutedEventArgs e) => await SaveProjectAsync(false);
+    private async void SaveProjectAs_Click(object? sender, RoutedEventArgs e) { SettingsPanel.IsVisible = false; await SaveProjectAsync(true); }
+    private async void NewProject_Click(object? sender, RoutedEventArgs e) { SettingsPanel.IsVisible = false; await NewProjectCoreAsync(); }
+
+    private async Task NewProjectCoreAsync()
+    {
+        if (await ConfirmProjectReplacementAsync(opening: false)) _viewModel.NewProject();
+    }
+
+    private async Task<bool> ConfirmProjectReplacementAsync(bool opening)
+    {
+        if (!_viewModel.HasProjectContent) return true;
+        var english = _viewModel.UiLanguage == UiLocalization.English;
+        var title = english ? (opening ? "Open project" : "New project") : (opening ? "Apri progetto" : "Nuovo progetto");
+        var question = english ? (opening ? "Open the selected project?" : "Create a new project?") : (opening ? "Aprire il progetto selezionato?" : "Creare un nuovo progetto?");
+        var detail = english
+            ? "Unsaved project data will be discarded. Source files and Master Libraries will not be changed."
+            : "I dati del progetto non salvati verranno persi. I file sorgente e le Master Library non verranno modificati.";
+        var cancel = new Button { Content = english ? "Cancel" : "Annulla", MinWidth = 100 };
+        var confirm = new Button { Content = english ? "Continue" : "Continua", MinWidth = 100, Classes = { "primary" } };
+        var actions = new StackPanel { Orientation = Avalonia.Layout.Orientation.Horizontal, Spacing = 8, HorizontalAlignment = Avalonia.Layout.HorizontalAlignment.Right };
+        actions.Children.Add(cancel); actions.Children.Add(confirm);
+        var content = new StackPanel { Spacing = 12, Margin = new Thickness(22) };
+        content.Children.Add(new TextBlock { Text = question, FontSize = 21, FontWeight = FontWeight.SemiBold });
+        content.Children.Add(new TextBlock { Text = detail, TextWrapping = TextWrapping.Wrap });
+        content.Children.Add(actions);
+        var dialog = new Window { Title = title, Width = 470, Height = 210, CanResize = false, WindowStartupLocation = WindowStartupLocation.CenterOwner, Content = content };
+        cancel.Click += (_, _) => dialog.Close(false);
+        confirm.Click += (_, _) => dialog.Close(true);
+        return await dialog.ShowDialog<bool>(this);
+    }
 
     private async Task SaveProjectAsync(bool saveAs)
     {
@@ -276,10 +316,11 @@ public sealed partial class MainWindow : Window
             return;
         }
 
+        var english = _viewModel.UiLanguage == UiLocalization.English;
         var file = await StorageProvider.SaveFilePickerAsync(new FilePickerSaveOptions
         {
-            Title = "Salva progetto AstroProject Forge", SuggestedFileName = string.IsNullOrWhiteSpace(_viewModel.ProjectName) ? "Nuovo progetto.astroforge" : _viewModel.ProjectName + ".astroforge",
-            DefaultExtension = "astroforge", FileTypeChoices = [new FilePickerFileType("Progetto AstroProject Forge") { Patterns = ["*.astroforge"] }]
+            Title = english ? "Save AstroProject Forge project" : "Salva progetto AstroProject Forge", SuggestedFileName = string.IsNullOrWhiteSpace(_viewModel.ProjectName) ? (english ? "New project.astroforge" : "Nuovo progetto.astroforge") : _viewModel.ProjectName + ".astroforge",
+            DefaultExtension = "astroforge", FileTypeChoices = [new FilePickerFileType(english ? "AstroProject Forge project" : "Progetto AstroProject Forge") { Patterns = ["*.astroforge"] }]
         });
         if (file?.TryGetLocalPath() is { } path) Try("AF-PROJECT-SAVE-001", () => _viewModel.SaveProject(path));
     }
@@ -315,6 +356,21 @@ public sealed partial class MainWindow : Window
         }
         catch (OperationCanceledException) { }
         catch (Exception exception) { Record("AF-QUALITY-001", exception); }
+        finally { _qualityCancellation?.Dispose(); _qualityCancellation = null; }
+    }
+
+    private async void AnalyzeAllQuality_Click(object? sender, RoutedEventArgs e)
+    {
+        StopBlink();
+        _qualityCancellation?.Cancel();
+        _qualityCancellation = new CancellationTokenSource();
+        try
+        {
+            await _viewModel.AnalyzeAllQualityAsync(_qualityCancellation.Token);
+            await RefreshQualityPreviewAsync(true);
+        }
+        catch (OperationCanceledException) { }
+        catch (Exception exception) { Record("AF-QUALITY-ALL-001", exception); }
         finally { _qualityCancellation?.Dispose(); _qualityCancellation = null; }
     }
     private void CancelQuality_Click(object? sender, RoutedEventArgs e) => _qualityCancellation?.Cancel();

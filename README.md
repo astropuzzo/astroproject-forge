@@ -22,7 +22,7 @@ AstroProject Forge reads FITS and XISF metadata, reconstructs observing nights a
 - project-specific WBPP Grouping Keywords;
 - optional frame-quality analysis with FWHM, eccentricity, noise, SNR, Blink and non-destructive exclusions;
 - Italian and English interface;
-- one-click Windows updates with verified download, silent installation and automatic restart;
+- one-click Windows updates with verified download, installation and automatic restart.
 
 ![Acquisition statistics](docs/images/acquisition-dashboard.png)
 
@@ -30,10 +30,14 @@ AstroProject Forge reads FITS and XISF metadata, reconstructs observing nights a
 
 1. Add the folders or individual files containing your Light and Flat frames.
 2. Add one or more Dark/Bias Master Libraries.
-3. Select **Analyze**.
-4. Review unresolved items and adjust metadata or calibration links when necessary.
-5. Check the suggested WBPP Grouping Keywords.
-6. Export the project and load it in PixInsight WeightedBatchPreprocessing.
+3. Create a new project and save it as an `.astroforge` file.
+4. Select **Analyze**.
+5. Review unresolved items and adjust metadata or calibration links when necessary.
+6. Check the suggested WBPP Grouping Keywords.
+7. Export the project and load it in PixInsight WeightedBatchPreprocessing.
+
+Master Libraries are saved in the application settings, not inside a project. Opening
+or creating a project never removes the configured libraries.
 
 ### Keyboard
 
@@ -77,10 +81,14 @@ AstroProject Forge legge i metadati FITS e XISF, ricostruisce le notti osservati
 
 1. Aggiungi cartelle o singoli file contenenti Light e Flat.
 2. Aggiungi una o più Master Library Dark/Bias.
-3. Seleziona **Analizza**.
-4. Risolvi gli elementi da rivedere modificando i metadati o i collegamenti delle calibrazioni.
-5. Controlla le Grouping Keywords WBPP suggerite.
-6. Esporta il progetto e caricalo in PixInsight WeightedBatchPreprocessing.
+3. Crea un nuovo progetto e salvalo come file `.astroforge`.
+4. Seleziona **Analizza**.
+5. Risolvi gli elementi da rivedere modificando i metadati o i collegamenti delle calibrazioni.
+6. Controlla le Grouping Keywords WBPP suggerite.
+7. Esporta il progetto e caricalo in PixInsight WeightedBatchPreprocessing.
+
+Le Master Library sono salvate nelle impostazioni dell'app, non nel progetto. Aprire
+o creare un progetto non rimuove le librerie configurate.
 
 ### Tastiera
 
@@ -112,6 +120,6 @@ Windows uses WPF. Linux and macOS use Avalonia over the same Core and applicatio
 
 ## Project
 
-Concept and product direction by [Gianmarco Spagnoli (@astropuzzo)](https://github.com/astropuzzo). Developed with AI-assisted programming tools.
+Created by [Gianmarco Spagnoli (@astropuzzo)](https://github.com/astropuzzo).
 
 Copyright © 2026 Gianmarco Spagnoli. Official binaries are free for personal, non-commercial use. See [LICENSE](LICENSE).

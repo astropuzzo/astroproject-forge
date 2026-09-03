@@ -1,5 +1,36 @@
 # AstroProject Forge — note di rilascio
 
+## 1.4.0 — 3 settembre 2026
+
+- Aggiunto un ciclo completo per i progetti: **Nuovo**, **Apri**, **Salva** e
+  **Salva con nome**, disponibile dalla barra superiore, dal menu e da tastiera.
+- Il nuovo formato progetto v2 conserva sorgenti, destinazione, regole, correzioni ed
+  esclusioni, ma non incorpora le Master Library, che restano impostazioni globali.
+  I progetti v1 continuano ad aprirsi.
+- Quality Lab misura aree distribuite su tutto il sensore invece di un solo ritaglio
+  centrale e analizza i sensori Bayer su una luminanza 2×2 temporanea.
+- Gestiti i pixel FITS non numerici; ridotti falsi rilevamenti e duplicati di stelle.
+- La soglia qualità ora confronta direttamente la peggiore deviazione robusta: grafico,
+  contatore, tabella e lista dei sospetti applicano la stessa regola.
+- Aggiunta l'analisi di tutte le serie in sequenza. Ogni filtro, Flat Set, esposizione e
+  sessione resta un confronto indipendente.
+- Rimosso il grafico gaussiano dall'interfaccia multipiattaforma e uniformato il grafico
+  operativo a Windows, con regioni accettate/da verificare e punti selezionabili.
+- Migliorati adattamento dell'intestazione, larghezza del pannello Sorgenti, conferme
+  bilingui e testi autore essenziali.
+
+## 1.3.0 — 29 luglio 2026
+
+- L'inglese è ora la lingua predefinita per le nuove installazioni.
+- Il primo passaggio della configurazione iniziale chiede esplicitamente se usare
+  English o Italiano e applica subito la scelta.
+- Gli utenti provenienti da una versione precedente vedono il nuovo setup una sola
+  volta, senza perdere percorsi, librerie o impostazioni.
+- Il pannello Sorgenti è più largo, riconoscibile e ordinato: importazione cartelle
+  in evidenza, azioni secondarie separate, contatore e percorsi più leggibili.
+- La regola della notte osservativa include una spiegazione completa e un esempio
+  sera/mattina, con ora limite configurabile.
+
 ## 1.2.0 — 29 luglio 2026
 
 - Il primo avvio usa ora un setup rapido in quattro passaggi: introduzione, Master

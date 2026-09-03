@@ -1,6 +1,6 @@
 # Piano ready to sell
 
-Aggiornato al 28 luglio 2026. Questo documento raccoglie soltanto lavoro concreto e
+Aggiornato al 3 settembre 2026. Questo documento raccoglie soltanto lavoro concreto e
 verificabile. Le idee già realizzate non restano mischiate alle attività aperte.
 
 ## Stato del prodotto
@@ -17,11 +17,18 @@ La stessa logica Core è usata dall'interfaccia Avalonia per Linux e macOS.
 - [x] Controllo automatico che blocca nuove stringhe prive di traduzione.
 - [x] Scorciatoie coerenti: apri, salva, salva con nome, analizza, menu, guida e workspace.
 - [x] Salvataggio diretto del progetto già aperto; `Salva con nome` resta esplicito.
+- [x] Creazione di un progetto vuoto con conferma, scorciatoia `Ctrl+N` e formato v2
+      che non modifica né incorpora le Master Library globali.
 - [x] Nomi e descrizioni per screen reader sui controlli principali.
 - [x] Focus tastiera ad alto contrasto.
 - [x] Avanzamento visibile per download e installazione degli aggiornamenti Windows.
 - [x] Setup rapido operativo al primo avvio, riapribile dal menu.
 - [x] Gestione Master Library evidenziata nel pannello Sorgenti.
+- [x] Scelta lingua al primo avvio, con inglese predefinito e interfaccia IT/EN.
+- [x] Pannello Sorgenti ridisegnato e regola della notte osservativa spiegata con
+      un esempio che attraversa la mezzanotte.
+- [x] Quality Lab con campionamento distribuito sul sensore, gestione Bayer, score
+      coerente con la soglia e comando per analizzare tutte le serie separate.
 - [ ] Test manuale completo con Narrator su Windows.
 - [ ] Test manuale tastiera, VoiceOver e Orca sui pacchetti nativi.
 

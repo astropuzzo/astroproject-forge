@@ -29,7 +29,7 @@ public partial class MainWindow : Window
     private CancellationTokenSource? _previewCancellation;
     private readonly DispatcherTimer _blinkTimer = new() { Interval = TimeSpan.FromMilliseconds(700) };
     private int _blinkIndex;
-    private double _sourcePanelWidth = 260;
+    private double _sourcePanelWidth = 320;
     private double _inspectorPanelWidth = 390;
     private double _qualityZoom = 1;
     private bool _qualityPreviewPanning;
@@ -112,8 +112,8 @@ public partial class MainWindow : Window
     {
         var narrowHeader = ActualWidth < 1120;
         var showInspector = _inspectorVisible && _inspectorContextAvailable;
-        SourcesColumn.MinWidth = _sourcesVisible ? 190 : 0;
-        SourcesColumn.Width = _sourcesVisible ? new GridLength(Math.Clamp(_sourcePanelWidth, 190, 520)) : new GridLength(0);
+        SourcesColumn.MinWidth = _sourcesVisible ? 300 : 0;
+        SourcesColumn.Width = _sourcesVisible ? new GridLength(Math.Clamp(_sourcePanelWidth, 300, 520)) : new GridLength(0);
         SourceSplitterColumn.Width = _sourcesVisible ? new GridLength(5) : new GridLength(0);
         SourceSplitter.Visibility = _sourcesVisible ? Visibility.Visible : Visibility.Collapsed;
         InspectorColumn.MinWidth = showInspector ? 280 : 0;
@@ -138,7 +138,7 @@ public partial class MainWindow : Window
 
     private void PanelSplitter_DragCompleted(object sender, System.Windows.Controls.Primitives.DragCompletedEventArgs e)
     {
-        if (_sourcesVisible && SourcesColumn.ActualWidth >= 190) _sourcePanelWidth = SourcesColumn.ActualWidth;
+        if (_sourcesVisible && SourcesColumn.ActualWidth >= 300) _sourcePanelWidth = SourcesColumn.ActualWidth;
         if (_inspectorVisible && _inspectorContextAvailable && InspectorColumn.ActualWidth >= 280) _inspectorPanelWidth = InspectorColumn.ActualWidth;
         _viewModel.SourcePanelWidth = _sourcePanelWidth;
         _viewModel.InspectorPanelWidth = _inspectorPanelWidth;
@@ -170,6 +170,11 @@ public partial class MainWindow : Window
         if (modifiers == ModifierKeys.Control && e.Key == Key.O)
         {
             OpenProject_Click(this, new RoutedEventArgs());
+            e.Handled = true;
+        }
+        else if (modifiers == ModifierKeys.Control && e.Key == Key.N)
+        {
+            NewProject_Click(this, new RoutedEventArgs());
             e.Handled = true;
         }
         else if (modifiers == ModifierKeys.Control && e.Key == Key.S)
@@ -329,11 +334,13 @@ public partial class MainWindow : Window
     private void OnboardingChooseLibrary_Click(object sender, RoutedEventArgs e) => ChooseLibrary_Click(sender, e);
     private void OnboardingAddSource_Click(object sender, RoutedEventArgs e) => AddSource_Click(sender, e);
     private void OnboardingAddFiles_Click(object sender, RoutedEventArgs e) => AddFiles_Click(sender, e);
+    private void OnboardingEnglish_Click(object sender, RoutedEventArgs e) { _viewModel.UiLanguage = UiLocalization.English; UpdateOnboarding(); }
+    private void OnboardingItalian_Click(object sender, RoutedEventArgs e) { _viewModel.UiLanguage = UiLocalization.Italian; UpdateOnboarding(); }
     private void OnboardingSkip_Click(object sender, RoutedEventArgs e) => _viewModel.CompleteOnboarding();
     private void OnboardingBack_Click(object sender, RoutedEventArgs e) { _onboardingStep = Math.Max(1, _onboardingStep - 1); UpdateOnboarding(); }
     private void OnboardingNext_Click(object sender, RoutedEventArgs e)
     {
-        if (_onboardingStep == 4)
+        if (_onboardingStep == 5)
         {
             _viewModel.CompleteOnboarding();
             if (_viewModel.CanAnalyzeProject) Scan_Click(this, new RoutedEventArgs());
@@ -348,14 +355,16 @@ public partial class MainWindow : Window
         OnboardingStep2.Visibility = _onboardingStep == 2 ? Visibility.Visible : Visibility.Collapsed;
         OnboardingStep3.Visibility = _onboardingStep == 3 ? Visibility.Visible : Visibility.Collapsed;
         OnboardingStep4.Visibility = _onboardingStep == 4 ? Visibility.Visible : Visibility.Collapsed;
-        OnboardingProgress.Text = $"{_onboardingStep} / 4";
+        OnboardingStep5.Visibility = _onboardingStep == 5 ? Visibility.Visible : Visibility.Collapsed;
+        OnboardingProgress.Text = $"{_onboardingStep} / 5";
         OnboardingBackButton.Visibility = _onboardingStep > 1 ? Visibility.Visible : Visibility.Collapsed;
         OnboardingNextButton.Content = _onboardingStep switch
         {
-            1 => "Inizia",
-            2 when _viewModel.MasterLibraries.Count == 0 => "Continua senza libreria",
-            4 when _viewModel.CanAnalyzeProject => "Analizza ora",
-            4 => "Vai al progetto",
+            1 => "Continua",
+            2 => "Inizia",
+            3 when _viewModel.MasterLibraries.Count == 0 => "Continua senza libreria",
+            5 when _viewModel.CanAnalyzeProject => "Analizza ora",
+            5 => "Vai al progetto",
             _ => "Continua"
         };
         ScheduleLocalization();
@@ -494,6 +503,21 @@ public partial class MainWindow : Window
         }
         catch (OperationCanceledException) { }
         catch (Exception exception) { ShowError("AF-QUALITY-001", "Analisi qualità non completata", exception, MessageBoxImage.Warning); }
+        finally { _qualityCancellation.Dispose(); _qualityCancellation = null; }
+    }
+    private async void AnalyzeAllQuality_Click(object sender, RoutedEventArgs e)
+    {
+        StopBlink();
+        _qualityCancellation?.Dispose();
+        _qualityCancellation = new CancellationTokenSource();
+        try
+        {
+            await _viewModel.AnalyzeAllQualityAsync(_qualityCancellation.Token);
+            QualityChart.Refresh();
+            await RefreshQualityPreviewAsync(fitToViewport: true);
+        }
+        catch (OperationCanceledException) { }
+        catch (Exception exception) { ShowError("AF-QUALITY-ALL-001", "Analisi qualità non completata", exception, MessageBoxImage.Warning); }
         finally { _qualityCancellation.Dispose(); _qualityCancellation = null; }
     }
     private void CancelQuality_Click(object sender, RoutedEventArgs e) => _qualityCancellation?.Cancel();
@@ -653,13 +677,32 @@ public partial class MainWindow : Window
     {
         try
         {
-            var dialog = new OpenFileDialog { Title = "Apri progetto AstroProject Forge", Filter = "Progetto AstroProject Forge (*.astroforge)|*.astroforge" };
-            if (dialog.ShowDialog(this) == true) await _viewModel.LoadProjectAsync(dialog.FileName);
+            var english = _viewModel.UiLanguage == UiLocalization.English;
+            var dialog = new OpenFileDialog { Title = english ? "Open AstroProject Forge project" : "Apri progetto AstroProject Forge", Filter = english ? "AstroProject Forge project (*.astroforge)|*.astroforge" : "Progetto AstroProject Forge (*.astroforge)|*.astroforge" };
+            if (dialog.ShowDialog(this) == true && ConfirmProjectReplacement(opening: true)) await _viewModel.LoadProjectAsync(dialog.FileName);
         }
         catch (Exception exception) { ShowError("AF-PROJECT-OPEN-001", "Progetto non aperto", exception, MessageBoxImage.Error); }
     }
 
     private void SaveProject_Click(object sender, RoutedEventArgs e) => SaveProject(false);
+    private void SaveProjectAs_Click(object sender, RoutedEventArgs e) { MorePopup.IsOpen = false; SaveProject(true); }
+    private void NewProject_Click(object sender, RoutedEventArgs e)
+    {
+        MorePopup.IsOpen = false;
+        if (ConfirmProjectReplacement(opening: false)) _viewModel.NewProject();
+    }
+
+    private bool ConfirmProjectReplacement(bool opening)
+    {
+        if (!_viewModel.HasProjectContent) return true;
+        var english = _viewModel.UiLanguage == UiLocalization.English;
+        var title = english ? (opening ? "Open project" : "New project") : (opening ? "Apri progetto" : "Nuovo progetto");
+        var question = english ? (opening ? "Open the selected project?" : "Create a new project?") : (opening ? "Aprire il progetto selezionato?" : "Creare un nuovo progetto?");
+        var detail = english
+            ? "Unsaved project data will be discarded. Source files and Master Libraries will not be changed."
+            : "I dati del progetto non salvati verranno persi. I file sorgente e le Master Library non verranno modificati.";
+        return MessageBox.Show(this, $"{question}\n\n{detail}", title, MessageBoxButton.YesNo, MessageBoxImage.Question) == MessageBoxResult.Yes;
+    }
 
     private void SaveProject(bool saveAs)
     {
@@ -670,7 +713,8 @@ public partial class MainWindow : Window
                 _viewModel.SaveProject(_viewModel.CurrentProjectFile);
                 return;
             }
-            var dialog = new SaveFileDialog { Title = "Salva progetto AstroProject Forge", Filter = "Progetto AstroProject Forge (*.astroforge)|*.astroforge", AddExtension = true, DefaultExt = ".astroforge", FileName = string.IsNullOrWhiteSpace(_viewModel.ProjectName) ? "Nuovo progetto" : _viewModel.ProjectName };
+            var english = _viewModel.UiLanguage == UiLocalization.English;
+            var dialog = new SaveFileDialog { Title = english ? "Save AstroProject Forge project" : "Salva progetto AstroProject Forge", Filter = english ? "AstroProject Forge project (*.astroforge)|*.astroforge" : "Progetto AstroProject Forge (*.astroforge)|*.astroforge", AddExtension = true, DefaultExt = ".astroforge", FileName = string.IsNullOrWhiteSpace(_viewModel.ProjectName) ? (english ? "New project" : "Nuovo progetto") : _viewModel.ProjectName };
             if (dialog.ShowDialog(this) == true) _viewModel.SaveProject(dialog.FileName);
         }
         catch (Exception exception) { ShowError("AF-PROJECT-SAVE-001", "Progetto non salvato", exception, MessageBoxImage.Error); }

@@ -11,6 +11,9 @@ $avaloniaCodePath = Join-Path $root 'dotnet\AstroForge.CrossPlatform\MainWindow.
 $wpfAdapterPath = Join-Path $root 'dotnet\AstroForge.App\Services\WpfLocalizationAdapter.cs'
 $avaloniaAdapterPath = Join-Path $root 'dotnet\AstroForge.CrossPlatform\AvaloniaLocalizationAdapter.cs'
 $installerPath = Join-Path $root 'installer\AstroProjectForge.iss'
+$viewModelPath = Join-Path $root 'dotnet\AstroForge.App\ViewModels\MainViewModel.cs'
+$projectStorePath = Join-Path $root 'dotnet\AstroForge.App\Services\ProjectDocumentStore.cs'
+$qualityAnalyzerPath = Join-Path $root 'dotnet\AstroForge.Core\Quality\FitsQualityAnalyzer.cs'
 
 function Read-Raw([string]$Path) {
     if (-not (Test-Path -LiteralPath $Path)) { throw "File mancante: $Path" }
@@ -46,6 +49,9 @@ $avaloniaCode = Read-Raw $avaloniaCodePath
 $wpfAdapter = Read-Raw $wpfAdapterPath
 $avaloniaAdapter = Read-Raw $avaloniaAdapterPath
 $installer = Read-Raw $installerPath
+$viewModel = Read-Raw $viewModelPath
+$projectStore = Read-Raw $projectStorePath
+$qualityAnalyzer = Read-Raw $qualityAnalyzerPath
 
 $contracts = @{
     'WPF preview keyboard handler' = $wpfXaml.Contains('PreviewKeyDown="Window_PreviewKeyDown"')
@@ -55,10 +61,18 @@ $contracts = @{
     'Avalonia accessible names' = $avaloniaAdapter.Contains('AutomationProperties.SetName')
     'Save and Save As behavior (WPF)' = $wpfCode.Contains('SaveProject(bool saveAs)')
     'Save and Save As behavior (Avalonia)' = $avaloniaCode.Contains('SaveProjectAsync(bool saveAs)')
+    'New project behavior (WPF)' = $wpfXaml.Contains('Click="NewProject_Click"') -and $wpfCode.Contains('_viewModel.NewProject()')
+    'New project behavior (Avalonia)' = (Read-Raw $avaloniaXamlPath).Contains('Click="NewProject_Click"') -and $avaloniaCode.Contains('_viewModel.NewProject()')
+    'Project schema excludes global libraries' = $projectStore.Contains('SchemaVersion { get; set; } = 2') -and $projectStore.Contains('public List<MasterLibraryDefinition>? MasterLibraries') -and $viewModel.Contains('Master Libraries are application-level resources')
+    'All-series quality action (WPF)' = $wpfCode.Contains('AnalyzeAllQuality_Click') -and $wpfXaml.Contains('CanRunAllQualityAnalysis')
+    'All-series quality action (Avalonia)' = $avaloniaCode.Contains('AnalyzeAllQuality_Click') -and (Read-Raw $avaloniaXamlPath).Contains('CanRunAllQualityAnalysis')
+    'Distributed quality sampling' = $qualityAnalyzer.Contains('ReadAnalysisTilesAsync') -and $qualityAnalyzer.Contains('CollapseBayer') -and $viewModel.Contains('var score = worst.Z')
     'Visible Windows update progress' = $wpfCode.Contains('startInfo.ArgumentList.Add("/SILENT")') -and -not $wpfCode.Contains('startInfo.ArgumentList.Add("/VERYSILENT")')
     'Visible progress from legacy updaters' = $wpfCode.Contains('startInfo.ArgumentList.Add("/APFVISIBLE=1")') -and $installer.Contains('CurInstallProgressChanged') -and $installer.Contains('NeedsCompatibilityProgress')
-    'WPF operational onboarding' = $wpfXaml.Contains('x:Name="OnboardingStep4"') -and $wpfCode.Contains('if (_viewModel.CanAnalyzeProject) Scan_Click')
-    'Avalonia operational onboarding' = (Read-Raw $avaloniaXamlPath).Contains('x:Name="OnboardingStep4"') -and $avaloniaCode.Contains('if (_viewModel.CanAnalyzeProject)')
+    'WPF operational onboarding' = $wpfXaml.Contains('x:Name="OnboardingStep5"') -and $wpfCode.Contains('if (_viewModel.CanAnalyzeProject) Scan_Click')
+    'Avalonia operational onboarding' = (Read-Raw $avaloniaXamlPath).Contains('x:Name="OnboardingStep5"') -and $avaloniaCode.Contains('if (_viewModel.CanAnalyzeProject)')
+    'First-run language choice' = $wpfXaml.Contains('OnboardingEnglish_Click') -and (Read-Raw $avaloniaXamlPath).Contains('OnboardingItalian_Click')
+    'English default language' = (Read-Raw (Join-Path $root 'dotnet/AstroForge.App/Services/AppStateStore.cs')).Contains('UiLanguage { get; set; } = UiLocalization.English')
 }
 
 $failed = @($contracts.GetEnumerator() | Where-Object { -not $_.Value } | ForEach-Object Key)

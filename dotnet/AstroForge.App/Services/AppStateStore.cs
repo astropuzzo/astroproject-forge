@@ -1,6 +1,5 @@
 using System.Text.Json;
 using System.IO;
-using System.Globalization;
 using AstroForge.Core.Models;
 using AstroForge.Core.Persistence;
 using AstroForge.Core.IO;
@@ -9,7 +8,7 @@ namespace AstroForge.App.Services;
 
 public sealed class AppState
 {
-    public int SchemaVersion { get; set; } = 2;
+    public int SchemaVersion { get; set; } = 3;
     public List<string> SourcePaths { get; set; } = [];
     public string LibraryPath { get; set; } = "";
     public List<MasterLibraryDefinition> MasterLibraries { get; set; } = [];
@@ -21,7 +20,7 @@ public sealed class AppState
     public double? ProjectDefaultTemperatureC { get; set; }
     public string LastProjectFile { get; set; } = "";
     public string UiDensity { get; set; } = "Comoda";
-    public string UiLanguage { get; set; } = CultureInfo.CurrentUICulture.TwoLetterISOLanguageName == "it" ? UiLocalization.Italian : UiLocalization.English;
+    public string UiLanguage { get; set; } = UiLocalization.English;
     public bool ReducedMotion { get; set; }
     public bool CheckForUpdates { get; set; } = true;
     public string UpdateChannel { get; set; } = "Stable";
@@ -32,7 +31,7 @@ public sealed class AppState
     public double QualitySigmaThreshold { get; set; } = 3.5;
     public double QualityStretchStrength { get; set; } = 6;
     public bool QualityDebayerPreview { get; set; }
-    public double SourcePanelWidth { get; set; } = 260;
+    public double SourcePanelWidth { get; set; } = 320;
     public double InspectorPanelWidth { get; set; } = 390;
     public bool HasCompletedOnboarding { get; set; }
     public Dictionary<string, FrameOverrides> Overrides { get; set; } = new(PathIdentity.Comparer);

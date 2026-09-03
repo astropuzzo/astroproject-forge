@@ -66,7 +66,8 @@ internal static class RegressionQa
         var migrated = SettingsMigration.Migrate("{\"UiDensity\":\"Compatta\",\"ReducedMotion\":true}");
         using var document = JsonDocument.Parse(migrated);
         var root = document.RootElement;
-        Assert(root.GetProperty("SchemaVersion").GetInt32() == 2, "Schema impostazioni non migrato.");
+        Assert(root.GetProperty("SchemaVersion").GetInt32() == 3, "Schema impostazioni non migrato.");
+        Assert(root.GetProperty("HasCompletedOnboarding").GetBoolean() == false, "Il nuovo setup iniziale deve essere mostrato una volta dopo la migrazione.");
         Assert(root.GetProperty("CheckForUpdates").GetBoolean() && root.GetProperty("UpdateChannel").GetString() == "Stable", "Default aggiornamenti non migrato.");
         Assert(root.GetProperty("UiDensity").GetString() == "Compatta" && root.GetProperty("ReducedMotion").GetBoolean(), "La migrazione ha perso preferenze esistenti.");
         AssertThrows<InvalidDataException>(() => SettingsMigration.Migrate("{\"SchemaVersion\":99}"), "Uno schema futuro deve essere rifiutato.");
@@ -137,6 +138,7 @@ internal static class RegressionQa
             Assert(sharpMetrics.StarCount >= 8 && sharpMetrics.FwhmPixels > 1 && sharpMetrics.PreviewPixels.Length > 0, "Il Quality Lab non ha misurato il campo stellare FITS.");
             Assert(softMetrics.FwhmPixels > sharpMetrics.FwhmPixels, "Il Quality Lab non distingue un frame sfocato da uno più nitido.");
             Assert(sharpMetrics.Snr > 1 && sharpMetrics.Noise > 0, "SNR o rumore del Quality Lab non validi.");
+            Assert(sharpMetrics.CoverageZones == 9, "Il Quality Lab non sta campionando in modo distribuito il sensore.");
             var monoPreview = await FitsQualityAnalyzer.RenderPreviewAsync(sharp, null, false, 4);
             var colorPreview = await FitsQualityAnalyzer.RenderPreviewAsync(sharp, "RGGB", true, 8);
             Assert(!monoPreview.IsColor && monoPreview.Pixels.Length == monoPreview.Width * monoPreview.Height, "Preview mono del Quality Lab non valida.");
@@ -388,16 +390,16 @@ internal static class RegressionQa
 
     private static void WriteStarFieldFits(string path, double sigma)
     {
-        const int width = 160, height = 120;
+        const int width = 900, height = 900;
         static string Card(string key, string value = "") => (value.Length == 0 ? key : $"{key.PadRight(8)}= {value}").PadRight(80)[..80];
         var header = Card("SIMPLE", "T") + Card("BITPIX", "16") + Card("NAXIS", "2") + Card("NAXIS1", width.ToString()) + Card("NAXIS2", height.ToString()) + Card("BZERO", "32768") + Card("BSCALE", "1") + Card("END");
         var headerBytes = Encoding.ASCII.GetBytes(header.PadRight((int)Math.Ceiling(header.Length / 2880d) * 2880));
         var physical = Enumerable.Repeat(1000d, width * height).ToArray();
         var random = new Random(4421);
         for (var index = 0; index < physical.Length; index++) physical[index] += random.NextDouble() * 18 - 9;
-        for (var star = 0; star < 24; star++)
+        for (var star = 0; star < 80; star++)
         {
-            var cx = 10 + (star * 31) % (width - 20); var cy = 10 + (star * 47) % (height - 20); var amplitude = 12000 - star * 180;
+            var cx = 10 + (star * 31) % (width - 20); var cy = 10 + (star * 47) % (height - 20); var amplitude = 12000 - star % 24 * 180;
             for (var y = cy - 7; y <= cy + 7; y++) for (var x = cx - 7; x <= cx + 7; x++)
                 physical[y * width + x] += amplitude * Math.Exp(-((x - cx) * (x - cx) + (y - cy) * (y - cy)) / (2 * sigma * sigma));
         }

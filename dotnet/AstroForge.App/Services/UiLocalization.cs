@@ -17,7 +17,7 @@ public static partial class UiLocalization
 
     public static IReadOnlyList<string> Languages { get; } = [Italian, English];
 
-    public static string NormalizeLanguage(string? value) => value == English ? English : Italian;
+    public static string NormalizeLanguage(string? value) => value == Italian ? Italian : English;
 
     public static void ApplyCulture(string language)
     {
@@ -76,6 +76,10 @@ public static partial class UiLocalization
         if (match.Success) return $"Downloading update · {match.Groups[1].Value}%";
         match = UpdateReady().Match(value);
         if (match.Success) return $"AstroProject Forge {match.Groups[1].Value} is ready";
+        match = ProjectSaved().Match(value);
+        if (match.Success) return $"Project saved · {match.Groups[1].Value}";
+        match = ProjectOpened().Match(value);
+        if (match.Success) return $"Project opened · {match.Groups[1].Value}";
         if (value.StartsWith("Controllo canale ", StringComparison.Ordinal)) return "Checking for updates…";
         return value;
     }
@@ -108,6 +112,10 @@ public static partial class UiLocalization
         if (match.Success) return $"{match.Groups[1].Value} nott{(match.Groups[1].Value == "1" ? "e" : "i")}";
         match = EnglishConfigurationSessionCount().Match(value);
         if (match.Success) return $"{match.Groups[1].Value} session{(match.Groups[1].Value == "1" ? "e" : "i")} configurazione";
+        match = EnglishProjectSaved().Match(value);
+        if (match.Success) return $"Progetto salvato · {match.Groups[1].Value}";
+        match = EnglishProjectOpened().Match(value);
+        if (match.Success) return $"Progetto aperto · {match.Groups[1].Value}";
         return value;
     }
 
@@ -133,6 +141,8 @@ public static partial class UiLocalization
     [GeneratedRegex("^È disponibile AstroProject Forge ([0-9A-Za-z.+-]+)\\.$")] private static partial Regex UpdateAvailable();
     [GeneratedRegex("^Download aggiornamento · ([0-9]+)%$")] private static partial Regex UpdateDownloadProgress();
     [GeneratedRegex("^AstroProject Forge ([0-9A-Za-z.+-]+) è pronto$")] private static partial Regex UpdateReady();
+    [GeneratedRegex("^Progetto salvato · (.+)$")] private static partial Regex ProjectSaved();
+    [GeneratedRegex("^Progetto aperto · (.+)$")] private static partial Regex ProjectOpened();
     [GeneratedRegex("^(\\d+) nott(?:e|i)$")] private static partial Regex NightCount();
     [GeneratedRegex("^(\\d+) session(?:e|i) configurazione$")] private static partial Regex ConfigurationSessionCount();
     [GeneratedRegex("^(\\d+) linked sources?$")] private static partial Regex EnglishLinkedSources();
@@ -148,4 +158,6 @@ public static partial class UiLocalization
     [GeneratedRegex("^Priority (\\d+)$")] private static partial Regex EnglishPriority();
     [GeneratedRegex("^(\\d+) nights?$")] private static partial Regex EnglishNightCount();
     [GeneratedRegex("^(\\d+) configuration sessions?$")] private static partial Regex EnglishConfigurationSessionCount();
+    [GeneratedRegex("^Project saved · (.+)$")] private static partial Regex EnglishProjectSaved();
+    [GeneratedRegex("^Project opened · (.+)$")] private static partial Regex EnglishProjectOpened();
 }
