@@ -91,12 +91,14 @@ public static class ProjectExporter
         if (!preflight.IsReady) throw new ExportPreflightException(preflight);
         var projectRoot = plan.ProjectRoot;
         var staging = Path.Combine(plan.DestinationRoot, $".{plan.ProjectName}.astroforge-staging");
-        Directory.CreateDirectory(staging);
+        var workingRoot = preflight.IsIncremental ? projectRoot : staging;
+        Directory.CreateDirectory(workingRoot);
         var totalBytes = preflight.TotalBytes;
         long copiedBytes = 0;
         long transferredThisRun = 0;
         var watch = Stopwatch.StartNew();
-        var records = new List<object>();
+        var records = preflight.IsIncremental ? ExistingManifestRecords(projectRoot) : new Dictionary<string, object>(StringComparer.OrdinalIgnoreCase);
+        var addedFiles = new List<PlannedFile>();
         try
         {
             for (var index = 0; index < plan.Files.Count; index++)
@@ -104,7 +106,7 @@ public static class ProjectExporter
                 cancellationToken.ThrowIfCancellationRequested();
                 if (control is not null) await control.WaitIfPausedAsync(cancellationToken);
                 var item = plan.Files[index];
-                var destination = Path.Combine(staging, item.RelativePath);
+                var destination = Path.Combine(workingRoot, item.RelativePath);
                 Directory.CreateDirectory(Path.GetDirectoryName(destination)!);
                 var partial = destination + ".partial";
                 byte[] hash;
@@ -125,9 +127,10 @@ public static class ProjectExporter
                     File.Move(partial, destination);
                     File.SetLastWriteTimeUtc(destination, File.GetLastWriteTimeUtc(item.Frame.Path));
                     transferredThisRun += new FileInfo(destination).Length;
+                    addedFiles.Add(item);
                 }
                 copiedBytes += new FileInfo(destination).Length;
-                records.Add(new
+                records[item.RelativePath.Replace('\\', '/')] = new
                 {
                     source = Path.GetFullPath(item.Frame.Path),
                     destination = item.RelativePath.Replace('\\', '/'),
@@ -136,15 +139,15 @@ public static class ProjectExporter
                     bytes = new FileInfo(destination).Length,
                     sha256 = Convert.ToHexString(hash).ToLowerInvariant(),
                     metadata = Snapshot(item.Frame)
-                });
+                };
                 var speed = watch.Elapsed.TotalSeconds <= 0 ? 0 : transferredThisRun / 1024d / 1024d / watch.Elapsed.TotalSeconds;
                 TimeSpan? remaining = speed <= 0 ? null : TimeSpan.FromSeconds(Math.Max(0, totalBytes - copiedBytes) / 1024d / 1024d / speed);
                 progress?.Report(new(index + 1, plan.Files.Count, item.Frame.FileName, copiedBytes, totalBytes, speed, remaining, resumed));
             }
-            var controlDirectory = Path.Combine(staging, "_AstroForge");
+            var controlDirectory = Path.Combine(workingRoot, "_AstroForge");
             Directory.CreateDirectory(controlDirectory);
             var jsonOptions = new JsonSerializerOptions { WriteIndented = true };
-            await WriteAtomicAsync(Path.Combine(controlDirectory, "manifest.json"), JsonSerializer.Serialize(new { schema = 2, application = "AstroProject Forge", mode = "verified-copy", project_name = plan.ProjectName, created_at = DateTimeOffset.UtcNow, preflight = new { preflight.DestinationKind, preflight.TotalBytes, preflight.ResumeBytes, preflight.BytesToCopy, preflight.AvailableFreeBytes, preflight.RequiredFreeBytes }, files = records }, jsonOptions), cancellationToken);
+            await WriteAtomicAsync(Path.Combine(controlDirectory, "manifest.json"), JsonSerializer.Serialize(new { schema = 3, application = "AstroProject Forge", mode = preflight.IsIncremental ? "incremental-update" : "verified-copy", project_name = plan.ProjectName, updated_at = DateTimeOffset.UtcNow, preflight = new { preflight.DestinationKind, preflight.TotalBytes, preflight.ResumeBytes, preflight.BytesToCopy, preflight.AvailableFreeBytes, preflight.RequiredFreeBytes, preflight.IsIncremental, preflight.NewFileCount }, files = records.Values }, jsonOptions), cancellationToken);
             await WriteAtomicAsync(Path.Combine(controlDirectory, "wbpp-recipe.json"), JsonSerializer.Serialize(new { schema = 1, grouping_keywords = plan.Recipe.Keywords.Select(keyword => new { keyword = keyword.Keyword, pre = keyword.Pre, post = keyword.Post, reason = keyword.Reason }), notes = plan.Recipe.Notes }, jsonOptions), cancellationToken);
             await WriteAtomicAsync(Path.Combine(controlDirectory, "export-preflight.json"), JsonSerializer.Serialize(preflight, jsonOptions), cancellationToken);
             if (plan.Statistics is not null)
@@ -154,7 +157,17 @@ public static class ProjectExporter
             }
             await WriteAtomicAsync(Path.Combine(controlDirectory, "wbpp-guide.md"), Guide(plan), cancellationToken);
             await WriteAtomicAsync(Path.Combine(controlDirectory, "validation-report.html"), ValidationReport(plan), cancellationToken);
-            Directory.Move(staging, projectRoot);
+            var historyEntries = new List<ExportHistoryEntry>();
+            if (preflight.IsIncremental && ExportHistoryStore.Read(projectRoot).Entries.Count == 0 && preflight.ResumeFileCount > 0)
+            {
+                var addedPaths = addedFiles.Select(item => item.RelativePath).ToHashSet(StringComparer.OrdinalIgnoreCase);
+                var baseline = plan.Files.Where(item => !addedPaths.Contains(item.RelativePath)).ToArray();
+                historyEntries.Add(ExportHistoryStore.CreateEntry(plan, baseline, 0, "baseline"));
+            }
+            if (!preflight.IsIncremental || addedFiles.Count > 0)
+                historyEntries.Add(ExportHistoryStore.CreateEntry(plan, preflight.IsIncremental ? addedFiles : plan.Files, preflight.ResumeFileCount, preflight.IsIncremental ? "update" : "initial"));
+            await ExportHistoryStore.AppendAsync(workingRoot, plan.ProjectName, historyEntries.ToArray());
+            if (!preflight.IsIncremental) Directory.Move(staging, projectRoot);
             return projectRoot;
         }
         catch
@@ -162,6 +175,23 @@ public static class ProjectExporter
             // Staging remains available for diagnosis. Original files are never modified.
             throw;
         }
+    }
+
+    private static Dictionary<string, object> ExistingManifestRecords(string projectRoot)
+    {
+        var result = new Dictionary<string, object>(StringComparer.OrdinalIgnoreCase);
+        var path = Path.Combine(projectRoot, "_AstroForge", "manifest.json");
+        if (!File.Exists(path)) return result;
+        try
+        {
+            using var document = JsonDocument.Parse(File.ReadAllText(path));
+            if (!document.RootElement.TryGetProperty("files", out var files) || files.ValueKind != JsonValueKind.Array) return result;
+            foreach (var item in files.EnumerateArray())
+                if (item.TryGetProperty("destination", out var destination) && destination.GetString() is { Length: > 0 } key)
+                    result[key] = item.Clone();
+        }
+        catch (JsonException) { }
+        return result;
     }
 
     private static async Task<byte[]> CopyWithHashAsync(string source, string destination, ExportExecutionControl? control, CancellationToken cancellationToken)

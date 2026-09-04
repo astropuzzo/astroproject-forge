@@ -297,7 +297,7 @@
                             <Grid Grid.Row="2" Margin="0,0,0,10"><Grid.ColumnDefinitions><ColumnDefinition/><ColumnDefinition Width="Auto"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions>
                                 <TextBlock Text="{Binding PlanSummary}" Style="{StaticResource MutedText}" VerticalAlignment="Center" TextTrimming="CharacterEllipsis"/>
                                 <Button Grid.Column="1" Content="Genera anteprima" Click="BuildPlan_Click" Margin="8,0" IsEnabled="{Binding CanRunProjectOperations}" ToolTip="Calcola cartelle e nomi senza copiare file"/>
-                                <Button Grid.Column="2" Content="Esporta" Click="Export_Click" Style="{StaticResource PrimaryButton}" IsEnabled="{Binding CanStartExport}" ToolTip="Esegue i controlli e copia i file nella destinazione"/>
+                                <Button Grid.Column="2" Content="{Binding ExportActionLabel}" Click="Export_Click" Style="{StaticResource PrimaryButton}" IsEnabled="{Binding CanStartExport}" ToolTip="Copia soltanto i file nuovi e conserva la cronologia del dataset"/>
                             </Grid>
                             <Grid Grid.Row="3">
                                 <Grid.ColumnDefinitions><ColumnDefinition Width="0.56*"/><ColumnDefinition Width="0.44*"/></Grid.ColumnDefinitions>
@@ -315,6 +315,13 @@
                                                 <Border Style="{StaticResource Card}" Background="#101923" Padding="11" Margin="4,4,0,0"><StackPanel><TextBlock Text="STIMA" Style="{StaticResource MetaLabel}"/><TextBlock Text="{Binding ExportEtaSummary}" FontWeight="SemiBold" Margin="0,4,0,0"/></StackPanel></Border>
                                             </UniformGrid>
                                             <TextBlock Text="{Binding ExportResumeSummary}" Foreground="{StaticResource Accent}" FontSize="11" Margin="1,10,0,0"/>
+                                            <TextBlock Text="{Binding ExportChangeSummary}" Style="{StaticResource MutedText}" TextWrapping="Wrap" Margin="1,4,0,0"/>
+                                            <Border Height="1" Background="{StaticResource Stroke}" Margin="0,15,0,12"/>
+                                            <TextBlock Text="CRONOLOGIA DATI" Style="{StaticResource Eyebrow}"/>
+                                            <TextBlock Visibility="{Binding ExportHistory.Count, Converter={StaticResource EmptyCollectionToVisibility}}" Text="La timeline apparirà dopo la prima esportazione." Style="{StaticResource MutedText}" Margin="0,8,0,0"/>
+                                            <ItemsControl ItemsSource="{Binding ExportHistory}" Margin="0,8,0,0">
+                                                <ItemsControl.ItemTemplate><DataTemplate><Border Background="#101923" BorderBrush="{StaticResource Stroke}" BorderThickness="1" CornerRadius="8" Padding="10" Margin="0,0,0,7"><StackPanel><Grid><Grid.ColumnDefinitions><ColumnDefinition/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions><TextBlock Text="{Binding Title}" FontWeight="SemiBold"/><TextBlock Grid.Column="1" Text="{Binding Date}" Style="{StaticResource MutedText}" FontSize="9"/></Grid><TextBlock Text="{Binding Detail}" Style="{StaticResource MutedText}" TextWrapping="Wrap" FontSize="10" Margin="0,4,0,0"/></StackPanel></Border></DataTemplate></ItemsControl.ItemTemplate>
+                                            </ItemsControl>
                                             <Grid Margin="0,15,0,0"><Grid.ColumnDefinitions><ColumnDefinition/><ColumnDefinition/><ColumnDefinition/></Grid.ColumnDefinitions>
                                                 <StackPanel Margin="0,0,4,0"><TextBlock Text="Margine %" Style="{StaticResource MetaLabel}"/><TextBox Text="{Binding ExportMarginPercent, UpdateSourceTrigger=PropertyChanged}" HorizontalContentAlignment="Center" IsEnabled="{Binding CanRunProjectOperations}" Tag="Margine %"/></StackPanel>
                                                 <StackPanel Grid.Column="1" Margin="4,0"><TextBlock Text="Riserva GiB" Style="{StaticResource MetaLabel}"/><TextBox Text="{Binding ExportMinimumReserveGiB, UpdateSourceTrigger=PropertyChanged}" HorizontalContentAlignment="Center" IsEnabled="{Binding CanRunProjectOperations}" Tag="Riserva GiB"/></StackPanel>

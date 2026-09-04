@@ -512,4 +512,9 @@
   ,"Progetto non ancora salvato": "Project not saved yet"
   ,"Nuovo progetto pronto": "New project ready"
   ,"Rimuovi la libreria dall’app senza cancellare i Master": "Remove the library from the app without deleting Master frames"
+  ,"Copia soltanto i file nuovi e conserva la cronologia del dataset": "Copy only new files and preserve the dataset history"
+  ,"La timeline apparirà dopo la prima esportazione.": "The timeline will appear after the first export."
+  ,"CRONOLOGIA DATI": "DATA HISTORY"
+  ,"Cronologia dati": "Data history"
+  ,"Copia soltanto i file nuovi e conserva la cronologia": "Copy only new files and preserve the history"
 }

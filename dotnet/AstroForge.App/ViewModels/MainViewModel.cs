@@ -177,6 +177,7 @@ public sealed class MainViewModel : BindableBase
     public ObservableCollection<string> SelectedIssues { get; } = [];
     public ObservableCollection<DiagnosticEventRow> DiagnosticEvents { get; } = [];
     public ObservableCollection<ExportPreflightFindingRow> ExportPreflightFindings { get; } = [];
+    public ObservableCollection<ExportHistoryRow> ExportHistory { get; } = [];
     public ObservableCollection<QualityFrameRow> QualityFrames { get; } = [];
     public ObservableCollection<QualitySeriesRow> QualitySeries { get; } = [];
     public RelayCommand ApplyOverridesCommand { get; }
@@ -214,6 +215,8 @@ public sealed class MainViewModel : BindableBase
             Raise(nameof(MasterLibraryCountLabel));
             Raise(nameof(ImportedSourceCountLabel));
             Raise(nameof(TotalIssuesLabel));
+            Raise(nameof(ExportActionLabel)); Raise(nameof(ExportChangeSummary)); Raise(nameof(ExportResumeSummary));
+            if (_exportPreflight is not null) RefreshExportHistory(_exportPreflight.ProjectRoot);
             UiLanguageChanged?.Invoke(this, EventArgs.Empty);
         }
     }
@@ -285,7 +288,17 @@ public sealed class MainViewModel : BindableBase
     public string ExportBytesSummary => _exportPreflight is null ? "—" : $"{HumanSize(_exportPreflight.BytesToCopy)} da copiare";
     public string ExportSpaceSummary => _exportPreflight?.AvailableFreeBytes is { } value ? $"{HumanSize(value)} liberi" : "Spazio non disponibile";
     public string ExportEtaSummary => _exportPreflight is null ? "—" : FormatDuration(_exportPreflight.EstimatedDuration);
-    public string ExportResumeSummary => _exportPreflight is null || _exportPreflight.ResumeFileCount == 0 ? "Nessuna ripresa" : $"{_exportPreflight.ResumeFileCount} file · {HumanSize(_exportPreflight.ResumeBytes)} riutilizzabili";
+    public string ExportResumeSummary => _exportPreflight is null
+        ? (UiLanguage == UiLocalization.English ? "No comparison run" : "Nessun confronto eseguito")
+        : _exportPreflight.IsIncremental
+            ? (UiLanguage == UiLocalization.English ? $"{_exportPreflight.ResumeFileCount} unchanged · {_exportPreflight.NewFileCount} new" : $"{_exportPreflight.ResumeFileCount} invariati · {_exportPreflight.NewFileCount} nuovi")
+            : _exportPreflight.ResumeFileCount == 0 ? (UiLanguage == UiLocalization.English ? "New export" : "Nuova esportazione") : $"{_exportPreflight.ResumeFileCount} file · {HumanSize(_exportPreflight.ResumeBytes)} riutilizzabili";
+    public string ExportActionLabel => _exportPreflight?.IsIncremental == true || ExportHistory.Count > 0
+        ? (UiLanguage == UiLocalization.English ? "Update project" : "Aggiorna progetto")
+        : (UiLanguage == UiLocalization.English ? "Export project" : "Esporta progetto");
+    public string ExportChangeSummary => _exportPreflight?.IsIncremental == true
+        ? (UiLanguage == UiLocalization.English ? $"Update: {_exportPreflight.NewFileCount} new · {_exportPreflight.ResumeFileCount} unchanged" : $"Aggiornamento: {_exportPreflight.NewFileCount} nuovi · {_exportPreflight.ResumeFileCount} invariati")
+        : (UiLanguage == UiLocalization.English ? "The first export will create the dataset history." : "La prima esportazione creerà la cronologia del dataset.");
     public QualityFrameRow? SelectedQualityFrame { get => _selectedQualityFrame; set => Set(ref _selectedQualityFrame, value); }
     public QualitySeriesRow? SelectedQualitySeries
     {
@@ -589,6 +602,8 @@ public sealed class MainViewModel : BindableBase
         Raise(nameof(PlanSummary));
         Raise(nameof(HasExportPlan));
         InvalidateExportPreflight();
+        ExportHistory.Clear();
+        Raise(nameof(ExportActionLabel)); Raise(nameof(ExportChangeSummary)); Raise(nameof(HasExportHistory));
     }
 
     private void InvalidateExportPreflight()
@@ -616,6 +631,7 @@ public sealed class MainViewModel : BindableBase
         Raise(nameof(CanResumeExport)); Raise(nameof(CanCancelExport)); Raise(nameof(ExportStateLabel));
         Raise(nameof(ExportFileSummary)); Raise(nameof(ExportBytesSummary)); Raise(nameof(ExportSpaceSummary));
         Raise(nameof(ExportEtaSummary)); Raise(nameof(ExportResumeSummary));
+        Raise(nameof(ExportActionLabel)); Raise(nameof(ExportChangeSummary)); Raise(nameof(HasExportHistory));
     }
 
     private ExportPreflightOptions CurrentExportOptions() => new(
@@ -1178,7 +1194,37 @@ public sealed class MainViewModel : BindableBase
         ExportPreflightFindings.Clear();
         foreach (var finding in report.Findings)
             ExportPreflightFindings.Add(new(finding.Severity.ToString(), finding.Code, finding.Title, finding.Detail, finding.Path ?? ""));
+        RefreshExportHistory(report.ProjectRoot);
         RaiseExportProperties();
+    }
+
+    public bool HasExportHistory => ExportHistory.Count > 0;
+
+    private void RefreshExportHistory(string projectRoot)
+    {
+        ExportHistory.Clear();
+        if (!Directory.Exists(projectRoot))
+        {
+            Raise(nameof(HasExportHistory)); Raise(nameof(ExportActionLabel));
+            return;
+        }
+        var entries = ExportHistoryStore.Read(projectRoot).Entries.OrderBy(item => item.CreatedAtUtc).ToArray();
+        var rows = new List<ExportHistoryRow>();
+        var cumulativeSeconds = 0d;
+        foreach (var entry in entries)
+        {
+            cumulativeSeconds += entry.AddedIntegrationSeconds;
+            var english = UiLanguage == UiLocalization.English;
+            var title = entry.Mode switch { "initial" => english ? "First export" : "Prima esportazione", "baseline" => english ? "Previous data" : "Dati precedenti", _ => english ? "Update" : "Aggiornamento" };
+            var integration = FormatDuration(TimeSpan.FromSeconds(entry.AddedIntegrationSeconds));
+            var groups = string.Join(" · ", entry.Groups.Where(group => group.LightCount > 0).Select(group => $"{group.Filter} / {group.Session}: {group.LightCount} Light / {FormatDuration(TimeSpan.FromSeconds(group.IntegrationSeconds))}"));
+            var detail = (english
+                ? $"{entry.AddedFiles} files added · +{integration} · total {FormatDuration(TimeSpan.FromSeconds(cumulativeSeconds))} · {entry.UnchangedFiles} unchanged"
+                : $"{entry.AddedFiles} file aggiunti · +{integration} · totale {FormatDuration(TimeSpan.FromSeconds(cumulativeSeconds))} · {entry.UnchangedFiles} invariati") + (groups.Length == 0 ? "" : $"\n{groups}");
+            rows.Add(new(entry.CreatedAtUtc.ToLocalTime().ToString("dd MMM yyyy · HH:mm"), title, detail));
+        }
+        foreach (var row in rows.AsEnumerable().Reverse()) ExportHistory.Add(row);
+        Raise(nameof(HasExportHistory)); Raise(nameof(ExportActionLabel));
     }
 
     public string ExportStatistics(string destinationRoot)
@@ -1427,8 +1473,11 @@ public sealed class MainViewModel : BindableBase
             var output = await ProjectExporter.ExecuteAsync(plan, progress, _exportCancellation.Token, _exportControl, CurrentExportOptions());
             SetExportState(ExportRunState.Completed);
             ExportProgress = 100;
-            ExportProgressDetail = $"Copia e verifica completate · {plan.Files.Count} file";
+            ExportProgressDetail = report.IsIncremental
+                ? $"Aggiornamento completato · {report.NewFileCount} nuovi · {report.ResumeFileCount} invariati"
+                : $"Copia e verifica completate · {plan.Files.Count} file";
             Status = $"Progetto verificato: {output}";
+            RefreshExportHistory(output);
             tracked.Complete("AF-EXPORT-OK", $"Esportazione verificata completata: {plan.Files.Count} file");
             return output;
         }
@@ -2149,6 +2198,7 @@ public sealed class MainViewModel : BindableBase
 public sealed record WbppKeywordRow(string Keyword, string Pre, string Post, string Reason);
 public enum ExportRunState { Idle, Preflighting, Ready, Blocked, Running, Paused, Cancelling, Completed, Cancelled, Failed }
 public sealed record ExportPreflightFindingRow(string Severity, string Code, string Title, string Detail, string Path);
+public sealed record ExportHistoryRow(string Date, string Title, string Detail);
 public sealed record DiagnosticEventRow(string Timestamp, string Level, string Code, string Operation, string Correlation, string Message, string ExceptionType);
 public sealed record FlatSetOption(CalibrationGroup Group, string LinkId, string Filter, string Display)
 {

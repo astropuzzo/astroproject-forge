@@ -27,7 +27,8 @@ internal static class RegressionQa
         await ExportPreflightSafetyAsync();
         await ExportExecutionControlAsync();
         await InterruptedExportAsync();
-        Console.WriteLine("PASS QA: 5 vendor, 1.000 confini notte, 10.000 frame, fuzz FITS/XISF, metriche Quality FITS, migrazione, update SHA-256/Authenticode, controlli export, pausa e ripresa verificata.");
+        await IncrementalExportHistoryAsync();
+        Console.WriteLine("PASS QA: 5 vendor, 1.000 confini notte, 10.000 frame, fuzz FITS/XISF, metriche Quality FITS, migrazione, update SHA-256/Authenticode, export incrementale e cronologia verificati.");
     }
 
     private static void VendorHeaderMatrix()
@@ -291,7 +292,7 @@ internal static class RegressionQa
             var controlRoot = Path.Combine(result, "_AstroForge");
             Assert(File.Exists(Path.Combine(controlRoot, "export-preflight.json")), "Il report preflight non è stato incluso nel progetto finale.");
             using var manifest = JsonDocument.Parse(await File.ReadAllTextAsync(Path.Combine(controlRoot, "manifest.json")));
-            Assert(manifest.RootElement.GetProperty("schema").GetInt32() == 2 && manifest.RootElement.TryGetProperty("preflight", out _),
+            Assert(manifest.RootElement.GetProperty("schema").GetInt32() == 3 && manifest.RootElement.TryGetProperty("preflight", out _),
                 "Il manifest export non espone lo schema antifragile e il riepilogo preflight.");
         }
         finally { Directory.Delete(root, true); }
@@ -332,7 +333,7 @@ internal static class RegressionQa
 
             Directory.CreateDirectory(cleanPlan.ProjectRoot);
             var existing = await ProjectExportPreflight.AnalyzeAsync(cleanPlan, safeOptions);
-            Assert(existing.Findings.Any(item => item.Code == "destination.exists"), "Un progetto esistente non è stato protetto dalla sovrascrittura.");
+            Assert(existing.Findings.Any(item => item.Code == "destination.unmanaged"), "Una cartella esistente non gestita deve essere protetta dalla sovrascrittura.");
             Directory.Delete(cleanPlan.ProjectRoot, true);
 
             var stagingFile = Path.Combine(clean.StagingRoot, "Light", "luce_星.fit");
@@ -345,6 +346,52 @@ internal static class RegressionQa
             var free = new DriveInfo(Path.GetPathRoot(root)!).AvailableFreeSpace;
             var insufficient = await ProjectExportPreflight.AnalyzeAsync(cleanPlan, safeOptions with { MinimumReserveBytes = free });
             Assert(insufficient.Findings.Any(item => item.Code == "space.insufficient"), "Lo spazio insufficiente non ha bloccato l'export.");
+        }
+        finally { if (Directory.Exists(root)) Directory.Delete(root, true); }
+    }
+
+    private static async Task IncrementalExportHistoryAsync()
+    {
+        var root = Path.Combine(Path.GetTempPath(), $"AstroForge-QA-Incremental-{Guid.NewGuid():N}");
+        Directory.CreateDirectory(root);
+        try
+        {
+            var first = Path.Combine(root, "session-1.fit");
+            var second = Path.Combine(root, "session-2.fit");
+            await File.WriteAllBytesAsync(first, Enumerable.Repeat((byte)0x31, 96 * 1024).ToArray());
+            await File.WriteAllBytesAsync(second, Enumerable.Repeat((byte)0x32, 128 * 1024).ToArray());
+            PlannedFile Light(string path, string night)
+            {
+                var frame = new FrameMetadata { Path = path, Kind = FrameKind.Light };
+                frame.FilterName.SetOriginal("HOO", MetadataSource.Header);
+                frame.SessionId.SetOriginal(night, MetadataSource.Inferred);
+                frame.ExposureSeconds.SetOriginal(600, MetadataSource.Header);
+                return new(frame, Path.Combine("Light", "FILTER_HOO", $"NIGHT_{night}", Path.GetFileName(path)), "light");
+            }
+
+            var initial = new ProjectPlan("Growing", root, [Light(first, "2026-09-01")], new WbppRecipe([], ["qa"]));
+            await ProjectExporter.ExecuteAsync(initial);
+            var firstDestination = Path.Combine(initial.ProjectRoot, initial.Files[0].RelativePath);
+            var firstHash = Convert.ToHexString(SHA256.HashData(await File.ReadAllBytesAsync(firstDestination)));
+
+            var update = new ProjectPlan("Growing", root, [Light(first, "2026-09-01"), Light(second, "2026-09-02")], new WbppRecipe([], ["qa"]));
+            var report = await ProjectExportPreflight.AnalyzeAsync(update, new(0, 0, 100));
+            Assert(report.IsReady && report.IsIncremental && report.ResumeFileCount == 1 && report.NewFileCount == 1,
+                "Il preflight incrementale non distingue file invariati e nuovi.");
+            await ProjectExporter.ExecuteAsync(update, preflightOptions: new(0, 0, 100));
+            Assert(File.Exists(Path.Combine(update.ProjectRoot, update.Files[1].RelativePath)), "Il nuovo frame non è stato aggiunto al progetto.");
+            Assert(firstHash == Convert.ToHexString(SHA256.HashData(await File.ReadAllBytesAsync(firstDestination))), "Il frame invariato è stato modificato.");
+
+            var history = ExportHistoryStore.Read(update.ProjectRoot);
+            Assert(history.Entries.Count == 2 && history.Entries[^1].AddedFiles == 1 && history.Entries[^1].UnchangedFiles == 1
+                && Math.Abs(history.Entries[^1].AddedIntegrationSeconds - 600) < 0.01,
+                "La cronologia incrementale non descrive correttamente la nuova sessione.");
+            Assert(File.Exists(Path.Combine(update.ProjectRoot, "_AstroForge", ExportHistoryStore.MarkdownFileName)), "La timeline leggibile non è stata generata.");
+
+            await File.WriteAllBytesAsync(firstDestination, Enumerable.Repeat((byte)0x7F, 96 * 1024).ToArray());
+            var conflict = await ProjectExportPreflight.AnalyzeAsync(update, new(0, 0, 100));
+            Assert(!conflict.IsReady && conflict.Findings.Any(item => item.Code == "update.hash_conflict"),
+                "Un file esistente diverso non è stato bloccato.");
         }
         finally { if (Directory.Exists(root)) Directory.Delete(root, true); }
     }

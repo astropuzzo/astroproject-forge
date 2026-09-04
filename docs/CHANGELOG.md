@@ -1,5 +1,15 @@
 # AstroProject Forge — note di rilascio
 
+## 1.5.0 — 4 settembre 2026
+
+- Le cartelle progetto già esportate possono essere aggiornate senza ricopiare l’intero dataset.
+- Prima della copia vengono distinti file nuovi, file invariati e conflitti reali tramite SHA-256.
+- I file invariati vengono riutilizzati, quelli nuovi aggiunti e qualsiasi contenuto diverso con lo stesso percorso viene bloccato senza sovrascritture silenziose.
+- Ogni aggiunta significativa alimenta una cronologia con data, filtro, sessione, numero di Light, calibrazioni, integrazione aggiunta e totale cumulativo.
+- La timeline è visibile nell’app e salvata nel progetto come `export-history.json` e `export-history.md`.
+- Il manifest di esportazione passa allo schema 3 e conserva anche i record precedenti non inclusi nell’aggiornamento corrente.
+- Windows, Linux e macOS condividono lo stesso flusso di aggiornamento incrementale.
+
 ## 1.4.0 — 3 settembre 2026
 
 - Aggiunto un ciclo completo per i progetti: **Nuovo**, **Apri**, **Salva** e

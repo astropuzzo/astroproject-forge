@@ -479,8 +479,13 @@ public partial class MainWindow : Window
     {
         try
         {
+            var updating = _viewModel.ExportActionLabel is "Aggiorna progetto" or "Update project";
             var path = await _viewModel.ExportAsync();
-            MessageBox.Show(this, $"Progetto creato e verificato.\n\n{path}", "Esportazione completata", MessageBoxButton.OK, MessageBoxImage.Information);
+            var english = _viewModel.UiLanguage == UiLocalization.English;
+            var message = updating
+                ? (english ? $"Project updated. Only new files were copied.\n\n{path}" : $"Progetto aggiornato. Sono stati copiati soltanto i file nuovi.\n\n{path}")
+                : (english ? $"Project created and verified.\n\n{path}" : $"Progetto creato e verificato.\n\n{path}");
+            MessageBox.Show(this, message, english ? "Export complete" : "Esportazione completata", MessageBoxButton.OK, MessageBoxImage.Information);
         }
         catch (OperationCanceledException) { }
         catch (Exception exception) { ShowError("AF-EXPORT-001", "Esportazione non completata", exception, MessageBoxImage.Error); }

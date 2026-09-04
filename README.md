@@ -21,6 +21,7 @@ AstroProject Forge reads FITS and XISF metadata, reconstructs observing nights a
 - integration statistics by filter, session and night;
 - project-specific WBPP Grouping Keywords;
 - optional frame-quality analysis with FWHM, eccentricity, noise, SNR, Blink and non-destructive exclusions;
+- incremental project updates that copy only new files and preserve a filter/session timeline;
 - Italian and English interface;
 - one-click Windows updates with verified download, installation and automatic restart.
 
@@ -34,7 +35,7 @@ AstroProject Forge reads FITS and XISF metadata, reconstructs observing nights a
 4. Select **Analyze**.
 5. Review unresolved items and adjust metadata or calibration links when necessary.
 6. Check the suggested WBPP Grouping Keywords.
-7. Export the project and load it in PixInsight WeightedBatchPreprocessing.
+7. Export the project and load it in PixInsight WeightedBatchPreprocessing. Re-exporting to the same managed project adds only new files and updates its history.
 
 Master Libraries are saved in the application settings, not inside a project. Opening
 or creating a project never removes the configured libraries.
@@ -72,6 +73,7 @@ AstroProject Forge legge i metadati FITS e XISF, ricostruisce le notti osservati
 - statistiche di integrazione per filtro, sessione e notte;
 - Grouping Keywords WBPP calcolate sul progetto;
 - analisi qualità opzionale con FWHM, eccentricità, rumore, SNR, Blink ed esclusioni non distruttive;
+- aggiornamenti incrementali che copiano solo i nuovi file e conservano una timeline per filtro e sessione;
 - interfaccia italiana e inglese;
 - aggiornamenti Windows in un clic con download verificato, installazione silenziosa e riavvio automatico.
 
@@ -85,7 +87,7 @@ AstroProject Forge legge i metadati FITS e XISF, ricostruisce le notti osservati
 4. Seleziona **Analizza**.
 5. Risolvi gli elementi da rivedere modificando i metadati o i collegamenti delle calibrazioni.
 6. Controlla le Grouping Keywords WBPP suggerite.
-7. Esporta il progetto e caricalo in PixInsight WeightedBatchPreprocessing.
+7. Esporta il progetto e caricalo in PixInsight WeightedBatchPreprocessing. Esportandolo di nuovo nella stessa cartella gestita verranno aggiunti soltanto i nuovi file e aggiornata la cronologia.
 
 Le Master Library sono salvate nelle impostazioni dell'app, non nel progetto. Aprire
 o creare un progetto non rimuove le librerie configurate.

@@ -52,8 +52,8 @@ La stessa logica Core è usata dall'interfaccia Avalonia per Linux e macOS.
       dichiarati dall'utente.
 - [ ] Timeline degli eventi ottici: rotazione camera, pulizia, cambio filtro o adattatore;
       ogni evento propone automaticamente un nuovo Flat Set.
-- [ ] Aggiornamento incrementale: importare una nuova notte in un progetto esistente senza
-      ricalcolare file invariati.
+- [x] Aggiornamento incrementale: aggiunge soltanto file nuovi, verifica gli invariati,
+      blocca i conflitti e conserva una timeline cumulativa per filtro e sessione (1.5.0).
 - [ ] Obiettivi di integrazione per filtro con avanzamento, deficit e previsione notti.
 - [ ] Cache Quality Lab invalidata da hash, per non rimisurare frame invariati.
 - [ ] Regole qualità personalizzabili per serie e preset per focale/campionamento.

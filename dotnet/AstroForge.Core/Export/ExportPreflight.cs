@@ -32,7 +32,9 @@ public sealed record ExportPreflightReport(
     long? AvailableFreeBytes,
     long RequiredFreeBytes,
     TimeSpan EstimatedDuration,
-    IReadOnlyList<ExportPreflightFinding> Findings)
+    IReadOnlyList<ExportPreflightFinding> Findings,
+    bool IsIncremental = false,
+    int NewFileCount = 0)
 {
     public int ErrorCount => Findings.Count(item => item.Severity == ExportPreflightSeverity.Error);
     public int WarningCount => Findings.Count(item => item.Severity == ExportPreflightSeverity.Warning);
@@ -61,6 +63,8 @@ public static class ProjectExportPreflight
         var destinationRoot = Path.GetFullPath(plan.DestinationRoot);
         var projectRoot = Path.GetFullPath(plan.ProjectRoot);
         var stagingRoot = Path.GetFullPath(Path.Combine(destinationRoot, $".{plan.ProjectName}.astroforge-staging"));
+        var incremental = Directory.Exists(projectRoot);
+        var copyRoot = incremental ? projectRoot : stagingRoot;
         var comparer = PathIdentity.Comparer;
         var destinations = new HashSet<string>(comparer);
         var totalBytes = 0L;
@@ -69,8 +73,14 @@ public static class ProjectExportPreflight
         var longPaths = 0;
         var partialFiles = 0;
 
-        if (Directory.Exists(projectRoot))
-            findings.Add(Error("destination.exists", "Il progetto esiste già", "Scegli un altro nome o un’altra destinazione. Nessun file esistente verrà sovrascritto.", projectRoot));
+        if (incremental)
+        {
+            var manifest = Path.Combine(projectRoot, "_AstroForge", "manifest.json");
+            if (!IsManagedProject(manifest, plan.ProjectName))
+                findings.Add(Error("destination.unmanaged", "La cartella esistente non è un progetto aggiornabile", "Per sicurezza l’app aggiorna soltanto cartelle create da AstroProject Forge e dotate di un manifest valido.", projectRoot));
+            else
+                findings.Add(Info("destination.update", "Aggiornamento incrementale", "I file identici saranno riutilizzati; verranno copiati soltanto quelli nuovi.", projectRoot));
+        }
 
         foreach (var root in NormalizeRoots(options.SourceRoots))
         {
@@ -112,8 +122,8 @@ public static class ProjectExportPreflight
                 continue;
             }
 
-            var staged = Path.GetFullPath(Path.Combine(stagingRoot, item.RelativePath));
-            if (!IsWithin(staged, stagingRoot))
+            var staged = Path.GetFullPath(Path.Combine(copyRoot, item.RelativePath));
+            if (!IsWithin(staged, copyRoot))
             {
                 findings.Add(Error("path.traversal", "Percorso esterno allo staging", "Il piano tenterebbe di uscire dalla cartella controllata.", item.RelativePath));
                 continue;
@@ -130,14 +140,14 @@ public static class ProjectExportPreflight
                 var stagedInfo = new FileInfo(staged);
                 if (stagedInfo.Length != length)
                 {
-                    findings.Add(Error("resume.size_mismatch", "Copia di ripresa non coerente", "La dimensione del file nello staging non coincide con la sorgente.", staged));
+                    findings.Add(Error(incremental ? "update.size_conflict" : "resume.size_mismatch", incremental ? "File esistente diverso" : "Copia di ripresa non coerente", incremental ? "Il percorso è già occupato da un file con dimensione diversa. Nessun dato verrà sovrascritto." : "La dimensione del file nello staging non coincide con la sorgente.", staged));
                     continue;
                 }
                 var sourceHash = await HashAsync(source, cancellationToken);
                 var stagedHash = await HashAsync(staged, cancellationToken);
                 if (!sourceHash.SequenceEqual(stagedHash))
                 {
-                    findings.Add(Error("resume.hash_mismatch", "Copia di ripresa alterata", "Lo SHA-256 nello staging non coincide con la sorgente.", staged));
+                    findings.Add(Error(incremental ? "update.hash_conflict" : "resume.hash_mismatch", incremental ? "File esistente diverso" : "Copia di ripresa alterata", incremental ? "Il nome coincide ma il contenuto è diverso. Nessun dato verrà sovrascritto." : "Lo SHA-256 nello staging non coincide con la sorgente.", staged));
                     continue;
                 }
                 resumeFiles++;
@@ -156,7 +166,7 @@ public static class ProjectExportPreflight
         if (partialFiles > 0)
             findings.Add(Warning("resume.partial", "Copie parziali rilevate", $"{partialFiles} file .partial verranno ricreati; le copie già verificate restano riutilizzabili."));
         if (resumeFiles > 0)
-            findings.Add(Info("resume.ready", "Ripresa disponibile", $"{resumeFiles} file già verificati non verranno ricopiati."));
+            findings.Add(Info(incremental ? "update.unchanged" : "resume.ready", incremental ? "File invariati" : "Ripresa disponibile", $"{resumeFiles} file già verificati non verranno ricopiati."));
 
         var bytesToCopy = Math.Max(0, totalBytes - resumeBytes);
         var reserve = Math.Max(options.MinimumReserveBytes, (long)Math.Ceiling(totalBytes * options.FreeSpaceMarginPercent / 100d));
@@ -171,7 +181,22 @@ public static class ProjectExportPreflight
         findings.Add(Info("preflight.read_only", "Controlli completati", "La verifica non ha creato, modificato o eliminato file nella destinazione."));
         var seconds = bytesToCopy / (options.EstimatedThroughputMiBPerSecond * 1024d * 1024d);
         return new(DateTimeOffset.UtcNow, projectRoot, stagingRoot, kind, plan.Files.Count, totalBytes, resumeFiles, resumeBytes,
-            bytesToCopy, freeBytes, requiredFree, TimeSpan.FromSeconds(seconds), findings);
+            bytesToCopy, freeBytes, requiredFree, TimeSpan.FromSeconds(seconds), findings, incremental, Math.Max(0, plan.Files.Count - resumeFiles));
+    }
+
+    private static bool IsManagedProject(string manifestPath, string projectName)
+    {
+        if (!File.Exists(manifestPath)) return false;
+        try
+        {
+            using var document = System.Text.Json.JsonDocument.Parse(File.ReadAllText(manifestPath));
+            var root = document.RootElement;
+            return root.TryGetProperty("application", out var application)
+                && application.GetString() == "AstroProject Forge"
+                && root.TryGetProperty("project_name", out var name)
+                && string.Equals(name.GetString(), projectName, StringComparison.OrdinalIgnoreCase);
+        }
+        catch (System.Text.Json.JsonException) { return false; }
     }
 
     private static IEnumerable<string> NormalizeRoots(IReadOnlyList<string>? roots)
