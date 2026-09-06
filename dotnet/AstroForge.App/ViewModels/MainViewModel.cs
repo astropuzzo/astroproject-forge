@@ -373,11 +373,11 @@ public sealed class MainViewModel : BindableBase
         }
     }
     public string AstronomicalNightExplanation => UiLanguage == UiLocalization.English
-        ? $"A night starts in the evening and may continue after midnight. Frames captured before {SessionBoundaryHour:00}:00 local time are therefore assigned to the previous calendar date."
-        : $"Una notte inizia la sera e può continuare dopo mezzanotte. Per questo i file acquisiti prima delle {SessionBoundaryHour:00}:00 locali vengono assegnati alla data del giorno precedente.";
+        ? $"Frames captured after midnight stay in the session started the previous evening. The app starts a new night at {SessionBoundaryHour:00}:00."
+        : $"Gli scatti dopo mezzanotte appartengono ancora alla sessione iniziata la sera prima. Il programma cambia notte alle {SessionBoundaryHour:00}:00.";
     public string AstronomicalNightExample => UiLanguage == UiLocalization.English
-        ? $"Example · Jun 24 at 22:30 + Jun 25 at 03:10 → observing night Jun 24"
-        : $"Esempio · 24 giu ore 22:30 + 25 giu ore 03:10 → notte osservativa 24 giu";
+        ? $"Jun 24 22:30 + Jun 25 03:10 = the same night: June 24"
+        : $"24 giu 22:30 + 25 giu 03:10 = stessa notte: 24 giugno";
     public bool IsScanning { get => _isScanning; private set { if (Set(ref _isScanning, value)) { Raise(nameof(CanRunProjectOperations)); Raise(nameof(CanAnalyzeProject)); Raise(nameof(AnalysisActionLabel)); Raise(nameof(CanRunQualityAnalysis)); Raise(nameof(CanRunAllQualityAnalysis)); Raise(nameof(CanChangeQualityExclusions)); RaiseExportProperties(); ApplyOverridesCommand.RaiseCanExecuteChanged(); ApplyLibraryOffsetCommand.RaiseCanExecuteChanged(); ApplyProjectDefaultsCommand.RaiseCanExecuteChanged(); SaveSettingsCommand.RaiseCanExecuteChanged(); ClearProjectCommand.RaiseCanExecuteChanged(); LinkFlatSetCommand.RaiseCanExecuteChanged(); UnlinkFlatSetCommand.RaiseCanExecuteChanged(); UndoCommand.RaiseCanExecuteChanged(); } } }
     public bool ShowIssuesOnly { get => _showIssuesOnly; set { if (Set(ref _showIssuesOnly, value)) RebuildTree(); } }
     public string SearchText { get => _searchText; set { if (Set(ref _searchText, value)) RebuildTree(); } }
