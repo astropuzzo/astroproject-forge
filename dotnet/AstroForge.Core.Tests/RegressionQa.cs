@@ -164,7 +164,7 @@ internal static class RegressionQa
         var handler = new FakeHandler(request => request.RequestUri!.AbsolutePath.EndsWith("beta.json")
             ? new HttpResponseMessage(HttpStatusCode.OK) { Content = new StringContent(JsonSerializer.Serialize(manifest, new JsonSerializerOptions { PropertyNamingPolicy = JsonNamingPolicy.CamelCase }), Encoding.UTF8, "application/json") }
             : new HttpResponseMessage(HttpStatusCode.OK) { Content = new ByteArrayContent(payload) });
-        var service = new UpdateService(new HttpClient(handler), _ => true);
+        var service = new UpdateService(new HttpClient(handler), _ => true, ReleasePlatform.WindowsX64);
         var decision = await service.CheckAsync(new Uri("https://updates.example.test/beta.json"), "0.9.0-beta.1", ReleaseChannel.Beta);
         Assert(decision.IsAvailable && UpdateService.CompareVersions("1.0.0", "1.0.0-rc.1") > 0, "Ordinamento SemVer/update errato.");
         var githubRelease = JsonSerializer.Serialize(new[]
@@ -192,7 +192,7 @@ internal static class RegressionQa
             request.RequestUri!.Host.Equals("api.github.com", StringComparison.OrdinalIgnoreCase)
                 ? new HttpResponseMessage(HttpStatusCode.OK) { Content = new StringContent(githubRelease, Encoding.UTF8, "application/json") }
                 : new HttpResponseMessage(HttpStatusCode.NotFound));
-        var fallbackService = new UpdateService(new HttpClient(fallbackHandler), _ => false);
+        var fallbackService = new UpdateService(new HttpClient(fallbackHandler), _ => false, ReleasePlatform.WindowsX64);
         var fallbackDecision = await fallbackService.CheckChannelAsync("0.9.0-beta.3", ReleaseChannel.Beta);
         Assert(fallbackDecision.IsAvailable && !fallbackDecision.Manifest.Signed
             && fallbackDecision.Manifest.ReleaseNotesUrl?.Contains("v0.9.0-beta.4", StringComparison.Ordinal) == true,
@@ -229,7 +229,7 @@ internal static class RegressionQa
         var stableService = new UpdateService(new HttpClient(new FakeHandler(request =>
             request.RequestUri!.Host.Equals("api.github.com", StringComparison.OrdinalIgnoreCase)
                 ? new HttpResponseMessage(HttpStatusCode.OK) { Content = new StringContent(stableRelease, Encoding.UTF8, "application/json") }
-                : new HttpResponseMessage(HttpStatusCode.NotFound))), _ => false);
+                : new HttpResponseMessage(HttpStatusCode.NotFound))), _ => false, ReleasePlatform.WindowsX64);
         var stableDecision = await stableService.CheckChannelAsync("0.9.0-beta.5", ReleaseChannel.Stable);
         Assert(stableDecision.IsAvailable && stableDecision.Manifest.Version == "1.0.0",
             "Il canale Stable non ha rilevato la release ufficiale.");
@@ -241,7 +241,7 @@ internal static class RegressionQa
                 {
                     Content = new StringContent(JsonSerializer.Serialize(staleManifest, new JsonSerializerOptions { PropertyNamingPolicy = JsonNamingPolicy.CamelCase }), Encoding.UTF8, "application/json")
                 });
-        var newestService = new UpdateService(new HttpClient(staleHandler), _ => true);
+        var newestService = new UpdateService(new HttpClient(staleHandler), _ => true, ReleasePlatform.WindowsX64);
         var newestDecision = await newestService.CheckChannelAsync("0.9.0-beta.2", ReleaseChannel.Beta);
         Assert(newestDecision.Manifest.Version == "0.9.0-beta.4" && !newestDecision.Manifest.Signed,
             "Un feed firmato ma obsoleto ha nascosto una release GitHub più recente.");
@@ -255,7 +255,7 @@ internal static class RegressionQa
             var bad = manifest.Installer with { Sha256 = new string('a', 64) };
             await AssertThrowsAsync<CryptographicException>(() => service.DownloadVerifiedAsync(bad, Path.Combine(root, "bad.exe")), "Un update alterato deve essere rifiutato.");
             Assert(!File.Exists(Path.Combine(root, "bad.exe.partial")), "Il payload update parziale deve essere eliminato dopo il rifiuto.");
-            var unsignedService = new UpdateService(new HttpClient(handler), _ => false);
+            var unsignedService = new UpdateService(new HttpClient(handler), _ => false, ReleasePlatform.WindowsX64);
             var unsignedPath = Path.Combine(root, "unsigned.exe");
             await unsignedService.DownloadVerifiedAsync(manifest.Installer, unsignedPath);
             Assert(File.ReadAllBytes(unsignedPath).SequenceEqual(payload), "L'update GitHub non firmato ma integro non è stato scaricato.");
