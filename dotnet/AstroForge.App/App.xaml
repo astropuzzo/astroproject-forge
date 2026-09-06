@@ -192,6 +192,7 @@
             <Setter Property="Padding" Value="13,9" />
             <Setter Property="Margin" Value="0,0,5,0" />
             <Setter Property="MinWidth" Value="0" />
+            <Setter Property="FontWeight" Value="SemiBold" />
             <Setter Property="HorizontalContentAlignment" Value="Stretch" />
             <Setter Property="VerticalContentAlignment" Value="Stretch" />
             <Setter Property="Template">
@@ -202,6 +203,9 @@
                             <ContentPresenter ContentSource="Header" HorizontalAlignment="Left" VerticalAlignment="Center" />
                         </Border>
                         <ControlTemplate.Triggers>
+                            <Trigger Property="Header" Value="Statistiche  ·  opzionale"><Setter Property="Opacity" Value="0.72"/><Setter Property="FontWeight" Value="Normal"/></Trigger>
+                            <Trigger Property="Header" Value="Qualità  ·  opzionale"><Setter Property="Opacity" Value="0.72"/><Setter Property="FontWeight" Value="Normal"/></Trigger>
+                            <Trigger Property="Header" Value="Master Library  ·  strumento"><Setter Property="Opacity" Value="0.72"/><Setter Property="FontWeight" Value="Normal"/></Trigger>
                             <Trigger Property="IsSelected" Value="True"><Setter TargetName="TabBorder" Property="Background" Value="{StaticResource AccentSoft}"/><Setter TargetName="TabBorder" Property="BorderBrush" Value="#475D8A82"/><Setter Property="Foreground" Value="{StaticResource Text}"/></Trigger>
                             <Trigger Property="IsKeyboardFocused" Value="True"><Setter TargetName="TabBorder" Property="BorderBrush" Value="{StaticResource Accent}"/><Setter TargetName="TabBorder" Property="BorderThickness" Value="2"/></Trigger>
                             <Trigger Property="IsMouseOver" Value="True"><Setter TargetName="TabBorder" Property="Background" Value="#D01B2330"/></Trigger>

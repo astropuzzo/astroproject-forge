@@ -1,5 +1,14 @@
 # AstroProject Forge — note di rilascio
 
+## 1.7.0 — 6 settembre 2026
+
+- Navigazione riorganizzata in quattro passaggi: Progetto, Calibrazioni, Esportazione e PixInsight WBPP.
+- Statistiche, Qualità e Master Library sono separate visivamente dal percorso principale e marcate come strumenti opzionali.
+- Lo stato superiore indica la prossima azione concreta invece di riepiloghi generici.
+- La pagina Dati non mostra più schede a zero prima dell’analisi: presenta una sola azione utile.
+- Titoli e testi dell’esportazione ridotti; parametri tecnici spiegati con tooltip.
+- README e Wiki riscritti attorno allo stesso percorso operativo.
+
 ## 1.6.1 — 6 settembre 2026
 
 - All’avvio, Windows mostra un avviso quando è disponibile una versione più recente e può aprire direttamente il pannello di aggiornamento.

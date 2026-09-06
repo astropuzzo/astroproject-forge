@@ -63,9 +63,13 @@ public sealed partial class MainWindow : Window
 
     private void ApplyNavigationLabels()
     {
-        var labels = new[] { "Progetto", "Esportazione", "PixInsight WBPP", "Dati", "Controllo qualità", "Calibrazioni", "Libreria Master", "Diagnostica" };
         var tabs = WorkspaceTabs.Items.OfType<TabItem>().ToArray();
-        for (var index = 0; index < Math.Min(labels.Length, tabs.Length); index++) tabs[index].Header = labels[index];
+        if (tabs.Length < 8) return;
+        var ordered = new[] { tabs[0], tabs[5], tabs[1], tabs[2], tabs[3], tabs[4], tabs[6], tabs[7] };
+        WorkspaceTabs.Items.Clear();
+        foreach (var tab in ordered) WorkspaceTabs.Items.Add(tab);
+        var labels = new[] { "1  Progetto", "2  Calibrazioni", "3  Esportazione", "4  PixInsight WBPP", "Statistiche  ·  opzionale", "Qualità  ·  opzionale", "Master Library  ·  strumento", "Diagnostica" };
+        for (var index = 0; index < labels.Length; index++) ordered[index].Header = labels[index];
     }
 
     private void ScheduleLocalization()

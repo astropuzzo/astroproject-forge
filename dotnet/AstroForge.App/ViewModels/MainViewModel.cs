@@ -561,7 +561,9 @@ public sealed class MainViewModel : BindableBase
         Raise(nameof(ShowIssuesOnly));
         Progress = 0;
         _awaitingReanalysis = awaitingReanalysis && HasSources;
-        ReadinessText = HasSources ? $"{SourceSummary} · analisi richiesta" : "Aggiungi file o cartelle FITS/XISF";
+        ReadinessText = HasSources
+            ? (UiLanguage == UiLocalization.English ? "Step 1 · Select Analyze" : "Passo 1 · Premi Analizza")
+            : (UiLanguage == UiLocalization.English ? "Step 1 · Import files" : "Passo 1 · Importa i file");
         CalibrationSummary = "Seleziona uno o più Light per vedere le calibrazioni assegnate.";
         Raise(nameof(TotalFiles)); Raise(nameof(TotalIssues)); Raise(nameof(OverrideCount));
         Raise(nameof(UnresolvedCalibrations)); Raise(nameof(IsProjectReady)); Raise(nameof(PlanSummary));
@@ -1920,11 +1922,12 @@ public sealed class MainViewModel : BindableBase
         WbppNotes.Clear();
         foreach (var note in recipe.Notes) WbppNotes.Add(note);
 
+        var english = UiLanguage == UiLocalization.English;
         ReadinessText = _analysis.Lights.Count == 0
-            ? $"Libreria Master · {_frames.Count(frame => frame.IsMaster)} Master analizzati"
+            ? (english ? "No Light frames found" : "Nessun Light trovato")
             : _analysis.Ready
-                ? $"Pronto per WBPP · {_analysis.Lights.Count} Light con Flat, Dark e Bias assegnati"
-                : $"Da risolvere · {_analysis.UnresolvedCount} assegnazioni di calibrazione mancanti o ambigue";
+                ? (english ? $"Step 3 · Export {_analysis.Lights.Count} Light frames" : $"Passo 3 · Esporta {_analysis.Lights.Count} Light")
+                : (english ? $"Step 2 · Resolve {_analysis.UnresolvedCount} calibrations" : $"Passo 2 · Risolvi {_analysis.UnresolvedCount} calibrazioni");
         InvalidateExportPlan();
         Raise(nameof(UnresolvedCalibrations));
         Raise(nameof(IsProjectReady));

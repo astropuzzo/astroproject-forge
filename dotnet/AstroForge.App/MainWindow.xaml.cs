@@ -43,6 +43,7 @@ public partial class MainWindow : Window
     public MainWindow()
     {
         InitializeComponent();
+        OrderWorkflowTabs();
         DataContext = _viewModel;
         _viewModel.UiLanguageChanged += (_, _) => ScheduleLocalization();
         _viewModel.PropertyChanged += (_, _) => ScheduleLocalization();
@@ -52,6 +53,13 @@ public partial class MainWindow : Window
         Loaded += MainWindow_Loaded;
         _blinkTimer.Tick += BlinkTimer_Tick;
         ApplyCommandLine();
+    }
+
+    private void OrderWorkflowTabs()
+    {
+        var ordered = new[] { ProjectTab, CalibrationTab, ExportTab, WbppTab, DataTab, QualityTab, MasterLibraryTab };
+        WorkspaceTabs.Items.Clear();
+        foreach (var tab in ordered) WorkspaceTabs.Items.Add(tab);
     }
 
     private void ApplyCommandLine()
@@ -440,7 +448,7 @@ public partial class MainWindow : Window
     {
         var selectedTab = WorkspaceTabs.SelectedItem as System.Windows.Controls.TabItem;
         _inspectorContextAvailable = string.Equals(selectedTab?.Tag?.ToString(), "Inspector", StringComparison.Ordinal);
-        if (WorkspaceTabs.SelectedIndex != 4) StopBlink();
+        if (WorkspaceTabs.SelectedItem != QualityTab) StopBlink();
         ApplyResponsiveLayout();
     }
 

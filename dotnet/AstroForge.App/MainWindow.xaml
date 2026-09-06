@@ -226,14 +226,14 @@
                 <Grid.RowDefinitions><RowDefinition Height="Auto"/><RowDefinition Height="*"/></Grid.RowDefinitions>
                 <Border Style="{StaticResource Card}" Padding="15,11" Margin="0,0,0,12" Background="{StaticResource RaisedSurface}" BorderBrush="#314154">
                     <Grid><Grid.ColumnDefinitions><ColumnDefinition/><ColumnDefinition Width="Auto"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions>
-                            <StackPanel><TextBlock Text="Stato progetto" Style="{StaticResource Eyebrow}"/><TextBlock Text="{Binding ReadinessText}" Margin="0,4,0,0" TextWrapping="Wrap" FontSize="13"/></StackPanel>
+                            <StackPanel><TextBlock Text="Prossimo passo" Style="{StaticResource Eyebrow}"/><TextBlock Text="{Binding ReadinessText}" Margin="0,4,0,0" TextWrapping="Wrap" FontSize="13"/></StackPanel>
                         <Border Grid.Column="1" Background="#1C222D3A" BorderBrush="#39465A" BorderThickness="1" CornerRadius="10" Padding="11,5" VerticalAlignment="Center" Visibility="{Binding HasAnalysis, Converter={StaticResource BooleanToVisibility}}"><TextBlock Text="{Binding UnresolvedCalibrations, StringFormat={}{0} da verificare}" Foreground="{StaticResource Warning}" FontSize="12"/></Border>
                         <Button Grid.Column="2" Content="{Binding AnalysisActionLabel}" Click="Scan_Click" Style="{StaticResource PrimaryButton}" IsEnabled="{Binding CanAnalyzeProject}" Visibility="{Binding HasAnalysis, Converter={StaticResource BooleanToVisibility}}" Margin="12,0,0,0" Padding="20,10" FontWeight="SemiBold" ToolTip="Analizza progetto · Ctrl+Invio"/>
                     </Grid>
                 </Border>
 
                 <TabControl x:Name="WorkspaceTabs" Grid.Row="1" Background="Transparent" BorderThickness="0" TabStripPlacement="Top" HorizontalContentAlignment="Stretch" VerticalContentAlignment="Stretch" SelectionChanged="WorkspaceTabs_SelectionChanged">
-                    <TabItem Header="Progetto" Tag="Inspector">
+                    <TabItem x:Name="ProjectTab" Header="1  Progetto" Tag="Inspector">
                         <Grid Margin="0,14,0,0">
                             <Grid.RowDefinitions><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/><RowDefinition Height="*"/></Grid.RowDefinitions>
                                 <StackPanel><TextBlock Text="Mappa progetto" Style="{StaticResource Title}"/><TextBlock Text="Filtri, sessioni, notti e calibrazioni assegnate." Style="{StaticResource MutedText}" TextWrapping="Wrap"/></StackPanel>
@@ -285,7 +285,7 @@
                         </Grid>
                     </TabItem>
 
-                    <TabItem Header="Esportazione" Tag="Inspector">
+                    <TabItem x:Name="ExportTab" Header="3  Esportazione" Tag="Inspector">
                         <Grid Margin="0,14,0,0">
                             <Grid.RowDefinitions><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/><RowDefinition Height="*"/></Grid.RowDefinitions>
                             <TextBlock Text="Esportazione" Style="{StaticResource Title}"/>
@@ -341,7 +341,7 @@
                         </Grid>
                     </TabItem>
 
-                    <TabItem Header="PixInsight WBPP">
+                    <TabItem x:Name="WbppTab" Header="4  PixInsight WBPP">
                         <ScrollViewer Margin="0,14,0,0" VerticalScrollBarVisibility="Auto">
                             <StackPanel>
                                 <TextBlock Text="Impostazioni WBPP" Style="{StaticResource Title}"/>
@@ -363,21 +363,25 @@
                         </ScrollViewer>
                     </TabItem>
 
-                    <TabItem Header="Dati">
+                    <TabItem x:Name="DataTab" Header="Statistiche  ·  opzionale">
                         <ScrollViewer Margin="0,14,0,0" VerticalScrollBarVisibility="Auto">
                             <StackPanel>
-                                <TextBlock Text="Statistiche" Style="{StaticResource Title}"/>
-                                <TextBlock Text="Integrazione e copertura per filtro, sessione e notte." Style="{StaticResource MutedText}" Margin="0,2,0,14" TextWrapping="Wrap"/>
-                                <Button Content="Esporta dati CSV + JSON" Click="ExportStatistics_Click" HorizontalAlignment="Right" Margin="0,-48,0,14" Padding="11,7"/>
+                                <TextBlock Text="Dati acquisiti" Style="{StaticResource Title}" Margin="0,0,0,14"/>
+                                <Button Content="Esporta CSV + JSON" Click="ExportStatistics_Click" HorizontalAlignment="Right" Margin="0,-48,0,14" Padding="11,7" IsEnabled="{Binding HasAnalysis}" ToolTip="Salva statistiche e sessioni in formati utilizzabili da altri programmi"/>
 
-                                <Grid Margin="0,0,0,16"><Grid.ColumnDefinitions><ColumnDefinition/><ColumnDefinition/><ColumnDefinition/></Grid.ColumnDefinitions>
+                                <Border HorizontalAlignment="Center" Padding="26" Margin="0,30,0,0">
+                                    <Border.Style><Style TargetType="Border" BasedOn="{StaticResource Card}"><Setter Property="Visibility" Value="Visible"/><Style.Triggers><DataTrigger Binding="{Binding HasAnalysis}" Value="True"><Setter Property="Visibility" Value="Collapsed"/></DataTrigger></Style.Triggers></Style></Border.Style>
+                                    <StackPanel><TextBlock Text="Analizza il progetto per vedere i dati." FontSize="18" FontWeight="SemiBold"/><Button Content="Analizza" Click="Scan_Click" Style="{StaticResource PrimaryButton}" HorizontalAlignment="Left" Margin="0,14,0,0" IsEnabled="{Binding CanAnalyzeProject}" ToolTip="Legge i file e calcola sessioni, tempi e calibrazioni"/></StackPanel>
+                                </Border>
+
+                                <Grid Margin="0,0,0,16" Visibility="{Binding HasAnalysis, Converter={StaticResource BooleanToVisibility}}"><Grid.ColumnDefinitions><ColumnDefinition/><ColumnDefinition/><ColumnDefinition/></Grid.ColumnDefinitions>
                                     <Border Style="{StaticResource Card}" Margin="0,0,6,0" Background="{StaticResource RaisedSurface}" BorderBrush="#35534F"><StackPanel><TextBlock Text="INTEGRAZIONE TOTALE" Style="{StaticResource Eyebrow}"/><TextBlock Text="{Binding TotalIntegrationText}" FontSize="28" FontWeight="SemiBold" Margin="0,5,0,0"/></StackPanel></Border>
                                     <Border Grid.Column="1" Style="{StaticResource Card}" Margin="3,0"><StackPanel><TextBlock Text="COPERTURA" Style="{StaticResource Eyebrow}"/><TextBlock Text="{Binding StatisticsSummary}" TextWrapping="Wrap" Margin="0,6,0,0"/></StackPanel></Border>
                                     <Border Grid.Column="2" Style="{StaticResource Card}" Margin="6,0,0,0"><StackPanel><TextBlock Text="INTERVALLO" Style="{StaticResource Eyebrow}"/><TextBlock Text="{Binding StatisticsDateRange}" TextWrapping="Wrap" Margin="0,6,0,0"/></StackPanel></Border>
                                 </Grid>
 
-                                <TextBlock Text="PER FILTRO" Style="{StaticResource Eyebrow}" Margin="2,0,0,8"/>
-                                <ItemsControl ItemsSource="{Binding FilterStatistics}">
+                                <TextBlock Text="PER FILTRO" Style="{StaticResource Eyebrow}" Margin="2,0,0,8" Visibility="{Binding HasAnalysis, Converter={StaticResource BooleanToVisibility}}"/>
+                                <ItemsControl ItemsSource="{Binding FilterStatistics}" Visibility="{Binding HasAnalysis, Converter={StaticResource BooleanToVisibility}}">
                                     <ItemsControl.ItemTemplate><DataTemplate>
                                         <Border Style="{StaticResource Card}" Padding="14" Margin="0,0,0,8">
                                             <Grid><Grid.RowDefinitions><RowDefinition/><RowDefinition/><RowDefinition/></Grid.RowDefinitions><Grid.ColumnDefinitions><ColumnDefinition Width="1.45*"/><ColumnDefinition Width="0.8*"/><ColumnDefinition Width="1.05*"/><ColumnDefinition Width="1.25*"/></Grid.ColumnDefinitions>
@@ -391,8 +395,8 @@
                                     </DataTemplate></ItemsControl.ItemTemplate>
                                 </ItemsControl>
 
-                                <TextBlock Text="SESSIONI DI CONFIGURAZIONE" Style="{StaticResource Eyebrow}" Margin="2,12,0,8"/>
-                                <ItemsControl ItemsSource="{Binding SessionStatistics}">
+                                <TextBlock Text="SESSIONI" Style="{StaticResource Eyebrow}" Margin="2,12,0,8" Visibility="{Binding HasAnalysis, Converter={StaticResource BooleanToVisibility}}"/>
+                                <ItemsControl ItemsSource="{Binding SessionStatistics}" Visibility="{Binding HasAnalysis, Converter={StaticResource BooleanToVisibility}}">
                                     <ItemsControl.ItemTemplate><DataTemplate>
                                         <Border Background="#101824" BorderBrush="{StaticResource Stroke}" BorderThickness="1" CornerRadius="9" Padding="12" Margin="0,0,0,6">
                                             <Grid><Grid.ColumnDefinitions><ColumnDefinition Width="90"/><ColumnDefinition/><ColumnDefinition Width="95"/><ColumnDefinition Width="105"/><ColumnDefinition Width="100"/></Grid.ColumnDefinitions>
@@ -406,7 +410,7 @@
                                     </DataTemplate></ItemsControl.ItemTemplate>
                                 </ItemsControl>
 
-                                <Expander Header="Dettaglio delle notti" Foreground="{StaticResource Text}" Margin="0,12,0,18">
+                                <Expander Header="Notti" Foreground="{StaticResource Text}" Margin="0,12,0,18" Visibility="{Binding HasAnalysis, Converter={StaticResource BooleanToVisibility}}" ToolTip="Mostra integrazione, numero di Light ed esposizione media per ogni notte">
                                     <ItemsControl ItemsSource="{Binding NightStatistics}" Margin="0,8,0,0">
                                         <ItemsControl.ItemTemplate><DataTemplate>
                                             <Grid MinHeight="38" Margin="8,0"><Grid.ColumnDefinitions><ColumnDefinition Width="85"/><ColumnDefinition Width="110"/><ColumnDefinition Width="90"/><ColumnDefinition Width="70"/><ColumnDefinition Width="95"/><ColumnDefinition/></Grid.ColumnDefinitions>
@@ -418,7 +422,7 @@
                             </StackPanel>
                         </ScrollViewer>
                     </TabItem>
-                    <TabItem Header="Controllo qualità">
+                    <TabItem x:Name="QualityTab" Header="Qualità  ·  opzionale">
                         <Grid Margin="0,14,0,0">
                             <Grid.RowDefinitions><RowDefinition Height="Auto"/><RowDefinition Height="225"/><RowDefinition Height="*"/></Grid.RowDefinitions>
                             <Grid><Grid.ColumnDefinitions><ColumnDefinition/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions>
@@ -462,7 +466,7 @@
                             </Grid>
                         </Grid>
                     </TabItem>
-                    <TabItem Header="Calibrazioni" Tag="Inspector">
+                    <TabItem x:Name="CalibrationTab" Header="2  Calibrazioni" Tag="Inspector">
                         <Grid Margin="0,14,0,0">
                             <Grid.RowDefinitions><RowDefinition Height="Auto"/><RowDefinition Height="*"/></Grid.RowDefinitions>
                             <Grid>
@@ -511,7 +515,7 @@
                             </Grid>
                         </Grid>
                     </TabItem>
-                    <TabItem Header="Libreria Master">
+                    <TabItem x:Name="MasterLibraryTab" Header="Master Library  ·  strumento">
                         <Grid Margin="0,14,0,0"><Grid.RowDefinitions><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/><RowDefinition Height="*"/></Grid.RowDefinitions>
                             <StackPanel><TextBlock Text="Libreria Master" Style="{StaticResource Title}" Margin="0,4,0,0"/><TextBlock Text="Inventario, metadati e struttura delle copie normalizzate." Style="{StaticResource MutedText}" TextWrapping="Wrap" Margin="0,3,0,14"/></StackPanel>
                             <Grid Grid.Row="1" Margin="0,0,0,12"><Grid.ColumnDefinitions><ColumnDefinition Width="0.38*"/><ColumnDefinition Width="0.62*"/></Grid.ColumnDefinitions>

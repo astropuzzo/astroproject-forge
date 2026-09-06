@@ -29,13 +29,16 @@ AstroProject Forge reads FITS and XISF metadata, reconstructs observing nights a
 
 ### Quick start
 
-1. Add the folders or individual files containing your Light and Flat frames.
-2. Add one or more Dark/Bias Master Libraries.
-3. Create a new project and save it as an `.astroforge` file.
-4. Select **Analyze**.
-5. Review unresolved items and adjust metadata or calibration links when necessary.
-6. Check the suggested WBPP Grouping Keywords.
-7. Export the project and load it in PixInsight WeightedBatchPreprocessing. Re-exporting to the same managed project adds only new files and updates its history.
+The main workflow has four steps:
+
+| Step | Page | Action |
+| --- | --- | --- |
+| 1 | Project | Import FITS/XISF, then select **Analyze**. |
+| 2 | Calibrations | Resolve only the items reported by the app. Skip this page when nothing is reported. |
+| 3 | Export | Choose the destination, build the structure and export. Repeating the export adds only new files. |
+| 4 | PixInsight WBPP | Enter the suggested Grouping Keywords and load the exported project. |
+
+Statistics and Quality are optional. Master Library is an independent tool and is not a required final step.
 
 Master Libraries are saved in the application settings, not inside a project. Opening
 or creating a project never removes the configured libraries.
@@ -81,13 +84,16 @@ AstroProject Forge legge i metadati FITS e XISF, ricostruisce le notti osservati
 
 ### Avvio rapido
 
-1. Aggiungi cartelle o singoli file contenenti Light e Flat.
-2. Aggiungi una o più Master Library Dark/Bias.
-3. Crea un nuovo progetto e salvalo come file `.astroforge`.
-4. Seleziona **Analizza**.
-5. Risolvi gli elementi da rivedere modificando i metadati o i collegamenti delle calibrazioni.
-6. Controlla le Grouping Keywords WBPP suggerite.
-7. Esporta il progetto e caricalo in PixInsight WeightedBatchPreprocessing. Esportandolo di nuovo nella stessa cartella gestita verranno aggiunti soltanto i nuovi file e aggiornata la cronologia.
+Il percorso principale ha quattro passaggi:
+
+| Passo | Pagina | Azione |
+| --- | --- | --- |
+| 1 | Progetto | Importa FITS/XISF e seleziona **Analizza**. |
+| 2 | Calibrazioni | Risolvi soltanto ciò che viene segnalato. Se non ci sono avvisi, passa oltre. |
+| 3 | Esportazione | Scegli la destinazione, crea la struttura ed esporta. Le esportazioni successive aggiungono solo i file nuovi. |
+| 4 | PixInsight WBPP | Inserisci le Grouping Keywords proposte e carica il progetto esportato. |
+
+Statistiche e Qualità sono facoltative. Master Library è uno strumento indipendente, non un passaggio finale obbligatorio.
 
 Le Master Library sono salvate nelle impostazioni dell'app, non nel progetto. Aprire
 o creare un progetto non rimuove le librerie configurate.
