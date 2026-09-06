@@ -1,5 +1,11 @@
 # AstroProject Forge — note di rilascio
 
+## 1.6.1 — 6 settembre 2026
+
+- All’avvio, Windows mostra un avviso quando è disponibile una versione più recente e può aprire direttamente il pannello di aggiornamento.
+- macOS e Linux aprono automaticamente il menu sull’aggiornamento disponibile e portano il comando di installazione in primo piano.
+- Nessun avviso viene mostrato quando la versione installata è già aggiornata.
+
 ## 1.6.0 — 6 settembre 2026
 
 - L’aggiornamento di un progetto riconosce i file già esportati tramite origine e SHA-256, anche quando una nuova sessione cambia la struttura calcolata.

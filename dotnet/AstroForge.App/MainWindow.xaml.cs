@@ -25,6 +25,7 @@ public partial class MainWindow : Window
     private int _onboardingStep = 1;
     private readonly UpdateService _updateService = new();
     private ReleaseManifest? _availableUpdate;
+    private bool _startupUpdatePromptShown;
     private CancellationTokenSource? _qualityCancellation;
     private CancellationTokenSource? _previewCancellation;
     private readonly DispatcherTimer _blinkTimer = new() { Interval = TimeSpan.FromMilliseconds(700) };
@@ -249,6 +250,21 @@ public partial class MainWindow : Window
             DownloadUpdateButton.Content = _viewModel.UiLanguage == UiLocalization.English
                 ? "Update and restart"
                 : "Aggiorna e riavvia";
+            if (!interactive && decision.IsAvailable && !_startupUpdatePromptShown)
+            {
+                _startupUpdatePromptShown = true;
+                var open = MessageBox.Show(this,
+                    _viewModel.UiLanguage == UiLocalization.English
+                        ? $"AstroProject Forge {decision.Manifest.Version} is available. Open the update panel?"
+                        : $"È disponibile AstroProject Forge {decision.Manifest.Version}. Vuoi aprire il pannello di aggiornamento?",
+                    _viewModel.UiLanguage == UiLocalization.English ? "Update available" : "Aggiornamento disponibile",
+                    MessageBoxButton.YesNo, MessageBoxImage.Information);
+                if (open == MessageBoxResult.Yes)
+                {
+                    MorePopup.IsOpen = false;
+                    AboutOverlay.Visibility = Visibility.Visible;
+                }
+            }
             if (interactive && !decision.IsAvailable)
                 MessageBox.Show(this, UiLocalization.Translate(decision.Reason, _viewModel.UiLanguage),
                     _viewModel.UiLanguage == UiLocalization.English ? "Updates" : "Aggiornamenti",

@@ -239,6 +239,11 @@ public sealed partial class MainWindow : Window
             _availableUpdate = decision.IsAvailable ? decision.Manifest.Installer : null;
             UpdateStatus.Text = decision.Reason;
             UpdateButton.Content = decision.IsAvailable ? $"Installa {decision.Manifest.Version}" : "Controlla aggiornamenti";
+            if (!requested && decision.IsAvailable)
+            {
+                SettingsPanel.IsVisible = true;
+                UpdateButton.Focus();
+            }
         }
         catch (Exception exception)
         {
