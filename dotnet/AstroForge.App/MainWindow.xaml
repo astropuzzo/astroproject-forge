@@ -233,7 +233,12 @@
                 </Border>
 
                 <TabControl x:Name="WorkspaceTabs" Grid.Row="1" Background="Transparent" BorderThickness="0" TabStripPlacement="Top" HorizontalContentAlignment="Stretch" VerticalContentAlignment="Stretch" SelectionChanged="WorkspaceTabs_SelectionChanged">
-                    <TabItem x:Name="ProjectTab" Header="1  Progetto" Tag="Inspector">
+                    <TabControl.ItemsPanel>
+                        <ItemsPanelTemplate>
+                            <StackPanel Orientation="Horizontal"/>
+                        </ItemsPanelTemplate>
+                    </TabControl.ItemsPanel>
+                    <TabItem x:Name="ProjectTab" Header="1  Progetto" Tag="Inspector" ToolTip="Importa e controlla i file del progetto">
                         <Grid Margin="0,14,0,0">
                             <Grid.RowDefinitions><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/><RowDefinition Height="*"/></Grid.RowDefinitions>
                                 <StackPanel><TextBlock Text="Mappa progetto" Style="{StaticResource Title}"/><TextBlock Text="Filtri, sessioni, notti e calibrazioni assegnate." Style="{StaticResource MutedText}" TextWrapping="Wrap"/></StackPanel>
@@ -285,7 +290,7 @@
                         </Grid>
                     </TabItem>
 
-                    <TabItem x:Name="ExportTab" Header="3  Esportazione" Tag="Inspector">
+                    <TabItem x:Name="ExportTab" Header="3  Esporta" Tag="Inspector" ToolTip="Crea o aggiorna la cartella pronta per PixInsight">
                         <Grid Margin="0,14,0,0">
                             <Grid.RowDefinitions><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/><RowDefinition Height="*"/></Grid.RowDefinitions>
                             <TextBlock Text="Esportazione" Style="{StaticResource Title}"/>
@@ -341,7 +346,7 @@
                         </Grid>
                     </TabItem>
 
-                    <TabItem x:Name="WbppTab" Header="4  PixInsight WBPP">
+                    <TabItem x:Name="WbppTab" Header="4  WBPP" ToolTip="Apri la configurazione consigliata per Weighted Batch Preprocessing">
                         <ScrollViewer Margin="0,14,0,0" VerticalScrollBarVisibility="Auto">
                             <StackPanel>
                                 <TextBlock Text="Impostazioni WBPP" Style="{StaticResource Title}"/>
@@ -363,7 +368,7 @@
                         </ScrollViewer>
                     </TabItem>
 
-                    <TabItem x:Name="DataTab" Header="Statistiche  ·  opzionale">
+                    <TabItem x:Name="DataTab" Header="Dati" Tag="Optional" Margin="14,0,5,0" ToolTip="Opzionale · riepilogo di integrazione, filtri e sessioni">
                         <ScrollViewer Margin="0,14,0,0" VerticalScrollBarVisibility="Auto">
                             <StackPanel>
                                 <TextBlock Text="Dati acquisiti" Style="{StaticResource Title}" Margin="0,0,0,14"/>
@@ -422,7 +427,7 @@
                             </StackPanel>
                         </ScrollViewer>
                     </TabItem>
-                    <TabItem x:Name="QualityTab" Header="Qualità  ·  opzionale">
+                    <TabItem x:Name="QualityTab" Header="Qualità" Tag="Optional" ToolTip="Opzionale · misura e confronta i Light della sessione selezionata">
                         <Grid Margin="0,14,0,0">
                             <Grid.RowDefinitions><RowDefinition Height="Auto"/><RowDefinition Height="225"/><RowDefinition Height="*"/></Grid.RowDefinitions>
                             <Grid><Grid.ColumnDefinitions><ColumnDefinition/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions>
@@ -466,7 +471,7 @@
                             </Grid>
                         </Grid>
                     </TabItem>
-                    <TabItem x:Name="CalibrationTab" Header="2  Calibrazioni" Tag="Inspector">
+                    <TabItem x:Name="CalibrationTab" Header="2  Calibrazioni" Tag="Inspector" ToolTip="Controlla Flat, Dark e Bias assegnati">
                         <Grid Margin="0,14,0,0">
                             <Grid.RowDefinitions><RowDefinition Height="Auto"/><RowDefinition Height="*"/></Grid.RowDefinitions>
                             <Grid>
@@ -515,7 +520,7 @@
                             </Grid>
                         </Grid>
                     </TabItem>
-                    <TabItem x:Name="MasterLibraryTab" Header="Master Library  ·  strumento">
+                    <TabItem x:Name="MasterLibraryTab" Header="Master" Tag="Optional" ToolTip="Strumento indipendente · controlla e organizza una Master Library">
                         <Grid Margin="0,14,0,0"><Grid.RowDefinitions><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/><RowDefinition Height="*"/></Grid.RowDefinitions>
                             <StackPanel><TextBlock Text="Libreria Master" Style="{StaticResource Title}" Margin="0,4,0,0"/><TextBlock Text="Inventario, metadati e struttura delle copie normalizzate." Style="{StaticResource MutedText}" TextWrapping="Wrap" Margin="0,3,0,14"/></StackPanel>
                             <Grid Grid.Row="1" Margin="0,0,0,12"><Grid.ColumnDefinitions><ColumnDefinition Width="0.38*"/><ColumnDefinition Width="0.62*"/></Grid.ColumnDefinitions>
