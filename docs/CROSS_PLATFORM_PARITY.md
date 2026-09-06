@@ -59,3 +59,9 @@ redacted project:
 
 CI compilation is necessary but not sufficient. A GitHub release is allowed only after the
 four architecture jobs pass and the two native QA columns contain no `blocked` P0 row.
+# Stato aggiornamenti
+
+Windows scarica e avvia il setup con avanzamento visibile. macOS e Linux selezionano
+automaticamente il pacchetto corretto dalla release GitHub, ne verificano lo SHA-256,
+mostrano il download e aprono l’installer di sistema. La sostituzione dell’app richiede
+la conferma prevista dal sistema operativo; non viene simulata come installazione silenziosa.

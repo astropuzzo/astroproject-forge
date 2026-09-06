@@ -8,6 +8,7 @@ using Avalonia.Platform.Storage;
 using Avalonia.Threading;
 using AstroForge.App.Services;
 using AstroForge.App.ViewModels;
+using AstroForge.Core.Releases;
 
 namespace AstroForge.CrossPlatform;
 
@@ -17,6 +18,8 @@ public sealed partial class MainWindow : Window
     private const string GuideUrl = RepositoryUrl + "/wiki";
     private const string IssueUrl = RepositoryUrl + "/issues/new?template=bug_report.yml";
     private readonly MainViewModel _viewModel = new();
+    private readonly UpdateService _updateService = new();
+    private ReleaseArtifact? _availableUpdate;
     private readonly DispatcherTimer _blinkTimer = new() { Interval = TimeSpan.FromMilliseconds(700) };
     private CancellationTokenSource? _qualityCancellation;
     private CancellationTokenSource? _previewCancellation;
@@ -44,7 +47,7 @@ public sealed partial class MainWindow : Window
         };
         SizeChanged += (_, args) => ApplyViewportWidth(args.NewSize.Width);
         KeyDown += Window_KeyDown;
-        Opened += (_, _) => { ApplyViewportWidth(ClientSize.Width); SelectDensity(); ScheduleLocalization(); };
+        Opened += async (_, _) => { ApplyViewportWidth(ClientSize.Width); SelectDensity(); ScheduleLocalization(); await CheckUpdatesAsync(false); };
         Closing += (_, _) =>
         {
             _qualityCancellation?.Cancel();
@@ -54,7 +57,15 @@ public sealed partial class MainWindow : Window
             _viewModel.SaveState();
         };
         ApplyCommandLine();
+        ApplyNavigationLabels();
         UpdateInspectorLayout();
+    }
+
+    private void ApplyNavigationLabels()
+    {
+        var labels = new[] { "Progetto", "Esportazione", "PixInsight WBPP", "Dati", "Controllo qualità", "Calibrazioni", "Libreria Master", "Diagnostica" };
+        var tabs = WorkspaceTabs.Items.OfType<TabItem>().ToArray();
+        for (var index = 0; index < Math.Min(labels.Length, tabs.Length); index++) tabs[index].Header = labels[index];
     }
 
     private void ScheduleLocalization()
@@ -216,6 +227,51 @@ public sealed partial class MainWindow : Window
     private void OpenGuide_Click(object? sender, RoutedEventArgs e) { SettingsPanel.IsVisible = false; OpenUrl(GuideUrl); }
     private void OpenRepository_Click(object? sender, RoutedEventArgs e) => OpenUrl(RepositoryUrl);
     private void ReportIssue_Click(object? sender, RoutedEventArgs e) { SettingsPanel.IsVisible = false; OpenUrl(IssueUrl); }
+    private async void CheckUpdates_Click(object? sender, RoutedEventArgs e) => await CheckUpdatesAsync(true);
+
+    private async Task CheckUpdatesAsync(bool requested)
+    {
+        try
+        {
+            UpdateStatus.Text = requested ? "Controllo in corso…" : "";
+            var channel = Enum.TryParse<ReleaseChannel>(_viewModel.UpdateChannel, true, out var value) ? value : ReleaseChannel.Stable;
+            var decision = await _updateService.CheckChannelAsync(ReleaseIdentity.Version, channel);
+            _availableUpdate = decision.IsAvailable ? decision.Manifest.Installer : null;
+            UpdateStatus.Text = decision.Reason;
+            UpdateButton.Content = decision.IsAvailable ? $"Installa {decision.Manifest.Version}" : "Controlla aggiornamenti";
+        }
+        catch (Exception exception)
+        {
+            if (requested) UpdateStatus.Text = "Impossibile controllare gli aggiornamenti.";
+            _viewModel.RecordError("AF-UPDATE-CHECK-001", exception);
+        }
+    }
+
+    private async void InstallUpdate_Click(object? sender, RoutedEventArgs e)
+    {
+        if (_availableUpdate is null) { await CheckUpdatesAsync(true); return; }
+        try
+        {
+            UpdateButton.IsEnabled = false;
+            var destination = Path.Combine(Path.GetTempPath(), _availableUpdate.FileName);
+            var progress = new Progress<double>(value =>
+            {
+                UpdateProgress.Value = value;
+                UpdateStatus.Text = $"Download {value:0}%";
+            });
+            await _updateService.DownloadVerifiedAsync(_availableUpdate, destination, progress);
+            UpdateStatus.Text = OperatingSystem.IsMacOS()
+                ? "Download completato. Apri il disco e sostituisci l’app in Applicazioni."
+                : "Download completato. Segui l’installazione per sostituire la versione corrente.";
+            Process.Start(new ProcessStartInfo(destination) { UseShellExecute = true });
+        }
+        catch (Exception exception)
+        {
+            UpdateStatus.Text = "Aggiornamento non completato.";
+            _viewModel.RecordError("AF-UPDATE-INSTALL-001", exception);
+        }
+        finally { UpdateButton.IsEnabled = true; }
+    }
     private void OpenDiagnosticsTab_Click(object? sender, RoutedEventArgs e) { SettingsPanel.IsVisible = false; WorkspaceTabs.SelectedIndex = 7; _viewModel.RefreshDiagnostics(); }
     private static void OpenUrl(string url) => Process.Start(new ProcessStartInfo(url) { UseShellExecute = true });
     private void OnboardingAddLibrary_Click(object? sender, RoutedEventArgs e) => AddLibrary_Click(sender, e);

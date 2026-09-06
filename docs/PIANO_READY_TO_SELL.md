@@ -1,6 +1,6 @@
 # Piano ready to sell
 
-Aggiornato al 3 settembre 2026. Questo documento raccoglie soltanto lavoro concreto e
+Aggiornato al 6 settembre 2026. Questo documento raccoglie soltanto lavoro concreto e
 verificabile. Le idee già realizzate non restano mischiate alle attività aperte.
 
 ## Stato del prodotto
@@ -29,6 +29,12 @@ La stessa logica Core è usata dall'interfaccia Avalonia per Linux e macOS.
       un esempio che attraversa la mezzanotte.
 - [x] Quality Lab con campionamento distribuito sul sensore, gestione Bayer, score
       coerente con la soglia e comando per analizzare tutte le serie separate.
+- [x] Identità persistente dei file esportati tramite origine e SHA-256: una nuova
+      sessione non duplica i frame già presenti anche se cambia la struttura proposta.
+- [x] Selezione automatica del pacchetto nativo negli aggiornamenti macOS e Linux,
+      con verifica SHA-256 e avanzamento visibile.
+- [x] Rilevamento qualità più prudente con fondo locale, rifiuto artefatti puntiformi
+      e classificazione sospetta corroborata da più metriche.
 - [ ] Test manuale completo con Narrator su Windows.
 - [ ] Test manuale tastiera, VoiceOver e Orca sui pacchetti nativi.
 
@@ -56,6 +62,8 @@ La stessa logica Core è usata dall'interfaccia Avalonia per Linux e macOS.
       blocca i conflitti e conserva una timeline cumulativa per filtro e sessione (1.5.0).
 - [ ] Obiettivi di integrazione per filtro con avanzamento, deficit e previsione notti.
 - [ ] Cache Quality Lab invalidata da hash, per non rimisurare frame invariati.
+- [ ] Calibrare soglie e metriche Quality Lab su un corpus pubblico e diversificato;
+      finché manca, le esclusioni devono restare sempre manuali.
 - [ ] Regole qualità personalizzabili per serie e preset per focale/campionamento.
 - [ ] Confronto visuale sincronizzato di due frame con stesso zoom e stretch.
 

@@ -7,6 +7,7 @@ using System.Runtime.InteropServices;
 namespace AstroForge.Core.Releases;
 
 public enum ReleaseChannel { Stable, Beta }
+public enum ReleasePlatform { WindowsX64, LinuxX64, LinuxArm64, MacX64, MacArm64 }
 
 public sealed record ReleaseArtifact(string Url, string Sha256, long SizeBytes, string FileName);
 
@@ -27,12 +28,14 @@ public sealed partial class UpdateService
 {
     private readonly HttpClient _http;
     private readonly Func<string, bool> _authenticodeVerifier;
+    private readonly ReleasePlatform _platform;
     private static readonly JsonSerializerOptions Json = new() { PropertyNameCaseInsensitive = true, PropertyNamingPolicy = JsonNamingPolicy.CamelCase };
 
-    public UpdateService(HttpClient? httpClient = null, Func<string, bool>? authenticodeVerifier = null)
+    public UpdateService(HttpClient? httpClient = null, Func<string, bool>? authenticodeVerifier = null, ReleasePlatform? platform = null)
     {
         _http = httpClient ?? new HttpClient { Timeout = TimeSpan.FromSeconds(20) };
         _authenticodeVerifier = authenticodeVerifier ?? AuthenticodeVerifier.Verify;
+        _platform = platform ?? CurrentPlatform();
     }
 
     public static Uri FeedUri(ReleaseChannel channel) => new(
@@ -43,7 +46,10 @@ public sealed partial class UpdateService
         UpdateDecision? feedDecision = null;
         try
         {
-            feedDecision = await CheckAsync(FeedUri(channel), currentVersion, channel, cancellationToken);
+            // The compact channel manifest currently describes the Windows setup.
+            // Other systems resolve their native package from the same GitHub release.
+            if (_platform == ReleasePlatform.WindowsX64)
+                feedDecision = await CheckAsync(FeedUri(channel), currentVersion, channel, cancellationToken);
         }
         catch (HttpRequestException) { }
 
@@ -96,19 +102,11 @@ public sealed partial class UpdateService
             catch (InvalidDataException) { continue; }
 
             if (!release.TryGetProperty("assets", out var assetsNode)) continue;
-            var installers = assetsNode.EnumerateArray()
-                .Where(asset =>
-                {
-                    var name = asset.TryGetProperty("name", out var nameNode) ? nameNode.GetString() ?? "" : "";
-                    return name.EndsWith(".exe", StringComparison.OrdinalIgnoreCase)
-                        && (name.Contains("setup", StringComparison.OrdinalIgnoreCase) || name.Contains("installer", StringComparison.OrdinalIgnoreCase));
-                })
-                .ToArray();
+            var installers = assetsNode.EnumerateArray().Where(asset =>
+                asset.TryGetProperty("name", out var nameNode) && IsNativePackage(nameNode.GetString() ?? "", _platform)).ToArray();
             if (installers.Length == 0) continue;
 
-            var installerNode = installers.FirstOrDefault(asset =>
-                (asset.GetProperty("name").GetString() ?? "").Contains("win-x64", StringComparison.OrdinalIgnoreCase));
-            if (installerNode.ValueKind == JsonValueKind.Undefined) installerNode = installers[0];
+            var installerNode = installers[0];
 
             var fileName = installerNode.GetProperty("name").GetString()!;
             var url = installerNode.GetProperty("browser_download_url").GetString()!;
@@ -136,6 +134,26 @@ public sealed partial class UpdateService
                 ? "La versione installata è aggiornata."
                 : "La versione installata è più recente del canale selezionato.");
     }
+
+    public static ReleasePlatform CurrentPlatform()
+    {
+        var arm = RuntimeInformation.OSArchitecture == Architecture.Arm64;
+        if (OperatingSystem.IsMacOS()) return arm ? ReleasePlatform.MacArm64 : ReleasePlatform.MacX64;
+        if (OperatingSystem.IsLinux()) return arm ? ReleasePlatform.LinuxArm64 : ReleasePlatform.LinuxX64;
+        return ReleasePlatform.WindowsX64;
+    }
+
+    public static bool IsNativePackage(string fileName, ReleasePlatform platform) => platform switch
+    {
+        ReleasePlatform.WindowsX64 => fileName.EndsWith(".exe", StringComparison.OrdinalIgnoreCase)
+            && fileName.Contains("win-x64", StringComparison.OrdinalIgnoreCase)
+            && (fileName.Contains("setup", StringComparison.OrdinalIgnoreCase) || fileName.Contains("installer", StringComparison.OrdinalIgnoreCase)),
+        ReleasePlatform.MacX64 => fileName.Equals("AstroProjectForge-osx-x64.dmg", StringComparison.OrdinalIgnoreCase),
+        ReleasePlatform.MacArm64 => fileName.Equals("AstroProjectForge-osx-arm64.dmg", StringComparison.OrdinalIgnoreCase),
+        ReleasePlatform.LinuxX64 => fileName.Equals("AstroProjectForge-linux-x64.deb", StringComparison.OrdinalIgnoreCase),
+        ReleasePlatform.LinuxArm64 => fileName.Equals("AstroProjectForge-linux-arm64.deb", StringComparison.OrdinalIgnoreCase),
+        _ => false
+    };
 
     public async Task<string> DownloadVerifiedAsync(
         ReleaseArtifact artifact,

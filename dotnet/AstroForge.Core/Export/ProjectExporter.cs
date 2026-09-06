@@ -99,6 +99,7 @@ public static class ProjectExporter
         var watch = Stopwatch.StartNew();
         var records = preflight.IsIncremental ? ExistingManifestRecords(projectRoot) : new Dictionary<string, object>(StringComparer.OrdinalIgnoreCase);
         var addedFiles = new List<PlannedFile>();
+        var reuseMap = (preflight.ReuseMatches ?? []).ToDictionary(item => item.PlannedRelativePath, item => item.ExistingRelativePath, StringComparer.OrdinalIgnoreCase);
         try
         {
             for (var index = 0; index < plan.Files.Count; index++)
@@ -106,7 +107,8 @@ public static class ProjectExporter
                 cancellationToken.ThrowIfCancellationRequested();
                 if (control is not null) await control.WaitIfPausedAsync(cancellationToken);
                 var item = plan.Files[index];
-                var destination = Path.Combine(workingRoot, item.RelativePath);
+                var effectiveRelativePath = reuseMap.TryGetValue(item.RelativePath, out var existingRelativePath) ? existingRelativePath : item.RelativePath;
+                var destination = Path.Combine(workingRoot, effectiveRelativePath);
                 Directory.CreateDirectory(Path.GetDirectoryName(destination)!);
                 var partial = destination + ".partial";
                 byte[] hash;
@@ -130,10 +132,10 @@ public static class ProjectExporter
                     addedFiles.Add(item);
                 }
                 copiedBytes += new FileInfo(destination).Length;
-                records[item.RelativePath.Replace('\\', '/')] = new
+                records[effectiveRelativePath.Replace('\\', '/')] = new
                 {
                     source = Path.GetFullPath(item.Frame.Path),
-                    destination = item.RelativePath.Replace('\\', '/'),
+                    destination = effectiveRelativePath.Replace('\\', '/'),
                     role = item.Role,
                     group_id = item.GroupId,
                     bytes = new FileInfo(destination).Length,
@@ -188,7 +190,10 @@ public static class ProjectExporter
             if (!document.RootElement.TryGetProperty("files", out var files) || files.ValueKind != JsonValueKind.Array) return result;
             foreach (var item in files.EnumerateArray())
                 if (item.TryGetProperty("destination", out var destination) && destination.GetString() is { Length: > 0 } key)
-                    result[key] = item.Clone();
+                {
+                    var existing = Path.GetFullPath(Path.Combine(projectRoot, key));
+                    if (PathIdentity.IsWithin(existing, projectRoot) && File.Exists(existing)) result[key] = item.Clone();
+                }
         }
         catch (JsonException) { }
         return result;

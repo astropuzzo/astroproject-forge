@@ -66,7 +66,7 @@ $contracts = @{
     'Project schema excludes global libraries' = $projectStore.Contains('SchemaVersion { get; set; } = 2') -and $projectStore.Contains('public List<MasterLibraryDefinition>? MasterLibraries') -and $viewModel.Contains('Master Libraries are application-level resources')
     'All-series quality action (WPF)' = $wpfCode.Contains('AnalyzeAllQuality_Click') -and $wpfXaml.Contains('CanRunAllQualityAnalysis')
     'All-series quality action (Avalonia)' = $avaloniaCode.Contains('AnalyzeAllQuality_Click') -and (Read-Raw $avaloniaXamlPath).Contains('CanRunAllQualityAnalysis')
-    'Distributed quality sampling' = $qualityAnalyzer.Contains('ReadAnalysisTilesAsync') -and $qualityAnalyzer.Contains('CollapseBayer') -and $viewModel.Contains('var score = worst.Z')
+    'Distributed quality sampling' = $qualityAnalyzer.Contains('ReadAnalysisTilesAsync') -and $qualityAnalyzer.Contains('CollapseBayer') -and $qualityAnalyzer.Contains('localBackground') -and $viewModel.Contains('var corroborated =')
     'Visible Windows update progress' = $wpfCode.Contains('startInfo.ArgumentList.Add("/SILENT")') -and -not $wpfCode.Contains('startInfo.ArgumentList.Add("/VERYSILENT")')
     'Visible progress from legacy updaters' = $wpfCode.Contains('startInfo.ArgumentList.Add("/APFVISIBLE=1")') -and $installer.Contains('CurInstallProgressChanged') -and $installer.Contains('NeedsCompatibilityProgress')
     'WPF operational onboarding' = $wpfXaml.Contains('x:Name="OnboardingStep5"') -and $wpfCode.Contains('if (_viewModel.CanAnalyzeProject) Scan_Click')

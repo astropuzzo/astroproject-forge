@@ -19,6 +19,8 @@ public sealed record ExportPreflightFinding(
     string Detail,
     string? Path = null);
 
+public sealed record ExportReuseMatch(string PlannedRelativePath, string ExistingRelativePath);
+
 public sealed record ExportPreflightReport(
     DateTimeOffset CreatedAtUtc,
     string ProjectRoot,
@@ -34,7 +36,8 @@ public sealed record ExportPreflightReport(
     TimeSpan EstimatedDuration,
     IReadOnlyList<ExportPreflightFinding> Findings,
     bool IsIncremental = false,
-    int NewFileCount = 0)
+    int NewFileCount = 0,
+    IReadOnlyList<ExportReuseMatch>? ReuseMatches = null)
 {
     public int ErrorCount => Findings.Count(item => item.Severity == ExportPreflightSeverity.Error);
     public int WarningCount => Findings.Count(item => item.Severity == ExportPreflightSeverity.Warning);
@@ -72,6 +75,8 @@ public static class ProjectExportPreflight
         var resumeFiles = 0;
         var longPaths = 0;
         var partialFiles = 0;
+        var reuseMatches = new List<ExportReuseMatch>();
+        var manifestRecords = Array.Empty<ManifestFile>();
 
         if (incremental)
         {
@@ -79,7 +84,10 @@ public static class ProjectExportPreflight
             if (!IsManagedProject(manifest, plan.ProjectName))
                 findings.Add(Error("destination.unmanaged", "La cartella esistente non è un progetto aggiornabile", "Per sicurezza l’app aggiorna soltanto cartelle create da AstroProject Forge e dotate di un manifest valido.", projectRoot));
             else
+            {
+                manifestRecords = ReadManifestFiles(manifest);
                 findings.Add(Info("destination.update", "Aggiornamento incrementale", "I file identici saranno riutilizzati; verranno copiati soltanto quelli nuovi.", projectRoot));
+            }
         }
 
         foreach (var root in NormalizeRoots(options.SourceRoots))
@@ -134,7 +142,35 @@ public static class ProjectExportPreflight
 
             var partial = staged + ".partial";
             if (File.Exists(partial)) partialFiles++;
-            if (!File.Exists(staged)) continue;
+            if (!File.Exists(staged))
+            {
+                if (incremental && manifestRecords.Length > 0)
+                {
+                    var sourceHash = Convert.ToHexString(await HashAsync(source, cancellationToken)).ToLowerInvariant();
+                    var sourceMatches = manifestRecords.Where(record => PathIdentity.Equals(record.Source, source)).ToArray();
+                    var candidates = sourceMatches.Concat(manifestRecords.Where(record => record.Sha256.Equals(sourceHash, StringComparison.OrdinalIgnoreCase)))
+                        .DistinctBy(record => record.Destination, comparer);
+                    var reused = false;
+                    foreach (var candidate in candidates)
+                    {
+                        var existing = Path.GetFullPath(Path.Combine(projectRoot, candidate.Destination));
+                        if (!IsWithin(existing, projectRoot) || !File.Exists(existing)) continue;
+                        if (new FileInfo(existing).Length != length || !Convert.ToHexString(await HashAsync(existing, cancellationToken)).Equals(sourceHash, StringComparison.OrdinalIgnoreCase))
+                        {
+                            if (sourceMatches.Contains(candidate))
+                                findings.Add(Error("update.manifest_conflict", "File già registrato ma modificato", "Il file associato alla stessa sorgente non corrisponde più al contenuto registrato. Nessuna copia verrà eseguita.", existing));
+                            continue;
+                        }
+                        reuseMatches.Add(new(item.RelativePath, candidate.Destination));
+                        resumeFiles++;
+                        resumeBytes = checked(resumeBytes + length);
+                        reused = true;
+                        break;
+                    }
+                    if (reused) continue;
+                }
+                continue;
+            }
             try
             {
                 var stagedInfo = new FileInfo(staged);
@@ -181,7 +217,24 @@ public static class ProjectExportPreflight
         findings.Add(Info("preflight.read_only", "Controlli completati", "La verifica non ha creato, modificato o eliminato file nella destinazione."));
         var seconds = bytesToCopy / (options.EstimatedThroughputMiBPerSecond * 1024d * 1024d);
         return new(DateTimeOffset.UtcNow, projectRoot, stagingRoot, kind, plan.Files.Count, totalBytes, resumeFiles, resumeBytes,
-            bytesToCopy, freeBytes, requiredFree, TimeSpan.FromSeconds(seconds), findings, incremental, Math.Max(0, plan.Files.Count - resumeFiles));
+            bytesToCopy, freeBytes, requiredFree, TimeSpan.FromSeconds(seconds), findings, incremental, Math.Max(0, plan.Files.Count - resumeFiles), reuseMatches);
+    }
+
+    private sealed record ManifestFile(string Source, string Destination, string Sha256);
+
+    private static ManifestFile[] ReadManifestFiles(string manifestPath)
+    {
+        try
+        {
+            using var document = System.Text.Json.JsonDocument.Parse(File.ReadAllText(manifestPath));
+            if (!document.RootElement.TryGetProperty("files", out var files) || files.ValueKind != System.Text.Json.JsonValueKind.Array) return [];
+            return files.EnumerateArray().Select(item => new ManifestFile(
+                    item.TryGetProperty("source", out var source) ? source.GetString() ?? "" : "",
+                    item.TryGetProperty("destination", out var destination) ? destination.GetString() ?? "" : "",
+                    item.TryGetProperty("sha256", out var sha) ? sha.GetString() ?? "" : ""))
+                .Where(item => item.Source.Length > 0 && item.Destination.Length > 0 && item.Sha256.Length == 64).ToArray();
+        }
+        catch (System.Text.Json.JsonException) { return []; }
     }
 
     private static bool IsManagedProject(string manifestPath, string projectName)

@@ -184,16 +184,19 @@ public static class FitsQualityAnalyzer
 
     private static List<(double Fwhm, double Eccentricity, double PeakSnr)> DetectStars(float[] pixels, int width, int height, double background, double noise, double high)
     {
-        var threshold = background + Math.Max(5 * noise, (high - background) * 0.03);
+        var threshold = background + Math.Max(6 * noise, (high - background) * 0.04);
         var candidates = new List<(float Peak, int X, int Y)>();
-        for (var y = 5; y < height - 5; y++)
-        for (var x = 5; x < width - 5; x++)
+        for (var y = 7; y < height - 7; y++)
+        for (var x = 7; x < width - 7; x++)
         {
             var value = pixels[y * width + x];
             if (!float.IsFinite(value)) continue;
             if (value < threshold) continue;
-            if (value <= pixels[(y - 1) * width + x] || value <= pixels[(y + 1) * width + x] ||
-                value <= pixels[y * width + x - 1] || value <= pixels[y * width + x + 1]) continue;
+            var isMaximum = true;
+            for (var dy = -1; dy <= 1 && isMaximum; dy++)
+            for (var dx = -1; dx <= 1; dx++)
+                if ((dx != 0 || dy != 0) && value <= pixels[(y + dy) * width + x + dx]) { isMaximum = false; break; }
+            if (!isMaximum) continue;
             candidates.Add((value, x, y));
         }
         var selected = new List<(double Fwhm, double Eccentricity, double PeakSnr)>();
@@ -201,20 +204,43 @@ public static class FitsQualityAnalyzer
         foreach (var candidate in candidates.OrderByDescending(item => item.Peak).Take(3000))
         {
             if (positions.Any(position => (position.X - candidate.X) * (position.X - candidate.X) + (position.Y - candidate.Y) * (position.Y - candidate.Y) < 36)) continue;
+            // Estimate a local sky value. Gradients and vignetting must not alter
+            // the stellar profile or turn a hot pixel into a plausible star.
+            var annulus = new List<float>(96);
+            for (var dy = -7; dy <= 7; dy++) for (var dx = -7; dx <= 7; dx++)
+            {
+                var radius2 = dx * dx + dy * dy;
+                if (radius2 is < 25 or > 49) continue;
+                var value = pixels[(candidate.Y + dy) * width + candidate.X + dx];
+                if (float.IsFinite(value)) annulus.Add(value);
+            }
+            if (annulus.Count < 24) continue;
+            annulus.Sort();
+            var localBackground = annulus[annulus.Count / 2];
+            var localDeviations = annulus.Select(value => Math.Abs(value - localBackground)).OrderBy(value => value).ToArray();
+            var localNoise = Math.Max(noise, localDeviations[localDeviations.Length / 2] * 1.4826);
+            var peakSnr = (candidate.Peak - localBackground) / Math.Max(localNoise, 1e-9);
+            if (peakSnr < 7) continue;
+
             double sum = 0, sx = 0, sy = 0;
-            for (var dy = -4; dy <= 4; dy++) for (var dx = -4; dx <= 4; dx++)
+            var aboveHalfPeak = 0;
+            for (var dy = -5; dy <= 5; dy++) for (var dx = -5; dx <= 5; dx++)
             {
                 var pixel = pixels[(candidate.Y + dy) * width + candidate.X + dx];
-                var weight = float.IsFinite(pixel) ? Math.Max(0, pixel - background - 2 * noise) : 0;
+                var weight = float.IsFinite(pixel) ? Math.Max(0, pixel - localBackground - 2 * localNoise) : 0;
+                if (weight > (candidate.Peak - localBackground) * 0.5) aboveHalfPeak++;
                 sum += weight; sx += dx * weight; sy += dy * weight;
             }
-            if (sum <= 0) continue;
+            // One bright pixel is normally a hot pixel/cosmic ray; broad plateaus
+            // are usually saturated stars and do not provide a trustworthy FWHM.
+            if (sum <= 0 || aboveHalfPeak is < 2 or > 25) continue;
             var cx = sx / sum; var cy = sy / sum;
+            if (Math.Abs(cx) > 1.5 || Math.Abs(cy) > 1.5) continue;
             double xx = 0, yy = 0, xy = 0;
-            for (var dy = -4; dy <= 4; dy++) for (var dx = -4; dx <= 4; dx++)
+            for (var dy = -5; dy <= 5; dy++) for (var dx = -5; dx <= 5; dx++)
             {
                 var pixel = pixels[(candidate.Y + dy) * width + candidate.X + dx];
-                var weight = float.IsFinite(pixel) ? Math.Max(0, pixel - background - 2 * noise) : 0;
+                var weight = float.IsFinite(pixel) ? Math.Max(0, pixel - localBackground - 2 * localNoise) : 0;
                 var px = dx - cx; var py = dy - cy;
                 xx += weight * px * px; yy += weight * py * py; xy += weight * px * py;
             }
@@ -223,8 +249,8 @@ public static class FitsQualityAnalyzer
             var major = Math.Max(0, (xx + yy + discriminant) / 2);
             var minor = Math.Max(0, (xx + yy - discriminant) / 2);
             var fwhm = 2.35482 * Math.Sqrt((major + minor) / 2);
-            if (fwhm is < 1.2 or > 12 || major <= 0) continue;
-            selected.Add((fwhm, Math.Sqrt(Math.Clamp(1 - minor / major, 0, 1)), (candidate.Peak - background) / Math.Max(noise, 1e-9)));
+            if (fwhm is < 1.35 or > 12 || major <= 0 || minor / major < 0.05) continue;
+            selected.Add((fwhm, Math.Sqrt(Math.Clamp(1 - minor / major, 0, 1)), peakSnr));
             positions.Add((candidate.X, candidate.Y));
         }
         return selected;

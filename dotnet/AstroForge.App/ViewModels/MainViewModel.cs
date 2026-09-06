@@ -1050,11 +1050,11 @@ public sealed class MainViewModel : BindableBase
         foreach (var group in _allQualityFrames.Where(item => item.Error is null).GroupBy(item => item.ComparisonGroupId, StringComparer.OrdinalIgnoreCase))
         {
             var rows = group.ToArray();
-            var measurable = rows.Where(item => item.Fwhm > 0 && item.StarCount >= 3 &&
+            var measurable = rows.Where(item => item.Fwhm > 0 && item.StarCount >= 8 && item.CoverageZones >= 3 &&
                 double.IsFinite(item.Fwhm) && double.IsFinite(item.Eccentricity) &&
                 double.IsFinite(item.Noise) && double.IsFinite(item.Snr)).ToArray();
             foreach (var row in rows.Except(measurable))
-                row.SetScore(QualitySigmaThreshold, true, "Misura da verificare: meno di 3 stelle valide");
+                row.SetScore(0, false, "Misura insufficiente: non viene classificata automaticamente");
             if (measurable.Length < 8)
             {
                 foreach (var row in measurable) row.SetScore(0, false, "Servono almeno 8 frame comparabili per classificare gli outlier");
@@ -1075,10 +1075,14 @@ public sealed class MainViewModel : BindableBase
                     (Name: "SNR basso", Z: NegativeZ(row.Snr, snr)),
                     (Name: "poche stelle", Z: NegativeZ(row.StarCount, stars))
                 };
-                var worst = parts.OrderByDescending(item => item.Z).First();
-                // Score = worst robust deviation. The slider, chart and suspect list
-                // therefore express exactly the same threshold in sigma units.
-                var score = worst.Z;
+                var ranked = parts.OrderByDescending(item => item.Z).ToArray();
+                var worst = ranked[0];
+                // A single noisy metric is not enough unless it is extreme. With
+                // corroboration from a second metric the full deviation is kept.
+                var corroborated = ranked[1].Z >= Math.Max(1.5, QualitySigmaThreshold * 0.55);
+                var score = corroborated || worst.Z >= QualitySigmaThreshold + 1.5
+                    ? worst.Z
+                    : Math.Min(worst.Z, Math.Max(0, QualitySigmaThreshold - 0.01));
                 var suspect = score >= QualitySigmaThreshold;
                 row.SetScore(score, suspect, worst.Z >= 2 ? $"Anomalia principale: {worst.Name} ({worst.Z:0.0}σ)" : "Coerente con la serie");
             }
@@ -1164,15 +1168,15 @@ public sealed class MainViewModel : BindableBase
         SetExportState(ExportRunState.Preflighting);
         IsScanning = true;
         ExportProgress = 0;
-        ExportProgressDetail = "Dry-run: sorgenti, staging, spazio e percorsi…";
-        using var operation = _eventLog.BeginOperation("Preflight export", "AF-EXPORT-PREFLIGHT-START", "Dry-run export avviato");
+        ExportProgressDetail = "Controllo di sorgenti, spazio e destinazione…";
+        using var operation = _eventLog.BeginOperation("Verifica esportazione", "AF-EXPORT-PREFLIGHT-START", "Verifica esportazione avviata");
         try
         {
             var report = await ProjectExportPreflight.AnalyzeAsync(plan, CurrentExportOptions(), cancellationToken);
             ApplyExportPreflight(report);
             SetExportState(report.IsReady ? ExportRunState.Ready : ExportRunState.Blocked);
             ExportProgressDetail = report.IsReady
-                ? $"Dry-run superato · {report.WarningCount} avvisi · nessun file scritto"
+                ? $"Verifica completata · {report.WarningCount} avvisi"
                 : $"Export bloccato · {report.ErrorCount} errori · {report.WarningCount} avvisi";
             Status = ExportProgressDetail;
             if (report.IsReady) operation.Complete("AF-EXPORT-PREFLIGHT-OK", ExportProgressDetail);

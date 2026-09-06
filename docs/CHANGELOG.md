@@ -1,5 +1,16 @@
 # AstroProject Forge — note di rilascio
 
+## 1.6.0 — 6 settembre 2026
+
+- L’aggiornamento di un progetto riconosce i file già esportati tramite origine e SHA-256, anche quando una nuova sessione cambia la struttura calcolata.
+- I file invariati restano nella posizione esistente e non vengono duplicati; i conflitti con file modificati vengono bloccati prima della copia.
+- Quality Lab usa fondo locale, massimi a otto vicini e controlli contro hot pixel, raggi cosmici e stelle sature.
+- Le misure con copertura insufficiente non vengono più etichettate automaticamente come frame cattivi.
+- La segnalazione automatica richiede una seconda metrica coerente, salvo anomalie estreme.
+- L’updater multipiattaforma seleziona DMG Apple Silicon/Intel e pacchetti DEB Linux x64/ARM64 dalla stessa release GitHub.
+- macOS e Linux mostrano avanzamento e aprono il pacchetto verificato; l’installazione resta soggetta alla conferma prevista dal sistema operativo.
+- Navigazione Windows rinominata con termini operativi più chiari: Progetto, Calibrazioni, Controllo qualità, Esportazione e PixInsight WBPP.
+
 ## 1.5.0 — 4 settembre 2026
 
 - Le cartelle progetto già esportate possono essere aggiornate senza ricopiare l’intero dataset.

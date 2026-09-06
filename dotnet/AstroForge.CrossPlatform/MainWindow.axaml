@@ -121,7 +121,7 @@
         <Button Content="Segnala un problema" Click="ReportIssue_Click"/>
         <Button Content="GitHub" Click="OpenRepository_Click"/>
         <Button Content="Diagnostica e file di supporto" Click="OpenDiagnosticsTab_Click"/>
-        <Border Classes="note"><StackPanel Spacing="5"><TextBlock Text="AstroProject Forge" FontWeight="SemiBold"/><TextBlock Text="{Binding VersionDisplay}" Classes="muted"/><TextBlock Text="Gianmarco Spagnoli (@astropuzzo)" TextWrapping="Wrap"/><TextBlock Text="Copyright © 2026 Gianmarco Spagnoli" Classes="muted"/></StackPanel></Border>
+        <Border Classes="note"><StackPanel Spacing="7"><TextBlock Text="AstroProject Forge" FontWeight="SemiBold"/><TextBlock Text="{Binding VersionDisplay}" Classes="muted"/><TextBlock x:Name="UpdateStatus" Classes="muted" TextWrapping="Wrap"/><ProgressBar x:Name="UpdateProgress" Minimum="0" Maximum="100" Height="4"/><Button x:Name="UpdateButton" Content="Controlla aggiornamenti" Click="InstallUpdate_Click"/><TextBlock Text="Gianmarco Spagnoli (@astropuzzo)" TextWrapping="Wrap"/><TextBlock Text="Copyright © 2026 Gianmarco Spagnoli" Classes="muted"/></StackPanel></Border>
         <Expander Header="Opzioni avanzate"><StackPanel Spacing="9" Margin="0,9,0,0"><TextBlock Text="Margine spazio esportazione (%)"/><NumericUpDown Value="{Binding ExportMarginPercent}" Minimum="0" Maximum="100"/><TextBlock Text="Riserva minima (GiB)"/><NumericUpDown Value="{Binding ExportMinimumReserveGiB}" Minimum="0" Maximum="1000"/><Button Content="Rileggi i metadati" ToolTip.Tip="Forza una nuova lettura alla prossima analisi" Click="ClearCache_Click"/></StackPanel></Expander>
       </StackPanel></ScrollViewer>
     </Border>

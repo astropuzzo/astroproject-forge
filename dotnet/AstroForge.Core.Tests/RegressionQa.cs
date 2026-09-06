@@ -197,6 +197,11 @@ internal static class RegressionQa
         Assert(fallbackDecision.IsAvailable && !fallbackDecision.Manifest.Signed
             && fallbackDecision.Manifest.ReleaseNotesUrl?.Contains("v0.9.0-beta.4", StringComparison.Ordinal) == true,
             "Il fallback GitHub non ha rilevato la beta non firmata.");
+        Assert(UpdateService.IsNativePackage("AstroProjectForge-osx-arm64.dmg", ReleasePlatform.MacArm64)
+            && UpdateService.IsNativePackage("AstroProjectForge-osx-x64.dmg", ReleasePlatform.MacX64)
+            && UpdateService.IsNativePackage("AstroProjectForge-linux-x64.deb", ReleasePlatform.LinuxX64)
+            && !UpdateService.IsNativePackage("AstroProjectForge-linux-x64.tar.gz", ReleasePlatform.MacX64),
+            "Selezione pacchetto nativo multipiattaforma errata.");
         var currentDecision = await fallbackService.CheckChannelAsync("0.9.0-beta.4", ReleaseChannel.Beta);
         Assert(!currentDecision.IsAvailable && currentDecision.Reason.Contains("aggiornata", StringComparison.OrdinalIgnoreCase),
             "Il fallback GitHub non riconosce la versione corrente.");
@@ -374,12 +379,14 @@ internal static class RegressionQa
             var firstDestination = Path.Combine(initial.ProjectRoot, initial.Files[0].RelativePath);
             var firstHash = Convert.ToHexString(SHA256.HashData(await File.ReadAllBytesAsync(firstDestination)));
 
-            var update = new ProjectPlan("Growing", root, [Light(first, "2026-09-01"), Light(second, "2026-09-02")], new WbppRecipe([], ["qa"]));
+            var update = new ProjectPlan("Growing", root, [Light(first, "2026-09-01-REGROUPED"), Light(second, "2026-09-02")], new WbppRecipe([], ["qa"]));
             var report = await ProjectExportPreflight.AnalyzeAsync(update, new(0, 0, 100));
-            Assert(report.IsReady && report.IsIncremental && report.ResumeFileCount == 1 && report.NewFileCount == 1,
-                "Il preflight incrementale non distingue file invariati e nuovi.");
+            Assert(report.IsReady && report.IsIncremental && report.ResumeFileCount == 1 && report.NewFileCount == 1
+                && report.ReuseMatches?.Single().ExistingRelativePath.Replace('\\', '/') == initial.Files[0].RelativePath.Replace('\\', '/'),
+                "Il preflight incrementale non riconosce un file già esportato quando cambia il raggruppamento.");
             await ProjectExporter.ExecuteAsync(update, preflightOptions: new(0, 0, 100));
             Assert(File.Exists(Path.Combine(update.ProjectRoot, update.Files[1].RelativePath)), "Il nuovo frame non è stato aggiunto al progetto.");
+            Assert(!File.Exists(Path.Combine(update.ProjectRoot, update.Files[0].RelativePath)), "Il frame già presente è stato duplicato con il nuovo percorso.");
             Assert(firstHash == Convert.ToHexString(SHA256.HashData(await File.ReadAllBytesAsync(firstDestination))), "Il frame invariato è stato modificato.");
 
             var history = ExportHistoryStore.Read(update.ProjectRoot);
@@ -390,7 +397,7 @@ internal static class RegressionQa
 
             await File.WriteAllBytesAsync(firstDestination, Enumerable.Repeat((byte)0x7F, 96 * 1024).ToArray());
             var conflict = await ProjectExportPreflight.AnalyzeAsync(update, new(0, 0, 100));
-            Assert(!conflict.IsReady && conflict.Findings.Any(item => item.Code == "update.hash_conflict"),
+            Assert(!conflict.IsReady && conflict.Findings.Any(item => item.Code is "update.hash_conflict" or "update.manifest_conflict"),
                 "Un file esistente diverso non è stato bloccato.");
         }
         finally { if (Directory.Exists(root)) Directory.Delete(root, true); }
