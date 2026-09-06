@@ -5,6 +5,8 @@
 - All’avvio, Windows mostra un avviso quando è disponibile una versione più recente e può aprire direttamente il pannello di aggiornamento.
 - macOS e Linux aprono automaticamente il menu sull’aggiornamento disponibile e portano il comando di installazione in primo piano.
 - Nessun avviso viene mostrato quando la versione installata è già aggiornata.
+- Esportazione ripulita da termini tecnici e testi ripetitivi; le opzioni di spazio e velocità sono spiegate tramite tooltip.
+- Documentata l’installazione delle build macOS non notarizzate senza disattivare Gatekeeper.
 
 ## 1.6.0 — 6 settembre 2026
 

@@ -108,6 +108,22 @@ Usa `Alt+1`–`Alt+8` per passare direttamente da un'area di lavoro all'altra.
 
 Packages are self-contained; .NET does not need to be installed separately. PixInsight is only required after export.
 
+### Installing on macOS
+
+1. Download the DMG matching your Mac: `osx-arm64` for Apple Silicon or `osx-x64` for Intel.
+2. Open the DMG and drag **AstroProject Forge** to **Applications**.
+3. Because the current free builds are not Apple-notarized, the first launch may be blocked. Open **System Settings → Privacy & Security**, find the AstroProject Forge message and select **Open Anyway**. Confirm once.
+
+Do not disable Gatekeeper globally. Future updates are downloaded and hash-checked by the app, but macOS still asks for installation confirmation.
+
+### Installazione su macOS
+
+1. Scarica il DMG corretto: `osx-arm64` per Apple Silicon oppure `osx-x64` per Mac Intel.
+2. Apri il DMG e trascina **AstroProject Forge** in **Applicazioni**.
+3. Le build gratuite attuali non sono notarizzate da Apple. Se il primo avvio viene bloccato, apri **Impostazioni di Sistema → Privacy e Sicurezza**, individua il messaggio relativo ad AstroProject Forge e seleziona **Apri comunque**. Conferma una sola volta.
+
+Non disattivare globalmente Gatekeeper. Gli aggiornamenti vengono scaricati e verificati dall’app, ma macOS richiede comunque la conferma d’installazione.
+
 ## Build
 
 Requires [.NET SDK 10](https://dotnet.microsoft.com/download/dotnet/10.0).
