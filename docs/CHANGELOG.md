@@ -1,5 +1,12 @@
 # AstroProject Forge — note di rilascio
 
+## 1.7.1 — 7 settembre 2026
+
+- La navigazione resta su una sola riga e non cambia più ordine quando lo spazio si riduce.
+- I quattro passaggi principali hanno etichette brevi e numerate.
+- Dati, Qualità e Master sono controlli compatti; la natura opzionale è spiegata nei tooltip.
+- Rimossi i testi grigi che apparivano come intestazioni scollegate sopra il workflow.
+
 ## 1.7.0 — 6 settembre 2026
 
 - Navigazione riorganizzata in quattro passaggi: Progetto, Calibrazioni, Esportazione e PixInsight WBPP.
