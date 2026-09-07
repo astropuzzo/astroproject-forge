@@ -121,12 +121,34 @@ public partial class MainWindow : Window
     {
         var narrowHeader = ActualWidth < 1120;
         var showInspector = _inspectorVisible && _inspectorContextAvailable;
+        const double minimumWorkspace = 760;
+        var sourceWidth = Math.Clamp(_sourcePanelWidth, 300, 520);
+        var inspectorWidth = Math.Clamp(_inspectorPanelWidth, 280, 680);
+        var sideBudget = Math.Max(0, ActualWidth - minimumWorkspace - 10);
+
+        if (_sourcesVisible && showInspector)
+        {
+            if (sideBudget < 580)
+            {
+                showInspector = false;
+            }
+            else if (sourceWidth + inspectorWidth > sideBudget)
+            {
+                var extraBudget = sideBudget - 580;
+                var requestedExtra = Math.Max(1, sourceWidth - 300 + inspectorWidth - 280);
+                sourceWidth = 300 + extraBudget * Math.Max(0, sourceWidth - 300) / requestedExtra;
+                inspectorWidth = 280 + extraBudget * Math.Max(0, inspectorWidth - 280) / requestedExtra;
+            }
+        }
+        if (_sourcesVisible && !showInspector)
+            sourceWidth = Math.Min(sourceWidth, Math.Max(300, sideBudget));
+
         SourcesColumn.MinWidth = _sourcesVisible ? 300 : 0;
-        SourcesColumn.Width = _sourcesVisible ? new GridLength(Math.Clamp(_sourcePanelWidth, 300, 520)) : new GridLength(0);
+        SourcesColumn.Width = _sourcesVisible ? new GridLength(sourceWidth) : new GridLength(0);
         SourceSplitterColumn.Width = _sourcesVisible ? new GridLength(5) : new GridLength(0);
         SourceSplitter.Visibility = _sourcesVisible ? Visibility.Visible : Visibility.Collapsed;
         InspectorColumn.MinWidth = showInspector ? 280 : 0;
-        InspectorColumn.Width = showInspector ? new GridLength(Math.Clamp(_inspectorPanelWidth, 280, 680)) : new GridLength(0);
+        InspectorColumn.Width = showInspector ? new GridLength(inspectorWidth) : new GridLength(0);
         InspectorSplitterColumn.Width = showInspector ? new GridLength(5) : new GridLength(0);
         InspectorSplitter.Visibility = showInspector ? Visibility.Visible : Visibility.Collapsed;
         InspectorToggleButton.Visibility = _inspectorContextAvailable ? Visibility.Visible : Visibility.Collapsed;

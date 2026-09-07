@@ -368,7 +368,7 @@
                         </ScrollViewer>
                     </TabItem>
 
-                    <TabItem x:Name="DataTab" Header="Dati" Tag="Optional" Margin="14,0,5,0" ToolTip="Opzionale · riepilogo di integrazione, filtri e sessioni">
+                    <TabItem x:Name="DataTab" Header="Dati" Tag="Optional" MinWidth="58" Margin="14,0,5,0" ToolTip="Opzionale · riepilogo di integrazione, filtri e sessioni">
                         <ScrollViewer Margin="0,14,0,0" VerticalScrollBarVisibility="Auto">
                             <StackPanel>
                                 <TextBlock Text="Dati acquisiti" Style="{StaticResource Title}" Margin="0,0,0,14"/>

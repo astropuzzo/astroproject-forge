@@ -145,7 +145,7 @@ public sealed class MainViewModel : BindableBase
         foreach (var path in _state.SourcePaths.Where(path => Directory.Exists(path) || File.Exists(path))) SourcePaths.Add(path);
         if (SourcePaths.Count > 0)
         {
-            _readinessText = $"{SourceSummary} · analisi richiesta";
+            _readinessText = _uiLanguage == UiLocalization.English ? "Step 1 · Select Analyze" : "Passo 1 · Premi Analizza";
             _status = $"{SourceSummary} · avvia l’analisi per costruire la mappa";
         }
         foreach (var pair in _state.Overrides.Where(pair => pair.Value.Kind is not null)) _kindOverrides.Add(pair.Key);
