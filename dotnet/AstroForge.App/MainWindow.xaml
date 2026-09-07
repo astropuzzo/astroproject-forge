@@ -115,6 +115,13 @@
                         </Grid>
                         <CheckBox Content="Riduci animazioni" IsChecked="{Binding ReducedMotion, Mode=TwoWay}" Click="ReducedMotion_Click" Margin="4,2,4,10" ToolTip="Utile su PC meno potenti o se preferisci meno movimento"/>
                         <Border Height="1" Background="{StaticResource Stroke}" Margin="0,4,0,12"/>
+                        <TextBlock Text="STRUMENTI" Style="{StaticResource Eyebrow}" Margin="4,0,4,8"/>
+                        <Grid Margin="0,0,0,12">
+                            <Grid.ColumnDefinitions><ColumnDefinition/><ColumnDefinition/><ColumnDefinition/></Grid.ColumnDefinitions>
+                            <Button Content="Dati" Click="OpenData_Click" Margin="0,0,4,0" Padding="8,8" ToolTip="Tempi di integrazione, filtri e sessioni"/>
+                            <Button Grid.Column="1" Content="Qualità" Click="OpenQuality_Click" Margin="2,0" Padding="8,8" ToolTip="Misura e confronta i Light"/>
+                            <Button Grid.Column="2" Content="Master" Click="OpenMasterLibrary_Click" Margin="4,0,0,0" Padding="8,8" ToolTip="Controlla e organizza le librerie Master"/>
+                        </Grid>
                         <TextBlock Text="PROGETTO" Style="{StaticResource Eyebrow}" Margin="4,0,4,8"/>
                         <Button Click="NewProject_Click" HorizontalContentAlignment="Stretch" Margin="0,0,0,6"><Grid><Grid.ColumnDefinitions><ColumnDefinition Width="34"/><ColumnDefinition/></Grid.ColumnDefinitions><TextBlock Text="+" Foreground="{StaticResource Accent}" FontSize="20" VerticalAlignment="Center"/><StackPanel Grid.Column="1"><TextBlock Text="Nuovo progetto" FontWeight="SemiBold"/><TextBlock Text="Inizia un dataset vuoto" Style="{StaticResource MutedText}" FontSize="10"/></StackPanel></Grid></Button>
                         <Button Click="SaveProjectAs_Click" HorizontalContentAlignment="Stretch" Margin="0,0,0,6"><Grid><Grid.ColumnDefinitions><ColumnDefinition Width="34"/><ColumnDefinition/></Grid.ColumnDefinitions><TextBlock Text="↓" Foreground="{StaticResource Accent}" FontSize="18" VerticalAlignment="Center"/><StackPanel Grid.Column="1"><TextBlock Text="Salva con nome" FontWeight="SemiBold"/><TextBlock Text="Crea un nuovo file .astroforge" Style="{StaticResource MutedText}" FontSize="10"/></StackPanel></Grid></Button>
@@ -368,7 +375,7 @@
                         </ScrollViewer>
                     </TabItem>
 
-                    <TabItem x:Name="DataTab" Header="Dati" Tag="Optional" MinWidth="58" Margin="14,0,5,0" ToolTip="Opzionale · riepilogo di integrazione, filtri e sessioni">
+                    <TabItem x:Name="DataTab" Header="Dati" Tag="Optional" Visibility="Collapsed">
                         <ScrollViewer Margin="0,14,0,0" VerticalScrollBarVisibility="Auto">
                             <StackPanel>
                                 <TextBlock Text="Dati acquisiti" Style="{StaticResource Title}" Margin="0,0,0,14"/>
@@ -427,7 +434,7 @@
                             </StackPanel>
                         </ScrollViewer>
                     </TabItem>
-                    <TabItem x:Name="QualityTab" Header="Qualità" Tag="Optional" ToolTip="Opzionale · misura e confronta i Light della sessione selezionata">
+                    <TabItem x:Name="QualityTab" Header="Qualità" Tag="Optional" Visibility="Collapsed">
                         <Grid Margin="0,14,0,0">
                             <Grid.RowDefinitions><RowDefinition Height="Auto"/><RowDefinition Height="225"/><RowDefinition Height="*"/></Grid.RowDefinitions>
                             <Grid><Grid.ColumnDefinitions><ColumnDefinition/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions>
@@ -520,7 +527,7 @@
                             </Grid>
                         </Grid>
                     </TabItem>
-                    <TabItem x:Name="MasterLibraryTab" Header="Master" Tag="Optional" ToolTip="Strumento indipendente · controlla e organizza una Master Library">
+                    <TabItem x:Name="MasterLibraryTab" Header="Master" Tag="Optional" Visibility="Collapsed">
                         <Grid Margin="0,14,0,0"><Grid.RowDefinitions><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/><RowDefinition Height="*"/></Grid.RowDefinitions>
                             <StackPanel><TextBlock Text="Libreria Master" Style="{StaticResource Title}" Margin="0,4,0,0"/><TextBlock Text="Inventario, metadati e struttura delle copie normalizzate." Style="{StaticResource MutedText}" TextWrapping="Wrap" Margin="0,3,0,14"/></StackPanel>
                             <Grid Grid.Row="1" Margin="0,0,0,12"><Grid.ColumnDefinitions><ColumnDefinition Width="0.38*"/><ColumnDefinition Width="0.62*"/></Grid.ColumnDefinitions>

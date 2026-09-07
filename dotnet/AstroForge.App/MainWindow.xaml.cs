@@ -469,7 +469,8 @@ public partial class MainWindow : Window
     private void UpdateWorkspaceContext()
     {
         var selectedTab = WorkspaceTabs.SelectedItem as System.Windows.Controls.TabItem;
-        _inspectorContextAvailable = string.Equals(selectedTab?.Tag?.ToString(), "Inspector", StringComparison.Ordinal);
+        _inspectorContextAvailable = string.Equals(selectedTab?.Tag?.ToString(), "Inspector", StringComparison.Ordinal)
+            && _viewModel.SelectedNode is not null;
         if (WorkspaceTabs.SelectedItem != QualityTab) StopBlink();
         ApplyResponsiveLayout();
     }
@@ -555,6 +556,15 @@ public partial class MainWindow : Window
         catch (OperationCanceledException) { }
         catch (Exception exception) { ShowError("AF-QUALITY-001", "Analisi qualità non completata", exception, MessageBoxImage.Warning); }
         finally { _qualityCancellation.Dispose(); _qualityCancellation = null; }
+    }
+
+    private void OpenData_Click(object sender, RoutedEventArgs e) => OpenToolTab(DataTab);
+    private void OpenQuality_Click(object sender, RoutedEventArgs e) => OpenToolTab(QualityTab);
+    private void OpenMasterLibrary_Click(object sender, RoutedEventArgs e) => OpenToolTab(MasterLibraryTab);
+    private void OpenToolTab(System.Windows.Controls.TabItem tab)
+    {
+        MorePopup.IsOpen = false;
+        WorkspaceTabs.SelectedItem = tab;
     }
     private async void AnalyzeAllQuality_Click(object sender, RoutedEventArgs e)
     {
@@ -817,7 +827,11 @@ public partial class MainWindow : Window
         catch (Exception exception) { ShowError("AF-SCAN-001", "Scansione non completata", exception, MessageBoxImage.Error); }
     }
 
-    private void Tree_SelectedItemChanged(object sender, RoutedPropertyChangedEventArgs<object> e) => _viewModel.SelectedNode = e.NewValue as ProjectTreeNode;
+    private void Tree_SelectedItemChanged(object sender, RoutedPropertyChangedEventArgs<object> e)
+    {
+        _viewModel.SelectedNode = e.NewValue as ProjectTreeNode;
+        UpdateWorkspaceContext();
+    }
 
     private void Tree_MouseDoubleClick(object sender, System.Windows.Input.MouseButtonEventArgs e) => Reveal((_viewModel.SelectedNode?.Frames.FirstOrDefault())?.Path);
     private void ReviewQueue_MouseDoubleClick(object sender, System.Windows.Input.MouseButtonEventArgs e) => Reveal(((sender as System.Windows.Controls.ListBox)?.SelectedItem as ReviewQueueItem)?.Frame.Path);

@@ -4,7 +4,8 @@
 
 - La navigazione resta su una sola riga e non cambia più ordine quando lo spazio si riduce.
 - I quattro passaggi principali hanno etichette brevi e numerate.
-- Dati, Qualità e Master sono controlli compatti; la natura opzionale è spiegata nei tooltip.
+- Dati, Qualità e Master sono raccolti nel menu Strumenti e non comprimono più il workflow.
+- L’Inspector resta chiuso finché non viene selezionato un elemento modificabile.
 - Rimossi i testi grigi che apparivano come intestazioni scollegate sopra il workflow.
 
 ## 1.7.0 — 6 settembre 2026
