@@ -1,5 +1,10 @@
 # AstroProject Forge — note di rilascio
 
+## 1.7.2 — 9 settembre 2026
+
+- Corretto l’arresto con recovery aprendo Dati, Qualità o Master dalla barra superiore.
+- Rimossi dall’interfaccia i parametri tecnici di spazio e velocità e i comandi pausa/riprendi dell’esportazione.
+
 ## 1.7.1 — 7 settembre 2026
 
 - La navigazione resta su una sola riga e non cambia più ordine quando lo spazio si riduce.

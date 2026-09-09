@@ -332,12 +332,6 @@
                                             <ItemsControl ItemsSource="{Binding ExportHistory}" Margin="0,8,0,0">
                                                 <ItemsControl.ItemTemplate><DataTemplate><Border Background="#101923" BorderBrush="{StaticResource Stroke}" BorderThickness="1" CornerRadius="8" Padding="10" Margin="0,0,0,7"><StackPanel><Grid><Grid.ColumnDefinitions><ColumnDefinition/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions><TextBlock Text="{Binding Title}" FontWeight="SemiBold"/><TextBlock Grid.Column="1" Text="{Binding Date}" Style="{StaticResource MutedText}" FontSize="9"/></Grid><TextBlock Text="{Binding Detail}" Style="{StaticResource MutedText}" TextWrapping="Wrap" FontSize="10" Margin="0,4,0,0"/></StackPanel></Border></DataTemplate></ItemsControl.ItemTemplate>
                                             </ItemsControl>
-                                            <Grid Margin="0,15,0,0"><Grid.ColumnDefinitions><ColumnDefinition/><ColumnDefinition/><ColumnDefinition/></Grid.ColumnDefinitions>
-                                                <StackPanel Margin="0,0,4,0" ToolTip="Spazio aggiuntivo richiesto oltre alla dimensione calcolata"><TextBlock Text="Margine spazio %" Style="{StaticResource MetaLabel}"/><TextBox Text="{Binding ExportMarginPercent, UpdateSourceTrigger=PropertyChanged}" HorizontalContentAlignment="Center" IsEnabled="{Binding CanRunProjectOperations}" Tag="Margine spazio %"/></StackPanel>
-                                                <StackPanel Grid.Column="1" Margin="4,0" ToolTip="Spazio che deve restare libero dopo l’esportazione"><TextBlock Text="Spazio libero GiB" Style="{StaticResource MetaLabel}"/><TextBox Text="{Binding ExportMinimumReserveGiB, UpdateSourceTrigger=PropertyChanged}" HorizontalContentAlignment="Center" IsEnabled="{Binding CanRunProjectOperations}" Tag="Spazio libero GiB"/></StackPanel>
-                                                <StackPanel Grid.Column="2" Margin="4,0,0,0" ToolTip="Velocità usata soltanto per calcolare il tempo rimanente"><TextBlock Text="Velocità MiB/s" Style="{StaticResource MetaLabel}"/><TextBox Text="{Binding ExportEstimatedThroughputMiBps, UpdateSourceTrigger=PropertyChanged}" HorizontalContentAlignment="Center" IsEnabled="{Binding CanRunProjectOperations}" Tag="Velocità MiB/s"/></StackPanel>
-                                            </Grid>
-                                            <Grid Margin="0,12,0,0"><Grid.ColumnDefinitions><ColumnDefinition/><ColumnDefinition/><ColumnDefinition/></Grid.ColumnDefinitions><Button Content="Pausa" Click="PauseExport_Click" IsEnabled="{Binding CanPauseExport}" Margin="0,0,4,0" Padding="8,6"/><Button Grid.Column="1" Content="Riprendi" Click="ResumeExport_Click" IsEnabled="{Binding CanResumeExport}" Margin="4,0" Padding="8,6"/><Button Grid.Column="2" Content="Annulla" Click="CancelExport_Click" IsEnabled="{Binding CanCancelExport}" Margin="4,0,0,0" Padding="8,6" BorderBrush="#71434A"/></Grid>
                                             <Border Height="1" Background="{StaticResource Stroke}" Margin="0,15,0,12"/>
                                             <TextBlock Text="CONTROLLI AUTOMATICI" Style="{StaticResource Eyebrow}"/>
                                             <ItemsControl ItemsSource="{Binding ExportPreflightFindings}" Margin="0,9,0,0">
@@ -373,7 +367,7 @@
                         </ScrollViewer>
                     </TabItem>
 
-                    <TabItem x:Name="DataTab" Header="Dati" Tag="Optional" Visibility="Collapsed">
+                    <TabItem x:Name="DataTab" Header="" Width="0" Height="0" Padding="0" Margin="0" IsHitTestVisible="False">
                         <ScrollViewer Margin="0,14,0,0" VerticalScrollBarVisibility="Auto">
                             <StackPanel>
                                 <TextBlock Text="Dati acquisiti" Style="{StaticResource Title}" Margin="0,0,0,14"/>
@@ -432,7 +426,7 @@
                             </StackPanel>
                         </ScrollViewer>
                     </TabItem>
-                    <TabItem x:Name="QualityTab" Header="Qualità" Tag="Optional" Visibility="Collapsed">
+                    <TabItem x:Name="QualityTab" Header="" Width="0" Height="0" Padding="0" Margin="0" IsHitTestVisible="False">
                         <Grid Margin="0,14,0,0">
                             <Grid.RowDefinitions><RowDefinition Height="Auto"/><RowDefinition Height="225"/><RowDefinition Height="*"/></Grid.RowDefinitions>
                             <Grid><Grid.ColumnDefinitions><ColumnDefinition/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions>
@@ -525,7 +519,7 @@
                             </Grid>
                         </Grid>
                     </TabItem>
-                    <TabItem x:Name="MasterLibraryTab" Header="Master" Tag="Optional" Visibility="Collapsed">
+                    <TabItem x:Name="MasterLibraryTab" Header="" Width="0" Height="0" Padding="0" Margin="0" IsHitTestVisible="False">
                         <Grid Margin="0,14,0,0"><Grid.RowDefinitions><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/><RowDefinition Height="*"/></Grid.RowDefinitions>
                             <StackPanel><TextBlock Text="Libreria Master" Style="{StaticResource Title}" Margin="0,4,0,0"/><TextBlock Text="Inventario, metadati e struttura delle copie normalizzate." Style="{StaticResource MutedText}" TextWrapping="Wrap" Margin="0,3,0,14"/></StackPanel>
                             <Grid Grid.Row="1" Margin="0,0,0,12"><Grid.ColumnDefinitions><ColumnDefinition Width="0.38*"/><ColumnDefinition Width="0.62*"/></Grid.ColumnDefinitions>
