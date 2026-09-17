@@ -305,7 +305,13 @@
                                 <Button Grid.Column="2" Content="Sfoglia" Click="ChooseDestination_Click" VerticalAlignment="Bottom" IsEnabled="{Binding CanRunProjectOperations}"/>
                             </Grid>
                             <Grid Grid.Row="2" Margin="0,0,0,10"><Grid.ColumnDefinitions><ColumnDefinition/><ColumnDefinition Width="Auto"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions>
-                                <TextBlock Text="{Binding PlanSummary}" Style="{StaticResource MutedText}" VerticalAlignment="Center" TextTrimming="CharacterEllipsis"/>
+                                <StackPanel VerticalAlignment="Center">
+                                    <TextBlock Text="{Binding PlanSummary}" Style="{StaticResource MutedText}" TextTrimming="CharacterEllipsis"/>
+                                    <StackPanel Orientation="Horizontal" Margin="0,7,0,0">
+                                        <CheckBox Content="Crea cartella risultati PixInsight" IsChecked="{Binding CreatePixInsightOutputFolder}" VerticalAlignment="Center" ToolTip="Crea nel progetto una cartella separata per i file prodotti da WBPP"/>
+                                        <TextBox Width="190" Margin="10,0,0,0" Text="{Binding PixInsightOutputFolderName, UpdateSourceTrigger=PropertyChanged}" IsEnabled="{Binding CreatePixInsightOutputFolder}" ToolTip="Nome della cartella usata come Output Directory di WBPP"/>
+                                    </StackPanel>
+                                </StackPanel>
                                 <Button Grid.Column="1" Content="Crea struttura" Click="BuildPlan_Click" Margin="8,0" IsEnabled="{Binding CanRunProjectOperations}" ToolTip="Mostra cartelle e nomi prima di copiare i file"/>
                                 <Button Grid.Column="2" Content="{Binding ExportActionLabel}" Click="Export_Click" Style="{StaticResource PrimaryButton}" IsEnabled="{Binding CanStartExport}" ToolTip="Copia soltanto i file nuovi e conserva la cronologia del dataset"/>
                             </Grid>
@@ -348,8 +354,7 @@
                     <TabItem x:Name="WbppTab" Header="4  WBPP" ToolTip="Apri la configurazione consigliata per Weighted Batch Preprocessing">
                         <ScrollViewer Margin="0,14,0,0" VerticalScrollBarVisibility="Auto">
                             <StackPanel>
-                                <TextBlock Text="Impostazioni WBPP" Style="{StaticResource Title}"/>
-                                <TextBlock Text="Inserisci in WeightedBatchPreprocessing solo le righe mostrate qui." Style="{StaticResource MutedText}" Margin="0,2,0,14"/>
+                                <Grid Margin="0,0,0,14"><Grid.ColumnDefinitions><ColumnDefinition/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions><StackPanel><TextBlock Text="PixInsight WBPP" Style="{StaticResource Title}"/><TextBlock Text="Crea l’istanza con file, Master, gruppi e cartella risultati già impostati." Style="{StaticResource MutedText}" Margin="0,2,0,0"/></StackPanel><Button Grid.Column="1" Content="Crea e apri in PixInsight" Click="OpenWbppInstance_Click" Style="{StaticResource PrimaryButton}" ToolTip="Genera un file XPSM dal progetto esportato e lo apre in PixInsight"/></Grid>
                                 <Border Style="{StaticResource Card}" Background="#102725" BorderBrush="#315B55" Margin="0,0,0,12">
                                     <Grid><Grid.ColumnDefinitions><ColumnDefinition Width="34"/><ColumnDefinition/></Grid.ColumnDefinitions><TextBlock Text="1" Foreground="{StaticResource Accent}" FontSize="20" FontWeight="Bold"/><TextBlock Grid.Column="1" Text="In WBPP attiva Grouping Keywords, poi aggiungi una riga per ogni keyword indicata sotto." TextWrapping="Wrap" VerticalAlignment="Center"/></Grid>
                                 </Border>

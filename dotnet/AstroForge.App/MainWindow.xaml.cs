@@ -542,6 +542,22 @@ public partial class MainWindow : Window
     private void ResumeExport_Click(object sender, RoutedEventArgs e) => _viewModel.ResumeExport();
     private void CancelExport_Click(object sender, RoutedEventArgs e) => _viewModel.CancelExport();
 
+    private void OpenWbppInstance_Click(object sender, RoutedEventArgs e)
+    {
+        try
+        {
+            var instance = _viewModel.GenerateWbppInstance();
+            var pixInsight = new[]
+            {
+                @"C:\Program Files\PixInsight\bin\PixInsight.exe",
+                @"C:\Program Files\PixInsight\PixInsight.exe"
+            }.FirstOrDefault(File.Exists);
+            if (pixInsight is null) throw new FileNotFoundException("PixInsight non è stato trovato. Installa PixInsight nel percorso standard oppure apri manualmente il file XPSM generato.", instance);
+            Process.Start(new ProcessStartInfo(pixInsight, $"\"{instance}\"") { UseShellExecute = true });
+        }
+        catch (Exception exception) { ShowError("AF-WBPP-001", "Istanza WBPP non creata", exception, MessageBoxImage.Error); }
+    }
+
     private async void AnalyzeQuality_Click(object sender, RoutedEventArgs e)
     {
         StopBlink();

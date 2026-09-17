@@ -379,7 +379,7 @@ internal static class RegressionQa
             var firstDestination = Path.Combine(initial.ProjectRoot, initial.Files[0].RelativePath);
             var firstHash = Convert.ToHexString(SHA256.HashData(await File.ReadAllBytesAsync(firstDestination)));
 
-            var update = new ProjectPlan("Growing", root, [Light(first, "2026-09-01-REGROUPED"), Light(second, "2026-09-02")], new WbppRecipe([], ["qa"]));
+            var update = new ProjectPlan("Growing", root, [Light(first, "2026-09-01-REGROUPED"), Light(second, "2026-09-02")], new WbppRecipe([], ["qa"]), PixInsightOutputFolderName: "PixInsight Output");
             var report = await ProjectExportPreflight.AnalyzeAsync(update, new(0, 0, 100));
             Assert(report.IsReady && report.IsIncremental && report.ResumeFileCount == 1 && report.NewFileCount == 1
                 && report.ReuseMatches?.Single().ExistingRelativePath.Replace('\\', '/') == initial.Files[0].RelativePath.Replace('\\', '/'),
@@ -394,6 +394,11 @@ internal static class RegressionQa
                 && Math.Abs(history.Entries[^1].AddedIntegrationSeconds - 600) < 0.01,
                 "La cronologia incrementale non descrive correttamente la nuova sessione.");
             Assert(File.Exists(Path.Combine(update.ProjectRoot, "_AstroForge", ExportHistoryStore.MarkdownFileName)), "La timeline leggibile non è stata generata.");
+            Assert(Directory.Exists(Path.Combine(update.ProjectRoot, "PixInsight Output")), "La cartella risultati PixInsight non è stata creata.");
+            var instance = WbppInstanceGenerator.Generate(update);
+            var instanceXml = await File.ReadAllTextAsync(instance);
+            Assert(instanceXml.Contains("$PXI_SRCDIR/scripts/BatchPreprocessing/WBPP.js") && instanceXml.Contains("AstroForge_WBPP"),
+                "L’istanza WBPP XPSM non è stata generata correttamente.");
 
             await File.WriteAllBytesAsync(firstDestination, Enumerable.Repeat((byte)0x7F, 96 * 1024).ToArray());
             var conflict = await ProjectExportPreflight.AnalyzeAsync(update, new(0, 0, 100));

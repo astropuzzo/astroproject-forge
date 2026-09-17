@@ -19,6 +19,8 @@ public sealed class AstroForgeProjectDocument
     [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
     public List<MasterLibraryDefinition>? MasterLibraries { get; set; }
     public string DestinationPath { get; set; } = "";
+    public bool CreatePixInsightOutputFolder { get; set; } = true;
+    public string PixInsightOutputFolderName { get; set; } = "PixInsight Output";
     public int SessionBoundaryHour { get; set; } = 12;
     public double? DefaultGain { get; set; }
     public double? DefaultOffset { get; set; }

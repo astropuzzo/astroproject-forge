@@ -65,6 +65,8 @@ public sealed class MainViewModel : BindableBase
     private FrameKind _initialKind;
     private string _projectName = "";
     private string _destinationPath = "";
+    private bool _createPixInsightOutputFolder = true;
+    private string _pixInsightOutputFolderName = "PixInsight Output";
     private int _sessionBoundaryHour = 12;
     private string _readinessText = "Non analizzato";
     private string _calibrationSummary = "Seleziona uno o più Light per vedere le calibrazioni assegnate.";
@@ -121,6 +123,8 @@ public sealed class MainViewModel : BindableBase
         foreach (var library in savedLibraries.OrderBy(item => item.Priority)) AddMasterLibraryItem(new(library.Name, library.Path, library.Priority, library.Enabled));
         _destinationPath = _state.DestinationPath;
         _projectName = _state.ProjectName;
+        _createPixInsightOutputFolder = _state.CreatePixInsightOutputFolder;
+        _pixInsightOutputFolderName = _state.PixInsightOutputFolderName;
         _sessionBoundaryHour = Math.Clamp(_state.SessionBoundaryHour, 0, 23);
         _projectDefaultGain = Input(_state.ProjectDefaultGain);
         _projectDefaultOffset = Input(_state.ProjectDefaultOffset);
@@ -196,6 +200,8 @@ public sealed class MainViewModel : BindableBase
     public MasterLibraryItem? SelectedMasterLibrary { get => _selectedMasterLibrary; set => Set(ref _selectedMasterLibrary, value); }
     public string ProjectName { get => _projectName; set { if (Set(ref _projectName, value)) { Raise(nameof(HasProjectContent)); InvalidateExportPlan(); } } }
     public string DestinationPath { get => _destinationPath; set { if (Set(ref _destinationPath, value)) { Raise(nameof(HasProjectContent)); InvalidateExportPlan(); } } }
+    public bool CreatePixInsightOutputFolder { get => _createPixInsightOutputFolder; set { if (Set(ref _createPixInsightOutputFolder, value)) InvalidateExportPlan(); } }
+    public string PixInsightOutputFolderName { get => _pixInsightOutputFolderName; set { if (Set(ref _pixInsightOutputFolderName, value)) InvalidateExportPlan(); } }
     public string CurrentProjectFile { get => _currentProjectFile; private set { if (Set(ref _currentProjectFile, value)) { Raise(nameof(ProjectDocumentStatus)); Raise(nameof(HasProjectContent)); } } }
     public string ProjectDocumentStatus => string.IsNullOrWhiteSpace(CurrentProjectFile) ? "Progetto non ancora salvato" : Path.GetFileName(CurrentProjectFile);
     public bool HasProjectContent => SourcePaths.Count > 0 || !string.IsNullOrWhiteSpace(CurrentProjectFile) || !string.IsNullOrWhiteSpace(ProjectName) || !string.IsNullOrWhiteSpace(DestinationPath);
@@ -757,6 +763,8 @@ public sealed class MainViewModel : BindableBase
         _state.MasterLibraries = MasterLibraries.Select(item => item.ToDefinition()).ToList();
         _state.DestinationPath = DestinationPath;
         _state.ProjectName = ProjectName;
+        _state.CreatePixInsightOutputFolder = CreatePixInsightOutputFolder;
+        _state.PixInsightOutputFolderName = PixInsightOutputFolderName;
         _state.SessionBoundaryHour = SessionBoundaryHour;
         _state.ProjectDefaultGain = ParseDefault(ProjectDefaultGain);
         _state.ProjectDefaultOffset = ParseDefault(ProjectDefaultOffset);
@@ -815,6 +823,8 @@ public sealed class MainViewModel : BindableBase
         // never replace, hide or duplicate the libraries configured by the user.
         DestinationPath = document.DestinationPath;
         ProjectName = document.ProjectName;
+        CreatePixInsightOutputFolder = document.CreatePixInsightOutputFolder;
+        PixInsightOutputFolderName = document.PixInsightOutputFolderName;
         _sessionBoundaryHour = Math.Clamp(document.SessionBoundaryHour, 0, 23);
         Raise(nameof(SessionBoundaryHour));
         ProjectDefaultGain = Input(document.DefaultGain);
@@ -831,7 +841,8 @@ public sealed class MainViewModel : BindableBase
     private AstroForgeProjectDocument CreateProjectDocument() => new()
     {
         SchemaVersion = 2, CreatedAt = _projectCreatedAt, ProjectName = ProjectName, SourcePaths = SourcePaths.ToList(),
-        DestinationPath = DestinationPath, SessionBoundaryHour = SessionBoundaryHour, DefaultGain = ParseDefault(ProjectDefaultGain),
+        DestinationPath = DestinationPath, CreatePixInsightOutputFolder = CreatePixInsightOutputFolder, PixInsightOutputFolderName = PixInsightOutputFolderName,
+        SessionBoundaryHour = SessionBoundaryHour, DefaultGain = ParseDefault(ProjectDefaultGain),
         DefaultOffset = ParseDefault(ProjectDefaultOffset), DefaultTemperatureC = ParseDefault(ProjectDefaultTemperature),
         QualitySigmaThreshold = QualitySigmaThreshold, ExcludedQualityPaths = _excludedQualityPaths.OrderBy(path => path, StringComparer.OrdinalIgnoreCase).ToList(),
         Overrides = new(_state.Overrides, StringComparer.OrdinalIgnoreCase)
@@ -908,11 +919,20 @@ public sealed class MainViewModel : BindableBase
         if (_analysis?.Ready != true) throw new InvalidOperationException("Risolvi prima tutte le calibrazioni evidenziate.");
         if (string.IsNullOrWhiteSpace(ProjectName)) throw new InvalidOperationException("Inserisci il nome del progetto.");
         if (string.IsNullOrWhiteSpace(DestinationPath)) throw new InvalidOperationException("Seleziona la cartella di destinazione.");
-        _plan = ProjectExporter.BuildPlan(ProjectName, DestinationPath, _analysis, _excludedQualityPaths);
+        _plan = ProjectExporter.BuildPlan(ProjectName, DestinationPath, _analysis, _excludedQualityPaths,
+            CreatePixInsightOutputFolder ? PixInsightOutputFolderName : null);
         BuildPlannedTree();
         InvalidateExportPreflight();
         Raise(nameof(PlanSummary)); Raise(nameof(HasExportPlan)); Raise(nameof(CanRunExportPreflight));
         Status = $"Anteprima pronta: {_plan.Files.Count} file, {HumanSize(_plan.RequiredBytes)} · i controlli verranno eseguiti automaticamente";
+    }
+
+    public string GenerateWbppInstance()
+    {
+        if (_plan is null) BuildPlan();
+        var path = WbppInstanceGenerator.Generate(_plan!);
+        Status = $"Istanza WBPP pronta · {Path.GetFileName(path)}";
+        return path;
     }
 
     public async Task AnalyzeQualityAsync(CancellationToken cancellationToken = default)

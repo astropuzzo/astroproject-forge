@@ -109,10 +109,12 @@ public static class ProjectExportPreflight
             }
 
             long length;
+            long sourceLastWriteUtcTicks;
             try
             {
                 var info = new FileInfo(source);
                 length = info.Length;
+                sourceLastWriteUtcTicks = info.LastWriteTimeUtc.Ticks;
                 totalBytes = checked(totalBytes + length);
                 using var probe = new FileStream(source, FileMode.Open, FileAccess.Read, FileShare.Read, 1, FileOptions.SequentialScan);
                 if ((info.Attributes & FileAttributes.ReparsePoint) != 0)
@@ -146,16 +148,17 @@ public static class ProjectExportPreflight
             {
                 if (incremental && manifestRecords.Length > 0)
                 {
-                    var sourceHash = Convert.ToHexString(await HashAsync(source, cancellationToken)).ToLowerInvariant();
                     var sourceMatches = manifestRecords.Where(record => PathIdentity.Equals(record.Source, source)).ToArray();
-                    var candidates = sourceMatches.Concat(manifestRecords.Where(record => record.Sha256.Equals(sourceHash, StringComparison.OrdinalIgnoreCase)))
-                        .DistinctBy(record => record.Destination, comparer);
+                    var candidates = sourceMatches.DistinctBy(record => record.Destination, comparer);
                     var reused = false;
                     foreach (var candidate in candidates)
                     {
                         var existing = Path.GetFullPath(Path.Combine(projectRoot, candidate.Destination));
                         if (!IsWithin(existing, projectRoot) || !File.Exists(existing)) continue;
-                        if (new FileInfo(existing).Length != length || !Convert.ToHexString(await HashAsync(existing, cancellationToken)).Equals(sourceHash, StringComparison.OrdinalIgnoreCase))
+                        var existingInfo = new FileInfo(existing);
+                        if (candidate.Bytes != length || existingInfo.Length != length
+                            || existingInfo.LastWriteTimeUtc.Ticks != sourceLastWriteUtcTicks
+                            || candidate.SourceLastWriteUtcTicks is { } recordedTicks && recordedTicks != sourceLastWriteUtcTicks)
                         {
                             if (sourceMatches.Contains(candidate))
                                 findings.Add(Error("update.manifest_conflict", "File già registrato ma modificato", "Il file associato alla stessa sorgente non corrisponde più al contenuto registrato. Nessuna copia verrà eseguita.", existing));
@@ -177,6 +180,22 @@ public static class ProjectExportPreflight
                 if (stagedInfo.Length != length)
                 {
                     findings.Add(Error(incremental ? "update.size_conflict" : "resume.size_mismatch", incremental ? "File esistente diverso" : "Copia di ripresa non coerente", incremental ? "Il percorso è già occupato da un file con dimensione diversa. Nessun dato verrà sovrascritto." : "La dimensione del file nello staging non coincide con la sorgente.", staged));
+                    continue;
+                }
+                var registered = manifestRecords.FirstOrDefault(record =>
+                    PathIdentity.Equals(record.Source, source)
+                    && string.Equals(record.Destination.Replace('\\', '/'), item.RelativePath.Replace('\\', '/'), StringComparison.OrdinalIgnoreCase)
+                    && record.Bytes == length
+                    && (!record.SourceLastWriteUtcTicks.HasValue || record.SourceLastWriteUtcTicks == sourceLastWriteUtcTicks));
+                if (incremental && registered is not null)
+                {
+                    if (stagedInfo.LastWriteTimeUtc.Ticks != sourceLastWriteUtcTicks)
+                    {
+                        findings.Add(Error("update.manifest_conflict", "File già registrato ma modificato", "Data o contenuto della copia non corrispondono più alla sorgente registrata.", staged));
+                        continue;
+                    }
+                    resumeFiles++;
+                    resumeBytes = checked(resumeBytes + length);
                     continue;
                 }
                 var sourceHash = await HashAsync(source, cancellationToken);
@@ -220,7 +239,7 @@ public static class ProjectExportPreflight
             bytesToCopy, freeBytes, requiredFree, TimeSpan.FromSeconds(seconds), findings, incremental, Math.Max(0, plan.Files.Count - resumeFiles), reuseMatches);
     }
 
-    private sealed record ManifestFile(string Source, string Destination, string Sha256);
+    private sealed record ManifestFile(string Source, string Destination, string Sha256, long Bytes, long? SourceLastWriteUtcTicks);
 
     private static ManifestFile[] ReadManifestFiles(string manifestPath)
     {
@@ -231,7 +250,9 @@ public static class ProjectExportPreflight
             return files.EnumerateArray().Select(item => new ManifestFile(
                     item.TryGetProperty("source", out var source) ? source.GetString() ?? "" : "",
                     item.TryGetProperty("destination", out var destination) ? destination.GetString() ?? "" : "",
-                    item.TryGetProperty("sha256", out var sha) ? sha.GetString() ?? "" : ""))
+                    item.TryGetProperty("sha256", out var sha) ? sha.GetString() ?? "" : "",
+                    item.TryGetProperty("bytes", out var bytes) && bytes.TryGetInt64(out var length) ? length : -1,
+                    item.TryGetProperty("source_last_write_utc_ticks", out var ticks) && ticks.TryGetInt64(out var timestamp) ? timestamp : null))
                 .Where(item => item.Source.Length > 0 && item.Destination.Length > 0 && item.Sha256.Length == 64).ToArray();
         }
         catch (System.Text.Json.JsonException) { return []; }

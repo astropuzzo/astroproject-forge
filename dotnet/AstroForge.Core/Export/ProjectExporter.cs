@@ -10,7 +10,7 @@ using AstroForge.Core.Wbpp;
 namespace AstroForge.Core.Export;
 
 public sealed record PlannedFile(FrameMetadata Frame, string RelativePath, string Role, string? GroupId = null);
-public sealed record ProjectPlan(string ProjectName, string DestinationRoot, IReadOnlyList<PlannedFile> Files, WbppRecipe Recipe, ProjectStatistics? Statistics = null)
+public sealed record ProjectPlan(string ProjectName, string DestinationRoot, IReadOnlyList<PlannedFile> Files, WbppRecipe Recipe, ProjectStatistics? Statistics = null, string? PixInsightOutputFolderName = null)
 {
     public long RequiredBytes => Files.Sum(file => new FileInfo(file.Frame.Path).Length);
     public string ProjectRoot => Path.Combine(DestinationRoot, ProjectName);
@@ -34,7 +34,7 @@ public sealed class ExportExecutionControl
 
 public static class ProjectExporter
 {
-    public static ProjectPlan BuildPlan(string projectName, string destinationRoot, ProjectAnalysis analysis, IReadOnlySet<string>? excludedQualityPaths = null)
+    public static ProjectPlan BuildPlan(string projectName, string destinationRoot, ProjectAnalysis analysis, IReadOnlySet<string>? excludedQualityPaths = null, string? pixInsightOutputFolderName = null)
     {
         if (!analysis.Ready) throw new InvalidOperationException("Il progetto contiene calibrazioni irrisolte.");
         var recipe = WbppRecipeEngine.Recommend(analysis);
@@ -81,7 +81,8 @@ public static class ProjectExporter
         }
         ResolveCollisions(files);
         EnsureNoCollisions(files);
-        return new(SafeName(projectName), Path.GetFullPath(destinationRoot), files, recipe, ProjectStatisticsCalculator.Calculate(analysis));
+        return new(SafeName(projectName), Path.GetFullPath(destinationRoot), files, recipe, ProjectStatisticsCalculator.Calculate(analysis),
+            string.IsNullOrWhiteSpace(pixInsightOutputFolderName) ? null : SafeName(pixInsightOutputFolderName));
     }
 
     public static async Task<string> ExecuteAsync(ProjectPlan plan, IProgress<ExportProgress>? progress = null, CancellationToken cancellationToken = default,
@@ -97,7 +98,7 @@ public static class ProjectExporter
         long copiedBytes = 0;
         long transferredThisRun = 0;
         var watch = Stopwatch.StartNew();
-        var records = preflight.IsIncremental ? ExistingManifestRecords(projectRoot) : new Dictionary<string, object>(StringComparer.OrdinalIgnoreCase);
+        var records = preflight.IsIncremental ? ExistingManifestRecords(projectRoot) : new Dictionary<string, JsonElement>(StringComparer.OrdinalIgnoreCase);
         var addedFiles = new List<PlannedFile>();
         var reuseMap = (preflight.ReuseMatches ?? []).ToDictionary(item => item.PlannedRelativePath, item => item.ExistingRelativePath, StringComparer.OrdinalIgnoreCase);
         try
@@ -115,39 +116,43 @@ public static class ProjectExporter
                 var resumed = false;
                 if (File.Exists(destination))
                 {
-                    hash = await HashAsync(item.Frame.Path, cancellationToken, control);
-                    var existingHash = await HashAsync(destination, cancellationToken, control);
-                    if (!hash.SequenceEqual(existingHash)) throw new IOException($"Il file di ripresa non coincide con l'originale: {destination}");
+                    if (records.TryGetValue(effectiveRelativePath.Replace('\\', '/'), out var record)
+                        && record.TryGetProperty("sha256", out var savedHash)
+                        && savedHash.GetString() is { Length: 64 } hexadecimal)
+                        hash = Convert.FromHexString(hexadecimal);
+                    else
+                        hash = await HashAsync(destination, cancellationToken, control);
                     resumed = true;
                 }
                 else
                 {
                     if (File.Exists(partial)) File.Delete(partial);
                     hash = await CopyWithHashAsync(item.Frame.Path, partial, control, cancellationToken);
-                    var verification = await HashAsync(partial, cancellationToken, control);
-                    if (!hash.SequenceEqual(verification)) throw new IOException($"Verifica SHA-256 fallita: {item.Frame.Path}");
                     File.Move(partial, destination);
                     File.SetLastWriteTimeUtc(destination, File.GetLastWriteTimeUtc(item.Frame.Path));
                     transferredThisRun += new FileInfo(destination).Length;
                     addedFiles.Add(item);
                 }
                 copiedBytes += new FileInfo(destination).Length;
-                records[effectiveRelativePath.Replace('\\', '/')] = new
+                records[effectiveRelativePath.Replace('\\', '/')] = JsonSerializer.SerializeToElement(new
                 {
                     source = Path.GetFullPath(item.Frame.Path),
                     destination = effectiveRelativePath.Replace('\\', '/'),
                     role = item.Role,
                     group_id = item.GroupId,
                     bytes = new FileInfo(destination).Length,
+                    source_last_write_utc_ticks = File.GetLastWriteTimeUtc(item.Frame.Path).Ticks,
                     sha256 = Convert.ToHexString(hash).ToLowerInvariant(),
                     metadata = Snapshot(item.Frame)
-                };
+                });
                 var speed = watch.Elapsed.TotalSeconds <= 0 ? 0 : transferredThisRun / 1024d / 1024d / watch.Elapsed.TotalSeconds;
                 TimeSpan? remaining = speed <= 0 ? null : TimeSpan.FromSeconds(Math.Max(0, totalBytes - copiedBytes) / 1024d / 1024d / speed);
                 progress?.Report(new(index + 1, plan.Files.Count, item.Frame.FileName, copiedBytes, totalBytes, speed, remaining, resumed));
             }
             var controlDirectory = Path.Combine(workingRoot, "_AstroForge");
             Directory.CreateDirectory(controlDirectory);
+            if (!string.IsNullOrWhiteSpace(plan.PixInsightOutputFolderName))
+                Directory.CreateDirectory(Path.Combine(workingRoot, plan.PixInsightOutputFolderName));
             var jsonOptions = new JsonSerializerOptions { WriteIndented = true };
             await WriteAtomicAsync(Path.Combine(controlDirectory, "manifest.json"), JsonSerializer.Serialize(new { schema = 3, application = "AstroProject Forge", mode = preflight.IsIncremental ? "incremental-update" : "verified-copy", project_name = plan.ProjectName, updated_at = DateTimeOffset.UtcNow, preflight = new { preflight.DestinationKind, preflight.TotalBytes, preflight.ResumeBytes, preflight.BytesToCopy, preflight.AvailableFreeBytes, preflight.RequiredFreeBytes, preflight.IsIncremental, preflight.NewFileCount }, files = records.Values }, jsonOptions), cancellationToken);
             await WriteAtomicAsync(Path.Combine(controlDirectory, "wbpp-recipe.json"), JsonSerializer.Serialize(new { schema = 1, grouping_keywords = plan.Recipe.Keywords.Select(keyword => new { keyword = keyword.Keyword, pre = keyword.Pre, post = keyword.Post, reason = keyword.Reason }), notes = plan.Recipe.Notes }, jsonOptions), cancellationToken);
@@ -179,9 +184,9 @@ public static class ProjectExporter
         }
     }
 
-    private static Dictionary<string, object> ExistingManifestRecords(string projectRoot)
+    private static Dictionary<string, JsonElement> ExistingManifestRecords(string projectRoot)
     {
-        var result = new Dictionary<string, object>(StringComparer.OrdinalIgnoreCase);
+        var result = new Dictionary<string, JsonElement>(StringComparer.OrdinalIgnoreCase);
         var path = Path.Combine(projectRoot, "_AstroForge", "manifest.json");
         if (!File.Exists(path)) return result;
         try

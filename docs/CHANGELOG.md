@@ -1,5 +1,13 @@
 # AstroProject Forge — note di rilascio
 
+## 1.8.0 — 17 settembre 2026
+
+- Aggiornamenti incrementali immediati: i file già registrati non vengono più riletti o ricalcolati.
+- I nuovi file vengono copiati e indicizzati in un solo passaggio.
+- Cartella risultati PixInsight opzionale e configurabile per ogni progetto.
+- Generazione di un’istanza WBPP `.xpsm` con file, Master, gruppi, keyword e output già impostati.
+- Apertura diretta dell’istanza in PixInsight dalla pagina WBPP.
+
 ## 1.7.2 — 9 settembre 2026
 
 - Corretto l’arresto con recovery aprendo Dati, Qualità o Master dalla barra superiore.

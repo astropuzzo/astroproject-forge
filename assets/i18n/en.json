@@ -570,4 +570,11 @@
   ,"SESSIONI": "SESSIONS"
   ,"Notti": "Nights"
   ,"Mostra integrazione, numero di Light ed esposizione media per ogni notte": "Show integration, Light count and average exposure for each night"
+  ,"Crea cartella risultati PixInsight": "Create PixInsight results folder"
+  ,"Crea e apri in PixInsight": "Create and open in PixInsight"
+  ,"Crea l’istanza con file, Master, gruppi e cartella risultati già impostati.": "Create an instance with files, masters, groups and output folder preloaded."
+  ,"Crea nel progetto una cartella separata per i file prodotti da WBPP": "Create a separate folder in the project for WBPP output"
+  ,"Genera un file XPSM dal progetto esportato e lo apre in PixInsight": "Generate an XPSM instance from the exported project and open it in PixInsight"
+  ,"Nome della cartella usata come Output Directory di WBPP": "Folder name used as the WBPP output directory"
+  ,"Usata come Output Directory di WBPP": "Used as the WBPP output directory"
 }

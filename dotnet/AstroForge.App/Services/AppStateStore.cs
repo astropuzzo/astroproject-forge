@@ -14,6 +14,8 @@ public sealed class AppState
     public List<MasterLibraryDefinition> MasterLibraries { get; set; } = [];
     public string DestinationPath { get; set; } = "";
     public string ProjectName { get; set; } = "";
+    public bool CreatePixInsightOutputFolder { get; set; } = true;
+    public string PixInsightOutputFolderName { get; set; } = "PixInsight Output";
     public int SessionBoundaryHour { get; set; } = 12;
     public double? ProjectDefaultGain { get; set; } = 100;
     public double? ProjectDefaultOffset { get; set; } = 51;

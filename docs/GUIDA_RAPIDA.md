@@ -37,6 +37,10 @@ Apri **Calibrazioni**. Correggi solo gli elementi segnalati. Puoi assegnare manu
 
 Apri **PixInsight WBPP** nell’app:
 
+Puoi selezionare **Crea e apri in PixInsight**: l’app genera un’istanza `.xpsm` con file, Master, keyword e cartella risultati già impostati. La tabella sottostante resta disponibile per il controllo manuale.
+
+In alternativa:
+
 1. in PixInsight WBPP attiva **Grouping Keywords**;
 2. aggiungi soltanto le keyword mostrate;
 3. imposta **Pre = ON** e **Post = OFF**;

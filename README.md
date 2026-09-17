@@ -21,7 +21,8 @@ AstroProject Forge reads FITS and XISF metadata, reconstructs observing nights a
 - integration statistics by filter, session and night;
 - project-specific WBPP Grouping Keywords;
 - optional frame-quality analysis with FWHM, eccentricity, noise, SNR, Blink and non-destructive exclusions;
-- incremental project updates that copy only new files and preserve a filter/session timeline;
+- instant incremental updates: registered files are not reopened, and only new files are copied;
+- one-click PixInsight WBPP instance with files, masters, grouping keywords and output directory preloaded;
 - Italian and English interface;
 - one-click Windows updates with verified download, installation and automatic restart.
 
@@ -36,7 +37,7 @@ The main workflow has four steps:
 | 1 | Project | Import FITS/XISF, then select **Analyze**. |
 | 2 | Calibrations | Resolve only the items reported by the app. Skip this page when nothing is reported. |
 | 3 | Export | Choose the destination, build the structure and export. Repeating the export adds only new files. |
-| 4 | PixInsight WBPP | Enter the suggested Grouping Keywords and load the exported project. |
+| 4 | PixInsight WBPP | Create and open the ready-to-run WBPP instance. |
 
 Statistics and Quality are optional. Master Library is an independent tool and is not a required final step.
 
@@ -76,7 +77,8 @@ AstroProject Forge legge i metadati FITS e XISF, ricostruisce le notti osservati
 - statistiche di integrazione per filtro, sessione e notte;
 - Grouping Keywords WBPP calcolate sul progetto;
 - analisi qualità opzionale con FWHM, eccentricità, rumore, SNR, Blink ed esclusioni non distruttive;
-- aggiornamenti incrementali che copiano solo i nuovi file e conservano una timeline per filtro e sessione;
+- aggiornamenti incrementali immediati: i file registrati non vengono riaperti e si copiano solo quelli nuovi;
+- istanza PixInsight WBPP con file, Master, keyword e cartella risultati già caricati;
 - interfaccia italiana e inglese;
 - aggiornamenti Windows in un clic con download verificato, installazione silenziosa e riavvio automatico.
 
@@ -91,7 +93,7 @@ Il percorso principale ha quattro passaggi:
 | 1 | Progetto | Importa FITS/XISF e seleziona **Analizza**. |
 | 2 | Calibrazioni | Risolvi soltanto ciò che viene segnalato. Se non ci sono avvisi, passa oltre. |
 | 3 | Esportazione | Scegli la destinazione, crea la struttura ed esporta. Le esportazioni successive aggiungono solo i file nuovi. |
-| 4 | PixInsight WBPP | Inserisci le Grouping Keywords proposte e carica il progetto esportato. |
+| 4 | PixInsight WBPP | Crea e apri l’istanza WBPP già configurata. |
 
 Statistiche e Qualità sono facoltative. Master Library è uno strumento indipendente, non un passaggio finale obbligatorio.
 
