@@ -547,13 +547,7 @@ public partial class MainWindow : Window
         try
         {
             var instance = _viewModel.GenerateWbppInstance();
-            var pixInsight = new[]
-            {
-                @"C:\Program Files\PixInsight\bin\PixInsight.exe",
-                @"C:\Program Files\PixInsight\PixInsight.exe"
-            }.FirstOrDefault(File.Exists);
-            if (pixInsight is null) throw new FileNotFoundException("PixInsight non è stato trovato. Installa PixInsight nel percorso standard oppure apri manualmente il file XPSM generato.", instance);
-            Process.Start(new ProcessStartInfo(pixInsight, $"\"{instance}\"") { UseShellExecute = true });
+            AstroForge.Core.Wbpp.PixInsightLauncher.Open(instance);
         }
         catch (Exception exception) { ShowError("AF-WBPP-001", "Istanza WBPP non creata", exception, MessageBoxImage.Error); }
     }

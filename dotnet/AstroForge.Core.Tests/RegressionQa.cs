@@ -399,6 +399,23 @@ internal static class RegressionQa
             var instanceXml = await File.ReadAllTextAsync(instance);
             Assert(instanceXml.Contains("$PXI_SRCDIR/scripts/BatchPreprocessing/WBPP.js") && instanceXml.Contains("AstroForge_WBPP"),
                 "L’istanza WBPP XPSM non è stata generata correttamente.");
+            var xml = System.Xml.Linq.XDocument.Parse(instanceXml);
+            System.Xml.Linq.XNamespace ns = "http://www.pixinsight.com/xpsm";
+            var icon = xml.Root!.Element(ns + "icon");
+            Assert(icon is not null && (string?)icon.Attribute("instance") == (string?)xml.Root.Element(ns + "instance")!.Attribute("id"), "XPSM has no linked process icon.");
+            var parameters = xml.Descendants(ns + "tr").ToDictionary(row => row.Elements().First().Value, row => row.Elements().Last().Value);
+            using var groups = JsonDocument.Parse(Convert.FromBase64String(parameters["groups"]));
+            var exportedPaths = groups.RootElement.EnumerateArray().Where(group => group.GetProperty("mode").GetInt32() == 1)
+                .SelectMany(group => group.GetProperty("fileItems").EnumerateArray()).Select(item => item.GetProperty("filePath").GetString()!).ToArray();
+            Assert(exportedPaths.Length == 2 && exportedPaths.All(File.Exists) && exportedPaths.Contains(firstDestination.Replace('\\', '/')), "WBPP must use actual incremental export destinations, not newly planned paths.");
+            Assert(groups.RootElement[0].GetProperty("fileItems")[0].GetProperty("overscan").GetProperty("overscan").GetArrayLength() == 4, "WBPP overscan requires four regions.");
+            Assert(groups.RootElement.EnumerateArray().All(group => group.GetProperty("mode").GetInt32() == 1), "WBPP must rebuild POST groups using its installed version.");
+            var launcher = await File.ReadAllTextAsync(WbppInstanceGenerator.LauncherPath(instance));
+            Assert(launcher.StartsWith("#engine v8\n") && launcher.Contains("Parameters.set(\"groups\"")
+                && launcher.Contains("#include <../src/scripts/BatchPreprocessing/WBPP.js>")
+                && !launcher.Contains("executeGlobal"), "The launcher must pass parameters to native WBPP without recursively executing Script.");
+            var missing = Light(Path.Combine(root, "not-exported.fit"), "2026-09-03");
+            await AssertThrowsAsync<FileNotFoundException>(() => Task.Run(() => WbppInstanceGenerator.Generate(update with { Files = [missing] })), "Unexported files must not produce an empty WBPP instance.");
 
             await File.WriteAllBytesAsync(firstDestination, Enumerable.Repeat((byte)0x7F, 96 * 1024).ToArray());
             var conflict = await ProjectExportPreflight.AnalyzeAsync(update, new(0, 0, 100));

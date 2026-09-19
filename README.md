@@ -41,6 +41,8 @@ The main workflow has four steps:
 
 Statistics and Quality are optional. Master Library is an independent tool and is not a required final step.
 
+After export, **Create and open in PixInsight** opens the populated WBPP window; it does not start processing. Check **Calibration**, then press **Run** when ready. The project also contains a `.xpsm` process icon and a `.js` launcher. To use the XPSM manually, load its process icon and apply the Script instance globally. Direct launch requires PixInsight 1.9.4 or newer in its standard installation location; tested with PixInsight 1.9.5 / WBPP 3.1.0 on Windows.
+
 Master Libraries are saved in the application settings, not inside a project. Opening
 or creating a project never removes the configured libraries.
 
@@ -96,6 +98,8 @@ Il percorso principale ha quattro passaggi:
 | 4 | PixInsight WBPP | Crea e apri l’istanza WBPP già configurata. |
 
 Statistiche e Qualità sono facoltative. Master Library è uno strumento indipendente, non un passaggio finale obbligatorio.
+
+Dopo l’esportazione, **Crea e apri in PixInsight** apre WBPP già compilato, senza avviare l’elaborazione. Controlla **Calibration**, poi premi **Run** quando sei pronto. Nel progetto trovi anche l’icona `.xpsm` e lo script di apertura `.js`. Per usare l’XPSM manualmente, carica l’icona e applica globalmente l’istanza Script. L’apertura diretta richiede PixInsight 1.9.4 o successivo nel percorso d’installazione standard; verificata su Windows con PixInsight 1.9.5 / WBPP 3.1.0.
 
 Le Master Library sono salvate nelle impostazioni dell'app, non nel progetto. Aprire
 o creare un progetto non rimuove le librerie configurate.

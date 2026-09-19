@@ -560,6 +560,8 @@ public sealed partial class MainWindow : Window
     }
 
     private void ClearCache_Click(object? sender, RoutedEventArgs e) => _viewModel.ClearHeaderCache();
+    private void OpenWbppInstance_Click(object? sender, RoutedEventArgs e) => Try("AF-WBPP-001", () =>
+        AstroForge.Core.Wbpp.PixInsightLauncher.Open(_viewModel.GenerateWbppInstance()));
     private void RefreshDiagnostics_Click(object? sender, RoutedEventArgs e) => _viewModel.RefreshDiagnostics();
     private async void RestoreRecovery_Click(object? sender, RoutedEventArgs e) => await RunAsync("AF-RECOVERY-001", () => _viewModel.RestoreRecoveryAsync());
     private void DiscardRecovery_Click(object? sender, RoutedEventArgs e) => _viewModel.DiscardRecovery();

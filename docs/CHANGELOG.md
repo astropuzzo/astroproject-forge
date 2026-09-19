@@ -1,5 +1,13 @@
 # AstroProject Forge — note di rilascio
 
+## 1.8.1 — 19 settembre 2026
+
+- Corrette le istanze WBPP vuote: il file XPSM contiene ora l’icona collegata e i gruppi nel formato richiesto da PixInsight.
+- Il pulsante WBPP apre direttamente la finestra con file, calibrazioni, keyword e destinazione. L’elaborazione parte soltanto premendo Run in PixInsight.
+- Dopo un aggiornamento incrementale vengono usati i percorsi effettivi dei file esportati, anche se il raggruppamento è cambiato.
+- I file mancanti vengono segnalati prima di generare l’istanza; i Light esclusi non vengono aggiunti.
+- Lo stesso comando di apertura è disponibile nelle versioni Windows, macOS e Linux. Apertura verificata su Windows con PixInsight 1.9.5 / WBPP 3.1.0.
+
 ## 1.8.0 — 17 settembre 2026
 
 - Aggiornamenti incrementali immediati: i file già registrati non vengono più riletti o ricalcolati.
