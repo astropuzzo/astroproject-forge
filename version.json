@@ -1,6 +1,6 @@
 {
-  "version": "1.8.1",
+  "version": "1.8.2",
   "channel": "Stable",
-  "releaseDate": "2026-09-19",
+  "releaseDate": "2026-09-20",
   "minimumWindowsBuild": 19045
 }

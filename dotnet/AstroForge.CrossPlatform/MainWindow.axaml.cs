@@ -43,7 +43,6 @@ public sealed partial class MainWindow : Window
         _viewModel.PropertyChanged += (_, args) =>
         {
             if (args.PropertyName == nameof(MainViewModel.HasSelection)) UpdateInspectorLayout();
-            ScheduleLocalization();
         };
         SizeChanged += (_, args) => ApplyViewportWidth(args.NewSize.Width);
         KeyDown += Window_KeyDown;
@@ -68,7 +67,7 @@ public sealed partial class MainWindow : Window
         var ordered = new[] { tabs[0], tabs[5], tabs[1], tabs[2], tabs[3], tabs[4], tabs[6], tabs[7] };
         WorkspaceTabs.Items.Clear();
         foreach (var tab in ordered) WorkspaceTabs.Items.Add(tab);
-        var labels = new[] { "1  Progetto", "2  Calibrazioni", "3  Esporta", "4  WBPP", "Dati", "Qualità", "Master", "Diagnostica" };
+        var labels = new[] { "1  Progetto", "2  Risolvi", "3  Esporta", "4  WBPP", "Dati", "Qualità", "Master", "Diagnostica" };
         for (var index = 0; index < labels.Length; index++) ordered[index].Header = labels[index];
     }
 
@@ -150,7 +149,10 @@ public sealed partial class MainWindow : Window
         }
     }
 
-    private void WorkspaceTabs_SelectionChanged(object? sender, SelectionChangedEventArgs e) => ScheduleLocalization();
+    private void WorkspaceTabs_SelectionChanged(object? sender, SelectionChangedEventArgs e)
+    {
+        UpdateInspectorLayout();
+    }
 
     private void UpdateInspectorLayout()
     {
@@ -545,6 +547,12 @@ public sealed partial class MainWindow : Window
     private void MasterOrganizer_DoubleTapped(object? sender, TappedEventArgs e) => Reveal((sender as DataGrid)?.SelectedItem is MasterOrganizerItem item ? item.Frame.Path : null);
 
     private void ReviewQueue_SelectionChanged(object? sender, SelectionChangedEventArgs e) => _viewModel.SelectReviewItem((sender as ListBox)?.SelectedItem as ReviewQueueItem);
+    private void EditReviewMetadata_Click(object? sender, RoutedEventArgs e)
+    {
+        _viewModel.SelectReviewItem((sender as Control)?.DataContext as ReviewQueueItem);
+        WorkspaceTabs.SelectedIndex = 0;
+        UpdateInspectorLayout();
+    }
     private void AssignLight_Click(object? sender, RoutedEventArgs e) => _viewModel.AssignReviewCandidate((sender as Control)?.DataContext as ReviewQueueItem, ReviewAssignmentScope.Light);
     private void AssignNight_Click(object? sender, RoutedEventArgs e) => _viewModel.AssignReviewCandidate((sender as Control)?.DataContext as ReviewQueueItem, ReviewAssignmentScope.Night);
     private void AssignSession_Click(object? sender, RoutedEventArgs e) => _viewModel.AssignReviewCandidate((sender as Control)?.DataContext as ReviewQueueItem, ReviewAssignmentScope.Configuration);

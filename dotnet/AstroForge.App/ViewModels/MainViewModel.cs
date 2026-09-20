@@ -222,6 +222,7 @@ public sealed class MainViewModel : BindableBase
             Raise(nameof(ImportedSourceCountLabel));
             Raise(nameof(TotalIssuesLabel));
             Raise(nameof(ExportActionLabel)); Raise(nameof(ExportChangeSummary)); Raise(nameof(ExportResumeSummary));
+            if (_analysis is not null) RefreshReviewQueue();
             if (_exportPreflight is not null) RefreshExportHistory(_exportPreflight.ProjectRoot);
             UiLanguageChanged?.Invoke(this, EventArgs.Empty);
         }
@@ -402,6 +403,11 @@ public sealed class MainViewModel : BindableBase
     public int OverrideCount => _frames.Count(frame => HasAnyOverride(frame));
     public int UnresolvedCalibrations => _analysis?.UnresolvedCount ?? 0;
     public int ReviewQueueCount => ReviewQueue.Count;
+    public string ReviewQueueSummary => ReviewQueue.Count == 0
+        ? (UiLanguage == UiLocalization.English ? "Nothing to resolve" : "Niente da risolvere")
+        : UiLanguage == UiLocalization.English
+            ? $"{ReviewQueue.Count} {(ReviewQueue.Count == 1 ? "group" : "groups")} · {ReviewQueue.Sum(item => item.FrameCount)} assignments"
+            : $"{ReviewQueue.Count} {(ReviewQueue.Count == 1 ? "gruppo" : "gruppi")} · {ReviewQueue.Sum(item => item.FrameCount)} assegnazioni";
     public bool IsProjectReady => _analysis?.Ready == true;
     public string ReadinessText { get => _readinessText; private set => Set(ref _readinessText, value); }
     public string CalibrationSummary { get => _calibrationSummary; private set => Set(ref _calibrationSummary, value); }
@@ -576,6 +582,7 @@ public sealed class MainViewModel : BindableBase
         Raise(nameof(TotalIssuesLabel));
         Raise(nameof(TotalIntegrationText)); Raise(nameof(StatisticsSummary)); Raise(nameof(StatisticsDateRange));
         Raise(nameof(ReviewQueueCount));
+        Raise(nameof(ReviewQueueSummary));
         Raise(nameof(CanRunAllQualityAnalysis));
         RaiseProjectWorkflowProperties();
         ApplyLibraryOffsetCommand.RaiseCanExecuteChanged();
@@ -1375,33 +1382,43 @@ public sealed class MainViewModel : BindableBase
     {
         if (item is null) return;
         SelectedNode = Descendants(TreeRoots).FirstOrDefault(node => node.IsLeaf && node.Frames.Any(frame => PathIdentity.Equals(frame.Path, item.Frame.Path)))
-            ?? new ProjectTreeNode { Key = $"review:{item.Frame.Path}", Name = item.Frame.FileName, Detail = item.Frame.Path, Icon = "!", Frames = [item.Frame] };
-        Status = $"Revisione · {item.Calibration} · {item.Frame.FileName}";
+            ?? new ProjectTreeNode { Key = $"review:{item.Frame.Path}", Name = item.GroupTitle, Detail = item.AffectedLabel, Icon = "!", Frames = item.Targets };
+        Status = $"Da risolvere · {item.Calibration} · {item.AffectedLabel}";
     }
 
     public void AssignReviewCandidate(ReviewQueueItem? item, ReviewAssignmentScope scope)
     {
-        if (item?.SelectedCandidate is null || item.Calibration == "Flat") return;
+        if (item?.SelectedCandidate is null || _analysis is null) return;
         var targets = scope switch
         {
             ReviewAssignmentScope.Night => _frames.Where(frame => frame.Kind == FrameKind.Light && NormalizeText(frame.FilterName.Value) == NormalizeText(item.Frame.FilterName.Value) && NormalizeText(frame.SessionId.Value) == NormalizeText(item.Frame.SessionId.Value)).ToArray(),
-            ReviewAssignmentScope.Configuration => _frames.Where(frame => CalibrationScopeMatcher.Matches(item.Frame, frame, item.Calibration == "Dark" ? FrameKind.Dark : FrameKind.Bias)).ToArray(),
-            _ => [item.Frame]
+            ReviewAssignmentScope.Configuration when item.Calibration == "Flat" => _frames.Where(frame => frame.Kind == FrameKind.Light && NormalizeText(frame.FilterName.Value) == NormalizeText(item.Frame.FilterName.Value) && CalibrationScopeMatcher.Matches(item.Frame, frame, FrameKind.Flat)).ToArray(),
+            ReviewAssignmentScope.Configuration => _frames.Where(frame => frame.Kind == FrameKind.Light && CalibrationScopeMatcher.Matches(item.Frame, frame, item.Calibration == "Dark" ? FrameKind.Dark : FrameKind.Bias)).ToArray(),
+            _ => item.Targets.ToArray()
         };
-        var previous = targets.Select(frame => (Frame: frame, Dark: frame.ManualDarkPath.HasOverride ? frame.ManualDarkPath.OverrideValue : null, HasDark: frame.ManualDarkPath.HasOverride, Bias: frame.ManualBiasPath.HasOverride ? frame.ManualBiasPath.OverrideValue : null, HasBias: frame.ManualBiasPath.HasOverride)).ToArray();
-        foreach (var frame in targets)
-            if (item.Calibration == "Dark") frame.ManualDarkPath.SetOverride(item.SelectedCandidate.Path); else frame.ManualBiasPath.SetOverride(item.SelectedCandidate.Path);
+        if (targets.Length == 0) return;
+        var undoActions = new List<Action>();
+        if (item.Calibration == "Flat")
+        {
+            var flatGroup = _analysis.FlatGroups.FirstOrDefault(group => PathIdentity.Equals(group.Representative.Path, item.SelectedCandidate.Path));
+            if (flatGroup is null || string.IsNullOrWhiteSpace(item.SelectedCandidate.FlatSetId)) return;
+            foreach (var frame in targets.Concat(flatGroup.Frames).Distinct()) ApplyField(frame.FlatSetId, item.SelectedCandidate.FlatSetId, undoActions);
+        }
+        else
+        {
+            foreach (var frame in targets)
+            {
+                if (item.Calibration == "Dark") ApplyField(frame.ManualDarkPath, item.SelectedCandidate.Path, undoActions);
+                else ApplyField(frame.ManualBiasPath, item.SelectedCandidate.Path, undoActions);
+            }
+        }
         _undo.Push(() =>
         {
-            foreach (var value in previous)
-            {
-                if (item.Calibration == "Dark") { value.Frame.ManualDarkPath.ClearOverride(); if (value.HasDark) value.Frame.ManualDarkPath.SetOverride(value.Dark); }
-                else { value.Frame.ManualBiasPath.ClearOverride(); if (value.HasBias) value.Frame.ManualBiasPath.SetOverride(value.Bias); }
-            }
+            foreach (var action in undoActions.AsEnumerable().Reverse()) action();
             RefreshIntelligence(); RebuildTree(); SaveState();
         });
         RefreshIntelligence(); RebuildTree(); SaveState(); UndoCommand.RaiseCanExecuteChanged();
-        var scopeLabel = scope switch { ReviewAssignmentScope.Night => "nella notte", ReviewAssignmentScope.Configuration => "con la stessa firma tecnica", _ => "selezionato" };
+        var scopeLabel = scope switch { ReviewAssignmentScope.Night => "nella notte", ReviewAssignmentScope.Configuration => "con la stessa configurazione", _ => "nel gruppo" };
         Status = $"{item.Calibration} assegnato manualmente a {targets.Length} Light {scopeLabel}";
     }
 
@@ -1953,6 +1970,7 @@ public sealed class MainViewModel : BindableBase
         Raise(nameof(IsProjectReady));
         Raise(nameof(PlanSummary));
         Raise(nameof(ReviewQueueCount));
+        Raise(nameof(ReviewQueueSummary));
         UpdateCalibrationSummary();
     }
 
@@ -1960,15 +1978,31 @@ public sealed class MainViewModel : BindableBase
     {
         ReviewQueue.Clear();
         if (_analysis is null) return;
-        foreach (var item in _analysis.Lights)
+        var unresolved = _analysis.Lights.SelectMany(item => new[]
         {
-            AddReview(item.Light, "Flat", item.Flat);
-            AddReview(item.Light, "Dark", item.Dark);
-            AddReview(item.Light, "Bias", item.Bias);
+            new ReviewSource(item.Light, "Flat", item.Flat),
+            new ReviewSource(item.Light, "Dark", item.Dark),
+            new ReviewSource(item.Light, "Bias", item.Bias)
+        }).Where(item => !item.Result.IsAccepted);
+        foreach (var group in unresolved.GroupBy(ReviewGroupKey))
+        {
+            var first = group.First();
+            AddReview(group.Select(item => item.Frame).Distinct().ToArray(), first.Calibration, first.Result);
         }
         var ordered = ReviewQueue.OrderBy(item => item.Priority).ThenBy(item => item.Filter).ThenBy(item => item.Night).ThenBy(item => item.Frame.FileName).ToArray();
         ReviewQueue.Clear();
         foreach (var item in ordered) ReviewQueue.Add(item);
+        Raise(nameof(ReviewQueueCount));
+        Raise(nameof(ReviewQueueSummary));
+    }
+
+    private static string ReviewGroupKey(ReviewSource item)
+    {
+        var candidatePaths = string.Join('|', item.Result.Candidates.Where(candidate => candidate.Compatible).Select(candidate => candidate.Frame.Path).OrderBy(path => path, PathIdentity.Comparer));
+        return string.Join('|', item.Calibration, item.Result.Status, NormalizeText(item.Frame.FilterName.Value), NormalizeText(item.Frame.SessionId.Value),
+            NormalizeText(item.Frame.Camera.Value), item.Frame.Gain.Value, item.Frame.Offset.Value, item.Frame.EffectiveTemperatureC,
+            item.Frame.XBin.Value, item.Frame.YBin.Value, item.Frame.Width.Value, item.Frame.Height.Value, NormalizeText(item.Frame.ReadoutMode.Value),
+            item.Calibration == "Dark" ? item.Frame.ExposureSeconds.Value : null, candidatePaths);
     }
 
     private void RefreshMasterOrganizer(IEnumerable<FrameMetadata>? source = null)
@@ -1980,26 +2014,42 @@ public sealed class MainViewModel : BindableBase
         MasterOrganizerStatus = MasterOrganizerItems.Count == 0 ? "Nessun Master rilevato" : $"{ready}/{MasterOrganizerItems.Count} pronti · {MasterOrganizerItems.Count - ready} richiedono dati";
     }
 
-    private void AddReview(FrameMetadata frame, string calibration, MatchResult result)
+    private void AddReview(IReadOnlyList<FrameMetadata> frames, string calibration, MatchResult result)
     {
-        if (result.IsAccepted) return;
+        if (result.IsAccepted || frames.Count == 0) return;
+        var frame = frames[0];
+        var english = UiLanguage == UiLocalization.English;
         var (priority, state, reason, action) = result.Status switch
         {
-            MatchStatus.Ambiguous => (1, "Scelta ambigua", $"{result.Candidates.Count} candidati compatibili hanno la stessa priorità.", $"Confronta i candidati {calibration} e assegna quello corretto al gruppo."),
-            MatchStatus.InsufficientMetadata => (0, "Metadati insufficienti", $"Mancano: {string.Join(", ", result.Candidates.FirstOrDefault()?.MissingRequired ?? ["campi richiesti"])}.", "Completa i metadati nell’Inspector e ricalcola il progetto."),
-            MatchStatus.Incompatible => (0, "Nessun candidato compatibile", $"{result.Candidates.Count} candidati trovati, ma tutti incompatibili.", $"Controlla libreria e parametri oppure collega un {calibration} valido."),
-            _ => (0, "Calibrazione mancante", $"Nessun {calibration} disponibile per questa configurazione.", $"Aggiungi o seleziona una libreria contenente il {calibration} richiesto.")
+            MatchStatus.Ambiguous when english => (1, "Choice required", $"{result.Candidates.Count(candidate => candidate.Compatible)} compatible candidates.", $"Choose the correct {calibration} for this group."),
+            MatchStatus.Ambiguous => (1, "Scelta richiesta", $"{result.Candidates.Count(candidate => candidate.Compatible)} candidati compatibili.", $"Scegli il {calibration} corretto per il gruppo."),
+            MatchStatus.InsufficientMetadata when english => (0, "Missing metadata", $"Missing: {string.Join(", ", result.Candidates.FirstOrDefault()?.MissingRequired ?? ["required fields"])}.", "Complete the metadata and reanalyze the project."),
+            MatchStatus.InsufficientMetadata => (0, "Metadati insufficienti", $"Mancano: {string.Join(", ", result.Candidates.FirstOrDefault()?.MissingRequired ?? ["campi richiesti"])}.", "Completa i metadati e rianalizza il progetto."),
+            MatchStatus.Incompatible when english => (0, "No compatible candidate", $"{result.Candidates.Count} candidates found, all incompatible.", $"Check the parameters or link a valid {calibration}."),
+            MatchStatus.Incompatible => (0, "Nessun candidato compatibile", $"{result.Candidates.Count} candidati trovati, ma tutti incompatibili.", $"Controlla i parametri oppure collega un {calibration} valido."),
+            _ when english => (0, "Missing calibration", $"No {calibration} is available for this configuration.", $"Import or connect the required {calibration}."),
+            _ => (0, "Calibrazione mancante", $"Nessun {calibration} disponibile per questa configurazione.", $"Importa o collega il {calibration} richiesto.")
         };
         var candidates = result.Candidates.Where(candidate => candidate.Compatible)
-            .Select(candidate => new ReviewCandidateOption(candidate.Frame.Path, candidate.Frame.FileName, candidate.Score,
-                candidate.Exact ? "Compatibilità esatta" : "Entro tolleranza", string.Join(" · ", candidate.Reasons),
-                DisplayValue(candidate.Frame.Camera.Value), DisplayValue(candidate.Frame.Gain.Value), DisplayValue(candidate.Frame.Offset.Value),
-                DisplayTemperature(candidate.Frame.EffectiveTemperatureC), DisplayExposure(candidate.Frame.ExposureSeconds.Value),
-                DisplayBinning(candidate.Frame), DisplayValue(candidate.Frame.ReadoutMode.Value)))
+            .Select(candidate =>
+            {
+                var flatGroup = calibration == "Flat" ? _analysis?.FlatGroups.FirstOrDefault(group => PathIdentity.Equals(group.Representative.Path, candidate.Frame.Path)) : null;
+                var flatSetId = flatGroup is null ? null : string.IsNullOrWhiteSpace(flatGroup.Representative.FlatSetId.Value) ? flatGroup.Id : flatGroup.Representative.FlatSetId.Value;
+                var firstCapture = flatGroup?.Frames.Select(value => value.CapturedAt.Value).Where(value => value.HasValue).Select(value => value!.Value).OrderBy(value => value).FirstOrDefault();
+                var captured = firstCapture.HasValue ? firstCapture.Value.ToLocalTime().ToString("yyyy-MM-dd HH:mm") : english ? "date unavailable" : "data non disponibile";
+                var display = flatGroup is null ? candidate.Frame.FileName : $"{captured} · {flatGroup.Frames.Count} Flat · {flatSetId}";
+                return new ReviewCandidateOption(candidate.Frame.Path, candidate.Frame.FileName, candidate.Score,
+                    candidate.Exact ? "Compatibilità esatta" : "Entro tolleranza", string.Join(" · ", candidate.Reasons),
+                    DisplayValue(candidate.Frame.Camera.Value), DisplayValue(candidate.Frame.Gain.Value), DisplayValue(candidate.Frame.Offset.Value),
+                    DisplayTemperature(candidate.Frame.EffectiveTemperatureC), DisplayExposure(candidate.Frame.ExposureSeconds.Value),
+                    DisplayBinning(candidate.Frame), DisplayValue(candidate.Frame.ReadoutMode.Value), flatSetId, flatGroup?.Frames.Count ?? 1, display);
+            })
             .ToArray();
-        ReviewQueue.Add(new(frame, calibration, state, reason, action, result.Candidates.Count,
-            frame.FilterName.Value ?? "Senza filtro", frame.SessionId.Value ?? "Notte non definita", priority, candidates));
+        ReviewQueue.Add(new(frames, calibration, result.Status, state, reason, action, result.Candidates.Count,
+            frame.FilterName.Value ?? (english ? "No filter" : "Senza filtro"), frame.SessionId.Value ?? (english ? "Night not defined" : "Notte non definita"), priority, candidates, english));
     }
+
+    private sealed record ReviewSource(FrameMetadata Frame, string Calibration, MatchResult Result);
 
     private static string DisplayValue(string? value) => string.IsNullOrWhiteSpace(value) ? "—" : value.Trim();
     private static string DisplayValue(double? value) => value.HasValue ? value.Value.ToString("0.###", CultureInfo.CurrentCulture) : "—";
@@ -2242,10 +2292,12 @@ public sealed record SessionStatsRow(string Filter, string Session, string Techn
 }
 public sealed record NightStatsRow(string Filter, string Session, string Night, string Integration, int Lights, string AverageExposure, string Temperature, int Issues);
 public enum ReviewAssignmentScope { Light, Night, Configuration }
-public sealed class ReviewQueueItem(FrameMetadata frame, string calibration, string state, string reason, string suggestedAction, int candidateCount, string filter, string night, int priority, IReadOnlyList<ReviewCandidateOption> candidates)
+public sealed class ReviewQueueItem(IReadOnlyList<FrameMetadata> targets, string calibration, MatchStatus status, string state, string reason, string suggestedAction, int candidateCount, string filter, string night, int priority, IReadOnlyList<ReviewCandidateOption> candidates, bool english)
 {
-    public FrameMetadata Frame { get; } = frame;
+    public IReadOnlyList<FrameMetadata> Targets { get; } = targets;
+    public FrameMetadata Frame => Targets[0];
     public string Calibration { get; } = calibration;
+    public MatchStatus MatchStatus { get; } = status;
     public string State { get; } = state;
     public string Reason { get; } = reason;
     public string SuggestedAction { get; } = suggestedAction;
@@ -2254,19 +2306,31 @@ public sealed class ReviewQueueItem(FrameMetadata frame, string calibration, str
     public string Night { get; } = night;
     public int Priority { get; } = priority;
     public IReadOnlyList<ReviewCandidateOption> Candidates { get; } = candidates;
-    public ReviewCandidateOption? SelectedCandidate { get; set; }
+    public ReviewCandidateOption? SelectedCandidate { get; set; } = candidates.FirstOrDefault();
+    public int FrameCount => Targets.Count;
+    public string GroupTitle => $"{Calibration} · {Filter} · {Night}";
+    public string AffectedLabel => FrameCount == 1 ? "1 Light" : $"{FrameCount} Light";
+    public string ExampleFileLabel => FrameCount == 1 ? Frame.FileName : english ? $"{AffectedLabel} · e.g. {Frame.FileName}" : $"{AffectedLabel} · es. {Frame.FileName}";
     public string Scope => $"{Filter} · {Night}";
-    public string CandidateLabel => CandidateCount == 1 ? "1 candidato" : $"{CandidateCount} candidati";
-    public bool CanAssignMaster => Calibration is "Dark" or "Bias" && Candidates.Count > 0;
+    public string CandidateLabel => CandidateCount == 1 ? (english ? "1 candidate" : "1 candidato") : english ? $"{CandidateCount} candidates" : $"{CandidateCount} candidati";
+    public bool CanAssignCandidate => Candidates.Count > 0;
+    public bool CanEditMetadata => MatchStatus == MatchStatus.InsufficientMetadata;
+    public bool CanAddMasterLibrary => !CanAssignCandidate && Calibration is "Dark" or "Bias";
+    public bool CanImportFlat => !CanAssignCandidate && Calibration == "Flat";
+    public string GroupActionLabel => FrameCount == 1 ? (english ? "This Light" : "Questo Light") : english ? $"This group ({FrameCount})" : $"Questo gruppo ({FrameCount})";
+    public string NightActionLabel => english ? "Entire night" : "Tutta la notte";
+    public string ConfigurationActionLabel => Calibration == "Flat"
+        ? (english ? "Same configuration and filter" : "Stessa configurazione e filtro")
+        : (english ? "Same configuration" : "Stessa configurazione");
     public string TargetSignature => $"Light · Camera {SignatureValue(Frame.Camera.Value)} · G{SignatureValue(Frame.Gain.Value)} · O{SignatureValue(Frame.Offset.Value)} · {SignatureTemperature(Frame.EffectiveTemperatureC)} · {SignatureBinning(Frame)} · {SignatureValue(Frame.ReadoutMode.Value)}";
     private static string SignatureValue(string? value) => string.IsNullOrWhiteSpace(value) ? "—" : value.Trim();
     private static string SignatureValue(double? value) => value.HasValue ? value.Value.ToString("0.###") : "—";
     private static string SignatureTemperature(double? value) => value.HasValue ? $"{value.Value:0.#} °C" : "—";
     private static string SignatureBinning(FrameMetadata value) => value.XBin.Value.HasValue && value.YBin.Value.HasValue ? $"{value.XBin.Value}×{value.YBin.Value}" : "—";
 }
-public sealed record ReviewCandidateOption(string Path, string FileName, int Score, string Compatibility, string Reasons, string Camera, string Gain, string Offset, string Temperature, string Exposure, string Binning, string Readout)
+public sealed record ReviewCandidateOption(string Path, string FileName, int Score, string Compatibility, string Reasons, string Camera, string Gain, string Offset, string Temperature, string Exposure, string Binning, string Readout, string? FlatSetId, int FrameCount, string Display)
 {
-    public string Display => $"{FileName} · score {Score} · {Compatibility}";
+    public string Detail => $"{Compatibility} · score {Score}";
 }
 
 public sealed class QualityFrameRow : BindableBase

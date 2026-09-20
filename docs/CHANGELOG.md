@@ -1,5 +1,15 @@
 # AstroProject Forge — note di rilascio
 
+## 1.8.2 — 20 settembre 2026
+
+- “Calibrazioni” diventa “Risolvi”: la pagina ora permette di correggere direttamente assegnazioni mancanti o ambigue.
+- Le segnalazioni ripetute sono raggruppate per filtro, notte, configurazione e candidati compatibili.
+- I Flat Set ambigui possono essere assegnati al gruppo, all’intera notte oppure alle acquisizioni con la stessa configurazione e filtro.
+- Dark e Bias possono essere assegnati dalla stessa pagina; importazione, libreria Master e modifica metadati compaiono soltanto quando pertinenti.
+- Il collegamento Flat manuale resta disponibile nell’Inspector come strumento avanzato, chiuso per impostazione predefinita.
+- Eliminata la ritraduzione completa dell’interfaccia a ogni variazione dei dati, che rallentava navigazione e analisi dei progetti grandi.
+- Aggiornate le traduzioni e mantenuta la stessa esperienza su Windows, macOS e Linux.
+
 ## 1.8.1 — 19 settembre 2026
 
 - Corrette le istanze WBPP vuote: il file XPSM contiene ora l’icona collegata e i gruppi nel formato richiesto da PixInsight.

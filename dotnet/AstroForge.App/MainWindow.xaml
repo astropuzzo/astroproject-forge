@@ -475,25 +475,25 @@
                             </Grid>
                         </Grid>
                     </TabItem>
-                    <TabItem x:Name="CalibrationTab" Header="2  Calibrazioni" Tag="Inspector" ToolTip="Controlla Flat, Dark e Bias assegnati">
+                    <TabItem x:Name="CalibrationTab" Header="2  Risolvi" Tag="Inspector" ToolTip="Risolvi assegnazioni mancanti o ambigue">
                         <Grid Margin="0,14,0,0">
                             <Grid.RowDefinitions><RowDefinition Height="Auto"/><RowDefinition Height="*"/></Grid.RowDefinitions>
                             <Grid>
-                                <StackPanel><TextBlock Text="Problemi di calibrazione" Style="{StaticResource Title}"/><TextBlock Text="Assegnazioni mancanti o ambigue." Style="{StaticResource MutedText}" Margin="0,2,0,14"/></StackPanel>
-                                <Border HorizontalAlignment="Right" VerticalAlignment="Top" Background="#172A32" CornerRadius="12" Padding="12,7"><StackPanel Orientation="Horizontal"><TextBlock Text="{Binding ReviewQueueCount}" Foreground="{StaticResource Accent}" FontSize="18" FontWeight="SemiBold"/><TextBlock Text="  da risolvere" Style="{StaticResource MutedText}" VerticalAlignment="Center"/></StackPanel></Border>
+                                <StackPanel><TextBlock Text="Da risolvere" Style="{StaticResource Title}"/><TextBlock Text="Scegli l’assegnazione corretta e applicala al gruppo interessato." Style="{StaticResource MutedText}" Margin="0,2,0,14"/></StackPanel>
+                                <Border HorizontalAlignment="Right" VerticalAlignment="Top" Background="#172A32" CornerRadius="12" Padding="12,7"><TextBlock Text="{Binding ReviewQueueSummary}" Foreground="{StaticResource Accent}" FontSize="13" FontWeight="SemiBold"/></Border>
                             </Grid>
                             <Grid Grid.Row="1">
                             <ListBox ItemsSource="{Binding ReviewQueue}" SelectionChanged="ReviewQueue_SelectionChanged" MouseDoubleClick="ReviewQueue_MouseDoubleClick" ToolTip="Doppio click per mostrare il Light originale" Background="Transparent" BorderThickness="0" ScrollViewer.HorizontalScrollBarVisibility="Disabled">
                                 <ListBox.ItemContainerStyle><Style TargetType="ListBoxItem"><Setter Property="HorizontalContentAlignment" Value="Stretch"/><Setter Property="Padding" Value="0"/><Setter Property="Margin" Value="0,0,0,8"/><Setter Property="Background" Value="Transparent"/></Style></ListBox.ItemContainerStyle>
                                 <ListBox.ItemTemplate><DataTemplate>
                                     <Border Style="{StaticResource Card}" Padding="14">
-                                        <Grid><Grid.ColumnDefinitions><ColumnDefinition Width="86"/><ColumnDefinition/><ColumnDefinition Width="145"/></Grid.ColumnDefinitions>
+                                        <Grid><Grid.ColumnDefinitions><ColumnDefinition Width="76"/><ColumnDefinition/><ColumnDefinition Width="155"/></Grid.ColumnDefinitions>
                                             <Border Background="#4A2C20" CornerRadius="8" Padding="8,4" HorizontalAlignment="Left" VerticalAlignment="Top"><TextBlock Text="{Binding Calibration}" Foreground="{StaticResource Warning}" FontWeight="SemiBold"/></Border>
-                                            <StackPanel Grid.Column="1" Margin="10,0,14,0"><TextBlock Text="{Binding State}" FontWeight="SemiBold" FontSize="15"/><TextBlock Text="{Binding Frame.FileName}" Style="{StaticResource MutedText}" FontSize="11" TextTrimming="CharacterEllipsis"/><TextBlock Text="{Binding Reason}" Margin="0,7,0,0" TextWrapping="Wrap"/><TextBlock Text="{Binding SuggestedAction}" Foreground="{StaticResource Accent}" Margin="0,5,0,0" TextWrapping="Wrap" FontSize="11"/>
-                                                <StackPanel Margin="0,9,0,0" Visibility="{Binding CanAssignMaster, Converter={StaticResource BooleanToVisibility}}">
+                                            <StackPanel Grid.Column="1" Margin="10,0,14,0"><TextBlock Text="{Binding State}" FontWeight="SemiBold" FontSize="15"/><TextBlock Text="{Binding ExampleFileLabel}" Style="{StaticResource MutedText}" FontSize="11" TextTrimming="CharacterEllipsis"/><TextBlock Text="{Binding Reason}" Margin="0,7,0,0" TextWrapping="Wrap"/><TextBlock Text="{Binding SuggestedAction}" Foreground="{StaticResource Accent}" Margin="0,5,0,0" TextWrapping="Wrap" FontSize="11"/>
+                                                <StackPanel Margin="0,9,0,0" Visibility="{Binding CanAssignCandidate, Converter={StaticResource BooleanToVisibility}}">
                                                     <TextBlock Text="{Binding TargetSignature}" Style="{StaticResource MutedText}" FontSize="10" TextWrapping="Wrap" Margin="0,0,0,6"/>
-                                                    <ComboBox ItemsSource="{Binding Candidates}" SelectedItem="{Binding SelectedCandidate}" ToolTip="Scegli il Master da assegnare"><ComboBox.ItemTemplate><DataTemplate><TextBlock Text="{Binding Display}" TextTrimming="CharacterEllipsis"/></DataTemplate></ComboBox.ItemTemplate></ComboBox>
-                                                    <Expander Header="Confronta i candidati campo per campo" Margin="0,7,0,0">
+                                                    <ComboBox ItemsSource="{Binding Candidates}" SelectedItem="{Binding SelectedCandidate}" ToolTip="Scegli la calibrazione da assegnare"><ComboBox.ItemTemplate><DataTemplate><TextBlock Text="{Binding Display}" TextTrimming="CharacterEllipsis"/></DataTemplate></ComboBox.ItemTemplate></ComboBox>
+                                                    <Expander Header="Dettagli candidati" Margin="0,7,0,0">
                                                         <DataGrid ItemsSource="{Binding Candidates}" SelectedItem="{Binding SelectedCandidate, Mode=TwoWay}" AutoGenerateColumns="False" IsReadOnly="True" MaxHeight="190" Margin="0,5,0,0" HeadersVisibility="Column" CanUserAddRows="False" CanUserDeleteRows="False" SelectionMode="Single">
                                                             <DataGrid.Columns>
                                                                 <DataGridTextColumn Header="Master" Binding="{Binding FileName}" Width="2*"/>
@@ -509,18 +509,23 @@
                                                         </DataGrid>
                                                     </Expander>
                                                     <WrapPanel Margin="0,7,0,0">
-                                                        <Button Content="Solo questo Light" Click="AssignCandidate_Click" Padding="9,5"/>
-                                                        <Button Content="Tutta la notte" Click="AssignCandidateGroup_Click" Margin="6,0,0,0" Padding="9,5"/>
-                                                        <Button Content="Stessa firma tecnica" Click="AssignCandidateSignature_Click" Margin="6,0,0,0" Padding="9,5" ToolTip="Applica a tutte le notti con camera, gain, offset, temperatura, binning e readout equivalenti; per i Dark anche esposizione"/>
+                                                        <Button Content="{Binding GroupActionLabel}" Click="AssignCandidate_Click" Style="{StaticResource PrimaryButton}" Padding="11,6"/>
+                                                        <Button Content="{Binding NightActionLabel}" Click="AssignCandidateGroup_Click" Margin="6,0,0,0" Padding="11,6" ToolTip="Applica la scelta a tutti i Light della stessa notte e dello stesso filtro"/>
+                                                        <Button Content="{Binding ConfigurationActionLabel}" Click="AssignCandidateSignature_Click" Margin="6,0,0,0" Padding="11,6" ToolTip="Applica la scelta alle notti con la stessa configurazione tecnica"/>
                                                     </WrapPanel>
                                                 </StackPanel>
+                                                <WrapPanel Margin="0,9,0,0">
+                                                    <Button Content="Modifica metadati" Click="EditReviewMetadata_Click" Padding="10,6" ToolTip="Apre nell’Inspector i metadati del gruppo" Visibility="{Binding CanEditMetadata, Converter={StaticResource BooleanToVisibility}}"/>
+                                                    <Button Content="Aggiungi libreria Master" Click="ChooseLibrary_Click" Padding="10,6" ToolTip="Collega una cartella di Dark e Bias Master" Visibility="{Binding CanAddMasterLibrary, Converter={StaticResource BooleanToVisibility}}"/>
+                                                    <Button Content="Importa Flat" Click="AddSource_Click" Padding="10,6" ToolTip="Importa una cartella contenente il Flat Set richiesto" Visibility="{Binding CanImportFlat, Converter={StaticResource BooleanToVisibility}}"/>
+                                                </WrapPanel>
                                             </StackPanel>
-                                            <StackPanel Grid.Column="2"><TextBlock Text="{Binding Scope}" TextAlignment="Right" TextWrapping="Wrap"/><TextBlock Text="{Binding CandidateLabel}" Style="{StaticResource MutedText}" TextAlignment="Right" Margin="0,5,0,0"/></StackPanel>
+                                            <StackPanel Grid.Column="2"><TextBlock Text="{Binding Scope}" TextAlignment="Right" TextWrapping="Wrap"/><TextBlock Text="{Binding AffectedLabel}" Foreground="{StaticResource Accent}" TextAlignment="Right" Margin="0,5,0,0"/><TextBlock Text="{Binding CandidateLabel}" Style="{StaticResource MutedText}" TextAlignment="Right" Margin="0,3,0,0"/></StackPanel>
                                         </Grid>
                                     </Border>
                                 </DataTemplate></ListBox.ItemTemplate>
                             </ListBox>
-                            <StackPanel Visibility="{Binding ReviewQueue.Count, Converter={StaticResource EmptyCollectionToVisibility}}" HorizontalAlignment="Center" VerticalAlignment="Center" MaxWidth="430"><Border Width="58" Height="58" CornerRadius="18" Background="#173A3A" HorizontalAlignment="Center"><TextBlock Text="✓" Foreground="{StaticResource Accent}" FontSize="26" FontWeight="Bold" HorizontalAlignment="Center" VerticalAlignment="Center"/></Border><TextBlock Text="Nessun problema" FontSize="21" FontWeight="SemiBold" TextAlignment="Center" Margin="0,15,0,6"/><TextBlock Text="Tutte le calibrazioni richieste sono assegnate." Style="{StaticResource MutedText}" TextWrapping="Wrap" TextAlignment="Center"/></StackPanel>
+                            <StackPanel Visibility="{Binding ReviewQueue.Count, Converter={StaticResource EmptyCollectionToVisibility}}" HorizontalAlignment="Center" VerticalAlignment="Center" MaxWidth="430"><Border Width="58" Height="58" CornerRadius="18" Background="#173A3A" HorizontalAlignment="Center"><TextBlock Text="✓" Foreground="{StaticResource Accent}" FontSize="26" FontWeight="Bold" HorizontalAlignment="Center" VerticalAlignment="Center"/></Border><TextBlock Text="Tutto assegnato" FontSize="21" FontWeight="SemiBold" TextAlignment="Center" Margin="0,15,0,6"/><TextBlock Text="Flat, Dark e Bias sono pronti." Style="{StaticResource MutedText}" TextWrapping="Wrap" TextAlignment="Center"/></StackPanel>
                             </Grid>
                         </Grid>
                     </TabItem>
@@ -619,9 +624,9 @@
                                 <StackPanel><TextBlock Text="Calibrazioni assegnate" Style="{StaticResource Eyebrow}"/><TextBlock Text="{Binding CalibrationSummary}" TextWrapping="Wrap" Margin="0,8,0,0" LineHeight="21"/></StackPanel>
                         </Border>
 
-                        <Border Style="{StaticResource Card}" Margin="0,0,0,14" Background="#10201F" BorderBrush="#27514D">
+                        <Expander Header="Collegamento Flat avanzato" IsExpanded="False" Foreground="{StaticResource Text}" Margin="0,0,0,14" ToolTip="Usalo solo per collegare manualmente una selezione personalizzata">
+                            <Border Style="{StaticResource Card}" Margin="0,8,0,0" Background="#10201F" BorderBrush="#27514D">
                             <StackPanel>
-                                <TextBlock Text="Flat Set manuale" Style="{StaticResource Eyebrow}"/>
                                 <TextBlock Text="Marca file, notti o sessioni dello stesso filtro, quindi scegli il Flat Set." Style="{StaticResource MutedText}" TextWrapping="Wrap" FontSize="11" Margin="0,6,0,10"/>
                                 <TextBlock Text="{Binding ManualLinkSelectionText}" Foreground="{StaticResource Accent}" FontSize="12" Margin="0,0,0,7" TextWrapping="Wrap"/>
                                 <ComboBox ItemsSource="{Binding AvailableFlatSets}" SelectedItem="{Binding SelectedFlatSet}" ToolTip="Flat Set compatibili con il filtro della selezione"/>
@@ -630,7 +635,8 @@
                                 <Button Grid.Column="1" Content="Rimuovi collegamento" Command="{Binding UnlinkFlatSetCommand}" Margin="5,0,0,0" Padding="8,7" ToolTip="Ripristina l’assegnazione automatica"/>
                                 </Grid>
                             </StackPanel>
-                        </Border>
+                            </Border>
+                        </Expander>
 
                         <Expander Header="Segnalazioni della selezione" IsExpanded="True" Foreground="{StaticResource Text}">
                             <ItemsControl ItemsSource="{Binding SelectedIssues}" Margin="0,8,0,14">

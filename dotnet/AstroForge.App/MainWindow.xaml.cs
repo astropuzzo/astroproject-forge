@@ -46,7 +46,10 @@ public partial class MainWindow : Window
         OrderWorkflowTabs();
         DataContext = _viewModel;
         _viewModel.UiLanguageChanged += (_, _) => ScheduleLocalization();
-        _viewModel.PropertyChanged += (_, _) => ScheduleLocalization();
+        _viewModel.PropertyChanged += (_, args) =>
+        {
+            if (args.PropertyName == nameof(MainViewModel.HasSelection)) UpdateWorkspaceContext();
+        };
         _sourcePanelWidth = _viewModel.SourcePanelWidth;
         _inspectorPanelWidth = _viewModel.InspectorPanelWidth;
         Closing += (_, _) => { _qualityCancellation?.Cancel(); _previewCancellation?.Cancel(); _viewModel.SaveState(); };
@@ -462,7 +465,6 @@ public partial class MainWindow : Window
         {
             UpdateWorkspaceContext();
             AnimateWorkspaceTransition();
-            ScheduleLocalization();
         }), DispatcherPriority.Loaded);
     }
 
@@ -855,8 +857,18 @@ public partial class MainWindow : Window
 
     private void TreeMark_Changed(object sender, RoutedEventArgs e) => _viewModel.RefreshManualSelection();
 
-    private void ReviewQueue_SelectionChanged(object sender, System.Windows.Controls.SelectionChangedEventArgs e) =>
+    private void ReviewQueue_SelectionChanged(object sender, System.Windows.Controls.SelectionChangedEventArgs e)
+    {
         _viewModel.SelectReviewItem((sender as System.Windows.Controls.ListBox)?.SelectedItem as ReviewQueueItem);
+        UpdateWorkspaceContext();
+    }
+
+    private void EditReviewMetadata_Click(object sender, RoutedEventArgs e)
+    {
+        _viewModel.SelectReviewItem((sender as FrameworkElement)?.DataContext as ReviewQueueItem);
+        _inspectorVisible = true;
+        UpdateWorkspaceContext();
+    }
 
     private void AssignCandidate_Click(object sender, RoutedEventArgs e) =>
         _viewModel.AssignReviewCandidate((sender as FrameworkElement)?.DataContext as ReviewQueueItem, ReviewAssignmentScope.Light);
