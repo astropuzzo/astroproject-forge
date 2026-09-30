@@ -2,6 +2,8 @@
 
 AstroProject Forge prepara un progetto ordinato per PixInsight WeightedBatchPreprocessing senza modificare i file originali.
 
+**Prima volta?** Nella configurazione iniziale scegli **Prova con il progetto demo** (oppure **Menu → Apri il progetto demo**). Forge crea due notti sintetiche della Cygnus Loop (ASIAIR e N.I.N.A.) con Flat e libreria Master, le analizza e ti accompagna in un tour di tutte le schermate sui controlli reali. Premi **F1** su qualsiasi schermata per rivedere la sua parte del tour, **Maiusc+F1** per la guida online.
+
 ## 1. Aggiungi i file
 
 Apri **Sorgenti** e aggiungi cartelle o singoli file FITS/XISF. I file possono provenire da N.I.N.A., ASIAIR, SGP, Voyager, SharpCap o qualsiasi software che scriva metadati utili negli header.

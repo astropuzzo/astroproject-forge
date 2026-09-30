@@ -8,7 +8,9 @@ using Avalonia.Platform.Storage;
 using Avalonia.Threading;
 using AstroForge.App.Services;
 using AstroForge.App.ViewModels;
+using AstroForge.Core.Demo;
 using AstroForge.Core.Equipment;
+using AstroForge.Core.IO;
 using AstroForge.Core.Filters;
 using AstroForge.Core.Models;
 using AstroForge.Core.Releases;
@@ -67,6 +69,8 @@ public sealed partial class MainWindow : Window
         _viewModel.MasterOrganizerItems.CollectionChanged += (_, _) => ScheduleDarkCoverage();
         SizeChanged += (_, args) => ApplyViewportWidth(args.NewSize.Width);
         KeyDown += Window_KeyDown;
+        // Tunnel so the tour keys win over focus navigation in whatever control has focus.
+        AddHandler(KeyDownEvent, Tour_KeyDown, Avalonia.Interactivity.RoutingStrategies.Tunnel);
         Opened += async (_, _) =>
         {
             ApplyViewportWidth(ClientSize.Width);
@@ -167,7 +171,8 @@ public sealed partial class MainWindow : Window
 
         if (e.Key == Key.F1)
         {
-            OpenUrl(GuideUrl);
+            if (e.KeyModifiers.HasFlag(KeyModifiers.Shift)) OpenUrl(GuideUrl);
+            else StartTour(WorkspaceTabs.SelectedIndex);
             e.Handled = true;
             return;
         }
@@ -292,6 +297,7 @@ public sealed partial class MainWindow : Window
         {
             if (args[index] == "--source" && index + 1 < args.Length) _viewModel.AddSource(args[++index]);
             else if (args[index] == "--library" && index + 1 < args.Length) _viewModel.AddMasterLibrary(args[++index]);
+            else if (args[index] == "--demo") Dispatcher.UIThread.Post(() => OpenDemo_Click(null, new RoutedEventArgs()), DispatcherPriority.Background);
         }
     }
 
@@ -341,6 +347,75 @@ public sealed partial class MainWindow : Window
         UpdateOnboarding();
         _viewModel.OpenOnboarding();
     }
+    private void Tour_KeyDown(object? sender, KeyEventArgs e)
+    {
+        if (!Tour.IsRunning) return;
+        if (e.Key == Key.Escape) Tour.Stop();
+        else if (e.Key is Key.Right or Key.Enter or Key.Space) Tour.Next();
+        else if (e.Key == Key.Left) Tour.Previous();
+        else return;
+        e.Handled = true;
+    }
+
+    private void StartTour_Click(object? sender, RoutedEventArgs e) { SettingsPanel.IsVisible = false; StartTour(-1); }
+
+    /// <summary>The tour across every workspace, each stop on the real control it explains.</summary>
+    private IReadOnlyList<TourStop> TourStops() =>
+    [
+        new(WorkspaceTabs.SelectedIndex < 0 ? 0 : WorkspaceTabs.SelectedIndex, () => _sourcesVisible ? SourcesPanel : null, "Le tue acquisizioni",
+            "Aggiungi le cartelle di ASIAIR, NINA o di qualsiasi software di acquisizione. Forge legge solo gli header: gli originali restano intatti."),
+        new(0, () => AnalyzeButton, "Un clic, tutto il progetto",
+            "Analizza legge ogni file, ricostruisce le notti e cerca Flat, Dark e Bias adatti a ogni Light. Scorciatoia: Ctrl+Invio."),
+        new(0, () => OverviewFilters, "Panoramica",
+            "Ogni filtro con il colore del suo vetro, le ore di integrazione e le notti in cui l’hai ripreso. È il riassunto da guardare per primo."),
+        new(1, () => InstrumentPanel, "Il tuo strumento, una volta sola",
+            "Camera, telescopio e ruota portafiltri vengono riconosciuti dagli header. Un nome di filtro sconosciuto lo confermi una volta e vale per tutti i progetti."),
+        new(3, () => CalibrationMapView, "Cosa manca",
+            "Ogni riga è un gruppo di Light: le celle si accendono quando Flat, Dark e Bias sono assegnati. Clicca una cella rossa per risolverla."),
+        new(4, () => ExportMapView, "La struttura per WBPP",
+            "Questa è la cartella che verrà creata. Durante la copia i rami si illuminano man mano che arrivano i file."),
+        new(5, () => PipelineFlowView, "Le keyword di WBPP",
+            "Ogni filtro scorre nella pipeline fino al suo master. Sotto trovi solo le keyword da inserire in Grouping Keywords."),
+        new(6, () => QualitySkyView, "Il cielo della serie",
+            "Ogni stella è un sub: più a sinistra è nitido, più in alto ha segnale. I sospetti pulsano in ambra; clicca una stella per esaminarla."),
+        new(7, () => DarkCoverageView, "La tua libreria Master",
+            "I dischi blu sono i Dark che hai, gli anelli i Light che ne hanno bisogno. Un anello rosso tratteggiato è un Dark ancora da fare."),
+        new(WorkspaceTabs.SelectedIndex < 0 ? 0 : WorkspaceTabs.SelectedIndex, () => MenuButton, "Rivedilo quando vuoi",
+            "Premi F1 su qualsiasi schermata per la sua spiegazione. Dal Menu puoi aprire il progetto demo e provare tutto senza dati tuoi."),
+    ];
+
+    /// <summary>Starts the tour: from the stop that explains <paramref name="tab"/>, or from the beginning when it is -1.</summary>
+    private void StartTour(int tab)
+    {
+        SettingsPanel.IsVisible = false;
+        var stops = TourStops();
+        var from = tab < 0 ? 0 : Math.Max(0, stops.Select((stop, index) => (stop, index)).Skip(2).FirstOrDefault(pair => pair.stop.Tab == tab).index);
+        Tour.Start(stops, from, index => { if (index >= 0 && index < WorkspaceTabs.ItemCount) WorkspaceTabs.SelectedIndex = index; });
+    }
+
+    /// <summary>Builds the Cygnus Loop demo in the app data folder, opens it as the current project, analyses it and starts the tour.</summary>
+    private async void OpenDemo_Click(object? sender, RoutedEventArgs e)
+    {
+        SettingsPanel.IsVisible = false;
+        if (_viewModel.ShowOnboarding) _viewModel.CompleteOnboarding();
+        if (!await ConfirmProjectReplacementAsync(opening: true)) return;
+        await RunAsync("AF-DEMO-001", async () =>
+        {
+            var root = AppDataPaths.Combine("Demo");
+            // The demo folder is ours alone: rebuild it so a previous tour's edits never leak into the next one.
+            if (Directory.Exists(root)) Directory.Delete(root, true);
+            await Task.Run(() => DemoDatasetGenerator.GenerateAsync(root));
+            _viewModel.NewProject();
+            _viewModel.ProjectName = DemoDatasetGenerator.Target;
+            _viewModel.DestinationPath = Path.Combine(root, "Export");
+            foreach (var folder in new[] { "ASIAIR", "NINA", "Libreria Master" }) _viewModel.AddSource(Path.Combine(root, folder));
+            await _viewModel.ScanAsync();
+            StartTour(-1);
+            // The series sky fills in while the tour walks the first screens.
+            AnalyzeAllQuality_Click(null, new RoutedEventArgs());
+        });
+    }
+
     private void OpenGuide_Click(object? sender, RoutedEventArgs e) { SettingsPanel.IsVisible = false; OpenUrl(GuideUrl); }
     private void OpenRepository_Click(object? sender, RoutedEventArgs e) => OpenUrl(RepositoryUrl);
     private void ReportIssue_Click(object? sender, RoutedEventArgs e) { SettingsPanel.IsVisible = false; OpenUrl(IssueUrl); }
@@ -414,6 +489,7 @@ public sealed partial class MainWindow : Window
             _viewModel.CompleteOnboarding();
             if (_viewModel.CanAnalyzeProject)
                 await RunAsync("AF-SCAN-001", () => _viewModel.ScanAsync());
+            StartTour(-1);
             return;
         }
         _onboardingStep++;
