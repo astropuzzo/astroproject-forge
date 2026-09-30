@@ -22,6 +22,31 @@ internal static class FilterQa
         Product("Baader Ha 6.5nm", "bd65-Ha");
         Product("Astronomik OIII 6nm", "ast6-OIII");
 
+        // Real listings from AstroBin, the most used first: sizes, series and marketing words around the model name.
+        Product("Antlia ALP-T Dual Band 5nm 2\"", "alpt5");
+        Product("Optolong L-Quad Enhance 2\"", "lqef");
+        Product("IDAS Nebula Booster NBZ 2\"", "nbz");
+        Product("IDAS NBZ-II 2\"", "nbz2");
+        Product("IDAS NB-1 2\"", "nb1");
+        Product("Askar ColourMagic D1 (Ha+Oiii) Duo Narrow Band 6nm 2\"", "askard1");
+        Product("Radian Telescopes 2\" Triad Ultra Quad-Band Narrowband filter", "triad");
+        Product("Antlia Quad Band Anti-Light Pollution Filter 2\" Mounted", "aquad");
+        Product("Antlia 3nm Narrowband H-alpha 2\"", "ant3-Ha");
+        Product("Baader H-alpha Ultra-Narrowband 3.5nm (CMOS-Optimized) 36 mm", "bdunb-Ha");
+        Product("Chroma OIII 3nm Bandpass 50x50 mm", "chr3-OIII");
+        Generic("Baader S-II 8nm 2\"", FilterKind.Narrowband, [EmissionLines.Sii]);
+        Generic("Chroma Blue 50 mm", FilterKind.Broadband, []);
+        Generic("Astrodon Gen2 E-Series Tru-Balance Lum 31mm", FilterKind.Broadband, []);
+        Generic("Baader Red (R-CCD) 36 mm", FilterKind.Broadband, []);
+        Generic("Astronomik Deep-Sky Green 1.25\"", FilterKind.Broadband, []);
+        Generic("Astrodon Blauw Tru-balance E-series Gen 2 1,25\"", FilterKind.Broadband, []);
+        Generic("Astronomik L-2 Luminance UV/IR Block 2\"", FilterKind.Broadband, []);
+        Generic("Astronomik IR 742nm", FilterKind.Broadband, []);
+        Generic("Lumicon Deep Sky 2\"", FilterKind.LightPollution, []);
+        Generic("SVBony SV260 Multiband 2\"", FilterKind.Multiband, []);
+        Assert(FilterRecognizer.Recognize("Chroma Blue 50 mm").DisplayName == "B", "Un filtro blu di un set LRGB deve risultare B.");
+        Assert(FilterRecognizer.Recognize("Astrodon B 31mm").Product is null, "Un alias corto ('NB3') non deve comparire dentro altre parole.");
+
         Generic("Ha", FilterKind.Narrowband, [EmissionLines.Ha]);
         Generic("H-alpha 7nm", FilterKind.Narrowband, [EmissionLines.Ha]);
         Generic("Hα", FilterKind.Narrowband, [EmissionLines.Ha]);

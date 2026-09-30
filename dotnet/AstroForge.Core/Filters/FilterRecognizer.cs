@@ -77,7 +77,8 @@ public static partial class FilterRecognizer
                 : Unknown(raw);
         }
 
-        var bandwidth = Bandwidth(normalized);
+        // Read from the raw text: normalizing turns the decimal point of "6.5nm" into a separator.
+        var bandwidth = Bandwidth(raw.ToLowerInvariant());
         var channels = Channels(normalized);
         var product = MatchProduct(normalized, bandwidth, channels, catalog);
         if (product is not null) return product with { RawName = raw };
@@ -92,28 +93,38 @@ public static partial class FilterRecognizer
             if (compact == shortForm || compact.StartsWith(shortForm, StringComparison.Ordinal) && !compact.StartsWith(full, StringComparison.Ordinal))
                 compact = full + compact[shortForm.Length..];
 
-        var candidates = new List<(CatalogFilter Filter, bool BrandMatched)>();
+        var candidates = new List<(CatalogFilter Filter, bool BrandMatched, int Specificity)>();
         foreach (var filter in catalog.Filters)
         {
             var brandMatched = filter.Brand != "Generico" && compact.Contains(Compact(Normalize(filter.Brand)), StringComparison.Ordinal);
             if (filter.Kind == FilterKind.Narrowband && filter.Series is not null)
             {
                 // A single-line filter from a branded set ("Baader Ha 6.5nm") needs the brand and the line.
-                if (brandMatched && channels.Count == 1 && filter.Lines.Contains(channels[0])) candidates.Add((filter, true));
+                if (brandMatched && channels.Count == 1 && filter.Lines.Contains(channels[0])) candidates.Add((filter, true, 0));
                 continue;
             }
             if (filter.Brand == "Generico") continue;
-            var stem = Stem(filter.Name);
-            var matches = stem.Length >= 4 ? compact.Contains(stem, StringComparison.Ordinal) : Tokens(normalized).Contains(stem);
-            if (matches) candidates.Add((filter, brandMatched));
+            var keys = Keys(filter);
+            if (!keys.Stems.Any(stem => stem.Length >= 4 ? compact.Contains(stem, StringComparison.Ordinal) : Tokens(normalized).Contains(stem))
+                && !keys.Aliases.Any(alias => ContainsAlias(normalized, compact, alias))) continue;
+            var specificity = keys.Full.Where(key => compact.Contains(key, StringComparison.Ordinal)).Select(key => key.Length).DefaultIfEmpty(0).Max();
+            candidates.Add((filter, brandMatched, specificity));
         }
         if (candidates.Count == 0) return null;
 
-        IEnumerable<(CatalogFilter Filter, bool BrandMatched)> narrowed = candidates;
+        IEnumerable<(CatalogFilter Filter, bool BrandMatched, int Specificity)> narrowed = candidates;
+        if (candidates.Any(item => item.BrandMatched)) narrowed = candidates.Where(item => item.BrandMatched).ToArray();
         if (bandwidth is { } width)
         {
+            // Closest declared width wins, so "3nm" picks the 3 nm model over the 3.5 nm one.
             var byWidth = narrowed.Where(item => item.Filter.BandwidthNm is { } w && Math.Abs(w - width) < 0.6).ToArray();
-            if (byWidth.Length > 0) narrowed = byWidth;
+            if (byWidth.Length > 0)
+            {
+                var closest = byWidth.Min(item => Math.Abs(item.Filter.BandwidthNm!.Value - width));
+                narrowed = byWidth.Where(item => Math.Abs(item.Filter.BandwidthNm!.Value - width) - closest < 0.05).ToArray();
+            }
+            // "Baader S-II 8nm" is not the 6.5 nm model of the set: better a generic SII 8 nm than the wrong product.
+            else if (narrowed.All(item => item.Filter.Series is not null)) return null;
         }
         if (channels.Count > 0)
         {
@@ -128,6 +139,20 @@ public static partial class FilterRecognizer
         }
         if (remaining.Length > 1)
         {
+            // The longest full model name spelled out wins: "NBZ" inside "Nebula Booster NBZ" beats "Nebula Booster NB1".
+            var best = remaining.Max(item => item.Specificity);
+            var mostSpecific = remaining.Where(item => item.Specificity == best).ToArray();
+            if (best > 0 && mostSpecific.Length == 1) remaining = mostSpecific;
+        }
+        var confidence = 0.0;
+        if (remaining.Length > 1 && channels.Count == 0)
+        {
+            // Without a line in the name, a family's base model is meant ("ALP-T 5nm" is the Hα+OIII one, not SII+Hβ).
+            var baseModels = remaining.Where(item => Channels(Normalize(item.Filter.Name)).Count == 0).ToArray();
+            if (baseModels.Length > 0 && baseModels.Length < remaining.Length) { remaining = baseModels; confidence = 0.8; }
+        }
+        if (remaining.Length > 1)
+        {
             // Prefer the base model when the name gives no version hint ("L-eXtreme" over a variant).
             var shortest = remaining.MinBy(item => item.Filter.Name.Length);
             var sameFamily = remaining.All(item => item.Filter.Kind == shortest.Filter.Kind && item.Filter.Lines.SequenceEqual(shortest.Filter.Lines));
@@ -135,16 +160,28 @@ public static partial class FilterRecognizer
             return FromProduct("", shortest.Filter, 0.6, FilterMatchSource.CatalogProduct);
         }
         var match = remaining[0];
-        return FromProduct("", match.Filter, match.BrandMatched ? 0.97 : 0.9, FilterMatchSource.CatalogProduct);
+        if (confidence == 0) confidence = match.BrandMatched ? 0.97 : 0.9;
+        return FromProduct("", match.Filter, confidence, FilterMatchSource.CatalogProduct);
     }
 
     private static FilterIdentity? Generic(string raw, string normalized, double? bandwidth, IReadOnlyList<EmissionLine> channels)
     {
         var tokens = Tokens(normalized);
         var compact = Compact(normalized);
-        if (compact is "uvir" or "uvircut" or "ircut" or "uvirblock" or "ir" || normalized.Contains("uv ir") || normalized.Contains("ir cut"))
+        var residual = Residual(normalized);
+        var residualText = string.Join(' ', residual);
+        if (compact is "uvir" or "uvircut" or "ircut" or "uvirblock" or "ir" or "iruv" || normalized.Contains("uv ir") || normalized.Contains("ir uv")
+            || normalized.Contains("ir cut") || normalized.Contains("ir block") || residualText is "l2" or "l3" or "heuib" or "heuib ii")
             return new(raw, FilterKind.Broadband, [], null, null, 0.85, FilterMatchSource.GenericName, "UV/IR cut");
-        if (tokens.Intersect(["lp", "cls", "lps", "skyglow", "antinquinamento"]).Any() || normalized.Contains("light pollution"))
+
+        // Mono sets are sold as "Chroma Blue 50 mm", "Astrodon Gen2 E-Series Tru-Balance Red 31mm", "Baader R-CCD".
+        if (channels.Count == 0 && residual.Count > 0 && residual.All(BroadbandWords.ContainsKey)
+            && residual.Select(token => BroadbandWords[token]).Distinct().Count() == 1 && BroadbandWords[residual[0]] is var colour)
+            return new(raw, FilterKind.Broadband, [], null, null, 0.85, FilterMatchSource.GenericName, colour);
+
+        if (tokens.Intersect(["lp", "cls", "lps", "skyglow", "antinquinamento", "uhc", "ngs1", "ngs", "gnb"]).Any()
+            || normalized.Contains("light pollution") || normalized.Contains("night glow") || normalized.Contains("natural night")
+            || (channels.Count == 0 && residualText is "deep sky" or "nebula" or "moon"))
             return new(raw, FilterKind.LightPollution, [], null, null, 0.75, FilterMatchSource.GenericName, "Anti-inquinamento luminoso");
 
         var palette = compact switch
@@ -162,6 +199,16 @@ public static partial class FilterRecognizer
             return new(raw, FilterKind.Multiband, lines, null, bandwidth, palette is null ? 0.8 : 0.75, FilterMatchSource.GenericName,
                 "Multibanda " + string.Join(" + ", lines.Select(line => line.Name)));
 
+        if (compact.Contains("rgb", StringComparison.Ordinal) && (compact.Contains("triband") || compact.Contains("tricolor")))
+            return new(raw, FilterKind.LightPollution, [], null, null, 0.6, FilterMatchSource.GenericName, "Tribanda RGB");
+        if (MultibandRegex().IsMatch(compact))
+        {
+            // "Dual band" without lines is Hα+OIII in practice; three or four bands stay open until confirmed.
+            var dual = compact.Contains("dual") || compact.Contains("duo");
+            return new(raw, FilterKind.Multiband, dual ? [EmissionLines.Ha, EmissionLines.Oiii] : [], null, bandwidth, 0.6, FilterMatchSource.GenericName,
+                dual ? "Multibanda Hα + OIII" : "Multibanda");
+        }
+
         var broadband = compact switch
         {
             "l" or "lum" or "luminance" or "luminanza" or "lrgbl" => "L",
@@ -170,8 +217,60 @@ public static partial class FilterRecognizer
             "b" or "blue" or "blu" => "B",
             _ => null
         };
-        return broadband is null ? null : new(raw, FilterKind.Broadband, [], null, null, 0.9, FilterMatchSource.GenericName, broadband);
+        if (broadband is not null) return new(raw, FilterKind.Broadband, [], null, null, 0.9, FilterMatchSource.GenericName, broadband);
+
+        if (residualText is "lrgb" or "rgb" or "lrvb" or "lrgb set" or "rgb set")
+            return new(raw, FilterKind.Broadband, [], null, null, 0.6, FilterMatchSource.GenericName, residualText.ToUpperInvariant().Replace(" SET", "") + " (set)");
+        if (residualText is "clear" or "clearglass" or "mc clear" or "clear focusing")
+            return new(raw, FilterKind.Broadband, [], null, null, 0.75, FilterMatchSource.GenericName, "Clear");
+        if (compact.Contains("irpass") || IrPassRegex().IsMatch(normalized))
+            return new(raw, FilterKind.Broadband, [], null, null, 0.8, FilterMatchSource.GenericName, "IR-pass");
+        return null;
     }
+
+    private static readonly Dictionary<string, string> BroadbandWords = new(StringComparer.Ordinal)
+    {
+        ["l"] = "L", ["lum"] = "L", ["luminance"] = "L", ["luminanza"] = "L", ["luminanz"] = "L",
+        ["r"] = "R", ["red"] = "R", ["rosso"] = "R", ["rot"] = "R", ["rood"] = "R", ["rouge"] = "R", ["rojo"] = "R",
+        ["g"] = "G", ["green"] = "G", ["verde"] = "G", ["grun"] = "G", ["groen"] = "G", ["vert"] = "G",
+        ["b"] = "B", ["blue"] = "B", ["blu"] = "B", ["blau"] = "B", ["blauw"] = "B", ["bleu"] = "B", ["azul"] = "B"
+    };
+
+    private static readonly HashSet<string> Brands = new(StringComparer.Ordinal)
+    {
+        "altair", "antlia", "askar", "astrodon", "astronomik", "astronimik", "baader", "planetarium", "planetariun", "celestron", "chroma", "dwarflab",
+        "explore", "scientific", "fli", "idas", "lumicon", "moravian", "nisi", "omegon", "optolong", "orion", "player", "one", "qhy", "qhyccd",
+        "radian", "telescopes", "sharpstar", "skywatcher", "starlight", "xpress", "stc", "svbony", "ts", "optics", "touptek", "zwo", "atik"
+    };
+
+    private static readonly HashSet<string> NoiseWords = new(StringComparer.Ordinal)
+    {
+        "filter", "filters", "filtro", "filtri", "set", "filterset", "mounted", "unmounted", "cell", "gen", "ii", "e", "i", "series", "eseries",
+        "iseries", "tru", "balance", "trubalance", "ccd", "cmos", "optimized", "optimised", "for", "type", "iic", "inch", "in", "mm", "nm",
+        "v", "pro", "new", "version", "deep", "sky", "and", "typ", "2c", "square", "round", "gen1", "gen2", "gen3", "gen2e", "g2e", "generation", "serie", "true", "dark", "ximei", "astronomiks", "astromania", "minicam8m"
+    };
+
+    /// <summary>What is left of a name once brand, sizes and marketing words are gone ("Chroma Blue 50 mm" → "blue").</summary>
+    private static List<string> Residual(string normalized)
+    {
+        var tokens = normalized.Split(' ', StringSplitOptions.RemoveEmptyEntries).ToList();
+        // "Deep Sky" is noise inside "Astronomik Deep-Sky Red" but the whole point of "Lumicon Deep Sky".
+        var result = tokens.Where(token => !Brands.Contains(token) && !NoiseWords.Contains(token) && !SizeRegex().IsMatch(token)).ToList();
+        if (result.Count == 0 && normalized.Contains("deep sky")) return ["deep", "sky"];
+        return result;
+    }
+
+    private static (string[] Stems, string[] Aliases, string[] Full) Keys(CatalogFilter filter) => KeyCache.GetOrAdd(filter, item =>
+    {
+        var aliases = item.Aliases.Select(alias => Compact(Normalize(alias))).Where(alias => alias.Length > 0).ToArray();
+        var full = new[] { Compact(Normalize(item.Name.Split('(')[0])), Compact(Normalize(item.Name)) }.Concat(aliases).Distinct().ToArray();
+        return ([Stem(item.Name)], item.Aliases.Select(Normalize).Where(alias => alias.Length > 0).ToArray(), full);
+    });
+    // Short aliases ("NB3") must stand as whole words, or they turn up inside "Astrodon B 31mm".
+    private static bool ContainsAlias(string normalized, string compact, string alias) =>
+        Compact(alias) is { Length: >= 6 } spelled ? compact.Contains(spelled, StringComparison.Ordinal) : $" {normalized} ".Contains($" {alias} ", StringComparison.Ordinal);
+
+    private static readonly ConcurrentDictionary<CatalogFilter, (string[] Stems, string[] Aliases, string[] Full)> KeyCache = new(ReferenceEqualityComparer.Instance);
 
     private static IReadOnlyList<EmissionLine> Channels(string normalized)
     {
@@ -188,7 +287,8 @@ public static partial class FilterRecognizer
     private static double? Bandwidth(string normalized)
     {
         var match = BandwidthRegex().Match(normalized);
-        return match.Success && double.TryParse(match.Groups[1].Value.Replace(',', '.'), NumberStyles.Float, CultureInfo.InvariantCulture, out var value) ? value : null;
+        // Values above 40 nm are a cut-on wavelength ("IR 742nm"), not a bandwidth.
+        return match.Success && double.TryParse(match.Groups[1].Value.Replace(',', '.'), NumberStyles.Float, CultureInfo.InvariantCulture, out var value) && value < 40 ? value : null;
     }
 
     private static FilterIdentity FromProduct(string raw, CatalogFilter filter, double confidence, FilterMatchSource source) =>
@@ -216,10 +316,16 @@ public static partial class FilterRecognizer
         return builder.ToString().Normalize(NormalizationForm.FormC);
     }
 
-    [GeneratedRegex(@"[\s_\-./\\+:;,()\[\]]+")]
+    [GeneratedRegex(@"[\s_\-./\\+:;,()\[\]""'&]+")]
     private static partial Regex SeparatorRegex();
     [GeneratedRegex(@"(\d+(?:[.,]\d+)?)\s*nm")]
     private static partial Regex BandwidthRegex();
+    [GeneratedRegex(@"^(\d+(?:[.,]\d+)?(mm|nm|in|inch)?|\d+x\d+(mm)?|asi\d+\w*|aps|apsc|c)$")]
+    private static partial Regex SizeRegex();
+    [GeneratedRegex(@"dualband|duoband|duonarrow|dualnarrow|triband|tribanda|quadband|multiband|multibanda")]
+    private static partial Regex MultibandRegex();
+    [GeneratedRegex(@"(?<![a-z])ir ?(6[5-9]\d|[7-9]\d\d)(?![0-9])|(?<![0-9])(6[5-9]\d|[7-9]\d\d) ?nm ?(ir|longpass)|ir (6[5-9]\d|[7-9]\d\d) ?nm|ir pass")]
+    private static partial Regex IrPassRegex();
     [GeneratedRegex(@"(?<![a-z])(ha|h a|halpha|h alpha|hydrogen alpha|idrogeno alfa)(?![a-z])|(?<![a-z])ha\d")]
     private static partial Regex HaRegex();
     [GeneratedRegex(@"(?<![a-z])(oiii|o iii|o3|oxygen|ossigeno)(?![a-z])|(?<![a-z])(oiii|o3)\d")]

@@ -18,7 +18,8 @@
     }
    ],
    "approximate": false,
-   "source": null
+   "source": null,
+   "aliases": []
   },
   {
    "id": "poahuvir",
@@ -36,7 +37,8 @@
     }
    ],
    "approximate": true,
-   "source": "https://player-one-astronomy.com/product/anti-halo-pro-dual-band-2-haoiii-filter/"
+   "source": "https://player-one-astronomy.com/product/anti-halo-pro-dual-band-2-haoiii-filter/",
+   "aliases": []
   },
   {
    "id": "lpro",
@@ -74,7 +76,8 @@
     }
    ],
    "approximate": false,
-   "source": "https://www.optolong.com/cms/document/detail/id/13.html"
+   "source": "https://www.optolong.com/cms/document/detail/id/13.html",
+   "aliases": []
   },
   {
    "id": "lqef",
@@ -107,7 +110,11 @@
     }
    ],
    "approximate": false,
-   "source": "https://optolong.com/cms/document/detail/id/286.html"
+   "source": "https://optolong.com/cms/document/detail/id/286.html",
+   "aliases": [
+    "L-Quad Enhance",
+    "LQEF"
+   ]
   },
   {
    "id": "triband",
@@ -135,7 +142,8 @@
     }
    ],
    "approximate": true,
-   "source": "https://www.cloudynights.com/articles/astro-gear-today/reviews/a-hybrid-light-pollution-filter-for-color-imaging-antlia-triband-rgb-ultra-review-r4632/"
+   "source": "https://www.cloudynights.com/articles/astro-gear-today/reviews/a-hybrid-light-pollution-filter-for-color-imaging-antlia-triband-rgb-ultra-review-r4632/",
+   "aliases": []
   },
   {
    "id": "triband2",
@@ -163,7 +171,8 @@
     }
    ],
    "approximate": true,
-   "source": "https://starizona.com/products/antlia-triband-rgb-ultra-filter-2-mounted"
+   "source": "https://starizona.com/products/antlia-triband-rgb-ultra-filter-2-mounted",
+   "aliases": []
   },
   {
    "id": "aquad",
@@ -186,7 +195,8 @@
     }
    ],
    "approximate": true,
-   "source": "https://shop.antliafilter.com/products/antlia-quad-band-anti-light-pollution-filter-2-mounted"
+   "source": "https://shop.antliafilter.com/products/antlia-quad-band-anti-light-pollution-filter-2-mounted",
+   "aliases": []
   },
   {
    "id": "uhce",
@@ -209,7 +219,8 @@
     }
    ],
    "approximate": true,
-   "source": "https://www.astronomik.com/en/Visual-Filters/UHC-E/"
+   "source": "https://www.astronomik.com/en/Visual-Filters/UHC-E/",
+   "aliases": []
   },
   {
    "id": "ouhc",
@@ -232,7 +243,8 @@
     }
    ],
    "approximate": true,
-   "source": "https://www.optolong.com/cms/document/detail/id/73.html"
+   "source": "https://www.optolong.com/cms/document/detail/id/73.html",
+   "aliases": []
   },
   {
    "id": "buhcs",
@@ -255,7 +267,8 @@
     }
    ],
    "approximate": true,
-   "source": "http://www.company7.com/baader/options/uhc-s.html"
+   "source": "http://www.company7.com/baader/options/uhc-s.html",
+   "aliases": []
   },
   {
    "id": "lextreme",
@@ -278,7 +291,8 @@
     }
    ],
    "approximate": false,
-   "source": "https://agenaastro.com/optolong-l-extreme-dual-bandpass-light-pollution-reduction-imaging-filter-2.html"
+   "source": "https://agenaastro.com/optolong-l-extreme-dual-bandpass-light-pollution-reduction-imaging-filter-2.html",
+   "aliases": []
   },
   {
    "id": "lenhance",
@@ -301,7 +315,8 @@
     }
    ],
    "approximate": false,
-   "source": "https://ontariotelescope.com/blogs/news/navigating-optolong-filters-lenhance-lextreme-and-lultimate-for-astrophotography"
+   "source": "https://ontariotelescope.com/blogs/news/navigating-optolong-filters-lenhance-lextreme-and-lultimate-for-astrophotography",
+   "aliases": []
   },
   {
    "id": "lultimate",
@@ -324,7 +339,8 @@
     }
    ],
    "approximate": false,
-   "source": "https://agenaastro.com/optolong-l-ultimate-dual-bandpass-light-pollution-reduction-imaging-filter-1-25in.html"
+   "source": "https://agenaastro.com/optolong-l-ultimate-dual-bandpass-light-pollution-reduction-imaging-filter-1-25in.html",
+   "aliases": []
   },
   {
    "id": "lsynergy",
@@ -347,7 +363,8 @@
     }
    ],
    "approximate": false,
-   "source": "https://agenaastro.com/optolong-filters-l2-dual-combo-filter-set-l-extreme-l-synergy-filters-2-mounted.html"
+   "source": "https://agenaastro.com/optolong-filters-l2-dual-combo-filter-set-l-extreme-l-synergy-filters-2-mounted.html",
+   "aliases": []
   },
   {
    "id": "alpt5",
@@ -370,7 +387,8 @@
     }
    ],
    "approximate": false,
-   "source": "https://starizona.com/products/antlia-alp-t-high-speed-filter"
+   "source": "https://starizona.com/products/antlia-alp-t-high-speed-filter",
+   "aliases": []
   },
   {
    "id": "askard1",
@@ -393,7 +411,10 @@
     }
    ],
    "approximate": false,
-   "source": "https://www.highpointscientific.com/askar-color-magic-super-d1-duo-narrowband-filter-oiii-and-ha-2-inch"
+   "source": "https://www.highpointscientific.com/askar-color-magic-super-d1-duo-narrowband-filter-oiii-and-ha-2-inch",
+   "aliases": [
+    "ColourMagic D1"
+   ]
   },
   {
    "id": "askard2",
@@ -416,7 +437,10 @@
     }
    ],
    "approximate": false,
-   "source": "https://www.highpointscientific.com/askar-color-magic-super-d2-duo-narrowband-filter-oiii-and-sii-2-inch"
+   "source": "https://www.highpointscientific.com/askar-color-magic-super-d2-duo-narrowband-filter-oiii-and-sii-2-inch",
+   "aliases": [
+    "ColourMagic D2"
+   ]
   },
   {
    "id": "nbz2",
@@ -439,7 +463,11 @@
     }
    ],
    "approximate": false,
-   "source": "https://agenaastro.com/idas-nbz-ii-high-speed-imaging-filter-2-inch-mounted-m48.html"
+   "source": "https://agenaastro.com/idas-nbz-ii-high-speed-imaging-filter-2-inch-mounted-m48.html",
+   "aliases": [
+    "NBZ II",
+    "NBZ2"
+   ]
   },
   {
    "id": "stcduo",
@@ -462,7 +490,12 @@
     }
    ],
    "approximate": true,
-   "source": "https://www.stcoptics.com/products/astro-duo-narrowband-duo-nb-filter"
+   "source": "https://www.stcoptics.com/products/astro-duo-narrowband-duo-nb-filter",
+   "aliases": [
+    "Duo-Narrowband",
+    "Dual Narrowband",
+    "Duo NB"
+   ]
   },
   {
    "id": "zwoduo",
@@ -485,7 +518,11 @@
     }
    ],
    "approximate": false,
-   "source": "https://agenaastro.com/zwo-duo-band-narrowband-light-pollution-reduction-imaging-filter-2.html"
+   "source": "https://agenaastro.com/zwo-duo-band-narrowband-light-pollution-reduction-imaging-filter-2.html",
+   "aliases": [
+    "ZWO Duo Band",
+    "ZWO Dual Band"
+   ]
   },
   {
    "id": "poahpro",
@@ -508,7 +545,8 @@
     }
    ],
    "approximate": false,
-   "source": "https://player-one-astronomy.com/product/anti-halo-pro-dual-band-2-haoiii-filter/"
+   "source": "https://player-one-astronomy.com/product/anti-halo-pro-dual-band-2-haoiii-filter/",
+   "aliases": []
   },
   {
    "id": "triad",
@@ -541,7 +579,10 @@
     }
    ],
    "approximate": false,
-   "source": "https://optcorp.com/products/radian-telescopes-2-inch-triad-ultra-filter"
+   "source": "https://optcorp.com/products/radian-telescopes-2-inch-triad-ultra-filter",
+   "aliases": [
+    "Triad Quad"
+   ]
   },
   {
    "id": "lpara",
@@ -564,7 +605,8 @@
     }
    ],
    "approximate": false,
-   "source": "https://agenaastro.com/optolong-l-para-dual-band-oiii-10nm-h-a-10nm-filter-2-mounted.html"
+   "source": "https://agenaastro.com/optolong-l-para-dual-band-oiii-10nm-h-a-10nm-filter-2-mounted.html",
+   "aliases": []
   },
   {
    "id": "alpt3",
@@ -587,7 +629,8 @@
     }
    ],
    "approximate": true,
-   "source": "https://starizona.com/collections/antlia"
+   "source": "https://starizona.com/collections/antlia",
+   "aliases": []
   },
   {
    "id": "nbz",
@@ -610,7 +653,8 @@
     }
    ],
    "approximate": false,
-   "source": "https://optcorp.com/products/idas-nbz-nebula-booster-filter-52mm"
+   "source": "https://optcorp.com/products/idas-nbz-nebula-booster-filter-52mm",
+   "aliases": []
   },
   {
    "id": "askarc1",
@@ -633,7 +677,10 @@
     }
    ],
    "approximate": false,
-   "source": "https://www.highpointscientific.com/askar-c1-colourmagic-2-duo-band-filter-ha-and-oiii"
+   "source": "https://www.highpointscientific.com/askar-c1-colourmagic-2-duo-band-filter-ha-and-oiii",
+   "aliases": [
+    "ColourMagic C1"
+   ]
   },
   {
    "id": "askarc2",
@@ -656,7 +703,10 @@
     }
    ],
    "approximate": false,
-   "source": "https://www.highpointscientific.com/colour-magic-c-2-duo-band-filter-package"
+   "source": "https://www.highpointscientific.com/colour-magic-c-2-duo-band-filter-package",
+   "aliases": [
+    "ColourMagic C2"
+   ]
   },
   {
    "id": "sv220",
@@ -679,7 +729,8 @@
     }
    ],
    "approximate": false,
-   "source": "https://www.svbony.com/products/sv220-dual-band-7nm-nebula-filter"
+   "source": "https://www.svbony.com/products/sv220-dual-band-7nm-nebula-filter",
+   "aliases": []
   },
   {
    "id": "sv220-3",
@@ -702,7 +753,8 @@
     }
    ],
    "approximate": true,
-   "source": "https://www.svbony.com/blog/review-of-svbony-sv220-3nm-filter"
+   "source": "https://www.svbony.com/blog/review-of-svbony-sv220-3nm-filter",
+   "aliases": []
   },
   {
    "id": "sv220s",
@@ -725,7 +777,8 @@
     }
    ],
    "approximate": true,
-   "source": "https://www.svbony.com/products/7nm-oiii-sii-narrowband-filter"
+   "source": "https://www.svbony.com/products/7nm-oiii-sii-narrowband-filter",
+   "aliases": []
   },
   {
    "id": "altair4",
@@ -748,7 +801,8 @@
     }
    ],
    "approximate": false,
-   "source": "https://altairastro.com/altair-ha-oiii-dualband-ultra-4nm-certified-cmos-filter-2x22-w-test-report-11468-p.asp"
+   "source": "https://altairastro.com/altair-ha-oiii-dualband-ultra-4nm-certified-cmos-filter-2x22-w-test-report-11468-p.asp",
+   "aliases": []
   },
   {
    "id": "altair4s",
@@ -771,7 +825,8 @@
     }
    ],
    "approximate": true,
-   "source": "https://altairastro.com/altair-sii-oiii--dualband-ultra-4nm-certified-cmos-filter-2x22-w-test-report-13147-p.asp"
+   "source": "https://altairastro.com/altair-sii-oiii--dualband-ultra-4nm-certified-cmos-filter-2x22-w-test-report-13147-p.asp",
+   "aliases": []
   },
   {
    "id": "altair6s",
@@ -794,7 +849,8 @@
     }
    ],
    "approximate": true,
-   "source": null
+   "source": null,
+   "aliases": []
   },
   {
    "id": "askare2",
@@ -817,7 +873,10 @@
     }
    ],
    "approximate": false,
-   "source": "https://www.firstlightoptics.com/narrowband/askar-colour-magic-e2-2-dual-narrow-band-filter-siioiii.html"
+   "source": "https://www.firstlightoptics.com/narrowband/askar-colour-magic-e2-2-dual-narrow-band-filter-siioiii.html",
+   "aliases": [
+    "ColourMagic E2"
+   ]
   },
   {
    "id": "alpt3s",
@@ -840,7 +899,8 @@
     }
    ],
    "approximate": true,
-   "source": "https://starizona.com/collections/antlia"
+   "source": "https://starizona.com/collections/antlia",
+   "aliases": []
   },
   {
    "id": "alptsh",
@@ -863,7 +923,8 @@
     }
    ],
    "approximate": true,
-   "source": "https://shop.antliafilter.com/products/antlia-alp-t-dual-band-5nm-sii-h-beta-filter-2-inch-mounted"
+   "source": "https://shop.antliafilter.com/products/antlia-alp-t-dual-band-5nm-sii-h-beta-filter-2-inch-mounted",
+   "aliases": []
   },
   {
    "id": "sv240",
@@ -886,7 +947,8 @@
     }
    ],
    "approximate": true,
-   "source": "https://www.svbony.com/products/sv240-multi-narrowband-filter"
+   "source": "https://www.svbony.com/products/sv240-multi-narrowband-filter",
+   "aliases": []
   },
   {
    "id": "nb1",
@@ -909,7 +971,11 @@
     }
    ],
    "approximate": true,
-   "source": "https://idas.uno/space/en/IDAS/nb1.htm"
+   "source": "https://idas.uno/space/en/IDAS/nb1.htm",
+   "aliases": [
+    "NB1",
+    "NB-1"
+   ]
   },
   {
    "id": "nb3",
@@ -932,7 +998,11 @@
     }
    ],
    "approximate": true,
-   "source": "https://cloudbreakoptics.com/products/nebula-booster-nb3"
+   "source": "https://cloudbreakoptics.com/products/nebula-booster-nb3",
+   "aliases": [
+    "NB3",
+    "NB-3"
+   ]
   },
   {
    "id": "seestar",
@@ -955,7 +1025,8 @@
     }
    ],
    "approximate": true,
-   "source": "https://www.seestar.com/blogs/tutorial/seestar-light-pollution-filter-guide"
+   "source": "https://www.seestar.com/blogs/tutorial/seestar-light-pollution-filter-guide",
+   "aliases": []
   },
   {
    "id": "duo7",
@@ -978,7 +1049,8 @@
     }
    ],
    "approximate": false,
-   "source": null
+   "source": null,
+   "aliases": []
   },
   {
    "id": "edge-SII",
@@ -996,7 +1068,8 @@
     }
    ],
    "approximate": true,
-   "source": null
+   "source": null,
+   "aliases": []
   },
   {
    "id": "sv227-OIII",
@@ -1014,7 +1087,8 @@
     }
    ],
    "approximate": true,
-   "source": null
+   "source": null,
+   "aliases": []
   },
   {
    "id": "ant35-Ha",
@@ -1032,7 +1106,8 @@
     }
    ],
    "approximate": true,
-   "source": null
+   "source": null,
+   "aliases": []
   },
   {
    "id": "ant35-OIII",
@@ -1050,7 +1125,8 @@
     }
    ],
    "approximate": true,
-   "source": null
+   "source": null,
+   "aliases": []
   },
   {
    "id": "ant35-SII",
@@ -1068,7 +1144,8 @@
     }
    ],
    "approximate": true,
-   "source": null
+   "source": null,
+   "aliases": []
   },
   {
    "id": "sv227-SII",
@@ -1086,7 +1163,8 @@
     }
    ],
    "approximate": true,
-   "source": null
+   "source": null,
+   "aliases": []
   },
   {
    "id": "L",
@@ -1104,7 +1182,8 @@
     }
    ],
    "approximate": false,
-   "source": null
+   "source": null,
+   "aliases": []
   },
   {
    "id": "R",
@@ -1122,7 +1201,8 @@
     }
    ],
    "approximate": false,
-   "source": null
+   "source": null,
+   "aliases": []
   },
   {
    "id": "G",
@@ -1140,7 +1220,8 @@
     }
    ],
    "approximate": false,
-   "source": null
+   "source": null,
+   "aliases": []
   },
   {
    "id": "B",
@@ -1158,7 +1239,8 @@
     }
    ],
    "approximate": false,
-   "source": null
+   "source": null,
+   "aliases": []
   },
   {
    "id": "bd65-Ha",
@@ -1176,7 +1258,8 @@
     }
    ],
    "approximate": false,
-   "source": "https://www.highpointscientific.com/baader-6-5nm-narrowband-2-inch-cmos-optimized-filter-set-ha-oiii-sii-fcsetn-2"
+   "source": "https://www.highpointscientific.com/baader-6-5nm-narrowband-2-inch-cmos-optimized-filter-set-ha-oiii-sii-fcsetn-2",
+   "aliases": []
   },
   {
    "id": "bd65-OIII",
@@ -1194,7 +1277,8 @@
     }
    ],
    "approximate": false,
-   "source": "https://www.highpointscientific.com/baader-6-5nm-narrowband-2-inch-cmos-optimized-filter-set-ha-oiii-sii-fcsetn-2"
+   "source": "https://www.highpointscientific.com/baader-6-5nm-narrowband-2-inch-cmos-optimized-filter-set-ha-oiii-sii-fcsetn-2",
+   "aliases": []
   },
   {
    "id": "bd65-SII",
@@ -1212,7 +1296,8 @@
     }
    ],
    "approximate": false,
-   "source": "https://www.highpointscientific.com/baader-6-5nm-narrowband-2-inch-cmos-optimized-filter-set-ha-oiii-sii-fcsetn-2"
+   "source": "https://www.highpointscientific.com/baader-6-5nm-narrowband-2-inch-cmos-optimized-filter-set-ha-oiii-sii-fcsetn-2",
+   "aliases": []
   },
   {
    "id": "bdunb-Ha",
@@ -1230,7 +1315,8 @@
     }
    ],
    "approximate": false,
-   "source": "https://www.baader-planetarium.com/en/baader-3.5--4nm-ultra-narrowband-filter-set-%E2%80%93-cmos-optimized-(h-alpha--o-iii--s-ii).html"
+   "source": "https://www.baader-planetarium.com/en/baader-3.5--4nm-ultra-narrowband-filter-set-%E2%80%93-cmos-optimized-(h-alpha--o-iii--s-ii).html",
+   "aliases": []
   },
   {
    "id": "bdunb-OIII",
@@ -1248,7 +1334,8 @@
     }
    ],
    "approximate": false,
-   "source": "https://www.baader-planetarium.com/en/baader-3.5--4nm-ultra-narrowband-filter-set-%E2%80%93-cmos-optimized-(h-alpha--o-iii--s-ii).html"
+   "source": "https://www.baader-planetarium.com/en/baader-3.5--4nm-ultra-narrowband-filter-set-%E2%80%93-cmos-optimized-(h-alpha--o-iii--s-ii).html",
+   "aliases": []
   },
   {
    "id": "bdunb-SII",
@@ -1266,7 +1353,8 @@
     }
    ],
    "approximate": false,
-   "source": "https://www.baader-planetarium.com/en/baader-3.5--4nm-ultra-narrowband-filter-set-%E2%80%93-cmos-optimized-(h-alpha--o-iii--s-ii).html"
+   "source": "https://www.baader-planetarium.com/en/baader-3.5--4nm-ultra-narrowband-filter-set-%E2%80%93-cmos-optimized-(h-alpha--o-iii--s-ii).html",
+   "aliases": []
   },
   {
    "id": "ast6-Ha",
@@ -1284,7 +1372,8 @@
     }
    ],
    "approximate": false,
-   "source": "https://www.astronomik.com/en/Narrowband-Filters/"
+   "source": "https://www.astronomik.com/en/Narrowband-Filters/",
+   "aliases": []
   },
   {
    "id": "ast6-OIII",
@@ -1302,7 +1391,8 @@
     }
    ],
    "approximate": false,
-   "source": "https://www.astronomik.com/en/Narrowband-Filters/"
+   "source": "https://www.astronomik.com/en/Narrowband-Filters/",
+   "aliases": []
   },
   {
    "id": "ast6-SII",
@@ -1320,7 +1410,8 @@
     }
    ],
    "approximate": false,
-   "source": "https://www.astronomik.com/en/Narrowband-Filters/"
+   "source": "https://www.astronomik.com/en/Narrowband-Filters/",
+   "aliases": []
   },
   {
    "id": "ast12-Ha",
@@ -1338,7 +1429,8 @@
     }
    ],
    "approximate": false,
-   "source": "https://www.astronomik.com/en/Narrowband-Filters/"
+   "source": "https://www.astronomik.com/en/Narrowband-Filters/",
+   "aliases": []
   },
   {
    "id": "ast12-OIII",
@@ -1356,7 +1448,8 @@
     }
    ],
    "approximate": false,
-   "source": "https://www.astronomik.com/en/Narrowband-Filters/"
+   "source": "https://www.astronomik.com/en/Narrowband-Filters/",
+   "aliases": []
   },
   {
    "id": "ast12-SII",
@@ -1374,7 +1467,8 @@
     }
    ],
    "approximate": false,
-   "source": "https://www.astronomik.com/en/Narrowband-Filters/"
+   "source": "https://www.astronomik.com/en/Narrowband-Filters/",
+   "aliases": []
   },
   {
    "id": "chr3-Ha",
@@ -1392,7 +1486,8 @@
     }
    ],
    "approximate": false,
-   "source": "https://www.chroma.com/products/filters/astronomy/narrowband/"
+   "source": "https://www.chroma.com/products/filters/astronomy/narrowband/",
+   "aliases": []
   },
   {
    "id": "chr3-OIII",
@@ -1410,7 +1505,8 @@
     }
    ],
    "approximate": false,
-   "source": "https://www.chroma.com/products/filters/astronomy/narrowband/"
+   "source": "https://www.chroma.com/products/filters/astronomy/narrowband/",
+   "aliases": []
   },
   {
    "id": "chr3-SII",
@@ -1428,7 +1524,8 @@
     }
    ],
    "approximate": false,
-   "source": "https://www.chroma.com/products/filters/astronomy/narrowband/"
+   "source": "https://www.chroma.com/products/filters/astronomy/narrowband/",
+   "aliases": []
   },
   {
    "id": "chr5-Ha",
@@ -1446,7 +1543,8 @@
     }
    ],
    "approximate": false,
-   "source": "https://www.chroma.com/products/filters/astronomy/narrowband/"
+   "source": "https://www.chroma.com/products/filters/astronomy/narrowband/",
+   "aliases": []
   },
   {
    "id": "chr5-OIII",
@@ -1464,7 +1562,8 @@
     }
    ],
    "approximate": false,
-   "source": "https://www.chroma.com/products/filters/astronomy/narrowband/"
+   "source": "https://www.chroma.com/products/filters/astronomy/narrowband/",
+   "aliases": []
   },
   {
    "id": "chr5-SII",
@@ -1482,7 +1581,8 @@
     }
    ],
    "approximate": false,
-   "source": "https://www.chroma.com/products/filters/astronomy/narrowband/"
+   "source": "https://www.chroma.com/products/filters/astronomy/narrowband/",
+   "aliases": []
   },
   {
    "id": "ant3-Ha",
@@ -1500,7 +1600,8 @@
     }
    ],
    "approximate": false,
-   "source": "https://starizona.com/collections/antlia"
+   "source": "https://starizona.com/collections/antlia",
+   "aliases": []
   },
   {
    "id": "ant3-OIII",
@@ -1518,7 +1619,8 @@
     }
    ],
    "approximate": false,
-   "source": "https://starizona.com/collections/antlia"
+   "source": "https://starizona.com/collections/antlia",
+   "aliases": []
   },
   {
    "id": "ant3-SII",
@@ -1536,7 +1638,8 @@
     }
    ],
    "approximate": false,
-   "source": "https://starizona.com/collections/antlia"
+   "source": "https://starizona.com/collections/antlia",
+   "aliases": []
   },
   {
    "id": "opt7-Ha",
@@ -1554,7 +1657,8 @@
     }
    ],
    "approximate": false,
-   "source": "https://www.optolong.com/"
+   "source": "https://www.optolong.com/",
+   "aliases": []
   },
   {
    "id": "opt7-OIII",
@@ -1572,7 +1676,8 @@
     }
    ],
    "approximate": false,
-   "source": "https://www.optolong.com/"
+   "source": "https://www.optolong.com/",
+   "aliases": []
   },
   {
    "id": "opt7-SII",
@@ -1590,7 +1695,8 @@
     }
    ],
    "approximate": false,
-   "source": "https://www.optolong.com/"
+   "source": "https://www.optolong.com/",
+   "aliases": []
   },
   {
    "id": "opt3-Ha",
@@ -1608,7 +1714,8 @@
     }
    ],
    "approximate": false,
-   "source": "https://www.optolong.com/"
+   "source": "https://www.optolong.com/",
+   "aliases": []
   },
   {
    "id": "opt3-OIII",
@@ -1626,7 +1733,8 @@
     }
    ],
    "approximate": false,
-   "source": "https://www.optolong.com/"
+   "source": "https://www.optolong.com/",
+   "aliases": []
   },
   {
    "id": "opt3-SII",
@@ -1644,7 +1752,8 @@
     }
    ],
    "approximate": false,
-   "source": "https://www.optolong.com/"
+   "source": "https://www.optolong.com/",
+   "aliases": []
   },
   {
    "id": "zwo7-Ha",
@@ -1662,7 +1771,8 @@
     }
    ],
    "approximate": false,
-   "source": "https://www.zwoastro.com/"
+   "source": "https://www.zwoastro.com/",
+   "aliases": []
   },
   {
    "id": "zwo7-OIII",
@@ -1680,7 +1790,8 @@
     }
    ],
    "approximate": false,
-   "source": "https://www.zwoastro.com/"
+   "source": "https://www.zwoastro.com/",
+   "aliases": []
   },
   {
    "id": "zwo7-SII",
@@ -1698,7 +1809,8 @@
     }
    ],
    "approximate": false,
-   "source": "https://www.zwoastro.com/"
+   "source": "https://www.zwoastro.com/",
+   "aliases": []
   }
  ]
 }

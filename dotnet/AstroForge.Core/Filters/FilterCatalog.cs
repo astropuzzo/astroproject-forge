@@ -36,6 +36,9 @@ public sealed record CatalogFilter(
 {
     public string DisplayName => Brand == "Generico" ? Name : $"{Brand} {Name}";
 
+    /// <summary>Other names the product is sold or listed under (AstroBin listings, older model names).</summary>
+    public IReadOnlyList<string> Aliases { get; init; } = [];
+
     /// <summary>Emission lines that fall inside the declared passbands (only meaningful for narrow and multi band filters).</summary>
     /// NII sits 2 nm from Hα and rides along in any Hα band, so it is listed only for filters built around it.
     public IReadOnlyList<EmissionLine> Lines => _lines ??= Kind is FilterKind.Narrowband or FilterKind.Multiband
@@ -84,7 +87,10 @@ public sealed class FilterCatalog
         if (document.Schema != 1) throw new InvalidDataException($"Schema catalogo filtri non supportato: {document.Schema}.");
         return new(document.Filters.Select(item => new CatalogFilter(
             item.Id, item.Brand, item.Name, item.Series, ParseKind(item.Kind), item.Channel, item.Camera ?? "both",
-            item.Bands.Select(band => new FilterBand(band.FromNm, band.ToNm, band.Peak)).ToArray(), item.Approximate, item.Source)));
+            item.Bands.Select(band => new FilterBand(band.FromNm, band.ToNm, band.Peak)).ToArray(), item.Approximate, item.Source)
+        {
+            Aliases = item.Aliases ?? []
+        }));
     }
 
     private static FilterCatalog LoadEmbedded()
@@ -109,6 +115,6 @@ public sealed class FilterCatalog
     private sealed record CatalogDocument(int Schema, List<CatalogItem> Filters);
     private sealed record CatalogItem(
         string Id, string Brand, string Name, string? Series, string? Kind, string? Channel, string? Camera,
-        List<CatalogBand> Bands, bool Approximate, string? Source);
+        List<CatalogBand> Bands, bool Approximate, string? Source, List<string>? Aliases);
     private sealed record CatalogBand([property: JsonPropertyName("fromNm")] double FromNm, [property: JsonPropertyName("toNm")] double ToNm, double Peak);
 }
