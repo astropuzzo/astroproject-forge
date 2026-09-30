@@ -49,7 +49,7 @@ public sealed class MainViewModel : BindableBase
     private bool _showIssuesOnly;
     private string _searchText = "";
     private string _libraryPath = "";
-    private string _status = "Aggiungi file o cartelle FITS/XISF e avvia l’analisi";
+    private string _status = "Aggiungi sorgenti FITS/XISF e analizza il progetto";
     private double _progress;
     private string _editGain = "";
     private string _editOffset = "";
@@ -95,7 +95,7 @@ public sealed class MainViewModel : BindableBase
     private CancellationTokenSource? _exportCancellation;
     private ExportRunState _exportState;
     private double _exportProgress;
-    private string _exportProgressDetail = "L’anteprima è facoltativa; i controlli vengono eseguiti automaticamente durante l’esportazione.";
+    private string _exportProgressDetail = "Controlli automatici inclusi nell’esportazione.";
     private double _exportMarginPercent = 10;
     private double _exportMinimumReserveGiB = 1;
     private double _exportEstimatedThroughputMiBps = 100;
@@ -103,7 +103,7 @@ public sealed class MainViewModel : BindableBase
     private readonly List<QualityFrameRow> _allQualityFrames = [];
     private QualityFrameRow? _selectedQualityFrame;
     private QualitySeriesRow? _selectedQualitySeries;
-    private string _qualityStatus = "Analisi opzionale: i pixel non vengono letti finché non la avvii.";
+    private string _qualityStatus = "Analisi dei pixel su richiesta.";
     private double _qualityProgress;
     private bool _isQualityAnalyzing;
     private double _qualitySigmaThreshold = 3.5;
@@ -264,11 +264,11 @@ public sealed class MainViewModel : BindableBase
     public string AnalysisPromptTitle => _awaitingReanalysis ? "Le sorgenti sono cambiate" : "Sorgenti collegate";
     public string AnalysisPromptDetail => _awaitingReanalysis
         ? "Rianalizza per includere le sorgenti correnti."
-        : "Legge gli header e raggruppa i file per filtro, notte e sessione. Gli originali non vengono modificati.";
+        : "Legge gli header e raggruppa per filtro, notte e sessione.";
     public string AnalysisActionLabel => IsScanning ? "Analisi in corso…" : HasAnalysis || _awaitingReanalysis ? "Rianalizza" : "Analizza";
     public string RecoverySummary => _pendingRecovery is null
         ? "Nessun recupero necessario"
-        : $"{_pendingRecovery.Operation} interrotta il {_pendingRecovery.StartedAtUtc.ToLocalTime():dd MMM yyyy 'alle' HH:mm}. Puoi ripristinare la fotografia del progetto precedente all’operazione.";
+        : $"{_pendingRecovery.Operation} interrotta il {_pendingRecovery.StartedAtUtc.ToLocalTime():dd MMM yyyy 'alle' HH:mm}. È disponibile lo stato del progetto precedente.";
     public string DiagnosticsSummary { get => _diagnosticsSummary; private set => Set(ref _diagnosticsSummary, value); }
     public double ExportMarginPercent { get => _exportMarginPercent; set { if (Set(ref _exportMarginPercent, value)) InvalidateExportPreflight(); } }
     public double ExportMinimumReserveGiB { get => _exportMinimumReserveGiB; set { if (Set(ref _exportMinimumReserveGiB, value)) InvalidateExportPreflight(); } }
@@ -385,8 +385,8 @@ public sealed class MainViewModel : BindableBase
         }
     }
     public string AstronomicalNightExplanation => UiLanguage == UiLocalization.English
-        ? $"Frames captured after midnight stay in the session started the previous evening. The app starts a new night at {SessionBoundaryHour:00}:00."
-        : $"Gli scatti dopo mezzanotte appartengono ancora alla sessione iniziata la sera prima. Il programma cambia notte alle {SessionBoundaryHour:00}:00.";
+        ? $"Frames after midnight stay with the night that began the previous evening. Night boundary at {SessionBoundaryHour:00}:00."
+        : $"I file dopo mezzanotte restano nella notte iniziata la sera prima. Cambio notte alle {SessionBoundaryHour:00}:00.";
     public string AstronomicalNightExample => UiLanguage == UiLocalization.English
         ? $"Jun 24 22:30 + Jun 25 03:10 = the same night: June 24"
         : $"24 giu 22:30 + 25 giu 03:10 = stessa notte: 24 giugno";
@@ -409,7 +409,7 @@ public sealed class MainViewModel : BindableBase
     public int UnresolvedCalibrations => _analysis?.UnresolvedCount ?? 0;
     public int ReviewQueueCount => ReviewQueue.Count;
     public string ReviewQueueSummary => ReviewQueue.Count == 0
-        ? (UiLanguage == UiLocalization.English ? "Nothing to resolve" : "Niente da risolvere")
+        ? (UiLanguage == UiLocalization.English ? "Nothing to resolve" : "Completo")
         : UiLanguage == UiLocalization.English
             ? $"{ReviewQueue.Count} {(ReviewQueue.Count == 1 ? "group" : "groups")} · {ReviewQueue.Sum(item => item.FrameCount)} assignments"
             : $"{ReviewQueue.Count} {(ReviewQueue.Count == 1 ? "gruppo" : "gruppi")} · {ReviewQueue.Sum(item => item.FrameCount)} assegnazioni";
@@ -519,7 +519,7 @@ public sealed class MainViewModel : BindableBase
         Raise(nameof(MasterLibraryCountLabel));
         InvalidateProjectAnalysis(_analysis is not null || _frames.Count > 0);
         SaveState();
-        Status = "Libreria rimossa dall’app · nessun Master è stato cancellato";
+        Status = "Libreria rimossa · Master invariati su disco";
     }
 
     public void MoveSelectedMasterLibrary(int direction)
@@ -820,7 +820,7 @@ public sealed class MainViewModel : BindableBase
 
     public async Task LoadProjectAsync(string path)
     {
-        if (_pendingRecovery is not null) throw new InvalidOperationException("Ripristina oppure ignora prima il recovery journal mostrato in alto.");
+        if (_pendingRecovery is not null) throw new InvalidOperationException("Ripristina o ignora prima il recupero in sospeso.");
         var document = ProjectDocumentStore.Load(path);
         ApplyProjectDocument(document, Path.GetFullPath(path));
         Status = $"Progetto aperto · {Path.GetFileName(CurrentProjectFile)}";
@@ -867,7 +867,7 @@ public sealed class MainViewModel : BindableBase
 
     private TrackedOperation BeginTrackedOperation(string operation, string startCode, string message)
     {
-        if (_pendingRecovery is not null) throw new InvalidOperationException("Ripristina oppure ignora prima il recovery journal mostrato in alto.");
+        if (_pendingRecovery is not null) throw new InvalidOperationException("Ripristina o ignora prima il recupero in sospeso.");
         SyncStateFromViewModel();
         var snapshot = new ProjectRecoverySnapshot { ProjectFile = CurrentProjectFile, Document = CreateProjectDocument() };
         var journal = _recoveryJournal.Begin(operation, snapshot);
@@ -878,7 +878,7 @@ public sealed class MainViewModel : BindableBase
     public async Task ScanAsync(CancellationToken cancellationToken = default)
     {
         var availableLibraries = MasterLibraries.Where(item => item.Enabled && item.IsOnline).ToArray();
-        if (SourcePaths.Count == 0) { Status = "Aggiungi almeno una sorgente FITS/XISF. La Libreria Master è disponibile separatamente."; return; }
+        if (SourcePaths.Count == 0) { Status = "Aggiungi almeno una sorgente FITS/XISF."; return; }
         using var tracked = BeginTrackedOperation("Analisi progetto", "AF-SCAN-START", "Analisi progetto avviata");
         IsScanning = true;
         Progress = 0;
@@ -1329,7 +1329,7 @@ public sealed class MainViewModel : BindableBase
         Raise(nameof(CanAnalyzeProject));
         Raise(nameof(RecoverySummary));
         _eventLog.Write("Information", "AF-RECOVERY-DISCARDED", "Fotografia di recupero ignorata", operationId: recovery.OperationId, operation: recovery.Operation);
-        Status = "Recovery journal ignorato · progetto corrente invariato";
+        Status = "Recupero ignorato · progetto invariato";
     }
 
     public async Task<string> ExportSupportBundleAsync(string outputPath, CancellationToken cancellationToken = default)
@@ -1383,7 +1383,7 @@ public sealed class MainViewModel : BindableBase
     public void ClearHeaderCache()
     {
         _headerCache.Clear();
-        Status = "Cache header svuotata · i file verranno riletti alla prossima analisi";
+        Status = "Cache header svuotata";
     }
 
     public void SelectReviewItem(ReviewQueueItem? item)
@@ -1450,7 +1450,7 @@ public sealed class MainViewModel : BindableBase
         InvalidateProjectAnalysis(false);
         Raise(nameof(HasProjectContent));
         SaveState();
-        Status = "Nuovo progetto pronto";
+        Status = "Nuovo progetto";
     }
 
     private bool CanLinkFlatSet()
@@ -1535,7 +1535,7 @@ public sealed class MainViewModel : BindableBase
         catch (OperationCanceledException) when (_exportCancellation.IsCancellationRequested)
         {
             SetExportState(ExportRunState.Cancelled);
-            ExportProgressDetail = "Export annullato · le copie già verificate restano nello staging e saranno riutilizzate";
+            ExportProgressDetail = "Esportazione annullata · copie verificate conservate nello staging";
             Status = ExportProgressDetail;
             tracked.Complete("AF-EXPORT-CANCELLED", "Export annullato in modo riprendibile");
             throw;
@@ -1551,7 +1551,7 @@ public sealed class MainViewModel : BindableBase
         catch (Exception exception)
         {
             SetExportState(ExportRunState.Failed);
-            ExportProgressDetail = "Export interrotto · staging conservato per diagnosi e ripresa";
+            ExportProgressDetail = "Esportazione interrotta · staging conservato";
             tracked.Fail("AF-EXPORT-001", "Esportazione progetto non completata", exception);
             throw;
         }
@@ -1570,7 +1570,7 @@ public sealed class MainViewModel : BindableBase
         if (_exportState != ExportRunState.Running || _exportControl is null) return;
         _exportControl.Pause();
         SetExportState(ExportRunState.Paused);
-        Status = "Export in pausa · nessun file parziale verrà promosso";
+        Status = "Esportazione in pausa";
     }
 
     public void ResumeExport()
@@ -1587,7 +1587,7 @@ public sealed class MainViewModel : BindableBase
         SetExportState(ExportRunState.Cancelling);
         _exportControl?.Resume();
         _exportCancellation.Cancel();
-        Status = "Annullamento richiesto · chiusura sicura del file corrente";
+        Status = "Annullamento in corso…";
     }
 
     private void RebuildTree()
@@ -1849,7 +1849,7 @@ public sealed class MainViewModel : BindableBase
 
     private void ApplyProjectDefaults()
     {
-        if (!TryProjectDefaults(out var defaults)) { Status = "Fallback progetto non validi: usa numeri oppure lascia vuoto"; return; }
+        if (!TryProjectDefaults(out var defaults)) { Status = "Valori di riserva non validi: inserisci numeri o lascia vuoto"; return; }
         var changed = ProjectMetadataDefaultsResolver.Apply(_frames, defaults);
         RefreshIntelligence(); RebuildTree(); RefreshCounts(); SaveState();
         Status = $"Fallback progetto applicati a {changed} frame · valori presenti negli header non modificati";

@@ -15,9 +15,9 @@ public static class WbppRecipeEngine
         var recommendations = new List<GroupingKeywordRecommendation>();
         var notes = new List<string>
         {
-            "Aggiungi solo le righe mostrate sopra. Imposta Pre su ON e Post su OFF.",
-            "WBPP separa già filtro, binning ed esposizione: non aggiungerli.",
-            "Non usare DATE-OBS: dividerebbe i file della stessa notte osservativa."
+            "Solo le righe sopra. Pre ON, Post OFF.",
+            "Filtro, binning ed esposizione sono già separati da WBPP.",
+            "Non usare DATE-OBS: divide la stessa notte."
         };
         var flatChoices = new Dictionary<string, HashSet<string>>();
         var darkChoices = new Dictionary<string, HashSet<string>>();

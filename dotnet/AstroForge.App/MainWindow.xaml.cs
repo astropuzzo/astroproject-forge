@@ -307,7 +307,7 @@ public partial class MainWindow : Window
         catch (HttpRequestException)
         {
             _availableUpdate = null;
-            _viewModel.UpdateStatus = "GitHub Releases non raggiungibile · controlla la connessione";
+            _viewModel.UpdateStatus = "GitHub Releases non raggiungibile";
             if (interactive) MessageBox.Show(this,
                 _viewModel.UiLanguage == UiLocalization.English
                     ? "Could not contact GitHub Releases. Check your connection and try again. No file was downloaded."

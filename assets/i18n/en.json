@@ -11,14 +11,10 @@
   "Indipendenti dal progetto": "Independent from the project",
   "Aggiorna stato librerie": "Refresh library status",
   "Valori predefiniti": "Default values",
-  "Usati solo quando il metadato manca.": "Used only when metadata is missing.",
-  "Usati solo quando header e percorso non contengono il valore.": "Used only when headers and paths do not contain the value.",
   "Applica valori e rianalizza": "Apply values and reanalyze",
-  "Usa questi valori soltanto quando mancano nei metadati": "Use these values only when metadata is missing",
   "Notte astronomica": "Astronomical night",
   "Cambio sessione (ora locale)": "Session boundary (local time)",
   "Cambio notte (ora locale)": "Night boundary (local time)",
-  "I file acquisiti prima di quest’ora appartengono alla notte precedente.": "Files captured before this time belong to the previous night.",
   "Stato progetto": "Project status",
   "Analisi": "Analysis",
   "Esporta": "Export",
@@ -32,7 +28,6 @@
   "Calibrazioni": "Calibrations",
   "Diagnostica": "Diagnostics",
   "Mappa progetto": "Project map",
-  "Filtri, sessioni, notti e calibrazioni assegnate.": "Filters, sessions, nights and assigned calibration frames.",
   "Solo elementi da rivedere": "Items requiring review only",
   "Nessuna sorgente": "No sources",
   "Aggiungi file o cartelle FITS/XISF.": "Add FITS/XISF files or folders.",
@@ -53,7 +48,6 @@
   "Riprendi": "Resume",
   "Annulla": "Cancel",
   "Grouping Keywords": "Grouping Keywords",
-  "Valori da inserire in WBPP per mantenere separate le sessioni.": "Values to enter in WBPP to keep sessions separate.",
   "Keyword": "Keyword",
   "Motivo": "Reason",
   "Integrazione e copertura per filtro, sessione e notte.": "Integration and coverage by filter, session and night.",
@@ -70,7 +64,6 @@
   "Soglia anomalie": "Anomaly threshold",
   "Solo sospetti": "Suspects only",
   "Analizza serie": "Analyze series",
-  "Analizza soltanto la serie selezionata; le altre restano indipendenti": "Analyze only the selected series; other series remain independent",
   "Escludi selezionati": "Exclude selected",
   "Escludi selezione": "Exclude selection",
   "Escludi sospetti": "Exclude suspects",
@@ -81,13 +74,10 @@
   "Dettaglio HD": "HD detail",
   "Adatta": "Fit",
   "Escludi / ripristina": "Exclude / restore",
-  "Gli esclusi vanno in Excluded/Quality; gli originali restano intatti.": "Excluded frames go to Excluded/Quality; originals remain unchanged.",
   "Problemi di calibrazione": "Calibration issues",
   "Assegnazioni mancanti o ambigue.": "Missing or ambiguous assignments.",
   "Nessun problema": "No issues",
-  "Tutte le calibrazioni richieste sono assegnate.": "All required calibration frames are assigned.",
   "Assegnazione Master": "Master assignment",
-  "Seleziona un problema e assegna il Master corretto.": "Select an issue and assign the correct Master.",
   "Solo Light": "Selected Light only",
   "Intera notte": "Entire night",
   "Stessa firma tecnica": "Same technical signature",
@@ -96,20 +86,14 @@
   "Analizza le librerie abilitate": "Scan enabled libraries",
   "Indipendente dal progetto corrente.": "Independent from the current project.",
   "Scansiona": "Scan",
-  "Legge i metadati dei Master senza creare copie": "Read Master metadata without creating copies",
   "02 · VERIFICA E DESTINAZIONE": "02 · VERIFICATION AND DESTINATION",
   "Annulla ultimo batch": "Undo last batch",
-  "Rimuove soltanto le copie dell’ultimo batch se non sono state modificate": "Remove only unchanged copies from the last batch",
   "Organizza copie": "Organize copies",
-  "Crea copie ordinate e completa i metadati confermati": "Create organized copies and write confirmed metadata",
   "Nessun Master analizzato": "No Master frames scanned",
-  "Avvia la scansione per leggere metadati e destinazioni proposte.": "Start a scan to read metadata and proposed destinations.",
   "Inspector": "Inspector",
   "Nessuna selezione": "No selection",
   "Seleziona un nodo dell'albero": "Select a tree node",
-  "Seleziona un elemento della mappa per modificarne metadati e calibrazioni.": "Select a map item to edit metadata and calibration assignments.",
   "Doppio clic": "Double-click",
-  "Apre la posizione del file originale.": "Open the original file location.",
   "Metadati effettivi": "Effective metadata",
   "Tipo frame": "Frame type",
   "Filtro": "Filter",
@@ -122,15 +106,12 @@
   "Impostazioni": "Settings",
   "Interfaccia": "Interface",
   "Lingua / Language": "Language / Lingua",
-  "Cambia immediatamente la lingua dell’interfaccia": "Change the interface language immediately",
   "Densità controlli": "Control density",
   "Compatta": "Compact",
   "Comoda": "Comfortable",
   "Ampia": "Spacious",
   "Riduci animazioni": "Reduce animations",
   "Movimento ridotto": "Reduced motion",
-  "Disattiva le animazioni dell’interfaccia.": "Disable interface animations.",
-  "Esportazione": "Export",
   "Margine spazio (%)": "Free-space margin (%)",
   "Riserva minima (GiB)": "Minimum reserve (GiB)",
   "Salva impostazioni": "Save settings",
@@ -138,10 +119,8 @@
   "Riapri guida iniziale": "Open setup guide",
   "Riapri configurazione guidata": "Open setup guide",
   "Pulisci cache header": "Clear header cache",
-  "Forza una nuova lettura dei metadati alla prossima analisi": "Force metadata to be read again during the next analysis",
   "Esporta diagnostica": "Export diagnostics",
   "Svuota progetto": "Clear project",
-  "Rimuove le sorgenti dal progetto senza cancellare i file": "Remove project sources without deleting files",
   "Apri": "Open",
   "Apri un progetto .astroforge": "Open an .astroforge project",
   "Salva": "Save",
@@ -158,8 +137,6 @@
   "Annulla ultima modifica": "Undo last change",
   "Ripristina l'ultimo override": "Restore the last override",
   "Configurazione iniziale": "Initial setup",
-  "Prepara il primo progetto": "Prepare your first project",
-  "Importa file FITS/XISF da qualunque software oppure gestisci soltanto la Libreria Master. Gli originali restano in sola lettura.": "Import FITS/XISF files from any software, or manage only the Master Library. Originals remain read-only.",
   "1 · Importa": "1 · Import",
   "2 · Libreria Master": "2 · Master Library",
   "Aggiungi cartelle": "Add folders",
@@ -167,8 +144,6 @@
   "Aggiungi libreria": "Add library",
   "Continua": "Continue",
   "Indietro": "Back",
-  "Nessun dato viene caricato online.": "No data is uploaded.",
-  "Diagnostica": "Diagnostics",
   "Aggiorna eventi": "Refresh events",
   "Esporta ZIP di supporto": "Export support ZIP",
   "Log": "Log",
@@ -181,7 +156,6 @@
   "Canale": "Channel",
   "Canale release": "Release channel",
   "Libreria principale": "Primary library",
-  "Legge gli header e raggruppa i file per filtro, notte e sessione. Gli originali non vengono modificati.": "Reads headers and groups files by filter, night and session. Originals are never modified.",
   "Pronto": "Ready",
   "Pronta": "Ready",
   "Master assegnati al progetto": "Master frames assigned to the project",
@@ -193,507 +167,474 @@
   "Scarica aggiornamento verificato": "Download verified update",
   "RECUPERO DISPONIBILE": "RECOVERY AVAILABLE",
   "Ripristina progetto": "Restore project",
-  "Ignora": "Dismiss"
-  ,"Aggiungi libreria": "Add library"
-  ,"Rimuovi dal progetto": "Remove from project"
-  ,"Aumenta priorità": "Increase priority"
-  ,"Riduci priorità": "Decrease priority"
-  ,"Applica a tutte le notti con camera, gain, offset, temperatura, binning e readout equivalenti; per i Dark anche esposizione": "Apply to every night with matching camera, gain, offset, temperature, binning and readout; Dark frames must also match exposure"
-  ,"Cerca file, target o filtro": "Search files, targets or filters"
-  ,"Chiudi": "Close"
-  ,"Chiudi diagnostica": "Close diagnostics"
-  ,"Clicca un punto o la sua posizione nel grafico per aprire il frame nella preview": "Click a point or its position in the chart to open the frame in the preview"
-  ,"Controlla spazio, percorsi e conflitti prima della copia": "Check free space, paths and conflicts before copying"
-  ,"Disattiva le transizioni non essenziali": "Disable nonessential transitions"
-  ,"Disponibile quando l’header dichiara RGGB, BGGR, GRBG o GBRG": "Available when the header declares RGGB, BGGR, GRBG or GBRG"
-  ,"Doppio click per mostrare il file originale": "Double-click to show the original file"
-  ,"Doppio click per mostrare il Light originale": "Double-click to show the original Light frame"
-  ,"Doppio click per mostrare il Master originale": "Double-click to show the original Master frame"
-  ,"Filtra soltanto la tabella; il grafico continua a mostrare l'intera serie": "Filter the table only; the chart continues to show the complete series"
-  ,"Flat Set compatibili con il filtro della selezione": "Flat Sets compatible with the selected filter"
-  ,"Flat Set da assegnare alla selezione": "Flat Set to assign to the selection"
-  ,"Identificatore del set di Flat assegnato alla sessione": "Identifier of the Flat Set assigned to the session"
-  ,"Importa ricorsivamente FITS e XISF da qualunque software di acquisizione": "Recursively import FITS and XISF files from any capture software"
-  ,"Importa uno o più file FITS/XISF individuali": "Import one or more individual FITS/XISF files"
-  ,"Imposta lo stesso identificatore sui Light e sui Flat che appartengono alla stessa epoca ottica": "Set the same identifier on Light and Flat frames belonging to the same optical epoch"
-  ,"Includi questa libreria nell'analisi": "Include this library in the analysis"
-  ,"Ingrandisci o ripristina": "Maximize or restore"
-  ,"Lascia vuoto per usare esclusivamente SET-TEMP, CCD-TEMP o il percorso libreria": "Leave blank to use only SET-TEMP, CCD-TEMP or the library path"
-  ,"Legge i metadati senza modificare gli originali": "Read metadata without modifying originals"
-  ,"Marca questo gruppo per il link manuale Flat": "Mark this group for manual Flat linking"
-  ,"Misura i Light della serie selezionata": "Measure Light frames in the selected series"
-  ,"Mostra o nascondi sorgenti": "Show or hide sources"
-  ,"Ogni filtro e Flat Set viene analizzato come dataset indipendente": "Each filter and Flat Set is analyzed as an independent dataset"
-  ,"Origine del valore Flat Set": "Source of the Flat Set value"
-  ,"Rianalizza le sorgenti usando le librerie di calibrazione attive": "Reanalyze sources using active calibration libraries"
-  ,"Riduci": "Minimize"
-  ,"Rigenera temporaneamente la preview selezionata fino a 2400 px": "Temporarily regenerate the selected preview up to 2400 px"
-  ,"Scegli il Master da assegnare": "Choose the Master frame to assign"
-  ,"Seleziona la cartella di destinazione": "Choose the destination folder"
-  ,"Trascina per ridimensionare Inspector": "Drag to resize Inspector"
-  ,"Trascina per ridimensionare Sorgenti": "Drag to resize Sources"
-  ,"Trascina per ridimensionare tabella e preview": "Drag to resize the table and preview"
-  ,"Preferenze, guida e supporto": "Preferences, guide and support"
-  ,"PREFERENZE": "PREFERENCES"
-  ,"Preferenze": "Preferences"
-  ,"Lingua": "Language"
-  ,"Dimensione interfaccia": "Interface size"
-  ,"Cambia subito la lingua": "Change the language immediately"
-  ,"Riduci animazioni": "Reduce animations"
-  ,"Utile su PC meno potenti o se preferisci meno movimento": "Useful on slower computers or when you prefer less motion"
-  ,"PROGETTO": "PROJECT"
-  ,"Ripristina l'ultima correzione manuale": "Restore the last manual correction"
-  ,"Rileggi i metadati": "Read metadata again"
-  ,"Forza una nuova lettura al prossimo controllo": "Force a fresh read during the next analysis"
-  ,"Chiudi progetto": "Close project"
-  ,"Rimuove i dati dall'app, non i file originali": "Remove data from the app, not the original files"
-  ,"AIUTO": "HELP"
-  ,"Aiuto": "Help"
-  ,"Guida rapida": "Quick guide"
-  ,"Esempi passo per passo su GitHub": "Step-by-step examples on GitHub"
-  ,"Segnala un problema": "Report a problem"
-  ,"Apre un modulo guidato su GitHub": "Open a guided form on GitHub"
-  ,"Diagnostica": "Diagnostics"
-  ,"Log ed esportazione del file di supporto": "Logs and support-file export"
-  ,"Informazioni": "About"
-  ,"Versione, autore e aggiornamenti": "Version, author and updates"
-  ,"Impostazioni WBPP": "WBPP setup"
-  ,"Inserisci in WeightedBatchPreprocessing solo le righe mostrate qui.": "Enter only the rows shown here in WeightedBatchPreprocessing."
-  ,"In WBPP attiva Grouping Keywords, poi aggiungi una riga per ogni keyword indicata sotto.": "In WBPP, enable Grouping Keywords and add one row for each keyword shown below."
-  ,"1. In WBPP attiva Grouping Keywords.  2. Aggiungi una riga per ogni keyword indicata.  3. Imposta Pre su ON e Post su OFF.": "1. Enable Grouping Keywords in WBPP.  2. Add one row for each keyword shown.  3. Set Pre to ON and Post to OFF."
-  ,"A COSA SERVE": "PURPOSE"
-  ,"Separa i Light che usano Flat diversi.": "Separates Light frames that use different Flats."
-  ,"Separa i Light che richiedono Dark diversi.": "Separates Light frames that require different Darks."
-  ,"Separa i gruppi che richiedono Bias diversi.": "Separates groups that require different Bias frames."
-  ,"Aggiungi solo le righe mostrate sopra. Imposta Pre su ON e Post su OFF.": "Add only the rows shown above. Set Pre to ON and Post to OFF."
-  ,"WBPP separa già filtro, binning ed esposizione: non aggiungerli.": "WBPP already separates filter, binning and exposure; do not add them."
-  ,"Non usare DATE-OBS: dividerebbe i file della stessa notte osservativa.": "Do not use DATE-OBS: it would split files from the same observing night."
-  ,"Prima di avviare WBPP, apri Calibration e verifica che ogni gruppo Light abbia il Flat, Dark e Bias previsti.": "Before running WBPP, open Calibration and check that every Light group has the expected Flat, Dark and Bias."
-  ,"Organizza sessioni, calibrazioni e progetti PixInsight WBPP.": "Organize sessions, calibration frames and PixInsight WBPP projects."
-  ,"Sviluppato da Gianmarco Spagnoli (@astropuzzo)": "Developed by Gianmarco Spagnoli (@astropuzzo)"
-  ,"Copyright © 2026 Gianmarco Spagnoli. Tutti i diritti riservati.": "Copyright © 2026 Gianmarco Spagnoli. All rights reserved."
-  ,"Guida": "Guide"
-  ,"Scarica aggiornamento": "Download update"
-  ,"Aggiorna e riavvia": "Update and restart"
-  ,"Download manuale": "Manual download"
-  ,"Apre la release più recente su GitHub": "Open the latest release on GitHub"
-  ,"Installazione aggiornamento...": "Installing update..."
-  ,"Aggiornamento completato": "Update complete"
-  ,"Il progetto è pronto.": "Your project is ready."
-  ,"Controlla aggiornamenti": "Check for updates"
-  ,"Controllo aggiornamenti attivo": "Automatic update checks are active"
-  ,"Controllo aggiornamenti non riuscito": "Update check failed"
-  ,"Download aggiornamento…": "Downloading update…"
-  ,"Download non riuscito": "Download failed"
-  ,"Automatici": "Automatic"
-  ,"Ideato da Gianmarco Spagnoli (@astropuzzo)": "Created by Gianmarco Spagnoli (@astropuzzo)"
-  ,"Gli eventi mostrati aiutano a diagnosticare eventuali problemi.": "The displayed events help diagnose problems."
-  ,"Esporta ZIP": "Export ZIP"
-  ,"GitHub Releases non raggiungibile · controlla la connessione": "GitHub Releases is unreachable · check your connection"
-  ,"La versione installata è aggiornata.": "The installed version is up to date."
-  ,"La versione installata è più recente del canale selezionato.": "The installed version is newer than the selected channel."
-  ,"Diagnostica e file di supporto": "Diagnostics and support file"
-  ,"Opzioni avanzate": "Advanced options"
-  ,"Margine spazio esportazione (%)": "Export free-space margin (%)"
-  ,"Forza una nuova lettura alla prossima analisi": "Force a fresh read during the next analysis"
-  ,"Rimuove i dati dall'app senza cancellare i file": "Remove data from the app without deleting files"
-  ,"  da risolvere": "  to review"
-  ,"+ File": "+ File"
-  ,"Aggiorna": "Refresh"
-  ,"Aggiungi Dark e Bias": "Add Dark and Bias frames"
-  ,"Aggiungi una o più librerie di calibrazione. Questa funzione non richiede un progetto.": "Add one or more calibration libraries. This feature does not require a project."
-  ,"Analisi qualità": "Quality analysis"
-  ,"Anteprima non generata": "Preview not generated"
-  ,"Assegna il Flat Set alla selezione": "Assign the Flat Set to the selection"
-  ,"ASTROPROJECT FORGE": "ASTROPROJECT FORGE"
-  ,"AstroProject Forge": "AstroProject Forge"
-  ,"Avvia l’analisi per costruire la mappa del progetto.": "Run the analysis to build the project map."
-  ,"Azzera filtri": "Clear filters"
-  ,"Bin": "Bin"
-  ,"Calibrazioni assegnate": "Assigned calibrations"
-  ,"Cambio notte": "Night boundary"
-  ,"CAMERA": "CAMERA"
-  ,"Cerca file, filtro, sessione…": "Search file, filter or session…"
-  ,"Classificazione": "Classification"
-  ,"Clicca l’intestazione per ordinare · Ctrl/Shift per selezionare · doppio click per mostrare l’originale": "Select a column header to sort · use Ctrl/Shift to select · double-click to reveal the original"
-  ,"Codice": "Code"
-  ,"Collega alla selezione": "Link to selection"
-  ,"Configura librerie di calibrazione, notte astronomica e sorgenti FITS/XISF.": "Configure calibration libraries, astronomical nights and FITS/XISF sources."
-  ,"Configurazione completata": "Setup complete"
-  ,"Confronta i candidati campo per campo": "Compare candidates field by field"
-  ,"Controlla metadati e destinazioni prima della copia": "Check metadata and destinations before copying"
-  ,"Controlla metadati e destinazioni senza copiare file": "Check metadata and destinations without copying files"
-  ,"Controlla nome e destinazione, poi costruisci l’albero esatto del progetto.": "Check the name and destination, then build the exact project tree."
-  ,"CONTROLLI AUTOMATICI": "AUTOMATIC CHECKS"
-  ,"Copertura": "Coverage"
-  ,"Copia i file nella struttura di progetto": "Copy files into the project structure"
-  ,"Copia, imprimi e organizza": "Copy, stamp and organize"
-  ,"Copyright © 2026 Gianmarco Spagnoli": "Copyright © 2026 Gianmarco Spagnoli"
-  ,"DATI": "DATA"
-  ,"Destinazione nuova libreria": "New library destination"
-  ,"Destinazione nuova Libreria Master": "New Master Library destination"
-  ,"Dettaglio delle notti": "Night details"
-  ,"ECC.": "ECC."
-  ,"Eccezione": "Exception"
-  ,"Esp.": "Exp."
-  ,"Esposizione": "Exposure"
-  ,"Eventi applicazione": "Application events"
-  ,"Evento": "Event"
-  ,"EXP s": "EXP s"
-  ,"FILE": "FILE"
-  ,"FITS e XISF": "FITS and XISF"
-  ,"Flat Set": "Flat Set"
-  ,"FWHM": "FWHM"
-  ,"GAIN": "GAIN"
-  ,"Gain e Offset predefiniti vengono usati soltanto quando mancano nei metadati.": "Default Gain and Offset are used only when metadata is missing."
-  ,"Gain predefinito": "Default Gain"
-  ,"GitHub": "GitHub"
-  ,"Header originali": "Original headers"
-  ,"i": "i"
-  ,"I log non includono immagini, coordinate o percorsi completi.": "Logs do not include images, coordinates or full paths."
-  ,"I valori predefiniti vengono usati solo quando il metadato non è disponibile.": "Default values are used only when metadata is unavailable."
-  ,"ID": "ID"
-  ,"Importa": "Import"
-  ,"Imposta i valori mancanti": "Set missing values"
-  ,"Inizia": "Start"
-  ,"Integrazione totale": "Total integration"
-  ,"Intervallo": "Date range"
-  ,"KEYWORD": "KEYWORD"
-  ,"Le librerie Dark/Bias si configurano nel pannello Sorgenti.": "Configure Dark/Bias libraries in the Sources panel."
-  ,"Le librerie possono essere modificate in seguito.": "Libraries can be changed later."
-  ,"Le modifiche valgono solo nel progetto; i sorgenti non vengono riscritti.": "Changes apply only to the project; source files are never rewritten."
-  ,"Log locali con percorsi e nomi sensibili rimossi.": "Local logs with sensitive paths and names removed."
-  ,"Marca file, notti o sessioni dello stesso filtro, quindi scegli il Flat Set.": "Mark files, nights or sessions using the same filter, then choose the Flat Set."
-  ,"Margine %": "Margin %"
-  ,"MASTER": "MASTER"
-  ,"Menu": "Menu"
-  ,"metadati e calibrazioni": "metadata and calibrations"
-  ,"Modifica la ricerca o disattiva il filtro.": "Change the search or disable the filter."
-  ,"N.I.N.A., ASIAIR, SGP, Voyager, SharpCap o altri software": "N.I.N.A., ASIAIR, SGP, Voyager, SharpCap or other software"
-  ,"Nessun risultato": "No results"
-  ,"OFFSET": "OFFSET"
-  ,"Offset predefinito": "Default Offset"
-  ,"Passo 1 · Librerie": "Step 1 · Libraries"
-  ,"Passo 2 · Acquisizione": "Step 2 · Acquisition"
-  ,"POST": "POST"
-  ,"PRE": "PRE"
-  ,"PREFLIGHT / STATO": "PREFLIGHT / STATUS"
-  ,"progetto WBPP": "WBPP project"
-  ,"Pulisci filtri": "Clear filters"
-  ,"Puoi aggiungere più librerie e ordinarle per priorità.": "You can add multiple libraries and order them by priority."
-  ,"Readout": "Readout"
-  ,"Rimuove soltanto le copie create dall’ultima operazione": "Remove only copies created by the latest operation"
-  ,"Ripristina": "Restore"
-  ,"Riserva GiB": "Reserve GiB"
-  ,"Rumore": "Noise"
-  ,"Salta configurazione": "Skip setup"
-  ,"Scegli cartelle": "Choose folders"
-  ,"Scegli destinazione": "Choose destination"
-  ,"Scegli file": "Choose files"
-  ,"Score": "Score"
-  ,"Segnalazioni della selezione": "Selected-item issues"
-  ,"Sessione": "Session"
-  ,"Setpoint °C": "Setpoint °C"
-  ,"Sfoglia": "Browse"
-  ,"SHA-256": "SHA-256"
-  ,"SNR": "SNR"
-  ,"Solo da rivedere": "Review only"
-  ,"Solo questo Light": "This Light only"
-  ,"SORGENTI FITS / XISF": "FITS / XISF SOURCES"
-  ,"SPAZIO": "SPACE"
-  ,"Sposta i file segnalati in Excluded/Quality senza eliminare gli originali": "Place flagged files in Excluded/Quality without deleting the originals"
-  ,"Stato": "Status"
-  ,"Stelle": "Stars"
-  ,"STIMA": "ESTIMATE"
-  ,"Stima MiB/s": "Estimated MiB/s"
-  ,"Stretch": "Stretch"
-  ,"Struttura, spazio disponibile e integrità dei file.": "Structure, available space and file integrity."
-  ,"TEMP °C": "TEMP °C"
-  ,"Temp.": "Temp."
-  ,"Temperatura (°C)": "Temperature (°C)"
-  ,"Temperatura setpoint °C": "Temperature setpoint °C"
-  ,"TIPO": "TYPE"
-  ,"Tutta la notte": "Entire night"
-  ,"Uno score oltre la soglia è sospetto; diventa escluso solo dopo conferma.": "A score above the threshold is suspicious; it is excluded only after confirmation."
-  ,"Verifica i Master e crea una libreria ordinata. Funziona senza un progetto aperto.": "Verify Master frames and create an organized library. Works without an open project."
-  ,"Verranno eseguiti automaticamente quando avvii l’esportazione.": "They run automatically when you start the export."
-  ,"WBPP": "WBPP"
-  ,"Apri progetto · Ctrl+O": "Open project · Ctrl+O"
-  ,"Salva progetto · Ctrl+S · Salva con nome Ctrl+Shift+S": "Save project · Ctrl+S · Save as Ctrl+Shift+S"
-  ,"Menu · Ctrl+,": "Menu · Ctrl+,"
-  ,"Analizza progetto · Ctrl+Invio": "Analyze project · Ctrl+Enter"
-  ,"Camera": "Camera"
-  ,"da risolvere": "to review"
-  ,"DESTINAZIONE": "DESTINATION"
-  ,"Ecc.": "Ecc."
-  ,"File": "File"
-  ,"Gain": "Gain"
-  ,"Ingrandisci anteprima": "Zoom in"
-  ,"Master": "Master"
-  ,"Offset": "Offset"
-  ,"Per filtro": "By filter"
-  ,"Riduci anteprima": "Zoom out"
-  ,"RUMORE": "NOISE"
-  ,"SCORE": "SCORE"
-  ,"STATO": "STATUS"
-  ,"STELLE": "STARS"
-  ,"Temperatura": "Temperature"
-  ,"Tipo": "Type"
-  ,"VERIFICA": "CHECK"
-  ,"+ Aggiungi Master Library": "+ Add Master Library"
-  ,"+ Singoli file": "+ Individual files"
-  ,"↑ Priorità": "↑ Priority"
-  ,"↓ Priorità": "↓ Priority"
-  ,"Camera, gain, offset e temperatura determinano gli abbinamenti.": "Camera, gain, offset and temperature determine matching."
-  ,"Collega le calibrazioni, importa le immagini e avvia la prima analisi. Nessun originale viene modificato.": "Connect calibrations, import images and start the first analysis. Original files are never modified."
-  ,"Collega librerie, importa immagini e avvia l’analisi": "Connect libraries, import images and start analysis"
-  ,"Collega una o più raccolte di Master. Camera, gain, offset e temperatura determinano gli abbinamenti.": "Connect one or more Master collections. Camera, gain, offset and temperature determine matching."
-  ,"Dark e Bias automatici": "Automatic Dark and Bias"
-  ,"facoltativa": "optional"
-  ,"Gli originali restano in sola lettura.": "Original files remain read-only."
-  ,"Gli originali restano sempre in sola lettura.": "Original files always remain read-only."
-  ,"Hai già una Master Library?": "Do you already have a Master Library?"
-  ,"Il programma leggerà gli header, ricostruirà le notti e proporrà Flat, Dark e Bias.": "The app will read headers, reconstruct observing nights and suggest Flat, Dark and Bias frames."
-  ,"Il programma leggerà gli header, ricostruirà le notti osservative e proporrà gli abbinamenti Flat, Dark e Bias.": "The app will read headers, reconstruct observing nights and suggest Flat, Dark and Bias matches."
-  ,"Immagini": "Images"
-  ,"IMMAGINI DEL PROGETTO": "PROJECT IMAGES"
-  ,"Importa le acquisizioni": "Import your acquisitions"
-  ,"In pochi passaggi colleghi le calibrazioni, importi le immagini e avvii la prima analisi. Nessun originale viene modificato.": "In a few steps you can connect calibrations, import images and start the first analysis. Original files are never modified."
-  ,"Master Library": "Master Library"
-  ,"MASTER LIBRARY": "MASTER LIBRARY"
-  ,"Non ce l’hai? Continua senza: potrai aggiungerla o crearne una in qualsiasi momento.": "Do not have one? Continue without it: you can add or create one at any time."
-  ,"Non ce l’hai? Continua senza: potrai aggiungerla o crearne una in seguito.": "Do not have one? Continue without it: you can add or create one later."
-  ,"Passo 1 · Calibrazioni": "Step 1 · Calibrations"
-  ,"Passo 2 · Immagini": "Step 2 · Images"
-  ,"Pronto per la prima analisi": "Ready for the first analysis"
-  ,"Puoi aggiungerne più di una e ordinarle per priorità.": "You can add more than one and order them by priority."
-  ,"Puoi aggiungerne più di una.": "You can add more than one."
-  ,"Raccoglie Dark e Bias riutilizzabili. Camera, gain, offset, temperatura ed esposizione determinano gli abbinamenti automatici.": "It contains reusable Dark and Bias frames. Camera, gain, offset, temperature and exposure determine automatic matching."
-  ,"Salta": "Skip"
-  ,"Scegli cartelle complete oppure singoli file FITS/XISF provenienti da qualsiasi software con header utilizzabili.": "Choose complete folders or individual FITS/XISF files from any software with usable headers."
-  ,"Scegli cartelle complete oppure singoli file. Sono accettati FITS e XISF provenienti da qualsiasi software, purché contengano metadati utilizzabili.": "Choose complete folders or individual files. FITS and XISF files from any software are accepted when they contain usable metadata."
-  ,"Scegli una cartella contenente Master Dark e Bias": "Choose a folder containing Master Dark and Bias frames"
-  ,"sessioni e calibrazioni": "sessions and calibrations"
-  ,"Sì, aggiungi libreria": "Yes, add a library"
-  ,"SORGENTI": "SOURCES"
-  ,"Una Master Library raccoglie Dark e Bias riutilizzabili. Il programma sceglie quelli compatibili usando camera, gain, offset, temperatura ed esposizione.": "A Master Library contains reusable Dark and Bias frames. The app selects compatible ones using camera, gain, offset, temperature and exposure."
-  ,"Continua senza libreria": "Continue without a library"
-  ,"Analizza ora": "Analyze now"
-  ,"Vai al progetto": "Go to project"
-  ,"WELCOME · BENVENUTO": "WELCOME"
-  ,"Scegli la lingua": "Choose your language"
-  ,"Questa sarà la lingua dell’interfaccia. Potrai cambiarla in qualsiasi momento dal menu.": "This will be the interface language. You can change it at any time from the menu."
-  ,"Lingua selezionata": "Selected language"
-  ,"SORGENTI DEL PROGETTO": "PROJECT SOURCES"
-  ,"Acquisizioni astronomiche": "Astronomical acquisitions"
-  ,"Aggiungi cartelle complete o singoli FITS/XISF. Gli originali restano sempre intatti.": "Add complete folders or individual FITS/XISF files. Original files always remain untouched."
-  ,"+ Importa cartella": "+ Import folder"
-  ,"Rimuovi selezionata": "Remove selected"
-  ,"Rimuove il collegamento selezionato senza cancellare i file": "Removes the selected link without deleting files"
-  ,"Rimuove il collegamento senza cancellare i file": "Removes the link without deleting files"
-  ,"SESSIONI OSSERVATIVE": "OBSERVING SESSIONS"
-  ,"RAGGRUPPAMENTO NOTTURNO": "NIGHT GROUPING"
-  ,"Gli scatti dopo mezzanotte restano insieme": "Keep after-midnight frames together"
-  ,"La nuova notte inizia alle": "Start a new night at"
-  ,"Consigliato: 12:00": "Recommended: 12:00"
-  ,"Ora di cambio notte": "Night change hour"
-  ,"Gli scatti prima di quest’ora restano con la sera precedente": "Frames before this time stay with the previous evening"
-  ,"Quando cambia la notte?": "When does the night change?"
-  ,"Ora limite locale": "Local cutoff time"
-  ,"Predefinita: 12:00": "Default: 12:00"
-  ,"Ora limite della notte astronomica": "Astronomical night cutoff time"
-  ,"I file acquisiti prima di quest’ora vengono associati alla sera precedente": "Frames captured before this time are assigned to the previous evening"
-  ,"English": "English"
-  ,"Italiano": "Italiano"
-  ,"Nuovo": "New"
-  ,"Crea un nuovo progetto · Ctrl+N": "Create a new project · Ctrl+N"
-  ,"Nuovo progetto": "New project"
-  ,"Inizia un dataset vuoto": "Start with an empty dataset"
-  ,"Salva con nome": "Save as"
-  ,"Crea un nuovo file .astroforge": "Create a new .astroforge file"
-  ,"Gianmarco Spagnoli (@astropuzzo)": "Gianmarco Spagnoli (@astropuzzo)"
-  ,"Analizza tutte": "Analyze all"
-  ,"Analizza tutte le serie una alla volta": "Analyze every series, one at a time"
-  ,"Serie selezionata": "Selected series"
-  ,"Confronta soltanto frame della stessa serie, esposizione e configurazione.": "Compare only frames from the same series, exposure and configuration."
-  ,"Sospetto = almeno una metrica supera la soglia rispetto alla mediana. L’esclusione è sempre manuale.": "Suspect = at least one metric exceeds the threshold relative to the median. Exclusion is always manual."
-  ,"Sospetto = almeno una misura supera la soglia. L’esclusione resta manuale.": "Suspect = at least one metric exceeds the threshold. Exclusion remains manual."
-  ,"ZONE": "REGIONS"
-  ,"Zone": "Regions"
-  ,"Progetto non ancora salvato": "Project not saved yet"
-  ,"Nuovo progetto pronto": "New project ready"
-  ,"Rimuovi la libreria dall’app senza cancellare i Master": "Remove the library from the app without deleting Master frames"
-  ,"Copia soltanto i file nuovi e conserva la cronologia del dataset": "Copy only new files and preserve the dataset history"
-  ,"La timeline apparirà dopo la prima esportazione.": "The timeline will appear after the first export."
-  ,"CRONOLOGIA DATI": "DATA HISTORY"
-  ,"Cronologia dati": "Data history"
-  ,"Copia soltanto i file nuovi e conserva la cronologia": "Copy only new files and preserve the history"
-  ,"Crea struttura": "Build structure"
-  ,"Mostra cartelle e nomi prima di copiare i file": "Show folders and names before copying files"
-  ,"Nessuna struttura": "No structure yet"
-  ,"Seleziona Crea struttura.": "Select Build structure."
-  ,"CONTROLLO ESPORTAZIONE": "EXPORT CHECK"
-  ,"Integrità file": "File integrity"
-  ,"I file vengono confrontati tramite impronta SHA-256": "Files are compared using their SHA-256 fingerprint"
-  ,"Nessuna esportazione precedente.": "No previous exports."
-  ,"Margine spazio %": "Space margin %"
-  ,"Spazio aggiuntivo richiesto oltre alla dimensione calcolata": "Extra free space required beyond the calculated size"
-  ,"Spazio libero GiB": "Free space GiB"
-  ,"Spazio che deve restare libero dopo l’esportazione": "Space that must remain free after export"
-  ,"Velocità MiB/s": "Speed MiB/s"
-  ,"Velocità usata soltanto per calcolare il tempo rimanente": "Speed used only to estimate remaining time"
-  ,"Doppio click: mostra il file originale": "Double-click: show the original file"
-  ,"1  Progetto": "1  Project"
-  ,"2  Calibrazioni": "2  Calibrations"
-  ,"3  Esporta": "3  Export"
-  ,"4  WBPP": "4  WBPP"
-  ,"Dati": "Data"
-  ,"Qualità": "Quality"
-  ,"Master": "Masters"
-  ,"Opzionale · riepilogo di integrazione, filtri e sessioni": "Optional · integration, filter and session summary"
-  ,"Opzionale · misura e confronta i Light della sessione selezionata": "Optional · measure and compare Light frames in the selected session"
-  ,"Strumento indipendente · controlla e organizza una Master Library": "Independent tool · inspect and organize a Master Library"
-  ,"Importa e controlla i file del progetto": "Import and inspect project files"
-  ,"Controlla Flat, Dark e Bias assegnati": "Review assigned Flat, Dark and Bias frames"
-  ,"Crea o aggiorna la cartella pronta per PixInsight": "Create or update the PixInsight-ready folder"
-  ,"Apri la configurazione consigliata per Weighted Batch Preprocessing": "Open the recommended Weighted Batch Preprocessing configuration"
-  ,"STRUMENTI": "TOOLS"
-  ,"Tempi di integrazione, filtri e sessioni": "Integration time, filters and sessions"
-  ,"Misura e confronta i Light": "Measure and compare Light frames"
-  ,"Controlla e organizza le librerie Master": "Inspect and organize Master libraries"
-  ,"Prossimo passo": "Next step"
-  ,"Dati acquisiti": "Acquisition data"
-  ,"Esporta CSV + JSON": "Export CSV + JSON"
-  ,"Salva statistiche e sessioni in formati utilizzabili da altri programmi": "Save statistics and sessions in formats supported by other programs"
-  ,"Analizza il progetto per vedere i dati.": "Analyze the project to view its data."
-  ,"Legge i file e calcola sessioni, tempi e calibrazioni": "Read files and calculate sessions, exposure time and calibrations"
-  ,"SESSIONI": "SESSIONS"
-  ,"Notti": "Nights"
-  ,"Mostra integrazione, numero di Light ed esposizione media per ogni notte": "Show integration, Light count and average exposure for each night"
-  ,"Crea cartella risultati PixInsight": "Create PixInsight results folder"
-  ,"Crea e apri in PixInsight": "Create and open in PixInsight"
-  ,"Crea l’istanza con file, Master, gruppi e cartella risultati già impostati.": "Create an instance with files, masters, groups and output folder preloaded."
-  ,"Crea nel progetto una cartella separata per i file prodotti da WBPP": "Create a separate folder in the project for WBPP output"
-  ,"Genera un file XPSM dal progetto esportato e lo apre in PixInsight": "Generate an XPSM instance from the exported project and open it in PixInsight"
-  ,"Nome della cartella usata come Output Directory di WBPP": "Folder name used as the WBPP output directory"
-  ,"Usata come Output Directory di WBPP": "Used as the WBPP output directory"
-  ,"2  Risolvi": "2  Resolve"
-  ,"Risolvi": "Resolve"
-  ,"Da risolvere": "Resolve"
-  ,"Risolvi assegnazioni mancanti o ambigue": "Resolve missing or ambiguous assignments"
-  ,"Scegli l’assegnazione corretta e applicala al gruppo interessato.": "Choose the correct assignment and apply it to the affected group."
-  ,"Scegli la calibrazione corretta e applicala al gruppo interessato.": "Choose the correct calibration and apply it to the affected group."
-  ,"Scelta richiesta": "Choice required"
-  ,"Dettagli candidati": "Candidate details"
-  ,"Modifica metadati": "Edit metadata"
-  ,"Aggiungi libreria Master": "Add Master Library"
-  ,"Collegamento Flat avanzato": "Advanced Flat assignment"
-  ,"Tutto assegnato": "All assigned"
-  ,"Flat, Dark e Bias sono pronti.": "Flat, Dark and Bias are ready."
-  ,"Stessa configurazione": "Same configuration"
-  ,"Stessa configurazione e filtro": "Same configuration and filter"
-  ,"Tutta la notte": "Entire night"
-  ,"Applica la scelta a tutti i Light della stessa notte e dello stesso filtro": "Apply the choice to every Light from the same night and filter"
-  ,"Applica la scelta alle notti con la stessa configurazione tecnica": "Apply the choice to nights with the same technical configuration"
-  ,"Apre il gruppo nell’Inspector": "Open the group in the Inspector"
-  ,"Apre nell’Inspector i metadati del gruppo": "Open the group metadata in the Inspector"
-  ,"Collega una cartella di Dark e Bias Master": "Connect a folder of Dark and Bias masters"
-  ,"Importa Flat": "Import Flats"
-  ,"Importa una cartella contenente il Flat Set richiesto": "Import a folder containing the required Flat Set"
-  ,"Scegli la calibrazione da assegnare": "Choose the calibration to assign"
-  ,"Usalo solo per collegare manualmente una selezione personalizzata": "Use only to manually link a custom selection"
-  ,"Usalo solo per una selezione personalizzata": "Use only for a custom selection"
-  ,"Panoramica": "Overview"
-  ,"Strumento": "Instrument"
-  ,"STRUMENTO": "INSTRUMENT"
-  ,"Camera, ottica e filtri verranno letti dagli header alla prima analisi.": "Camera, optics and filters will be read from the headers on the first analysis."
-  ,"Apri Strumento": "Open Instrument"
-  ,"NOTTI DI ACQUISIZIONE": "IMAGING NIGHTS"
-  ,"ore per notte · linea: integrazione cumulata": "hours per night · line: cumulative integration"
-  ,"Il treno ottico si ricostruisce da solo": "The imaging train rebuilds itself"
-  ,"Dopo l’analisi Forge legge camera, telescopio, riduttore e filtri dagli header e dai nomi file ASIAIR e N.I.N.A. Ti chiede solo i filtri con un nome che non dice nulla, una volta per camera.": "After the analysis Forge reads camera, telescope, reducer and filters from the headers and from ASIAIR and N.I.N.A. file names. It only asks about filters whose name says nothing, once per camera."
-  ,"TRENO OTTICO": "IMAGING TRAIN"
-  ,"PIXEL": "PIXEL"
-  ,"SCALA": "SCALE"
-  ,"CAMPO": "FIELD"
-  ,"SENSORE": "SENSOR"
-  ,"CAMPO INQUADRATO": "FIELD OF VIEW"
-  ,"RUOTA PORTAFILTRI": "FILTER WHEEL"
-  ,"Che filtro c’è in questa posizione?": "Which filter sits in this position?"
-  ,"Conferma": "Confirm"
-  ,"Annulla conferma": "Undo confirmation"
-  ,"Torna al riconoscimento automatico per questo nome": "Go back to automatic recognition for this name"
-  ,"Servono FOCALLEN e dimensione pixel": "Needs FOCALLEN and pixel size"
-  ,"Luna": "Moon"
-  ,"banda larga": "broadband"
-  ,"Le notti compariranno dopo l’analisi": "Nights will appear after the analysis"
-  ,"Scegli dal catalogo": "Choose from the catalogue"
-  ,"Mancante": "Missing"
-  ,"{0} da scegliere": "{0} to choose"
-  ,"calibrato": "calibrated"
-  ,"Pronto per l’export": "Ready to export"
-  ,"{0} celle da risolvere": "{0} cells to resolve"
-  ,"La mappa delle calibrazioni comparirà dopo l’analisi": "The calibration map will appear after the analysis"
-  ,"LIGHT": "LIGHT"
-  ,"dal progetto esportato": "from the exported project"
-  ,"CALIBRAZIONE": "CALIBRATION"
-  ,"Flat · Dark · Bias": "Flat · Dark · Bias"
-  ,"REGISTRAZIONE": "REGISTRATION"
-  ,"stelle allineate a un riferimento": "stars aligned to one reference"
-  ,"INTEGRAZIONE": "INTEGRATION"
-  ,"un master per filtro": "one master per filter"
-  ,"Il flusso comparirà dopo l’analisi": "The flow will appear after the analysis"
-  ,"Ogni filtro attraversa WeightedBatchPreprocessing e diventa il suo master.": "Each filter flows through WeightedBatchPreprocessing and becomes its own master."
-  ,"La struttura del progetto comparirà dopo l’analisi": "The project layout will appear after the analysis"
-  ,"struttura prevista · risolvi le calibrazioni per il piano definitivo": "expected layout · resolve the calibrations for the final plan"
-  ,"Da copiare": "To copy"
-  ,"Spazio": "Space"
-  ,"Tempo stimato": "Estimated time"
-  ,"Tutti i file del piano": "All files in the plan"
-  ,"La cartella del progetto pronta per PixInsight. Gli originali non vengono mai toccati.": "The project folder, ready for PixInsight. Originals are never touched."
-  ,"Ogni Light misurato nella sua serie: i migliori brillano in alto a sinistra, i sospetti pulsano.": "Every Light measured within its series: the best shine top-left, suspects pulse."
-  ,"Il cielo della serie comparirà dopo l’analisi": "The series sky will appear after the analysis"
-  ,"FWHM px · più nitido a sinistra": "FWHM px · sharper to the left"
-  ,"COPERTURA DARK": "DARK COVERAGE"
-  ,"Esposizioni in orizzontale, temperature del sensore in verticale. I dischi blu sono i Master, gli anelli i Light del progetto.": "Exposures across, sensor temperatures down. Blue discs are masters, rings are the project's Lights."
-  ,"Collega una libreria Master e analizza il progetto per vedere la copertura dei Dark": "Link a master library and analyse the project to see Dark coverage"
-  ,"Bias · {0} master": "Bias · {0} masters"
-  ,"Bias mancante": "Bias missing"
-  ,"Gain {0}": "Gain {0}"
-  ,"Gain sconosciuto": "Unknown gain"
-  ,"Offset {0}": "Offset {0}"
-  ,"{0}/{1} combinazioni coperte": "{0}/{1} combinations covered"
-  ,"{0} Dark master": "{0} dark masters"
-  ,"Master Dark": "Dark master"
-  ,"Light coperti": "Covered Lights"
-  ,"Light senza Dark": "Lights without Dark"
-  ,"Tour guidato": "Guided tour"
-  ,"Mostra ogni schermata sui controlli reali · F1": "Walks through every screen on the real controls · F1"
-  ,"Apri il progetto demo": "Open the demo project"
-  ,"Crea un progetto di prova con FITS sintetici e lo analizza": "Creates a sample project with synthetic FITS and analyses it"
-  ,"Vuoi prima provarlo?": "Want to try it first?"
-  ,"Il progetto demo crea due notti di FITS sintetici (ASIAIR e NINA) e ti accompagna in un tour di tutte le schermate.": "The demo project creates two nights of synthetic FITS (ASIAIR and NINA) and takes you on a tour of every screen."
-  ,"Prova con il progetto demo": "Try the demo project"
-  ,"TOUR · {0} DI {1}": "TOUR · {0} OF {1}"
-  ,"Avanti": "Next"
-  ,"Inizia a lavorare": "Start working"
-  ,"Le tue acquisizioni": "Your acquisitions"
-  ,"Aggiungi le cartelle di ASIAIR, NINA o di qualsiasi software di acquisizione. Forge legge solo gli header: gli originali restano intatti.": "Add folders from ASIAIR, NINA or any capture software. Forge only reads the headers: your originals stay untouched."
-  ,"Un clic, tutto il progetto": "One click, the whole project"
-  ,"Analizza legge ogni file, ricostruisce le notti e cerca Flat, Dark e Bias adatti a ogni Light. Scorciatoia: Ctrl+Invio.": "Analyse reads every file, rebuilds the nights and finds matching Flats, Darks and Biases for each Light. Shortcut: Ctrl+Enter."
-  ,"Ogni filtro con il colore del suo vetro, le ore di integrazione e le notti in cui l’hai ripreso. È il riassunto da guardare per primo.": "Each filter in the colour of its glass, with integration hours and the nights you shot it. It's the summary to look at first."
-  ,"Il tuo strumento, una volta sola": "Your rig, once"
-  ,"Camera, telescopio e ruota portafiltri vengono riconosciuti dagli header. Un nome di filtro sconosciuto lo confermi una volta e vale per tutti i progetti.": "Camera, telescope and filter wheel are recognised from the headers. You confirm an unknown filter name once and it applies to every project."
-  ,"Cosa manca": "What's missing"
-  ,"Ogni riga è un gruppo di Light: le celle si accendono quando Flat, Dark e Bias sono assegnati. Clicca una cella rossa per risolverla.": "Each row is a group of Lights: cells light up once Flat, Dark and Bias are assigned. Click a red cell to resolve it."
-  ,"La struttura per WBPP": "The layout for WBPP"
-  ,"Questa è la cartella che verrà creata. Durante la copia i rami si illuminano man mano che arrivano i file.": "This is the folder that will be created. While copying, branches light up as the files arrive."
-  ,"Le keyword di WBPP": "WBPP keywords"
-  ,"Ogni filtro scorre nella pipeline fino al suo master. Sotto trovi solo le keyword da inserire in Grouping Keywords.": "Each filter flows through the pipeline into its master. Below are just the keywords to enter in Grouping Keywords."
-  ,"Il cielo della serie": "The series as a sky"
-  ,"Ogni stella è un sub: più a sinistra è nitido, più in alto ha segnale. I sospetti pulsano in ambra; clicca una stella per esaminarla.": "Each star is a sub: further left is sharper, higher up has more signal. Suspects pulse amber; click a star to inspect it."
-  ,"La tua libreria Master": "Your master library"
-  ,"I dischi blu sono i Dark che hai, gli anelli i Light che ne hanno bisogno. Un anello rosso tratteggiato è un Dark ancora da fare.": "Blue discs are the Darks you have, rings are the Lights that need one. A dashed red ring is a Dark still to shoot."
-  ,"Rivedilo quando vuoi": "Replay it anytime"
-  ,"Premi F1 su qualsiasi schermata per la sua spiegazione. Dal Menu puoi aprire il progetto demo e provare tutto senza dati tuoi.": "Press F1 on any screen for its explanation. From the Menu you can open the demo project and try everything without your own data."
+  "Ignora": "Dismiss",
+  "Rimuovi dal progetto": "Remove from project",
+  "Aumenta priorità": "Increase priority",
+  "Riduci priorità": "Decrease priority",
+  "Cerca file, target o filtro": "Search files, targets or filters",
+  "Chiudi": "Close",
+  "Chiudi diagnostica": "Close diagnostics",
+  "Disattiva le transizioni non essenziali": "Disable nonessential transitions",
+  "Disponibile quando l’header dichiara RGGB, BGGR, GRBG o GBRG": "Available when the header declares RGGB, BGGR, GRBG or GBRG",
+  "Flat Set compatibili con il filtro della selezione": "Flat Sets compatible with the selected filter",
+  "Flat Set da assegnare alla selezione": "Flat Set to assign to the selection",
+  "Includi questa libreria nell'analisi": "Include this library in the analysis",
+  "Ingrandisci o ripristina": "Maximize or restore",
+  "Marca questo gruppo per il link manuale Flat": "Mark this group for manual Flat linking",
+  "Misura i Light della serie selezionata": "Measure Light frames in the selected series",
+  "Mostra o nascondi sorgenti": "Show or hide sources",
+  "Origine del valore Flat Set": "Source of the Flat Set value",
+  "Riduci": "Minimize",
+  "Scegli il Master da assegnare": "Choose the Master frame to assign",
+  "Seleziona la cartella di destinazione": "Choose the destination folder",
+  "Trascina per ridimensionare Inspector": "Drag to resize Inspector",
+  "Trascina per ridimensionare Sorgenti": "Drag to resize Sources",
+  "Trascina per ridimensionare tabella e preview": "Drag to resize the table and preview",
+  "Preferenze, guida e supporto": "Preferences, guide and support",
+  "PREFERENZE": "PREFERENCES",
+  "Preferenze": "Preferences",
+  "Lingua": "Language",
+  "Dimensione interfaccia": "Interface size",
+  "Cambia subito la lingua": "Change the language immediately",
+  "PROGETTO": "PROJECT",
+  "Ripristina l'ultima correzione manuale": "Restore the last manual correction",
+  "Rileggi i metadati": "Read metadata again",
+  "Chiudi progetto": "Close project",
+  "AIUTO": "HELP",
+  "Aiuto": "Help",
+  "Guida rapida": "Quick guide",
+  "Segnala un problema": "Report a problem",
+  "Log ed esportazione del file di supporto": "Logs and support-file export",
+  "Versione, autore e aggiornamenti": "Version, author and updates",
+  "Impostazioni WBPP": "WBPP setup",
+  "Separa i Light che usano Flat diversi.": "Separates Light frames that use different Flats.",
+  "Separa i Light che richiedono Dark diversi.": "Separates Light frames that require different Darks.",
+  "Separa i gruppi che richiedono Bias diversi.": "Separates groups that require different Bias frames.",
+  "Organizza sessioni, calibrazioni e progetti PixInsight WBPP.": "Organize sessions, calibration frames and PixInsight WBPP projects.",
+  "Sviluppato da Gianmarco Spagnoli (@astropuzzo)": "Developed by Gianmarco Spagnoli (@astropuzzo)",
+  "Copyright © 2026 Gianmarco Spagnoli. Tutti i diritti riservati.": "Copyright © 2026 Gianmarco Spagnoli. All rights reserved.",
+  "Guida": "Guide",
+  "Scarica aggiornamento": "Download update",
+  "Aggiorna e riavvia": "Update and restart",
+  "Download manuale": "Manual download",
+  "Apre la release più recente su GitHub": "Open the latest release on GitHub",
+  "Installazione aggiornamento...": "Installing update...",
+  "Aggiornamento completato": "Update complete",
+  "Controlla aggiornamenti": "Check for updates",
+  "Controllo aggiornamenti attivo": "Automatic update checks are active",
+  "Controllo aggiornamenti non riuscito": "Update check failed",
+  "Download aggiornamento…": "Downloading update…",
+  "Download non riuscito": "Download failed",
+  "Automatici": "Automatic",
+  "Ideato da Gianmarco Spagnoli (@astropuzzo)": "Created by Gianmarco Spagnoli (@astropuzzo)",
+  "Esporta ZIP": "Export ZIP",
+  "La versione installata è aggiornata.": "The installed version is up to date.",
+  "La versione installata è più recente del canale selezionato.": "The installed version is newer than the selected channel.",
+  "Diagnostica e file di supporto": "Diagnostics and support file",
+  "Opzioni avanzate": "Advanced options",
+  "Margine spazio esportazione (%)": "Export free-space margin (%)",
+  "Forza una nuova lettura alla prossima analisi": "Force a fresh read during the next analysis",
+  "Rimuove i dati dall'app senza cancellare i file": "Remove data from the app without deleting files",
+  "  da risolvere": "  to review",
+  "+ File": "+ File",
+  "Aggiorna": "Refresh",
+  "Aggiungi Dark e Bias": "Add Dark and Bias frames",
+  "Analisi qualità": "Quality analysis",
+  "Anteprima non generata": "Preview not generated",
+  "Assegna il Flat Set alla selezione": "Assign the Flat Set to the selection",
+  "ASTROPROJECT FORGE": "ASTROPROJECT FORGE",
+  "AstroProject Forge": "AstroProject Forge",
+  "Azzera filtri": "Clear filters",
+  "Bin": "Bin",
+  "Calibrazioni assegnate": "Assigned calibrations",
+  "Cambio notte": "Night boundary",
+  "CAMERA": "CAMERA",
+  "Cerca file, filtro, sessione…": "Search file, filter or session…",
+  "Classificazione": "Classification",
+  "Codice": "Code",
+  "Collega alla selezione": "Link to selection",
+  "Configurazione completata": "Setup complete",
+  "Confronta i candidati campo per campo": "Compare candidates field by field",
+  "Controlla metadati e destinazioni prima della copia": "Check metadata and destinations before copying",
+  "Controlla metadati e destinazioni senza copiare file": "Check metadata and destinations without copying files",
+  "CONTROLLI AUTOMATICI": "AUTOMATIC CHECKS",
+  "Copertura": "Coverage",
+  "Copia i file nella struttura di progetto": "Copy files into the project structure",
+  "Copia, imprimi e organizza": "Copy, stamp and organize",
+  "Copyright © 2026 Gianmarco Spagnoli": "Copyright © 2026 Gianmarco Spagnoli",
+  "DATI": "DATA",
+  "Destinazione nuova libreria": "New library destination",
+  "Destinazione nuova Libreria Master": "New Master Library destination",
+  "Dettaglio delle notti": "Night details",
+  "ECC.": "ECC.",
+  "Eccezione": "Exception",
+  "Esp.": "Exp.",
+  "Esposizione": "Exposure",
+  "Eventi applicazione": "Application events",
+  "Evento": "Event",
+  "EXP s": "EXP s",
+  "FILE": "FILE",
+  "FITS e XISF": "FITS and XISF",
+  "Flat Set": "Flat Set",
+  "FWHM": "FWHM",
+  "GAIN": "GAIN",
+  "Gain predefinito": "Default Gain",
+  "GitHub": "GitHub",
+  "Header originali": "Original headers",
+  "i": "i",
+  "ID": "ID",
+  "Importa": "Import",
+  "Imposta i valori mancanti": "Set missing values",
+  "Inizia": "Start",
+  "Integrazione totale": "Total integration",
+  "Intervallo": "Date range",
+  "KEYWORD": "KEYWORD",
+  "Log locali con percorsi e nomi sensibili rimossi.": "Local logs with sensitive paths and names removed.",
+  "Margine %": "Margin %",
+  "MASTER": "MASTER",
+  "Menu": "Menu",
+  "metadati e calibrazioni": "metadata and calibrations",
+  "N.I.N.A., ASIAIR, SGP, Voyager, SharpCap o altri software": "N.I.N.A., ASIAIR, SGP, Voyager, SharpCap or other software",
+  "Nessun risultato": "No results",
+  "OFFSET": "OFFSET",
+  "Offset predefinito": "Default Offset",
+  "Passo 1 · Librerie": "Step 1 · Libraries",
+  "Passo 2 · Acquisizione": "Step 2 · Acquisition",
+  "POST": "POST",
+  "PRE": "PRE",
+  "PREFLIGHT / STATO": "PREFLIGHT / STATUS",
+  "progetto WBPP": "WBPP project",
+  "Pulisci filtri": "Clear filters",
+  "Readout": "Readout",
+  "Ripristina": "Restore",
+  "Riserva GiB": "Reserve GiB",
+  "Rumore": "Noise",
+  "Salta configurazione": "Skip setup",
+  "Scegli cartelle": "Choose folders",
+  "Scegli destinazione": "Choose destination",
+  "Scegli file": "Choose files",
+  "Score": "Score",
+  "Segnalazioni della selezione": "Selected-item issues",
+  "Sessione": "Session",
+  "Setpoint °C": "Setpoint °C",
+  "Sfoglia": "Browse",
+  "SHA-256": "SHA-256",
+  "SNR": "SNR",
+  "Solo da rivedere": "Review only",
+  "Solo questo Light": "This Light only",
+  "SORGENTI FITS / XISF": "FITS / XISF SOURCES",
+  "SPAZIO": "SPACE",
+  "Stato": "Status",
+  "Stelle": "Stars",
+  "STIMA": "ESTIMATE",
+  "Stima MiB/s": "Estimated MiB/s",
+  "Stretch": "Stretch",
+  "TEMP °C": "TEMP °C",
+  "Temp.": "Temp.",
+  "Temperatura (°C)": "Temperature (°C)",
+  "Temperatura setpoint °C": "Temperature setpoint °C",
+  "TIPO": "TYPE",
+  "Tutta la notte": "Entire night",
+  "WBPP": "WBPP",
+  "Apri progetto · Ctrl+O": "Open project · Ctrl+O",
+  "Salva progetto · Ctrl+S · Salva con nome Ctrl+Shift+S": "Save project · Ctrl+S · Save as Ctrl+Shift+S",
+  "Menu · Ctrl+,": "Menu · Ctrl+,",
+  "Analizza progetto · Ctrl+Invio": "Analyze project · Ctrl+Enter",
+  "Camera": "Camera",
+  "da risolvere": "to review",
+  "DESTINAZIONE": "DESTINATION",
+  "Ecc.": "Ecc.",
+  "File": "File",
+  "Gain": "Gain",
+  "Ingrandisci anteprima": "Zoom in",
+  "Master": "Masters",
+  "Offset": "Offset",
+  "Per filtro": "By filter",
+  "Riduci anteprima": "Zoom out",
+  "RUMORE": "NOISE",
+  "SCORE": "SCORE",
+  "STATO": "STATUS",
+  "STELLE": "STARS",
+  "Temperatura": "Temperature",
+  "Tipo": "Type",
+  "VERIFICA": "CHECK",
+  "+ Aggiungi Master Library": "+ Add Master Library",
+  "+ Singoli file": "+ Individual files",
+  "↑ Priorità": "↑ Priority",
+  "↓ Priorità": "↓ Priority",
+  "Dark e Bias automatici": "Automatic Dark and Bias",
+  "facoltativa": "optional",
+  "Gli originali restano in sola lettura.": "Original files remain read-only.",
+  "Gli originali restano sempre in sola lettura.": "Original files always remain read-only.",
+  "Immagini": "Images",
+  "IMMAGINI DEL PROGETTO": "PROJECT IMAGES",
+  "Master Library": "Master Library",
+  "MASTER LIBRARY": "MASTER LIBRARY",
+  "Passo 1 · Calibrazioni": "Step 1 · Calibrations",
+  "Passo 2 · Immagini": "Step 2 · Images",
+  "Salta": "Skip",
+  "Scegli una cartella contenente Master Dark e Bias": "Choose a folder containing Master Dark and Bias frames",
+  "sessioni e calibrazioni": "sessions and calibrations",
+  "SORGENTI": "SOURCES",
+  "Continua senza libreria": "Continue without a library",
+  "Analizza ora": "Analyze now",
+  "Vai al progetto": "Go to project",
+  "WELCOME · BENVENUTO": "WELCOME",
+  "Lingua selezionata": "Selected language",
+  "SORGENTI DEL PROGETTO": "PROJECT SOURCES",
+  "+ Importa cartella": "+ Import folder",
+  "Rimuovi selezionata": "Remove selected",
+  "SESSIONI OSSERVATIVE": "OBSERVING SESSIONS",
+  "RAGGRUPPAMENTO NOTTURNO": "NIGHT GROUPING",
+  "La nuova notte inizia alle": "Start a new night at",
+  "Ora di cambio notte": "Night change hour",
+  "Ora limite locale": "Local cutoff time",
+  "Predefinita: 12:00": "Default: 12:00",
+  "Ora limite della notte astronomica": "Astronomical night cutoff time",
+  "English": "English",
+  "Italiano": "Italiano",
+  "Nuovo": "New",
+  "Crea un nuovo progetto · Ctrl+N": "Create a new project · Ctrl+N",
+  "Nuovo progetto": "New project",
+  "Salva con nome": "Save as",
+  "Crea un nuovo file .astroforge": "Create a new .astroforge file",
+  "Gianmarco Spagnoli (@astropuzzo)": "Gianmarco Spagnoli (@astropuzzo)",
+  "Analizza tutte": "Analyze all",
+  "Analizza tutte le serie una alla volta": "Analyze every series, one at a time",
+  "Serie selezionata": "Selected series",
+  "Confronta soltanto frame della stessa serie, esposizione e configurazione.": "Compare only frames from the same series, exposure and configuration.",
+  "ZONE": "REGIONS",
+  "Zone": "Regions",
+  "Progetto non ancora salvato": "Project not saved yet",
+  "CRONOLOGIA DATI": "DATA HISTORY",
+  "Cronologia dati": "Data history",
+  "Crea struttura": "Build structure",
+  "Nessuna struttura": "No structure yet",
+  "CONTROLLO ESPORTAZIONE": "EXPORT CHECK",
+  "Integrità file": "File integrity",
+  "Nessuna esportazione precedente.": "No previous exports.",
+  "Margine spazio %": "Space margin %",
+  "Spazio libero GiB": "Free space GiB",
+  "Velocità MiB/s": "Speed MiB/s",
+  "Doppio click: mostra il file originale": "Double-click: show the original file",
+  "1  Progetto": "1  Project",
+  "2  Calibrazioni": "2  Calibrations",
+  "3  Esporta": "3  Export",
+  "4  WBPP": "4  WBPP",
+  "Importa e controlla i file del progetto": "Import and inspect project files",
+  "Controlla Flat, Dark e Bias assegnati": "Review assigned Flat, Dark and Bias frames",
+  "Crea o aggiorna la cartella pronta per PixInsight": "Create or update the PixInsight-ready folder",
+  "STRUMENTI": "TOOLS",
+  "Tempi di integrazione, filtri e sessioni": "Integration time, filters and sessions",
+  "Misura e confronta i Light": "Measure and compare Light frames",
+  "Controlla e organizza le librerie Master": "Inspect and organize Master libraries",
+  "Prossimo passo": "Next step",
+  "Dati acquisiti": "Acquisition data",
+  "Esporta CSV + JSON": "Export CSV + JSON",
+  "SESSIONI": "SESSIONS",
+  "Notti": "Nights",
+  "Crea cartella risultati PixInsight": "Create PixInsight results folder",
+  "Crea e apri in PixInsight": "Create and open in PixInsight",
+  "Usata come Output Directory di WBPP": "Used as the WBPP output directory",
+  "2  Risolvi": "2  Resolve",
+  "Risolvi": "Resolve",
+  "Risolvi assegnazioni mancanti o ambigue": "Resolve missing or ambiguous assignments",
+  "Scelta richiesta": "Choice required",
+  "Dettagli candidati": "Candidate details",
+  "Modifica metadati": "Edit metadata",
+  "Aggiungi libreria Master": "Add Master Library",
+  "Collegamento Flat avanzato": "Advanced Flat assignment",
+  "Tutto assegnato": "All assigned",
+  "Stessa configurazione": "Same configuration",
+  "Stessa configurazione e filtro": "Same configuration and filter",
+  "Apre il gruppo nell’Inspector": "Open the group in the Inspector",
+  "Apre nell’Inspector i metadati del gruppo": "Open the group metadata in the Inspector",
+  "Collega una cartella di Dark e Bias Master": "Connect a folder of Dark and Bias masters",
+  "Importa Flat": "Import Flats",
+  "Importa una cartella contenente il Flat Set richiesto": "Import a folder containing the required Flat Set",
+  "Scegli la calibrazione da assegnare": "Choose the calibration to assign",
+  "Panoramica": "Overview",
+  "Strumento": "Instrument",
+  "STRUMENTO": "INSTRUMENT",
+  "Apri Strumento": "Open Instrument",
+  "NOTTI DI ACQUISIZIONE": "IMAGING NIGHTS",
+  "ore per notte · linea: integrazione cumulata": "hours per night · line: cumulative integration",
+  "TRENO OTTICO": "IMAGING TRAIN",
+  "PIXEL": "PIXEL",
+  "SCALA": "SCALE",
+  "CAMPO": "FIELD",
+  "SENSORE": "SENSOR",
+  "CAMPO INQUADRATO": "FIELD OF VIEW",
+  "RUOTA PORTAFILTRI": "FILTER WHEEL",
+  "Conferma": "Confirm",
+  "Annulla conferma": "Undo confirmation",
+  "Servono FOCALLEN e dimensione pixel": "Needs FOCALLEN and pixel size",
+  "Luna": "Moon",
+  "banda larga": "broadband",
+  "Scegli dal catalogo": "Choose from the catalogue",
+  "Mancante": "Missing",
+  "{0} da scegliere": "{0} to choose",
+  "calibrato": "calibrated",
+  "Pronto per l’export": "Ready to export",
+  "{0} celle da risolvere": "{0} cells to resolve",
+  "LIGHT": "LIGHT",
+  "dal progetto esportato": "from the exported project",
+  "CALIBRAZIONE": "CALIBRATION",
+  "Flat · Dark · Bias": "Flat · Dark · Bias",
+  "REGISTRAZIONE": "REGISTRATION",
+  "INTEGRAZIONE": "INTEGRATION",
+  "un master per filtro": "one master per filter",
+  "Da copiare": "To copy",
+  "Spazio": "Space",
+  "Tempo stimato": "Estimated time",
+  "Tutti i file del piano": "All files in the plan",
+  "COPERTURA DARK": "DARK COVERAGE",
+  "Bias · {0} master": "Bias · {0} masters",
+  "Bias mancante": "Bias missing",
+  "Gain {0}": "Gain {0}",
+  "Gain sconosciuto": "Unknown gain",
+  "Offset {0}": "Offset {0}",
+  "{0}/{1} combinazioni coperte": "{0}/{1} combinations covered",
+  "{0} Dark master": "{0} dark masters",
+  "Master Dark": "Dark master",
+  "Light coperti": "Covered Lights",
+  "Light senza Dark": "Lights without Dark",
+  "Tour guidato": "Guided tour",
+  "Apri il progetto demo": "Open the demo project",
+  "TOUR · {0} DI {1}": "TOUR · {0} OF {1}",
+  "Avanti": "Next",
+  "Usati solo se assenti da header e percorso.": "Used only when missing from headers and path.",
+  "Usati solo se il metadato manca.": "Used only when the metadata is missing.",
+  "Valori di riserva per metadati mancanti": "Fallback values for missing metadata",
+  "Filtri, sessioni, notti e calibrazioni.": "Filters, sessions, nights and calibrations.",
+  "Esclusi in Excluded/Quality. Originali invariati.": "Excluded frames go to Excluded/Quality. Originals unchanged.",
+  "Legge i metadati dei Master, senza copie": "Reads master metadata without copying",
+  "Rimuove le copie non modificate dell’ultimo batch": "Removes unmodified copies from the last batch",
+  "Crea copie ordinate con i metadati confermati": "Creates organised copies with confirmed metadata",
+  "Esegui la scansione per leggere metadati e destinazioni.": "Run a scan to read metadata and destinations.",
+  "Seleziona un elemento per modificarne metadati e calibrazioni.": "Select an item to edit its metadata and calibrations.",
+  "Mostra il file originale.": "Reveals the original file.",
+  "Rilegge i metadati alla prossima analisi": "Rereads metadata on the next analysis",
+  "Legge gli header e raggruppa per filtro, notte e sessione.": "Reads headers and groups by filter, night and session.",
+  "Seleziona un punto per aprire il frame": "Select a point to open the frame",
+  "Verifica spazio, percorsi e conflitti": "Checks space, paths and conflicts",
+  "Doppio clic: mostra l’originale": "Double-click: reveal original",
+  "Filtra la tabella, non il grafico": "Filters the table, not the chart",
+  "Flat Set assegnato alla sessione": "Flat Set assigned to the session",
+  "Importa FITS e XISF, sottocartelle incluse": "Imports FITS and XISF, subfolders included",
+  "Importa singoli file FITS/XISF": "Imports individual FITS/XISF files",
+  "Stesso identificatore per Light e Flat della stessa epoca ottica": "Same identifier for Lights and Flats of the same optical epoch",
+  "Vuoto: usa SET-TEMP, CCD-TEMP o il percorso libreria": "Empty: use SET-TEMP, CCD-TEMP or the library path",
+  "Legge i metadati in sola lettura": "Reads metadata, read-only",
+  "Ogni filtro e Flat Set è una serie separata": "Each filter and Flat Set is a separate series",
+  "Preview temporanea fino a 2400 px": "Temporary preview up to 2400 px",
+  "Disattiva le animazioni non essenziali": "Turns off non-essential animation",
+  "Documentazione su GitHub": "Documentation on GitHub",
+  "Apre una segnalazione su GitHub": "Opens an issue on GitHub",
+  "Righe da inserire in WeightedBatchPreprocessing.": "Rows to enter in WeightedBatchPreprocessing.",
+  "In WBPP attiva Grouping Keywords e aggiungi le keyword sotto.": "In WBPP, enable Grouping Keywords and add the keywords below.",
+  "Grouping Keywords: una riga per keyword, Pre ON, Post OFF.": "Grouping Keywords: one row per keyword, Pre ON, Post OFF.",
+  "Solo le righe sopra. Pre ON, Post OFF.": "Only the rows above. Pre ON, Post OFF.",
+  "Filtro, binning ed esposizione sono già separati da WBPP.": "WBPP already separates filter, binning and exposure.",
+  "Non usare DATE-OBS: divide la stessa notte.": "Do not use DATE-OBS: it splits a single night.",
+  "Prima di avviare WBPP, verifica in Calibration Flat, Dark e Bias di ogni gruppo Light.": "Before running WBPP, check each Light group's Flat, Dark and Bias in Calibration.",
+  "Eventi dell’applicazione.": "Application events.",
+  "GitHub Releases non raggiungibile": "GitHub Releases unreachable",
+  "Ordina dall’intestazione · Ctrl/Maiusc per selezionare · doppio clic per l’originale": "Sort from the header · Ctrl/Shift to select · double-click for the original",
+  "I log escludono immagini, coordinate e percorsi completi.": "Logs exclude images, coordinates and full paths.",
+  "Librerie Dark/Bias: pannello Sorgenti.": "Dark/Bias libraries: Sources panel.",
+  "Valido solo nel progetto. I file sorgente non vengono modificati.": "Project only. Source files are not modified.",
+  "Seleziona file, notti o sessioni dello stesso filtro e scegli il Flat Set.": "Select files, nights or sessions of one filter and choose the Flat Set.",
+  "Modifica la ricerca o rimuovi il filtro.": "Change the search or clear the filter.",
+  "Più librerie, ordinate per priorità.": "Multiple libraries, ordered by priority.",
+  "Rimuove le copie dell’ultima operazione": "Removes copies from the last operation",
+  "Sposta i file segnalati in Excluded/Quality": "Moves flagged files to Excluded/Quality",
+  "Verifica e organizzazione dei Master. Non richiede un progetto.": "Master verification and organisation. No project required.",
+  "Eseguiti all’avvio dell’esportazione.": "Run when the export starts.",
+  "Abbinamento per camera, gain, offset e temperatura.": "Matched by camera, gain, offset and temperature.",
+  "Calibrazioni, immagini, prima analisi. Gli originali non vengono modificati.": "Calibrations, images, first analysis. Originals are not modified.",
+  "Librerie, immagini e prima analisi": "Libraries, images and first analysis",
+  "Una o più raccolte di Master. Abbinamento per camera, gain, offset e temperatura.": "One or more master collections. Matched by camera, gain, offset and temperature.",
+  "Lettura header, ricostruzione delle notti, abbinamento di Flat, Dark e Bias.": "Header reading, night reconstruction, Flat, Dark and Bias matching.",
+  "Acquisizioni": "Acquisitions",
+  "Facoltativa. Si può aggiungere in seguito.": "Optional. Can be added later.",
+  "Pronto per l’analisi": "Ready to analyse",
+  "Anche più di una.": "More than one allowed.",
+  "Dark e Bias riutilizzabili, abbinati per camera, gain, offset, temperatura ed esposizione.": "Reusable Darks and Biases, matched by camera, gain, offset, temperature and exposure.",
+  "Cartelle o singoli file FITS/XISF da qualsiasi software di acquisizione.": "Folders or individual FITS/XISF files from any capture software.",
+  "Modificabile in seguito dal Menu.": "Can be changed later from the Menu.",
+  "Cartelle o singoli file FITS/XISF, in sola lettura.": "Folders or individual FITS/XISF files, read-only.",
+  "Rimuove il collegamento. I file restano su disco": "Removes the link. Files stay on disk",
+  "I file precedenti a quest’ora appartengono alla notte prima": "Files before this time belong to the previous night",
+  "Progetto vuoto": "Empty project",
+  "Sospetto: almeno una metrica oltre soglia rispetto alla mediana. Esclusione manuale.": "Suspect: at least one metric beyond the threshold from the median. Manual exclusion.",
+  "Rimuove la libreria. I Master restano su disco": "Removes the library. Masters stay on disk",
+  "Copia solo i file nuovi, con cronologia": "Copies new files only, with history",
+  "Anteprima di cartelle e nomi": "Preview folders and names",
+  "Confronto tramite SHA-256": "Compared by SHA-256",
+  "Configurazione Weighted Batch Preprocessing": "Weighted Batch Preprocessing setup",
+  "Statistiche e sessioni in CSV e JSON": "Statistics and sessions as CSV and JSON",
+  "Nessun dato. Analizza il progetto.": "No data. Analyse the project.",
+  "Legge i file, calcola sessioni e calibrazioni": "Reads files, computes sessions and calibrations",
+  "Integrazione, Light ed esposizione media per notte": "Integration, Lights and mean exposure per night",
+  "Istanza con file, Master, gruppi e cartella di output.": "Instance with files, masters, groups and output folder.",
+  "Cartella dedicata all’output di WBPP": "Dedicated folder for WBPP output",
+  "Genera l’istanza XPSM e la apre in PixInsight": "Generates the XPSM instance and opens it in PixInsight",
+  "Output Directory di WBPP": "WBPP Output Directory",
+  "Applica a tutti i Light della notte con lo stesso filtro": "Apply to all Lights of the night with the same filter",
+  "Applica alle notti con la stessa configurazione": "Apply to nights with the same configuration",
+  "Collegamento manuale di una selezione": "Manual linking of a selection",
+  "Camera, ottica e filtri vengono letti dagli header.": "Camera, optics and filters are read from the headers.",
+  "Treno ottico": "Imaging train",
+  "Camera, telescopio, riduttore e filtri da header e nomi file (ASIAIR, N.I.N.A.). I filtri con nome non riconoscibile si confermano una volta per camera.": "Camera, telescope, reducer and filters from headers and file names (ASIAIR, N.I.N.A.). Unrecognised filter names are confirmed once per camera.",
+  "Filtro in questa posizione": "Filter in this position",
+  "Ripristina il riconoscimento automatico": "Restore automatic recognition",
+  "Nessuna notte. Analizza il progetto.": "No nights. Analyse the project.",
+  "Nessuna calibrazione. Analizza il progetto.": "No calibrations. Analyse the project.",
+  "Un master integrato per filtro.": "One integrated master per filter.",
+  "Nessuna struttura. Analizza il progetto.": "No structure. Analyse the project.",
+  "struttura provvisoria · calibrazioni da completare": "provisional layout · calibrations incomplete",
+  "Cartella di progetto per PixInsight.": "Project folder for PixInsight.",
+  "FWHM, SNR, eccentricità e rumore per serie.": "FWHM, SNR, eccentricity and noise per series.",
+  "Nessuna misura. Analizza la serie.": "No measurements. Analyse the series.",
+  "FWHM px": "FWHM px",
+  "Esposizione × temperatura del sensore, per gain e offset.": "Exposure × sensor temperature, per gain and offset.",
+  "Nessun dato. Collega una libreria Master o analizza il progetto.": "No data. Link a master library or analyse the project.",
+  "Panoramica delle schermate · F1": "Screen walkthrough · F1",
+  "Progetto di esempio con FITS sintetici": "Sample project with synthetic FITS",
+  "Progetto demo": "Demo project",
+  "Due notti di FITS sintetici (ASIAIR, N.I.N.A.) con Flat e Master, seguite dal tour guidato.": "Two nights of synthetic FITS (ASIAIR, N.I.N.A.) with flats and masters, followed by the guided tour.",
+  "Apri demo": "Open demo",
+  "Fine": "Done",
+  "Cartelle e file FITS/XISF da ASIAIR, N.I.N.A. o altri software. Accesso in sola lettura.": "FITS/XISF folders and files from ASIAIR, N.I.N.A. or other software. Read-only access.",
+  "Legge gli header, ricostruisce le notti e abbina Flat, Dark e Bias a ogni Light. Ctrl+Invio.": "Reads headers, rebuilds nights and matches Flat, Dark and Bias to every Light. Ctrl+Enter.",
+  "Integrazione per filtro e per notte.": "Integration per filter and per night.",
+  "Camera, telescopio e ruota portafiltri da header. I filtri non riconosciuti si confermano una volta, per tutti i progetti.": "Camera, telescope and filter wheel from headers. Unrecognised filters are confirmed once, for all projects.",
+  "Una riga per gruppo di Light, una colonna per Flat, Dark e Bias. Le celle rosse sono da assegnare: selezionale per risolverle.": "One row per Light group, one column each for Flat, Dark and Bias. Red cells need an assignment: select them to resolve.",
+  "Struttura della cartella di progetto. Avanzamento della copia per ramo.": "Project folder structure. Copy progress per branch.",
+  "Pipeline per filtro e Grouping Keywords da impostare.": "Pipeline per filter and the Grouping Keywords to set.",
+  "Un punto per sub: FWHM in ascissa, SNR in ordinata. In ambra i sospetti. Selezionane uno per l’anteprima.": "One point per sub: FWHM across, SNR up. Suspects in amber. Select one to preview.",
+  "Copertura Dark": "Dark coverage",
+  "Master Dark disponibili e combinazioni richieste dai Light. In rosso le combinazioni senza Dark.": "Available Dark masters and the combinations Lights need. Red marks combinations with no Dark.",
+  "F1 apre la guida della schermata corrente. Il progetto demo è nel Menu.": "F1 opens help for the current screen. The demo project is in the Menu.",
+  "Progetto pronto.": "Project ready.",
+  "Flat, Dark e Bias assegnati.": "Flat, Dark and Bias assigned.",
+  "Usa Crea struttura.": "Use Build structure.",
+  "Predefinito: 12:00": "Default: 12:00",
+  "Aggiungi sorgenti FITS/XISF e analizza il progetto": "Add FITS/XISF sources and analyse the project",
+  "Controlli automatici inclusi nell’esportazione.": "Automatic checks run during export.",
+  "Analisi dei pixel su richiesta.": "Pixel analysis on demand.",
+  "Ripristina o ignora prima il recupero in sospeso.": "Restore or dismiss the pending recovery first.",
+  "Aggiungi almeno una sorgente FITS/XISF.": "Add at least one FITS/XISF source.",
+  "Recupero ignorato · progetto invariato": "Recovery dismissed · project unchanged",
+  "Cache header svuotata": "Header cache cleared",
+  "Esportazione annullata · copie verificate conservate nello staging": "Export cancelled · verified copies kept in staging",
+  "Esportazione interrotta · staging conservato": "Export interrupted · staging kept",
+  "Esportazione in pausa": "Export paused",
+  "Annullamento in corso…": "Cancelling…",
+  "Valori di riserva non validi: inserisci numeri o lascia vuoto": "Invalid fallback values: enter numbers or leave empty",
+  "Libreria rimossa · Master invariati su disco": "Library removed · masters unchanged on disk",
+  "StarAlignment": "StarAlignment",
+  "FUNZIONE": "PURPOSE",
+  "Completo": "Complete"
 }

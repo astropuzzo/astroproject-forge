@@ -39,7 +39,7 @@ public sealed class PipelineFlow : AmbientControl
     [
         ("LIGHT", "dal progetto esportato"),
         ("CALIBRAZIONE", "Flat · Dark · Bias"),
-        ("REGISTRAZIONE", "stelle allineate a un riferimento"),
+        ("REGISTRAZIONE", "StarAlignment"),
         ("INTEGRAZIONE", "un master per filtro")
     ];
 
@@ -100,7 +100,7 @@ public sealed class PipelineFlow : AmbientControl
 
         if (streams.Count == 0)
         {
-            var empty = new FormattedText(CanvasText.T("Il flusso comparirà dopo l’analisi"), culture, FlowDirection.LeftToRight, Mono, 11, Muted);
+            var empty = new FormattedText(CanvasText.T("Nessun dato. Analizza il progetto."), culture, FlowDirection.LeftToRight, Mono, 11, Muted);
             context.DrawText(empty, new Point(stageX[1] + 24, (top + bottom) / 2 - 8));
             return;
         }

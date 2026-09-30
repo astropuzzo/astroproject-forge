@@ -197,7 +197,7 @@ public sealed class CalibrationMap : AmbientControl
 
         if (Items.Count == 0)
         {
-            var empty = new FormattedText(CanvasText.T("La mappa delle calibrazioni comparirà dopo l’analisi"), culture, FlowDirection.LeftToRight, Mono, 11, Muted);
+            var empty = new FormattedText(CanvasText.T("Nessuna calibrazione. Analizza il progetto."), culture, FlowDirection.LeftToRight, Mono, 11, Muted);
             context.DrawText(empty, new Point(0, HeaderHeight + 10));
         }
 

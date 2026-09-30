@@ -88,7 +88,7 @@ public sealed class QualitySky : AmbientControl
         var plot = new Rect(34, 12, Math.Max(10, Bounds.Width - 48), Math.Max(10, Bounds.Height - 40));
         if (rows.Count == 0)
         {
-            var empty = new FormattedText(CanvasText.T("Il cielo della serie comparirà dopo l’analisi"), culture, FlowDirection.LeftToRight, Mono, 11, Muted);
+            var empty = new FormattedText(CanvasText.T("Nessuna misura. Analizza la serie."), culture, FlowDirection.LeftToRight, Mono, 11, Muted);
             context.DrawText(empty, new Point(plot.X, plot.Center.Y - 8));
             return;
         }
@@ -111,7 +111,7 @@ public sealed class QualitySky : AmbientControl
             var snr = new FormattedText((maxS - (maxS - minS) * step / 3).ToString(maxS - minS < 6 ? "0.0" : "0", culture), culture, FlowDirection.LeftToRight, Mono, 9, Dim);
             context.DrawText(snr, new Point(plot.X - snr.Width - 6, y - 6));
         }
-        var xAxis = new FormattedText(CanvasText.T("FWHM px · più nitido a sinistra"), culture, FlowDirection.LeftToRight, Mono, 9, Muted);
+        var xAxis = new FormattedText(CanvasText.T("FWHM px"), culture, FlowDirection.LeftToRight, Mono, 9, Muted);
         context.DrawText(xAxis, new Point(plot.Right - xAxis.Width, plot.Bottom + 16));
         var yAxis = new FormattedText("SNR", culture, FlowDirection.LeftToRight, Mono, 9, Muted);
         context.DrawText(yAxis, new Point(plot.X + 4, plot.Y));
