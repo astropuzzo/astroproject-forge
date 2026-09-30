@@ -2,9 +2,12 @@ name: Release
 
 # Pushing a tag vX.Y.Z builds every package and publishes the GitHub release that the in-app updater reads.
 # The tag must match version.json; the notes are that version's section of docs/CHANGELOG.md.
+# Run workflow (workflow_dispatch) on a branch publishes version.json's version from that commit,
+# moving an unreleased tag of the same name there first.
 on:
   push:
     tags: ['v*']
+  workflow_dispatch:
 
 permissions:
   contents: read
@@ -61,7 +64,13 @@ jobs:
           GH_TOKEN: ${{ github.token }}
         run: |
           VERSION="$(jq -r .version version.json)"
-          test "v$VERSION" = "$GITHUB_REF_NAME" || { echo "Tag $GITHUB_REF_NAME does not match version.json ($VERSION)"; exit 1; }
+          TAG="v$VERSION"
+          if [ "$GITHUB_REF_TYPE" = tag ]; then
+            test "$TAG" = "$GITHUB_REF_NAME" || { echo "Tag $GITHUB_REF_NAME does not match version.json ($VERSION)"; exit 1; }
+          else
+            ! gh release view "$TAG" >/dev/null 2>&1 || { echo "Release $TAG already exists"; exit 1; }
+            git push -f origin "$GITHUB_SHA:refs/tags/$TAG"
+          fi
           awk -v h="## $VERSION " 'index($0, h) == 1 { on = 1; next } on && /^## / { exit } on' docs/CHANGELOG.md > notes.md
           test -s notes.md || { echo "No CHANGELOG section for $VERSION"; exit 1; }
           ls -l dist
@@ -74,4 +83,4 @@ jobs:
               *) files+=("$f") ;;
             esac
           done
-          gh release create "$GITHUB_REF_NAME" "${files[@]}" --title "AstroProject Forge $VERSION" --notes-file notes.md --latest
+          gh release create "$TAG" "${files[@]}" --verify-tag --title "AstroProject Forge $VERSION" --notes-file notes.md --latest
