@@ -7,18 +7,40 @@ public static class XisfHeaderReader
 {
     private static readonly byte[] Signature = "XISF0100"u8.ToArray();
 
+    /// <summary>Synchronous read for callers that already run on a worker thread, such as the parallel folder scan.</summary>
+    public static Dictionary<string, object?> Read(string path, CancellationToken cancellationToken = default)
+    {
+        using var stream = new FileStream(path, FileMode.Open, FileAccess.Read, FileShare.Read, 1, FileOptions.SequentialScan);
+        var preamble = new byte[16];
+        stream.ReadExactly(preamble);
+        var bytes = new byte[HeaderLength(preamble)];
+        cancellationToken.ThrowIfCancellationRequested();
+        stream.ReadExactly(bytes);
+        return Parse(bytes);
+    }
+
     public static async Task<Dictionary<string, object?>> ReadAsync(string path, CancellationToken cancellationToken = default)
     {
-        await using var stream = new FileStream(path, FileMode.Open, FileAccess.Read, FileShare.Read, 65536, FileOptions.Asynchronous | FileOptions.SequentialScan);
+        await using var stream = new FileStream(path, FileMode.Open, FileAccess.Read, FileShare.Read, 1, FileOptions.Asynchronous | FileOptions.SequentialScan);
         var preamble = new byte[16];
         await stream.ReadExactlyAsync(preamble, cancellationToken);
+        var bytes = new byte[HeaderLength(preamble)];
+        await stream.ReadExactlyAsync(bytes, cancellationToken);
+        return Parse(bytes);
+    }
+
+    private static uint HeaderLength(byte[] preamble)
+    {
         if (!preamble.AsSpan(0, 8).SequenceEqual(Signature))
             throw new InvalidDataException("Firma XISF 1.0 non valida.");
         var length = BinaryPrimitives.ReadUInt32LittleEndian(preamble.AsSpan(8, 4));
         if (length is 0 or > 64 * 1024 * 1024)
             throw new InvalidDataException($"Lunghezza header XISF non valida: {length}.");
-        var bytes = new byte[length];
-        await stream.ReadExactlyAsync(bytes, cancellationToken);
+        return length;
+    }
+
+    private static Dictionary<string, object?> Parse(byte[] bytes)
+    {
         var document = XDocument.Parse(System.Text.Encoding.UTF8.GetString(bytes), LoadOptions.None);
         var image = document.Descendants().FirstOrDefault(element => element.Name.LocalName == "Image")
             ?? throw new InvalidDataException("Nessun elemento Image nell'header XISF.");

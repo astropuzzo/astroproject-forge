@@ -22,4 +22,10 @@ dotnet build dotnet/AstroForge.App/AstroForge.App.csproj -c Release
 dotnet build dotnet/AstroForge.CrossPlatform/AstroForge.CrossPlatform.csproj -c Release
 ```
 
+For changes to folder scanning, header parsing or calibration matching, compare the folder analysis benchmark (about 4,000 synthetic FITS files) before and after:
+
+```powershell
+dotnet run --project dotnet/AstroForge.Core.Tests/AstroForge.Core.Tests.csproj -c Release -- --benchmark
+```
+
 Italian and English user-facing documentation should stay synchronized.
