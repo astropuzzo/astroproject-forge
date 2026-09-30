@@ -99,7 +99,7 @@ public sealed class GuidedTour : Panel
         _body.Text = CanvasText.T(stop.Body);
         _back.Content = CanvasText.T("Indietro");
         _back.IsEnabled = index > 0;
-        _next.Content = index + 1 < _stops.Count ? CanvasText.T("Avanti") : CanvasText.T("Inizia a lavorare");
+        _next.Content = index + 1 < _stops.Count ? CanvasText.T("Avanti") : CanvasText.T("Fine");
         _dots.Children.Clear();
         for (var dot = 0; dot < _stops.Count; dot++)
             _dots.Children.Add(new Border { Width = dot == index ? 16 : 6, Height = 6, CornerRadius = new CornerRadius(3), Background = new ImmutableSolidColorBrush(dot == index ? Color.Parse("#3FE0D0") : Color.Parse("#405B6490")) });

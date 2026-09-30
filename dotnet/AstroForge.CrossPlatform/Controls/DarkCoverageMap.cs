@@ -63,7 +63,7 @@ public sealed class DarkCoverageMap : AmbientControl
         var culture = CultureInfo.CurrentCulture;
         if (Items.Count == 0)
         {
-            var empty = new FormattedText(CanvasText.T("Collega una libreria Master e analizza il progetto per vedere la copertura dei Dark"), culture, FlowDirection.LeftToRight, Mono, 11, Muted) { MaxTextWidth = Bounds.Width };
+            var empty = new FormattedText(CanvasText.T("Nessun dato. Collega una libreria Master o analizza il progetto."), culture, FlowDirection.LeftToRight, Mono, 11, Muted) { MaxTextWidth = Bounds.Width };
             context.DrawText(empty, new Point(0, 20));
             return;
         }

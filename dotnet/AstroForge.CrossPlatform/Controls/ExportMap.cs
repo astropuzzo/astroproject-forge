@@ -117,7 +117,7 @@ public sealed class ExportMap : AmbientControl
         var culture = CultureInfo.CurrentCulture;
         if (Root is null)
         {
-            var empty = new FormattedText(CanvasText.T("La struttura del progetto comparirà dopo l’analisi"), culture, FlowDirection.LeftToRight, Mono, 11, Muted);
+            var empty = new FormattedText(CanvasText.T("Nessuna struttura. Analizza il progetto."), culture, FlowDirection.LeftToRight, Mono, 11, Muted);
             context.DrawText(empty, new Point(0, Top + 20));
             return;
         }
@@ -214,7 +214,7 @@ public sealed class ExportMap : AmbientControl
 
         if (IsPreview)
         {
-            var caption = new FormattedText(CanvasText.T("struttura prevista · risolvi le calibrazioni per il piano definitivo"), culture, FlowDirection.LeftToRight, Mono, 9.5, Muted);
+            var caption = new FormattedText(CanvasText.T("struttura provvisoria · calibrazioni da completare"), culture, FlowDirection.LeftToRight, Mono, 9.5, Muted);
             context.DrawText(caption, new Point(Bounds.Width - caption.Width, Bounds.Height - caption.Height));
         }
     }

@@ -48,7 +48,7 @@ public sealed class NightsTimeline : Control
         var nights = Nights ?? [];
         if (nights.Count == 0)
         {
-            var empty = new FormattedText(CanvasText.T("Le notti compariranno dopo l’analisi"), CultureInfo.CurrentCulture, FlowDirection.LeftToRight, Mono, 11, Muted);
+            var empty = new FormattedText(CanvasText.T("Nessuna notte. Analizza il progetto."), CultureInfo.CurrentCulture, FlowDirection.LeftToRight, Mono, 11, Muted);
             context.DrawText(empty, new Point(0, bounds.Height / 2 - 8));
             return;
         }
