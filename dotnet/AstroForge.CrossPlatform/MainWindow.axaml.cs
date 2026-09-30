@@ -8,6 +8,9 @@ using Avalonia.Platform.Storage;
 using Avalonia.Threading;
 using AstroForge.App.Services;
 using AstroForge.App.ViewModels;
+using AstroForge.Core.Equipment;
+using AstroForge.Core.Filters;
+using AstroForge.Core.Models;
 using AstroForge.Core.Releases;
 using AstroForge.CrossPlatform.Controls;
 using AstroForge.CrossPlatform.ViewModels;
@@ -50,13 +53,15 @@ public sealed partial class MainWindow : Window
         OverviewFilters.DataContext = _observatory;
         InstrumentPanel.DataContext = _observatory;
         _observatory.Filters.CollectionChanged += (_, _) => ScheduleLocalization();
-        _viewModel.UiLanguageChanged += (_, _) => ScheduleLocalization();
+        _viewModel.UiLanguageChanged += (_, _) => { ScheduleLocalization(); Dispatcher.UIThread.Post(RefreshCalibrationVisuals); };
         _blinkTimer.Tick += BlinkTimer_Tick;
         _viewModel.PropertyChanged += (_, args) =>
         {
             if (args.PropertyName == nameof(MainViewModel.HasSelection)) UpdateInspectorLayout();
             else if (args.PropertyName == nameof(MainViewModel.ReducedMotion)) Motion.SetReduced(_viewModel.ReducedMotion);
+            else if (args.PropertyName == nameof(MainViewModel.Analysis)) RefreshCalibrationVisuals();
         };
+        CalibrationMapView.CellActivated += CalibrationMap_CellActivated;
         SizeChanged += (_, args) => ApplyViewportWidth(args.NewSize.Width);
         KeyDown += Window_KeyDown;
         Opened += async (_, _) =>
@@ -648,6 +653,37 @@ public sealed partial class MainWindow : Window
     private void QualityGrid_DoubleTapped(object? sender, TappedEventArgs e) => Reveal(_viewModel.SelectedQualityFrame?.Path);
     private void ReviewQueue_DoubleTapped(object? sender, TappedEventArgs e) => Reveal((sender as ListBox)?.SelectedItem is ReviewQueueItem item ? item.Frame.Path : null);
     private void MasterOrganizer_DoubleTapped(object? sender, TappedEventArgs e) => Reveal((sender as DataGrid)?.SelectedItem is MasterOrganizerItem item ? item.Frame.Path : null);
+
+    /// <summary>Feeds the calibration map and the WBPP flow from the latest analysis.</summary>
+    private void RefreshCalibrationVisuals()
+    {
+        var analysis = _viewModel.Analysis;
+        var colours = new Dictionary<string, Color>(StringComparer.OrdinalIgnoreCase);
+        Color ColourOf(FrameMetadata frame)
+        {
+            var raw = frame.RawFilterName ?? frame.FilterName.Value ?? "";
+            var camera = PhysicalFilterResolver.CameraKey(frame);
+            if (colours.TryGetValue($"{camera}|{raw}", out var known)) return known;
+            var identity = FilterRecognizer.Recognize(raw.Length == 0 ? null : raw, EquipmentRecognizer.Camera(frame.Camera.Value).IsColor, _viewModel.WheelProfileFor(camera));
+            return colours[$"{camera}|{raw}"] = SpectrumColors.Glass(SpectrumColors.BandsOf(identity), identity.Kind);
+        }
+        CalibrationMapView.Rows = CalibrationRow.Build(analysis, ColourOf);
+        PipelineFlowView.Keywords = _viewModel.WbppKeywords.Select(keyword => $"{keyword.Keyword} · PRE {keyword.Pre}").ToList();
+        PipelineFlowView.Streams = analysis is null ? [] : analysis.Lights
+            .GroupBy(item => item.Light.FilterName.Value ?? "—", StringComparer.OrdinalIgnoreCase)
+            .Select(group => new PipelineStream(group.Key, ColourOf(group.First().Light), group.Count(), group.Sum(item => item.Light.ExposureSeconds.Value ?? 0)))
+            .OrderByDescending(stream => stream.Colour.R - stream.Colour.B)
+            .ToList();
+    }
+
+    private void CalibrationMap_CellActivated(object? sender, (CalibrationRow Row, CalibrationCell Cell) activated)
+    {
+        var lights = activated.Row.Lights.ToHashSet();
+        var item = _viewModel.ReviewQueue.FirstOrDefault(entry => entry.Calibration == activated.Cell.Calibration && entry.Targets.Any(lights.Contains));
+        if (item is null) return;
+        ReviewList.SelectedItem = item;
+        ReviewList.ScrollIntoView(item);
+    }
 
     private void ReviewQueue_SelectionChanged(object? sender, SelectionChangedEventArgs e) => _viewModel.SelectReviewItem((sender as ListBox)?.SelectedItem as ReviewQueueItem);
     private void EditReviewMetadata_Click(object? sender, RoutedEventArgs e)

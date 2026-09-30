@@ -242,6 +242,8 @@ public sealed class MainViewModel : BindableBase
     public bool CanAnalyzeProject => HasSources && CanRunProjectOperations;
     public bool HasSources => SourcePaths.Count > 0;
     public bool HasAnalysis => _analysis is not null;
+    /// <summary>The latest calibration analysis, for screens that draw the whole project at once.</summary>
+    public ProjectAnalysis? Analysis => _analysis;
     public bool HasVisibleTree => TreeRoots.Count > 0;
     public bool ShowImportPrompt => !HasSources && !HasAnalysis;
     public bool ShowAnalysisPrompt => HasSources && !HasAnalysis;
@@ -553,6 +555,7 @@ public sealed class MainViewModel : BindableBase
         _statistics = null;
         Instrument = null;
         Raise(nameof(Instrument));
+        Raise(nameof(Analysis));
         _undo.Clear();
         SelectedNode = null;
         TreeRoots.Clear();
@@ -1979,6 +1982,7 @@ public sealed class MainViewModel : BindableBase
         Raise(nameof(PlanSummary));
         Raise(nameof(ReviewQueueCount));
         Raise(nameof(ReviewQueueSummary));
+        Raise(nameof(Analysis));
         UpdateCalibrationSummary();
     }
 
