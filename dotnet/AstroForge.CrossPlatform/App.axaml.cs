@@ -1,3 +1,4 @@
+using AstroForge.CrossPlatform.Controls;
 using Avalonia;
 using Avalonia.Controls.ApplicationLifetimes;
 using Avalonia.Controls.Notifications;
@@ -32,8 +33,8 @@ public sealed partial class App : Application
                 if (smokeTest) return;
                 args.Handled = true;
                 new WindowNotificationManager(window) { Position = NotificationPosition.BottomRight, MaxItems = 3 }.Show(new Notification(
-                    "AstroProject Forge · recovery",
-                    $"[{code}] Si è verificato un errore inatteso. L’evento è stato registrato; il progetto e le immagini originali non sono stati modificati da questa gestione.\n\n{args.Exception.Message}",
+                    CanvasText.T("Errore inatteso"),
+                    $"[{code}] {CanvasText.T("Evento registrato nel log diagnostico.")}\n\n{args.Exception.Message}",
                     NotificationType.Error));
             };
         }

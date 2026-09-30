@@ -636,5 +636,7 @@
   "Libreria rimossa · Master invariati su disco": "Library removed · masters unchanged on disk",
   "StarAlignment": "StarAlignment",
   "FUNZIONE": "PURPOSE",
-  "Completo": "Complete"
+  "Completo": "Complete",
+  "Errore inatteso": "Unexpected error",
+  "Evento registrato nel log diagnostico.": "Event recorded in the diagnostic log."
 }
