@@ -39,7 +39,9 @@ DefaultGroupName=AstroProject Forge{#ChannelSuffix}
 PrivilegesRequired=admin
 ArchitecturesAllowed=x64compatible
 ArchitecturesInstallIn64BitMode=x64compatible
+#if Ver >= 0x07000000
 SetupArchitecture=x64
+#endif
 UsePreviousAppDir=no
 OutputDir={#OutputDir}
 OutputBaseFilename=AstroProjectForge-{#MyChannel}-{#MyAppVersion}-win-x64-setup
@@ -47,7 +49,11 @@ SetupIconFile=..\assets\astroforge.ico
 UninstallDisplayIcon={app}\{#MyAppExeName}
 Compression=lzma2/ultra64
 SolidCompression=yes
+#if Ver >= 0x07000000
 WizardStyle=modern dynamic
+#else
+WizardStyle=modern
+#endif
 CloseApplications=yes
 RestartApplications=no
 AllowNoIcons=yes

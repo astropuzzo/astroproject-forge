@@ -26,17 +26,19 @@ jobs:
           dotnet-version: 10.0.x
       - name: Install Inno Setup 7
         shell: pwsh
-        # The script uses Inno Setup 7 directives (SetupArchitecture, WizardStyle dynamic); runners ship 6.x.
+        # Prefer Inno Setup 7 (64-bit setup, dynamic wizard style); the script still compiles with 6.x.
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          # Installer from the official jrsoftware/issrc GitHub release, then jrsoftware.org, then winget.
+          # Newest Inno Setup 7 installer on the official jrsoftware/issrc GitHub releases (7.x may still be
+          # marked pre-release there), then jrsoftware.org, then winget.
           $exe = "$env:RUNNER_TEMP\is.exe"
           $sources = @()
           try {
-            $sources += (gh api repos/jrsoftware/issrc/releases --jq '[.[] | select(.prerelease | not) | .assets[] | select(.name | test("^innosetup-7[0-9.]*\\.exe$")) | .browser_download_url][0]')
+            $sources += (gh api repos/jrsoftware/issrc/releases --jq '[.[] | .assets[] | select(.name | test("^innosetup-7.*\\.exe$")) | .browser_download_url][0]')
           } catch { }
           $sources += 'https://jrsoftware.org/download.php/is.exe'
+          "Sources: $($sources -join ', ')"
           $installed = $false
           foreach ($url in $sources | Where-Object { $_ }) {
             try {
@@ -47,8 +49,8 @@ jobs:
           }
           if (-not $installed) { winget install --id JRSoftware.InnoSetup -e --silent --accept-package-agreements --accept-source-agreements }
           $iscc = Get-ChildItem 'C:\Program Files', 'C:\Program Files (x86)' -Filter ISCC.exe -Recurse -Depth 2 -ErrorAction SilentlyContinue |
-            Where-Object { $_.VersionInfo.FileMajorPart -ge 7 } | Select-Object -First 1
-          if (-not $iscc) { throw 'Inno Setup 7 ISCC.exe not found' }
+            Sort-Object { $_.VersionInfo.FileMajorPart }, { $_.VersionInfo.FileMinorPart } -Descending | Select-Object -First 1
+          if (-not $iscc) { throw 'ISCC.exe not found' }
           "ISCC=$($iscc.FullName)" | Add-Content $env:GITHUB_ENV
           $iscc.VersionInfo.FileVersion
       - name: Build installer and portable ZIP
