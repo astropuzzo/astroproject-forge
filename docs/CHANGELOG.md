@@ -1,7 +1,17 @@
 # AstroProject Forge — note di rilascio
 
-## Non rilasciato
+## 1.9.0 — 30 settembre 2026
 
+- Nuova interfaccia “Cielo profondo”, identica su Windows, macOS e Linux.
+- Nuove schermate Panoramica e Strumento; i filtri si confermano una sola volta per progetto.
+- Catalogo filtri, camere e telescopi con riconoscimento dai nomi AstroBin e dalle intestazioni FITS/XISF; i frame sono archiviati sotto il filtro fisico.
+- Lettura corretta del filtro ASIAIR quando segue la temperatura nel nome file.
+- Mappa delle calibrazioni in Risolvi, flusso dei Light in WBPP, avanzamento dell’esportazione sull’albero del progetto.
+- Qualità mostra ogni serie come un piccolo cielo; la libreria Master mostra la copertura Dark rispetto ai Light.
+- Tour guidato sui comandi reali e progetto demo (Cygnus Loop) con un clic.
+- Testi dell’interfaccia riscritti: più brevi e diretti.
+- Scansione delle cartelle e analisi delle calibrazioni più veloci.
+- Cartella dati dell’app sempre assoluta e scrivibile per utente.
 - Windows usa ora la stessa app Avalonia di macOS e Linux (`AstroProjectForge.exe`); l’app WPF `AstroForge.App` è stata ritirata.
 - Il setup Windows rimuove `AstroForge.App.exe` e le DLL WPF durante l’aggiornamento e ripunta collegamenti e associazione `.astroforge` al nuovo eseguibile; le installazioni precedenti restano riconosciute.
 - Aprire un file `.astroforge` da Esplora file apre direttamente il progetto.

@@ -26,7 +26,10 @@ The `Cross-platform parity QA` GitHub workflow builds:
 
 ## GitHub release
 
-Create a non-draft, non-prerelease tag matching the version, then attach only installable and portable packages. GitHub adds the source archives automatically.
+1. Set `version.json` and add the `## X.Y.Z — date` section to `docs/CHANGELOG.md`; merge to `master`.
+2. Push the tag: `git tag vX.Y.Z && git push origin vX.Y.Z`.
+
+The `Release` workflow builds the Windows installer and portable ZIP plus the Linux and macOS packages, checks that the tag matches `version.json`, and publishes the release with that CHANGELOG section as notes. Only installable and portable packages are attached; GitHub adds the source archives automatically.
 
 The Windows updater reads the latest stable GitHub release, checks the published asset size and SHA-256 digest, downloads it into the local application data folder, runs the installer silently and restarts the newly installed version. The About window also keeps a separate manual-download link.
 

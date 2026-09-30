@@ -1,0 +1,68 @@
+name: Release
+
+# Pushing a tag vX.Y.Z builds every package and publishes the GitHub release that the in-app updater reads.
+# The tag must match version.json; the notes are that version's section of docs/CHANGELOG.md.
+on:
+  push:
+    tags: ['v*']
+
+permissions:
+  contents: read
+
+jobs:
+  unix-packages:
+    uses: ./.github/workflows/cross-platform.yml
+
+  windows:
+    runs-on: windows-latest
+    timeout-minutes: 40
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: 10.0.x
+      - name: Install Inno Setup
+        shell: pwsh
+        run: choco install innosetup -y --no-progress
+      - name: Build installer and portable ZIP
+        shell: pwsh
+        run: |
+          $iscc = Get-ChildItem 'C:\Program Files (x86)', 'C:\Program Files' -Filter ISCC.exe -Recurse -Depth 2 -ErrorAction SilentlyContinue | Select-Object -First 1
+          if (-not $iscc) { throw 'ISCC.exe not found' }
+          ./build-distribution.ps1 -InnoCompiler $iscc.FullName
+          $v = (Get-Content version.json -Raw | ConvertFrom-Json)
+          foreach ($kind in 'setup.exe', 'portable.zip') {
+            $f = "artifacts/distribution/AstroProjectForge-$($v.channel)-$($v.version)-win-x64-$kind"
+            if (-not (Test-Path $f)) { throw "Missing $f" }
+          }
+      - uses: actions/upload-artifact@v4
+        with:
+          name: astroproject-forge-win-x64
+          if-no-files-found: error
+          retention-days: 14
+          path: |
+            artifacts/distribution/AstroProjectForge-*-win-x64-setup.exe
+            artifacts/distribution/AstroProjectForge-*-win-x64-portable.zip
+
+  publish:
+    needs: [unix-packages, windows]
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/download-artifact@v4
+        with:
+          pattern: astroproject-forge-*
+          path: dist
+          merge-multiple: true
+      - name: Publish GitHub release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          VERSION="$(jq -r .version version.json)"
+          test "v$VERSION" = "$GITHUB_REF_NAME" || { echo "Tag $GITHUB_REF_NAME does not match version.json ($VERSION)"; exit 1; }
+          awk -v h="## $VERSION " 'index($0, h) == 1 { on = 1; next } on && /^## / { exit } on' docs/CHANGELOG.md > notes.md
+          test -s notes.md || { echo "No CHANGELOG section for $VERSION"; exit 1; }
+          ls -l dist
+          gh release create "$GITHUB_REF_NAME" dist/AstroProjectForge-* --title "AstroProject Forge $VERSION" --notes-file notes.md --latest
