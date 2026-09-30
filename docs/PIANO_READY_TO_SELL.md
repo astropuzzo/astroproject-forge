@@ -13,7 +13,7 @@ La stessa logica Core è usata dall'interfaccia Avalonia per Linux e macOS.
 
 ## Milestone corrente — affidabilità dell'interfaccia
 
-- [x] Traduzione inglese completa delle stringhe statiche WPF e Avalonia.
+- [x] Traduzione inglese completa delle stringhe statiche dell'interfaccia Avalonia (l'app WPF è stata ritirata).
 - [x] Controllo automatico che blocca nuove stringhe prive di traduzione.
 - [x] Scorciatoie coerenti: apri, salva, salva con nome, analizza, menu, guida e workspace.
 - [x] Salvataggio diretto del progetto già aperto; `Salva con nome` resta esplicito.

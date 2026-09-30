@@ -1,5 +1,12 @@
 # AstroProject Forge — note di rilascio
 
+## Non rilasciato
+
+- Windows usa ora la stessa app Avalonia di macOS e Linux (`AstroProjectForge.exe`); l’app WPF `AstroForge.App` è stata ritirata.
+- Il setup Windows rimuove `AstroForge.App.exe` e le DLL WPF durante l’aggiornamento e ripunta collegamenti e associazione `.astroforge` al nuovo eseguibile; le installazioni precedenti restano riconosciute.
+- Aprire un file `.astroforge` da Esplora file apre direttamente il progetto.
+- Su Windows l’aggiornamento dall’app installa il setup con avanzamento visibile e riavvia l’app, come nella versione WPF.
+
 ## 1.8.2 — 20 settembre 2026
 
 - “Calibrazioni” diventa “Risolvi”: la pagina ora permette di correggere direttamente assegnazioni mancanti o ambigue.

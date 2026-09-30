@@ -18,7 +18,6 @@ Run before submitting:
 
 ```powershell
 dotnet run --project dotnet/AstroForge.Core.Tests/AstroForge.Core.Tests.csproj -c Release
-dotnet build dotnet/AstroForge.App/AstroForge.App.csproj -c Release
 dotnet build dotnet/AstroForge.CrossPlatform/AstroForge.CrossPlatform.csproj -c Release
 ```
 

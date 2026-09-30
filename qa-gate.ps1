@@ -8,8 +8,8 @@ $root = Split-Path -Parent $MyInvocation.MyCommand.Path
 $localDotnet = Join-Path $root '.dotnet\dotnet.exe'
 $dotnet = if (Test-Path -LiteralPath $localDotnet) { $localDotnet } else { (Get-Command dotnet -ErrorAction Stop).Source }
 $testProject = Join-Path $root 'dotnet\AstroForge.Core.Tests\AstroForge.Core.Tests.csproj'
-$appProject = Join-Path $root 'dotnet\AstroForge.App\AstroForge.App.csproj'
-$crossPlatformProject = Join-Path $root 'dotnet\AstroForge.CrossPlatform\AstroForge.CrossPlatform.csproj'
+$appProject = Join-Path $root 'dotnet\AstroForge.CrossPlatform\AstroForge.CrossPlatform.csproj'
+$appExecutable = 'AstroProjectForge.exe'
 $output = Join-Path $root 'dist-dotnet'
 $reportDirectory = Join-Path $root 'artifacts\qa'
 $reportPath = Join-Path $reportDirectory 'qa-report.json'
@@ -38,13 +38,12 @@ try {
     Push-Location $root
     Invoke-GateStep 'ui-accessibility-localization-contract' { & (Join-Path $root 'scripts\check-ui-contract.ps1') }
     Invoke-GateStep 'core-regression-suite' { & $dotnet run --project $testProject -c Release }
-    Invoke-GateStep 'wpf-release-build' { & $dotnet build $appProject -c Release }
-    Invoke-GateStep 'cross-platform-release-build' { & $dotnet build $crossPlatformProject -c Release }
+    Invoke-GateStep 'cross-platform-release-build' { & $dotnet build $appProject -c Release }
     if (-not $SkipPublish) {
         Invoke-GateStep 'self-contained-publish' {
             & $dotnet publish $appProject -c Release -r win-x64 --self-contained true -p:PublishSingleFile=true -p:DebugType=None -p:DebugSymbols=false -o $output
         }
-        if (-not (Test-Path -LiteralPath (Join-Path $output 'AstroForge.App.exe'))) { throw 'Eseguibile self-contained assente.' }
+        if (-not (Test-Path -LiteralPath (Join-Path $output $appExecutable))) { throw "Eseguibile self-contained assente: $appExecutable" }
     }
     $status = 'passed'
 }

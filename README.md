@@ -142,11 +142,10 @@ Requires [.NET SDK 10](https://dotnet.microsoft.com/download/dotnet/10.0).
 
 ```powershell
 dotnet run --project dotnet/AstroForge.Core.Tests/AstroForge.Core.Tests.csproj -c Release
-dotnet build dotnet/AstroForge.App/AstroForge.App.csproj -c Release
 dotnet build dotnet/AstroForge.CrossPlatform/AstroForge.CrossPlatform.csproj -c Release
 ```
 
-Windows uses WPF. Linux and macOS use Avalonia over the same Core and application model.
+Windows, macOS and Linux run the same Avalonia app (`AstroProjectForge`) over the same Core and application model. The Windows release is published self-contained and single-file for `win-x64` and packaged with Inno Setup (`qa-gate.ps1`, `build-distribution.ps1`).
 
 ## Project
 
