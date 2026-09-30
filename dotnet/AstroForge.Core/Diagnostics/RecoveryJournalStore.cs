@@ -1,3 +1,4 @@
+using AstroForge.Core.IO;
 using System.Text.Json;
 
 namespace AstroForge.Core.Diagnostics;
@@ -17,7 +18,7 @@ public sealed class RecoveryJournalStore
 
     public RecoveryJournalStore(string? path = null)
     {
-        _path = path ?? System.IO.Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "AstroProjectForge", "Recovery", "current.json");
+        _path = path ?? AppDataPaths.Combine("Recovery", "current.json");
     }
 
     public string FilePath => _path;

@@ -70,7 +70,7 @@ public sealed class FrameOverrides
 
 public static class AppStateStore
 {
-    private static readonly string DirectoryPath = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "AstroProjectForge");
+    private static readonly string DirectoryPath = AppDataPaths.Root;
     private static readonly string FilePath = Path.Combine(DirectoryPath, "state.json");
     private static readonly JsonSerializerOptions Options = new() { WriteIndented = true };
 
