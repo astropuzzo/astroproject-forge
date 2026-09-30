@@ -274,6 +274,7 @@ public sealed class MainViewModel : BindableBase
     public double ExportMinimumReserveGiB { get => _exportMinimumReserveGiB; set { if (Set(ref _exportMinimumReserveGiB, value)) InvalidateExportPreflight(); } }
     public double ExportEstimatedThroughputMiBps { get => _exportEstimatedThroughputMiBps; set { if (Set(ref _exportEstimatedThroughputMiBps, value)) InvalidateExportPreflight(); } }
     public bool HasExportPlan => _plan is not null;
+    public ExportRunState ExportState => _exportState;
     public bool HasExportPreflight => _exportPreflight is not null;
     public bool ExportPreflightReady => _exportPreflight?.IsReady == true;
     public bool CanRunExportPreflight => HasExportPlan && !IsScanning && !HasRecoverySnapshot;
@@ -650,7 +651,7 @@ public sealed class MainViewModel : BindableBase
     {
         Raise(nameof(HasExportPlan)); Raise(nameof(HasExportPreflight)); Raise(nameof(ExportPreflightReady));
         Raise(nameof(CanRunExportPreflight)); Raise(nameof(CanStartExport)); Raise(nameof(CanPauseExport));
-        Raise(nameof(CanResumeExport)); Raise(nameof(CanCancelExport)); Raise(nameof(ExportStateLabel));
+        Raise(nameof(CanResumeExport)); Raise(nameof(CanCancelExport)); Raise(nameof(ExportStateLabel)); Raise(nameof(ExportState));
         Raise(nameof(ExportFileSummary)); Raise(nameof(ExportBytesSummary)); Raise(nameof(ExportSpaceSummary));
         Raise(nameof(ExportEtaSummary)); Raise(nameof(ExportResumeSummary));
         Raise(nameof(ExportActionLabel)); Raise(nameof(ExportChangeSummary)); Raise(nameof(HasExportHistory));

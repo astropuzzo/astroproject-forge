@@ -644,4 +644,11 @@
   ,"un master per filtro": "one master per filter"
   ,"Il flusso comparirà dopo l’analisi": "The flow will appear after the analysis"
   ,"Ogni filtro attraversa WeightedBatchPreprocessing e diventa il suo master.": "Each filter flows through WeightedBatchPreprocessing and becomes its own master."
+  ,"La struttura del progetto comparirà dopo l’analisi": "The project layout will appear after the analysis"
+  ,"struttura prevista · risolvi le calibrazioni per il piano definitivo": "expected layout · resolve the calibrations for the final plan"
+  ,"Da copiare": "To copy"
+  ,"Spazio": "Space"
+  ,"Tempo stimato": "Estimated time"
+  ,"Tutti i file del piano": "All files in the plan"
+  ,"La cartella del progetto pronta per PixInsight. Gli originali non vengono mai toccati.": "The project folder, ready for PixInsight. Originals are never touched."
 }
