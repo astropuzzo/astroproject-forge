@@ -1,5 +1,6 @@
 using System.Text.Json;
 using System.IO;
+using AstroForge.Core.Equipment;
 using AstroForge.Core.Models;
 using AstroForge.Core.Persistence;
 using AstroForge.Core.IO;
@@ -39,6 +40,8 @@ public sealed class AppState
     public Dictionary<string, FrameOverrides> Overrides { get; set; } = new(PathIdentity.Comparer);
     /// <summary>Confirmed filter names per camera: camera key → normalised wheel name → catalogue filter id. Asked once, reused by every project.</summary>
     public Dictionary<string, Dictionary<string, string>> FilterWheelProfiles { get; set; } = new(StringComparer.OrdinalIgnoreCase);
+    /// <summary>The user's optics, reducer and pixel size per camera key; they win over headers and catalogue in the instrument profile.</summary>
+    public Dictionary<string, EquipmentOverride> EquipmentProfiles { get; set; } = new(StringComparer.OrdinalIgnoreCase);
 }
 
 public sealed class MasterLibraryDefinition
@@ -83,6 +86,7 @@ public static class AppStateStore
             if (!File.Exists(FilePath)) return new();
             var state = JsonSerializer.Deserialize<AppState>(SettingsMigration.Migrate(File.ReadAllText(FilePath)), Options) ?? new();
             state.Overrides = new(state.Overrides, PathIdentity.Comparer);
+            state.EquipmentProfiles = EquipmentOverride.Normalize(state.EquipmentProfiles);
             if (state.UpdateChannel is not ("Stable" or "Beta")) state.UpdateChannel = "Stable";
             return state;
         }
