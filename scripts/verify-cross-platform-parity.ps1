@@ -5,7 +5,7 @@ $ErrorActionPreference = 'Stop'
 $root = Split-Path -Parent $PSScriptRoot
 $project = Join-Path $root 'dotnet/AstroForge.CrossPlatform/AstroForge.CrossPlatform.csproj'
 $window = Join-Path $root 'dotnet/AstroForge.CrossPlatform/MainWindow.axaml'
-$viewModel = Join-Path $root 'dotnet/AstroForge.App/ViewModels/MainViewModel.cs'
+$viewModel = Join-Path $root 'dotnet/AstroForge.CrossPlatform/Shared/ViewModels/MainViewModel.cs'
 
 if (-not $SkipBuild) {
     $dotnet = if ($IsWindows) { Join-Path $root '.dotnet/dotnet.exe' } else { 'dotnet' }
@@ -15,10 +15,12 @@ if (-not $SkipBuild) {
 
 $projectText = Get-Content -LiteralPath $project -Raw
 $windowText = Get-Content -LiteralPath $window -Raw
-if ($projectText -notmatch 'AstroForge\.App\\ViewModels\\MainViewModel\.cs') { throw 'The cross-platform app is not linked to the shared MainViewModel.' }
+if (-not (Test-Path -LiteralPath $viewModel)) { throw 'The shared MainViewModel is missing from the Avalonia project.' }
+if ($projectText -match 'AstroForge\.App[\\/]') { throw 'The Avalonia project must not reference the retired WPF project.' }
+if (Test-Path (Join-Path $root 'dotnet/AstroForge.App')) { throw 'The retired WPF project must not come back: the Avalonia app is the only UI.' }
 if (Test-Path (Join-Path $root 'dotnet/AstroForge.CrossPlatform/ViewModels/CrossPlatformViewModel.cs')) { throw 'Reduced preview ViewModel must not exist.' }
 
-# The statistics workspace is the Overview (Panoramica) in the Avalonia shell; Strumento has no WPF counterpart.
+# The statistics workspace is the Overview (Panoramica).
 $requiredWorkspaces = @('Analisi','Esporta','WBPP','Panoramica','Strumento','Qualità','Risolvi','Libreria Master','Log')
 $missing = @($requiredWorkspaces | Where-Object { $windowText -notmatch [regex]::Escape(('Header="{0}"' -f $_)) })
 if ($missing.Count -gt 0) { throw "Missing workspaces: $($missing -join ', ')" }

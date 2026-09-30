@@ -32,4 +32,4 @@ jobs:
           retention-days: 14
           path: |
             artifacts/qa/qa-report.json
-            dist-dotnet/AstroForge.App.exe
+            dist-dotnet/AstroProjectForge.exe

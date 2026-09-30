@@ -14,6 +14,11 @@
   #define OutputDir "..\artifacts\distribution"
 #endif
 
+; The Avalonia app (dotnet/AstroForge.CrossPlatform) is the only UI on every platform.
+; Releases up to 1.8.2 shipped the WPF executable AstroForge.App.exe instead.
+#define MyAppExeName "AstroProjectForge.exe"
+#define LegacyAppExeName "AstroForge.App.exe"
+
 #if MyChannel == "Stable"
   #define ChannelSuffix ""
   #define ChannelAppId "{{C415EAC5-5B2C-4DB1-B349-1A70BB894F38}"
@@ -39,7 +44,7 @@ UsePreviousAppDir=no
 OutputDir={#OutputDir}
 OutputBaseFilename=AstroProjectForge-{#MyChannel}-{#MyAppVersion}-win-x64-setup
 SetupIconFile=..\assets\astroforge.ico
-UninstallDisplayIcon={app}\AstroForge.App.exe
+UninstallDisplayIcon={app}\{#MyAppExeName}
 Compression=lzma2/ultra64
 SolidCompression=yes
 WizardStyle=modern dynamic
@@ -68,25 +73,36 @@ english.UpdateProgressPhase=Updating files…
 Name: "desktopicon"; Description: "Crea un collegamento sul desktop"; GroupDescription: "Collegamenti aggiuntivi:"; Flags: unchecked
 
 [Files]
-; Install the complete verified publish output. WPF keeps a small set of native
-; runtime DLLs beside the single-file executable on some Windows/.NET builds.
+; Install the complete verified publish output. Avalonia keeps its native rendering
+; libraries (SkiaSharp, HarfBuzz, ANGLE) beside the single-file executable.
 Source: "{#SourceDir}\*"; DestDir: "{app}"; Flags: ignoreversion recursesubdirs createallsubdirs; Excludes: "*.pdb"
 
+[InstallDelete]
+; Upgrades from the WPF releases (<= 1.8.2): remove the retired executable and the native
+; WPF runtime DLLs it kept beside it. The Start menu and desktop shortcuts keep their names,
+; so the [Icons] entries below overwrite them to point at the new executable.
+Type: files; Name: "{app}\{#LegacyAppExeName}"
+Type: files; Name: "{app}\D3DCompiler_47_cor3.dll"
+Type: files; Name: "{app}\PenImc_cor3.dll"
+Type: files; Name: "{app}\PresentationNative_cor3.dll"
+Type: files; Name: "{app}\vcruntime140_cor3.dll"
+Type: files; Name: "{app}\wpfgfx_cor3.dll"
+
 [Icons]
-Name: "{group}\AstroProject Forge{#ChannelSuffix}"; Filename: "{app}\AstroForge.App.exe"
-Name: "{autodesktop}\AstroProject Forge{#ChannelSuffix}"; Filename: "{app}\AstroForge.App.exe"; Check: ShouldCreateDesktopIcon
+Name: "{group}\AstroProject Forge{#ChannelSuffix}"; Filename: "{app}\{#MyAppExeName}"
+Name: "{autodesktop}\AstroProject Forge{#ChannelSuffix}"; Filename: "{app}\{#MyAppExeName}"; Check: ShouldCreateDesktopIcon
 
 [Run]
 ; Manual installs keep the familiar optional launch checkbox.
-Filename: "{app}\AstroForge.App.exe"; Description: "Avvia AstroProject Forge{#ChannelSuffix}"; Flags: nowait postinstall skipifsilent
+Filename: "{app}\{#MyAppExeName}"; Description: "Avvia AstroProject Forge{#ChannelSuffix}"; Flags: nowait postinstall skipifsilent
 ; In-app updates relaunch the exact installed executable, including custom paths.
-Filename: "{app}\AstroForge.App.exe"; Parameters: "--updated"; Flags: nowait; Check: IsAutomaticUpdate
+Filename: "{app}\{#MyAppExeName}"; Parameters: "--updated"; Flags: nowait; Check: IsAutomaticUpdate
 
 [Registry]
 Root: HKA; Subkey: "Software\Classes\.astroforge"; ValueType: string; ValueData: "AstroProjectForge.Project"; Flags: uninsdeletevalue
 Root: HKA; Subkey: "Software\Classes\AstroProjectForge.Project"; ValueType: string; ValueData: "Progetto AstroProject Forge"; Flags: uninsdeletekey
-Root: HKA; Subkey: "Software\Classes\AstroProjectForge.Project\DefaultIcon"; ValueType: string; ValueData: "{app}\AstroForge.App.exe,0"
-Root: HKA; Subkey: "Software\Classes\AstroProjectForge.Project\shell\open\command"; ValueType: string; ValueData: """{app}\AstroForge.App.exe"" ""%1"""
+Root: HKA; Subkey: "Software\Classes\AstroProjectForge.Project\DefaultIcon"; ValueType: string; ValueData: "{app}\{#MyAppExeName},0"
+Root: HKA; Subkey: "Software\Classes\AstroProjectForge.Project\shell\open\command"; ValueType: string; ValueData: """{app}\{#MyAppExeName}"" ""%1"""
 
 [Code]
 var
@@ -118,7 +134,8 @@ begin
     (CompareText(
       Copy(NormalizedValue, Length(NormalizedValue) - Length(RequiredSuffix) + 1, Length(RequiredSuffix)),
       RequiredSuffix) = 0) and
-    FileExists(AddBackslash(NormalizedValue) + 'AstroForge.App.exe');
+    (FileExists(AddBackslash(NormalizedValue) + '{#LegacyAppExeName}') or
+     FileExists(AddBackslash(NormalizedValue) + '{#MyAppExeName}'));
 end;
 
 procedure DiscoverLegacyInstalls();
@@ -220,9 +237,16 @@ procedure RegisterExtraCloseApplicationsResources();
 var
   Index: Integer;
 begin
+  // A WPF-era AstroForge.App.exe in the target folder is deleted, not replaced, so it
+  // must be registered explicitly for Restart Manager to close it first.
+  RegisterExtraCloseApplicationsResource(ExpandConstant('{app}\{#LegacyAppExeName}'));
   for Index := 0 to GetArrayLength(LegacyInstallDirectories) - 1 do
+  begin
     RegisterExtraCloseApplicationsResource(
-      AddBackslash(LegacyInstallDirectories[Index]) + 'AstroForge.App.exe');
+      AddBackslash(LegacyInstallDirectories[Index]) + '{#LegacyAppExeName}');
+    RegisterExtraCloseApplicationsResource(
+      AddBackslash(LegacyInstallDirectories[Index]) + '{#MyAppExeName}');
+  end;
 end;
 
 procedure CurStepChanged(CurStep: TSetupStep);

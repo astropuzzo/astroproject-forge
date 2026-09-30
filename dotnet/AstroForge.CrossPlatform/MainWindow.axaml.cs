@@ -1,6 +1,8 @@
 using System.Diagnostics;
 using Avalonia;
 using Avalonia.Controls;
+using Avalonia.Controls.ApplicationLifetimes;
+using Avalonia.Controls.Notifications;
 using Avalonia.Input;
 using Avalonia.Interactivity;
 using Avalonia.Media;
@@ -26,10 +28,15 @@ public sealed partial class MainWindow : Window
     private const string GuideUrl = RepositoryUrl + "/wiki";
     private const string IssueUrl = RepositoryUrl + "/issues/new?template=bug_report.yml";
     public const string SmokeTestArgument = "--smoke-test";
+    public const string UpdatedArgument = "--updated";
+    public const string ProjectFileExtension = ".astroforge";
     private readonly MainViewModel _viewModel = new();
     private readonly ObservatoryViewModel _observatory;
     private readonly UpdateService _updateService = new();
     private ReleaseArtifact? _availableUpdate;
+    private bool _availableUpdateSigned;
+    private string? _startupProjectPath;
+    private bool _updatedOnLaunch;
     private readonly DispatcherTimer _blinkTimer = new() { Interval = TimeSpan.FromMilliseconds(700) };
     private CancellationTokenSource? _qualityCancellation;
     private CancellationTokenSource? _previewCancellation;
@@ -77,6 +84,8 @@ public sealed partial class MainWindow : Window
             SelectDensity();
             ScheduleLocalization();
             PlayFirstLight();
+            if (_updatedOnLaunch) ShowUpdateCompletedNotification();
+            if (_startupProjectPath is { } projectPath) await OpenStartupProjectAsync(projectPath);
             if (!Environment.GetCommandLineArgs().Contains(SmokeTestArgument)) await CheckUpdatesAsync(false);
         };
         Closing += (_, _) =>
@@ -298,7 +307,26 @@ public sealed partial class MainWindow : Window
             if (args[index] == "--source" && index + 1 < args.Length) _viewModel.AddSource(args[++index]);
             else if (args[index] == "--library" && index + 1 < args.Length) _viewModel.AddMasterLibrary(args[++index]);
             else if (args[index] == "--demo") Dispatcher.UIThread.Post(() => OpenDemo_Click(null, new RoutedEventArgs()), DispatcherPriority.Background);
+            else if (args[index] == UpdatedArgument) _updatedOnLaunch = true;
+            // The Windows file association launches the app as `AstroProjectForge.exe "%1"`.
+            else if (_startupProjectPath is null && !args[index].StartsWith("--", StringComparison.Ordinal)
+                && args[index].EndsWith(ProjectFileExtension, StringComparison.OrdinalIgnoreCase) && File.Exists(args[index]))
+                _startupProjectPath = Path.GetFullPath(args[index]);
         }
+    }
+
+    private async Task OpenStartupProjectAsync(string path)
+    {
+        if (await ConfirmProjectReplacementAsync(opening: true)) await RunAsync("AF-PROJECT-OPEN-001", () => _viewModel.LoadProjectAsync(path));
+    }
+
+    private void ShowUpdateCompletedNotification()
+    {
+        var message = _viewModel.UiLanguage == UiLocalization.English
+            ? $"Updated to {ReleaseIdentity.Version}"
+            : $"Aggiornamento {ReleaseIdentity.Version} completato";
+        new WindowNotificationManager(this) { Position = NotificationPosition.BottomRight, MaxItems = 1 }
+            .Show(new Notification("AstroProject Forge", message, NotificationType.Success, TimeSpan.FromSeconds(5)));
     }
 
     private async void AddSources_Click(object? sender, RoutedEventArgs e)
@@ -429,6 +457,7 @@ public sealed partial class MainWindow : Window
             var channel = Enum.TryParse<ReleaseChannel>(_viewModel.UpdateChannel, true, out var value) ? value : ReleaseChannel.Stable;
             var decision = await _updateService.CheckChannelAsync(ReleaseIdentity.Version, channel);
             _availableUpdate = decision.IsAvailable ? decision.Manifest.Installer : null;
+            _availableUpdateSigned = decision.IsAvailable && decision.Manifest.Signed;
             UpdateStatus.Text = decision.Reason;
             UpdateButton.Content = decision.IsAvailable ? $"Installa {decision.Manifest.Version}" : "Controlla aggiornamenti";
             if (!requested && decision.IsAvailable)
@@ -456,6 +485,11 @@ public sealed partial class MainWindow : Window
                 UpdateProgress.Value = value;
                 UpdateStatus.Text = $"Download {value:0}%";
             });
+            if (OperatingSystem.IsWindows())
+            {
+                await InstallWindowsUpdateAsync(_availableUpdate, progress);
+                return;
+            }
             await _updateService.DownloadVerifiedAsync(_availableUpdate, destination, progress);
             UpdateStatus.Text = OperatingSystem.IsMacOS()
                 ? "Download completato. Apri il disco e sostituisci l’app in Applicazioni."
@@ -469,6 +503,40 @@ public sealed partial class MainWindow : Window
         }
         finally { UpdateButton.IsEnabled = true; }
     }
+    /// <summary>
+    /// Windows: verify the Inno Setup installer, run it with its native progress window and close
+    /// the app so the files can be replaced. The installer relaunches AstroProjectForge.exe with
+    /// <c>--updated</c> (see installer/AstroProjectForge.iss, IsAutomaticUpdate).
+    /// </summary>
+    private async Task InstallWindowsUpdateAsync(ReleaseArtifact artifact, IProgress<double> progress)
+    {
+        var updatesDirectory = AppDataPaths.Combine("Updates");
+        Directory.CreateDirectory(updatesDirectory);
+        var path = await _updateService.DownloadVerifiedAsync(
+            artifact,
+            Path.Combine(updatesDirectory, artifact.FileName),
+            progress,
+            requireAuthenticode: _availableUpdateSigned);
+        _viewModel.SaveState();
+
+        var startInfo = new ProcessStartInfo(path) { UseShellExecute = true };
+        startInfo.ArgumentList.Add("/SP-");
+        // /SILENT keeps the native installer progress window visible. The application
+        // closes only after the installer has started, then Inno Setup relaunches it.
+        startInfo.ArgumentList.Add("/SILENT");
+        startInfo.ArgumentList.Add("/NORESTART");
+        startInfo.ArgumentList.Add("/CLOSEAPPLICATIONS");
+        startInfo.ArgumentList.Add("/FORCECLOSEAPPLICATIONS");
+        startInfo.ArgumentList.Add("/APFUPDATE=1");
+        startInfo.ArgumentList.Add("/APFVISIBLE=1");
+        startInfo.ArgumentList.Add($"/LOG={Path.Combine(updatesDirectory, "installer.log")}");
+        if (Process.Start(startInfo) is null)
+            throw new InvalidOperationException("Impossibile avviare l'installer dell'aggiornamento.");
+
+        if (Application.Current?.ApplicationLifetime is IClassicDesktopStyleApplicationLifetime desktop) desktop.Shutdown();
+        else Close();
+    }
+
     private void OpenDiagnosticsTab_Click(object? sender, RoutedEventArgs e) { SettingsPanel.IsVisible = false; WorkspaceTabs.SelectedItem = DiagnosticsTab; _viewModel.RefreshDiagnostics(); }
     private static void OpenUrl(string url) => Process.Start(new ProcessStartInfo(url) { UseShellExecute = true });
     private void OnboardingAddLibrary_Click(object? sender, RoutedEventArgs e) => AddLibrary_Click(sender, e);

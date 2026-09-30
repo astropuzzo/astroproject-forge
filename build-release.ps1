@@ -6,7 +6,7 @@ $root = Split-Path -Parent $MyInvocation.MyCommand.Path
 & (Join-Path $root 'qa-gate.ps1')
 if ($LASTEXITCODE -ne 0) { throw 'Il gate QA Release non è riuscito.' }
 
-$executable = Join-Path $root 'dist-dotnet\AstroForge.App.exe'
+$executable = Join-Path $root 'dist-dotnet\AstroProjectForge.exe'
 $file = Get-Item -LiteralPath $executable
 $hash = Get-FileHash -Algorithm SHA256 -LiteralPath $executable
 [pscustomobject]@{

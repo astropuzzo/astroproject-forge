@@ -17,7 +17,8 @@ if ($Channel -eq 'Stable' -and $Version.Contains('-')) { throw 'Una build Stable
 
 $localDotnet = Join-Path $root '.dotnet\dotnet.exe'
 $dotnet = if (Test-Path -LiteralPath $localDotnet) { $localDotnet } else { (Get-Command dotnet -ErrorAction Stop).Source }
-$appProject = Join-Path $root 'dotnet\AstroForge.App\AstroForge.App.csproj'
+$appProject = Join-Path $root 'dotnet\AstroForge.CrossPlatform\AstroForge.CrossPlatform.csproj'
+$appExecutable = 'AstroProjectForge.exe'
 $distribution = Join-Path $root 'artifacts\distribution'
 $stage = Join-Path $root 'artifacts\stage'
 $portableName = "AstroProjectForge-$Channel-$Version-win-x64-portable.zip"
@@ -37,7 +38,10 @@ if (-not $SkipQa) { & (Join-Path $root 'qa-gate.ps1'); if ($LASTEXITCODE -ne 0) 
 
 & $dotnet publish $appProject -c Release -r win-x64 --self-contained true -p:PublishSingleFile=true -p:DebugType=None -p:DebugSymbols=false -p:Version=$Version -p:InformationalVersion=$Version -p:ReleaseChannel=$Channel -o $stage
 if ($LASTEXITCODE -ne 0) { throw 'Publish distribuzione fallita.' }
-$app = Join-Path $stage 'AstroForge.App.exe'
+$app = Join-Path $stage $appExecutable
+if (-not (Test-Path -LiteralPath $app)) { throw "Eseguibile assente nel publish: $appExecutable" }
+# SkiaSharp and HarfBuzz ship native .pdb files that DebugType=None does not suppress; keep them out of the ZIP and setup.
+Get-ChildItem -LiteralPath $stage -Filter '*.pdb' -File -Recurse | Remove-Item -Force
 Copy-Item -LiteralPath (Join-Path $root 'docs\CHANGELOG.md') -Destination (Join-Path $stage 'RELEASE-NOTES.md')
 & $dotnet list $appProject package --include-transitive --format json | Set-Content -LiteralPath (Join-Path $distribution 'sbom-dotnet.json') -Encoding utf8
 if ($LASTEXITCODE -ne 0) { throw 'Generazione SBOM fallita.' }
@@ -65,7 +69,7 @@ if ($RequireSignature -and -not $appSigned) { throw 'Release bloccata: certifica
 
 $preManifest = [ordered]@{
     schema = 1; product = 'AstroProject Forge'; channel = $Channel; version = $Version; publishedAtUtc = $publishedAtUtc
-    executable = [ordered]@{ fileName = 'AstroForge.App.exe'; sha256 = (Get-FileHash $app -Algorithm SHA256).Hash.ToLowerInvariant(); sizeBytes = (Get-Item $app).Length; signed = $appSigned }
+    executable = [ordered]@{ fileName = $appExecutable; sha256 = (Get-FileHash $app -Algorithm SHA256).Hash.ToLowerInvariant(); sizeBytes = (Get-Item $app).Length; signed = $appSigned }
     qaReport = $qaReportFile; sbom = 'sbom-dotnet.json'; releaseEligible = $false
 }
 $preManifest | ConvertTo-Json -Depth 8 | Set-Content -LiteralPath (Join-Path $distribution 'release-manifest.json') -Encoding utf8
@@ -92,7 +96,7 @@ else { Write-Warning 'Inno Setup non disponibile: prodotto soltanto il pacchetto
 $manifest = [ordered]@{
     schema = 1; product = 'AstroProject Forge'; channel = $Channel; version = $Version; publishedAtUtc = $publishedAtUtc
     signed = ($appSigned -and $installerSigned); releaseEligible = (Test-Path -LiteralPath $installerPath)
-    executable = [ordered]@{ fileName = 'AstroForge.App.exe'; sha256 = (Get-FileHash $app -Algorithm SHA256).Hash.ToLowerInvariant(); sizeBytes = (Get-Item $app).Length; signed = $appSigned }
+    executable = [ordered]@{ fileName = $appExecutable; sha256 = (Get-FileHash $app -Algorithm SHA256).Hash.ToLowerInvariant(); sizeBytes = (Get-Item $app).Length; signed = $appSigned }
     portable = [ordered]@{ fileName = $portableName; sha256 = (Get-FileHash (Join-Path $distribution $portableName) -Algorithm SHA256).Hash.ToLowerInvariant(); sizeBytes = (Get-Item (Join-Path $distribution $portableName)).Length }
     installer = if (Test-Path -LiteralPath $installerPath) { [ordered]@{ fileName = $setupName; sha256 = (Get-FileHash $installerPath -Algorithm SHA256).Hash.ToLowerInvariant(); sizeBytes = (Get-Item $installerPath).Length; signed = $installerSigned } } else { $null }
     sbom = 'sbom-dotnet.json'; qaReport = $qaReportFile
