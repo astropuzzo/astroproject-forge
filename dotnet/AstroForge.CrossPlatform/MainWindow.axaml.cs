@@ -59,9 +59,11 @@ public sealed partial class MainWindow : Window
         {
             if (args.PropertyName == nameof(MainViewModel.HasSelection)) UpdateInspectorLayout();
             else if (args.PropertyName == nameof(MainViewModel.ReducedMotion)) Motion.SetReduced(_viewModel.ReducedMotion);
-            else if (args.PropertyName == nameof(MainViewModel.Analysis)) RefreshCalibrationVisuals();
+            else if (args.PropertyName == nameof(MainViewModel.Analysis)) { RefreshCalibrationVisuals(); PreparePlanPreview(); ScheduleExportVisuals(); }
+            else if (args.PropertyName is nameof(MainViewModel.ExportProgress) or nameof(MainViewModel.ExportState)) RefreshExportProgress();
         };
         CalibrationMapView.CellActivated += CalibrationMap_CellActivated;
+        _viewModel.PlannedTreeRoots.CollectionChanged += (_, _) => ScheduleExportVisuals();
         SizeChanged += (_, args) => ApplyViewportWidth(args.NewSize.Width);
         KeyDown += Window_KeyDown;
         Opened += async (_, _) =>
@@ -674,6 +676,79 @@ public sealed partial class MainWindow : Window
             .Select(group => new PipelineStream(group.Key, ColourOf(group.First().Light), group.Count(), group.Sum(item => item.Light.ExposureSeconds.Value ?? 0)))
             .OrderByDescending(stream => stream.Colour.R - stream.Colour.B)
             .ToList();
+    }
+
+    private bool _exportVisualsQueued;
+
+    private void ScheduleExportVisuals()
+    {
+        if (_exportVisualsQueued) return;
+        _exportVisualsQueued = true;
+        Dispatcher.UIThread.Post(() => { _exportVisualsQueued = false; RefreshExportVisuals(); });
+    }
+
+    /// <summary>A calibrated project with a name and a destination gets its real plan straight away, so Export shows the true folders.</summary>
+    private void PreparePlanPreview()
+    {
+        if (_viewModel.Analysis?.Ready != true || string.IsNullOrWhiteSpace(_viewModel.ProjectName) || string.IsNullOrWhiteSpace(_viewModel.DestinationPath) || _viewModel.HasExportPlan) return;
+        try { _viewModel.BuildPlan(); }
+        catch (Exception) { /* The Export tab still shows the expected layout. */ }
+    }
+
+    private void RefreshExportVisuals()
+    {
+        var name = string.IsNullOrWhiteSpace(_viewModel.ProjectName) ? CanvasText.T("Progetto") : _viewModel.ProjectName;
+        var colours = new Dictionary<string, Color?>(StringComparer.OrdinalIgnoreCase);
+        Color? FilterColour(IReadOnlyList<FrameMetadata> frames)
+        {
+            var filters = frames.Select(frame => frame.FilterName.Value).Distinct(StringComparer.OrdinalIgnoreCase).ToList();
+            if (frames.Count == 0 || filters.Count != 1 || filters[0] is null) return null;
+            if (colours.TryGetValue(filters[0]!, out var known)) return known;
+            var frame = frames[0];
+            var raw = frame.RawFilterName ?? frame.FilterName.Value ?? "";
+            var camera = PhysicalFilterResolver.CameraKey(frame);
+            var identity = FilterRecognizer.Recognize(raw, EquipmentRecognizer.Camera(frame.Camera.Value).IsColor, _viewModel.WheelProfileFor(camera));
+            return colours[filters[0]!] = SpectrumColors.Glass(SpectrumColors.BandsOf(identity), identity.Kind);
+        }
+
+        ExportNode FromPlan(ProjectTreeNode node, int depth) => new(node.Name, node.Count, depth >= 1 && node.Name.StartsWith("FILTER_", StringComparison.Ordinal) || depth >= 2 ? FilterColour(node.Frames) : null,
+            depth >= 3 ? [] : node.Children.Where(child => !child.IsLeaf || child.Icon != "·").Select(child => FromPlan(child, depth + 1)).ToList());
+
+        if (_viewModel.PlannedTreeRoots.Count > 0)
+        {
+            ExportMapView.IsPreview = false;
+            ExportMapView.Root = new ExportNode(name, _viewModel.PlannedTreeRoots.Sum(node => node.Count), null, _viewModel.PlannedTreeRoots.Select(node => FromPlan(node, 1)).ToList());
+        }
+        else if (_viewModel.Analysis is { Lights.Count: > 0 } analysis)
+        {
+            // Before a plan exists, show the layout the export will follow: filters, then nights.
+            ExportNode Branch(string role, IEnumerable<FrameMetadata> frames) => new(role, frames.Count(), null, frames
+                .GroupBy(frame => frame.FilterName.Value ?? "—", StringComparer.OrdinalIgnoreCase)
+                .Select(filter => new ExportNode($"FILTER_{filter.Key}", filter.Count(), FilterColour(filter.ToList()), filter
+                    .GroupBy(frame => frame.SessionId.Value ?? "—").OrderBy(night => night.Key, StringComparer.Ordinal)
+                    .Select(night => new ExportNode($"NIGHT_{night.Key}", night.Count(), null, [])).ToList()))
+                .ToList());
+            var lights = analysis.Lights.Select(item => item.Light).ToList();
+            var flats = analysis.Lights.SelectMany(item => item.FlatGroup?.Frames ?? []).Distinct().ToList();
+            var roles = new List<ExportNode> { Branch("Light", lights) };
+            if (flats.Count > 0) roles.Add(Branch("Flat", flats));
+            var darks = analysis.Lights.Select(item => item.Dark.Selected?.Frame).OfType<FrameMetadata>().Distinct().Count();
+            var biases = analysis.Lights.Select(item => item.Bias.Selected?.Frame).OfType<FrameMetadata>().Distinct().Count();
+            if (darks > 0) roles.Add(new ExportNode("Dark", darks, null, []));
+            if (biases > 0) roles.Add(new ExportNode("Bias", biases, null, []));
+            ExportMapView.IsPreview = true;
+            ExportMapView.Root = new ExportNode(name, roles.Sum(role => role.Files), null, roles);
+        }
+        else ExportMapView.Root = null;
+        RefreshExportProgress();
+    }
+
+    private void RefreshExportProgress()
+    {
+        ExportMapView.Progress = _viewModel.ExportProgress / 100;
+        ExportMapView.IsRunning = _viewModel.ExportState == ExportRunState.Running;
+        ExportPercentText.Text = _viewModel.ExportState is ExportRunState.Running or ExportRunState.Paused or ExportRunState.Completed or ExportRunState.Cancelled
+            ? $"{_viewModel.ExportProgress:0}%" : "";
     }
 
     private void CalibrationMap_CellActivated(object? sender, (CalibrationRow Row, CalibrationCell Cell) activated)
