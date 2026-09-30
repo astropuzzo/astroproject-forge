@@ -1,3 +1,4 @@
+using AstroForge.Core.IO;
 using System.Text.Json;
 using System.Text.RegularExpressions;
 
@@ -25,7 +26,7 @@ public sealed class StructuredEventLog
 
     public StructuredEventLog(string? directory = null, long maximumBytes = 1024 * 1024, int retainedFiles = 5)
     {
-        _directory = directory ?? Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "AstroProjectForge", "Logs");
+        _directory = directory ?? AppDataPaths.Combine("Logs");
         _maximumBytes = Math.Max(4096, maximumBytes);
         _retainedFiles = Math.Max(1, retainedFiles);
     }

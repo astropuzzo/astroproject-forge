@@ -66,11 +66,11 @@ public static partial class FrameClassifier
         return FrameKind.Unknown;
     }
 
-    private static string? Text(Dictionary<string, object?> headers, params string[] keys) => keys.Select(key => headers.GetValueOrDefault(key)?.ToString()?.Trim()).FirstOrDefault(value => !string.IsNullOrEmpty(value));
+    private static string? Text(Dictionary<string, object?> headers, params string[] keys) => keys.Select(key => Raw(headers.GetValueOrDefault(key))?.Trim()).FirstOrDefault(value => !string.IsNullOrEmpty(value));
     private static double? Number(Dictionary<string, object?> headers, params string[] keys)
     {
         foreach (var key in keys)
-            if (headers.TryGetValue(key, out var value) && double.TryParse(value?.ToString(), NumberStyles.Float, CultureInfo.InvariantCulture, out var number)) return number;
+            if (headers.TryGetValue(key, out var value) && double.TryParse(Raw(value), NumberStyles.Float, CultureInfo.InvariantCulture, out var number)) return number;
         return null;
     }
     private static int? Integer(Dictionary<string, object?> headers, params string[] keys) => Number(headers, keys) is { } value && Math.Abs(value % 1) < 1e-9 ? (int)value : null;
@@ -84,9 +84,12 @@ public static partial class FrameClassifier
     private static DateTimeOffset? Timestamp(Dictionary<string, object?> headers, params string[] keys)
     {
         foreach (var key in keys)
-            if (headers.TryGetValue(key, out var value) && DateTimeOffset.TryParse(value?.ToString(), CultureInfo.InvariantCulture, DateTimeStyles.AssumeLocal, out var timestamp)) return timestamp;
+            if (headers.TryGetValue(key, out var value) && DateTimeOffset.TryParse(Raw(value), CultureInfo.InvariantCulture, DateTimeStyles.AssumeLocal, out var timestamp)) return timestamp;
         return null;
     }
+    // Header values are already typed (-9.9 is a double): format them invariantly, or on an Italian system
+    // "-9,9" no longer parses and every fractional value (CCD-TEMP, EXPTIME of Flats) is silently lost.
+    private static string? Raw(object? value) => Convert.ToString(value, CultureInfo.InvariantCulture);
     private static void Set<T>(MetadataField<T> field, T value) => field.SetOriginal(value, MetadataSource.Header);
 
     [GeneratedRegex(@"(^|[^a-z])master([^a-z]|$)", RegexOptions.IgnoreCase)]

@@ -16,7 +16,7 @@ public sealed class JsonHeaderCache : IHeaderCache
 
     public JsonHeaderCache(string? path = null)
     {
-        _path = path ?? Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "AstroProjectForge", "header-cache-v1.json");
+        _path = path ?? AppDataPaths.Combine("header-cache-v1.json");
         _entries = new(Load(_path), PathIdentity.Comparer);
     }
 
