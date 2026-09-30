@@ -31,8 +31,8 @@ public static class ProjectAnalyzer
         var flatGroups = GroupFlats(frames.Where(frame => frame.Kind == FrameKind.Flat));
         var representatives = flatGroups.Select(group => group.Representative).ToArray();
         var groupByPath = flatGroups.ToDictionary(group => group.Representative.Path, PathIdentity.Comparer);
-        var darks = frames.Where(frame => frame.Kind == FrameKind.Dark).ToArray();
-        var biases = frames.Where(frame => frame.Kind == FrameKind.Bias).ToArray();
+        var darks = new CalibrationMatchCache(frames, FrameKind.Dark, policy);
+        var biases = new CalibrationMatchCache(frames, FrameKind.Bias, policy);
         var lightFrames = frames.Where(frame => frame.Kind == FrameKind.Light).ToArray();
         var flatMatches = ResolveFlatEpochs(lightFrames, flatGroups, representatives, policy);
         var lights = new List<LightCalibrationAnalysis>();
@@ -40,8 +40,8 @@ public static class ProjectAnalyzer
         {
             var flatResolution = flatMatches[light.Path];
             var flat = flatResolution.Result;
-            var dark = ResolveManual(CalibrationMatcher.Find(light, darks, FrameKind.Dark, policy), light.ManualDarkPath.Value);
-            var bias = ResolveManual(CalibrationMatcher.Find(light, biases, FrameKind.Bias, policy), light.ManualBiasPath.Value);
+            var dark = ResolveManual(darks.Find(light), light.ManualDarkPath.Value);
+            var bias = ResolveManual(biases.Find(light), light.ManualBiasPath.Value);
             var group = flat.Selected is not null ? groupByPath.GetValueOrDefault(flat.Selected.Frame.Path) : null;
             lights.Add(new(light, flat, dark, bias, group, flatResolution.Decision));
         }
@@ -51,11 +51,14 @@ public static class ProjectAnalyzer
     private static MatchResult ResolveManual(MatchResult automatic, string? requestedPath)
     {
         if (string.IsNullOrWhiteSpace(requestedPath)) return automatic;
-        var selected = automatic.Candidates.FirstOrDefault(candidate => PathIdentity.Equals(candidate.Frame.Path, requestedPath));
-        if (selected is null || !selected.Compatible)
+        var match = automatic.Candidates.FirstOrDefault(candidate => PathIdentity.Equals(candidate.Frame.Path, requestedPath));
+        if (match is null || !match.Compatible)
             return new(automatic.RequestedKind, MatchStatus.Incompatible, null, automatic.Candidates);
+        // The automatic result is shared by every light with the same signature: annotate a copy.
+        var selected = match.Clone();
         selected.Reasons.Add("Master assegnato manualmente dall'utente");
-        return new(automatic.RequestedKind, selected.Exact ? MatchStatus.Exact : MatchStatus.WithinTolerance, selected, automatic.Candidates);
+        var candidates = automatic.Candidates.Select(candidate => ReferenceEquals(candidate, match) ? selected : candidate).ToArray();
+        return new(automatic.RequestedKind, selected.Exact ? MatchStatus.Exact : MatchStatus.WithinTolerance, selected, candidates);
     }
 
     public static IReadOnlyList<CalibrationGroup> GroupFlats(IEnumerable<FrameMetadata> source)

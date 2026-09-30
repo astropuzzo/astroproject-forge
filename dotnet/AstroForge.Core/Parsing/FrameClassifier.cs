@@ -11,6 +11,7 @@ public static partial class FrameClassifier
     public static FrameMetadata Classify(string path, Dictionary<string, object?> headers, SessionSettings sessionSettings)
     {
         var frame = new FrameMetadata { Path = path, Kind = ParseKind(headers, path) };
+        frame.Headers.EnsureCapacity(headers.Count);
         foreach (var pair in headers) frame.Headers[pair.Key] = pair.Value;
         var imageType = Text(headers, "IMAGETYP", "FRAMETYP", "OBSTYPE", "FRAME", "PICTTYPE", "IMAGE-TYP") ?? "";
         frame.IsMaster = imageType.Contains("master", StringComparison.OrdinalIgnoreCase) || Boolean(headers, "MASTER", "ISMASTER") == true || MasterNameRegex().IsMatch(System.IO.Path.GetFileNameWithoutExtension(path));

@@ -26,6 +26,14 @@ public sealed class MatchCandidate
     public bool Exact { get; set; } = true;
     public List<string> Reasons { get; } = [];
     public List<string> MissingRequired { get; } = [];
+
+    internal MatchCandidate Clone()
+    {
+        var copy = new MatchCandidate { Frame = Frame, Compatible = Compatible, Score = Score, Exact = Exact };
+        copy.Reasons.AddRange(Reasons);
+        copy.MissingRequired.AddRange(MissingRequired);
+        return copy;
+    }
 }
 
 public sealed record MatchResult(FrameKind RequestedKind, MatchStatus Status, MatchCandidate? Selected, IReadOnlyList<MatchCandidate> Candidates)
@@ -48,6 +56,24 @@ public static class CalibrationMatcher
         if (best.MissingRequired.Count > 0) return new(requestedKind, MatchStatus.InsufficientMetadata, null, compatible);
         return new(requestedKind, best.Exact ? MatchStatus.Exact : MatchStatus.WithinTolerance, best, compatible);
     }
+
+    /// <summary>
+    /// The target fields that <see cref="Evaluate"/> reads for a kind: two targets with the same signature get the same
+    /// result against the same candidates. Keep it in step with <see cref="Evaluate"/>.
+    /// </summary>
+    internal static TargetSignature Signature(FrameMetadata target, FrameKind requestedKind)
+    {
+        var flat = requestedKind == FrameKind.Flat;
+        var dark = requestedKind is FrameKind.Dark or FrameKind.DarkFlat;
+        return new(target.Camera.Value, target.Width.Value, target.Height.Value, target.XBin.Value, target.YBin.Value,
+            target.Gain.Value, target.Offset.Value, target.ReadoutMode.Value, target.BayerPattern.Value,
+            flat ? target.FilterName.Value : null, flat ? target.RotatorAngleDeg.Value : null, flat ? target.FocalLengthMm.Value : null, flat ? target.SessionId.Value : null,
+            dark ? target.ExposureSeconds.Value : null, dark || requestedKind == FrameKind.Bias ? target.EffectiveTemperatureC : null);
+    }
+
+    internal readonly record struct TargetSignature(
+        string? Camera, int? Width, int? Height, int? XBin, int? YBin, double? Gain, double? Offset, string? ReadoutMode, string? BayerPattern,
+        string? Filter, double? Rotator, double? FocalLength, string? SessionId, double? Exposure, double? Temperature);
 
     private static MatchCandidate Evaluate(FrameMetadata target, FrameMetadata candidate, FrameKind requestedKind, CalibrationPolicy policy)
     {
