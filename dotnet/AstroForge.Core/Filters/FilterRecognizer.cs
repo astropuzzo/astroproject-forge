@@ -93,6 +93,7 @@ public static partial class FilterRecognizer
             if (compact == shortForm || compact.StartsWith(shortForm, StringComparison.Ordinal) && !compact.StartsWith(full, StringComparison.Ordinal))
                 compact = full + compact[shortForm.Length..];
 
+        var colour = channels.Count == 0 ? BroadbandColour(normalized) : null;
         var candidates = new List<(CatalogFilter Filter, bool BrandMatched, int Specificity)>();
         foreach (var filter in catalog.Filters)
         {
@@ -103,9 +104,17 @@ public static partial class FilterRecognizer
                 if (brandMatched && channels.Count == 1 && filter.Lines.Contains(channels[0])) candidates.Add((filter, true, 0));
                 continue;
             }
+            if (filter.Kind == FilterKind.Broadband && filter.Series is not null)
+            {
+                // An LRGB set needs the brand, the colour and a word of the set ("CMOS"): "Baader Red (R-CCD)" is another set.
+                if (brandMatched && colour == filter.Channel && filter.Aliases.Any(alias => ContainsAlias(normalized, compact, Normalize(alias))))
+                    candidates.Add((filter, true, 0));
+                continue;
+            }
             if (filter.Brand == "Generico") continue;
             var keys = Keys(filter);
-            if (!keys.Stems.Any(stem => stem.Length >= 4 ? compact.Contains(stem, StringComparison.Ordinal) : Tokens(normalized).Contains(stem))
+            // A model name of three letters or fewer ("CLS", "UHC") is a generic word too: "SVBony CLS" is not the Astronomik one.
+            if (!keys.Stems.Any(stem => stem.Length >= 4 ? compact.Contains(stem, StringComparison.Ordinal) : brandMatched && Tokens(normalized).Contains(stem))
                 && !keys.Aliases.Any(alias => ContainsAlias(normalized, compact, alias))) continue;
             var specificity = keys.Full.Where(key => compact.Contains(key, StringComparison.Ordinal)).Select(key => key.Length).DefaultIfEmpty(0).Max();
             candidates.Add((filter, brandMatched, specificity));
@@ -249,6 +258,16 @@ public static partial class FilterRecognizer
         "iseries", "tru", "balance", "trubalance", "ccd", "cmos", "optimized", "optimised", "for", "type", "iic", "inch", "in", "mm", "nm",
         "v", "pro", "new", "version", "deep", "sky", "and", "typ", "2c", "square", "round", "gen1", "gen2", "gen3", "gen2e", "g2e", "generation", "serie", "true", "dark", "ximei", "astronomiks", "astromania", "minicam8m"
     };
+
+    /// <summary>The one L, R, G or B colour a broadband name spells out ("Baader Red (CMOS-Optimized)" → "R").</summary>
+    private static string? BroadbandColour(string normalized)
+    {
+        // Only colour words and the UV/IR cut of a luminance may be left: "UHC-L Booster" is not an L filter.
+        var residual = Residual(normalized).Where(token => token is not ("uv" or "ir" or "cut" or "block")).ToArray();
+        if (residual.Length == 0 || !residual.All(BroadbandWords.ContainsKey)) return null;
+        var colours = residual.Select(token => BroadbandWords[token]).Distinct().ToArray();
+        return colours.Length == 1 ? colours[0] : null;
+    }
 
     /// <summary>What is left of a name once brand, sizes and marketing words are gone ("Chroma Blue 50 mm" → "blue").</summary>
     private static List<string> Residual(string normalized)

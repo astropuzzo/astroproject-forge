@@ -10,6 +10,9 @@ using AstroForge.Core.Diagnostics;
 using AstroForge.Core.IO;
 using System.IO.Compression;
 
+// dotnet run ... -- --astrobin-benchmark <astrobin-equipment.json>: how many real AstroBin filter names the recogniser places.
+if (args is ["--astrobin-benchmark", var astrobinList]) { FilterQa.Benchmark(astrobinList); return; }
+
 Assert(PathIdentity.Comparer.Equals("Frame.fit", "frame.fit") == (OperatingSystem.IsWindows() || OperatingSystem.IsMacOS()), "La semantica dei path deve seguire il filesystem host.");
 var pathRoot = Path.Combine(Path.GetTempPath(), "AstroForge-PathRoot");
 Assert(PathIdentity.IsWithin(Path.Combine(pathRoot, "nested", "frame.fit"), pathRoot), "Il controllo di contenimento path non riconosce un discendente valido.");
