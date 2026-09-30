@@ -59,7 +59,7 @@ public sealed record InstrumentProfile(
         var height = Mode(ownFrames.Select(frame => frame.Height.Value)) ?? camera.Camera?.Height;
 
         var filters = ownFrames
-            .GroupBy(frame => (frame.FilterName.Value ?? "").Trim(), StringComparer.OrdinalIgnoreCase)
+            .GroupBy(frame => WheelLabel(frame), StringComparer.OrdinalIgnoreCase)
             .Where(group => group.Key.Length > 0 || camera.IsColor)
             .Select(group => new InstrumentFilter(
                 group.Key,
@@ -77,6 +77,10 @@ public sealed record InstrumentProfile(
     /// <summary>Stable key for a camera's wheel profile: the catalogue id when known, the header name otherwise.</summary>
     public static string CameraKeyFor(CameraIdentity camera) =>
         camera.Camera?.Id ?? (camera.RawName.Length == 0 ? "unknown" : FilterRecognizer.Normalize(camera.RawName));
+
+    // The wheel shows slots by the name the capture software wrote, not the shared channel name Forge files them under.
+    private static string WheelLabel(FrameMetadata frame) =>
+        ((frame.FilterName.HasOverride ? frame.FilterName.Value : frame.RawFilterName ?? frame.FilterName.Value) ?? "").Trim();
 
     private static T? Mode<T>(IEnumerable<T?> values) where T : struct =>
         values.Where(value => value.HasValue).GroupBy(value => value!.Value).OrderByDescending(group => group.Count()).Select(group => (T?)group.Key).FirstOrDefault();

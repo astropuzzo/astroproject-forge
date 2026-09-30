@@ -18,7 +18,8 @@ public enum MetadataSource
     Filename,
     Inferred,
     ProjectDefault,
-    UserOverride
+    UserOverride,
+    FilterProfile
 }
 
 public enum IssueSeverity
@@ -67,6 +68,9 @@ public sealed class FrameMetadata
     public int? ConfiguredLibraryPriority { get; set; }
     public MetadataField<string?> ObjectName { get; } = new();
     public MetadataField<string?> FilterName { get; } = new();
+    /// <summary>The filter name as the capture software wrote it, kept once PhysicalFilterResolver has taken over FilterName.</summary>
+    public string? RawFilterName { get; set; }
+    public MetadataSource RawFilterSource { get; set; }
     public MetadataField<string?> FlatSetId { get; } = new();
     public MetadataField<double?> ExposureSeconds { get; } = new();
     public MetadataField<double?> Gain { get; } = new();

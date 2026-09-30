@@ -88,6 +88,7 @@ internal static class FilterQa
         Assert(mapped.Source == FilterMatchSource.UserProfile && mapped.Product?.Id == "ant3-SII" && mapped.Confidence == 1, "Il profilo della ruota deve prevalere sul riconoscimento automatico.");
 
         FileNames();
+        PhysicalFilters();
     }
 
     private static void FileNames()
@@ -142,6 +143,47 @@ internal static class FilterQa
         Console.WriteLine("Nomi più usati senza prodotto:");
         foreach (var row in rows.Where(row => row.Identity.Source != FilterMatchSource.CatalogProduct).OrderByDescending(row => row.Count).Take(40))
             Console.WriteLine($"{row.Count,6}  {row.Identity.DisplayName,-28} {row.Name}");
+    }
+
+    /// <summary>Labels of one glass from different capture programs share a name; different glasses never do.</summary>
+    private static void PhysicalFilters()
+    {
+        static FrameMetadata Frame(string filter, string camera = "ZWO ASI2600MM Pro")
+        {
+            var frame = new FrameMetadata { Path = $"/demo/{filter}-{Guid.NewGuid():N}.fits", Kind = FrameKind.Light };
+            frame.FilterName.SetOriginal(filter, MetadataSource.Header);
+            frame.Camera.SetOriginal(camera, MetadataSource.Header);
+            return frame;
+        }
+        string?[] Names(IEnumerable<FrameMetadata> frames) => frames.Select(frame => frame.FilterName.Value).ToArray();
+
+        // ASIAIR's "S2" and N.I.N.A.'s "SII" on the same camera are one filter.
+        var mixed = new[] { Frame("S2"), Frame("SII"), Frame("Ha"), Frame("H-alpha") };
+        PhysicalFilterResolver.Apply(mixed);
+        Assert(Names(mixed).SequenceEqual(["SII", "SII", "Ha", "Ha"]), $"S2/SII o Ha/H-alpha non unificati: {string.Join(", ", Names(mixed))}.");
+        Assert(mixed[0].RawFilterName == "S2" && mixed[0].FilterName.Source == MetadataSource.FilterProfile && mixed[1].FilterName.Source == MetadataSource.Header,
+            "Il nome originale deve restare e solo le etichette rinominate cambiano origine.");
+        PhysicalFilterResolver.Apply(mixed);
+        Assert(Names(mixed).SequenceEqual(["SII", "SII", "Ha", "Ha"]), "Applicare di nuovo deve dare lo stesso risultato.");
+
+        // A lone label keeps its name: existing export folders do not move.
+        var lone = new[] { Frame("H-alpha") };
+        PhysicalFilterResolver.Apply(lone);
+        Assert(lone[0].FilterName.Value == "H-alpha", "Un'etichetta sola non va rinominata.");
+
+        // 3 nm and 7 nm Hα are two glasses, and so are two cameras.
+        var widths = new[] { Frame("Ha 3nm"), Frame("Ha 7nm") };
+        PhysicalFilterResolver.Apply(widths);
+        Assert(Names(widths).SequenceEqual(["Ha 3nm", "Ha 7nm"]), "Hα 3 nm e 7 nm non vanno uniti.");
+        var cameras = new[] { Frame("S2", "ZWO ASI2600MM Pro"), Frame("SII", "ZWO ASI294MM Pro") };
+        PhysicalFilterResolver.Apply(cameras);
+        Assert(Names(cameras).SequenceEqual(["S2", "SII"]), "Filtri di camere diverse non vanno uniti.");
+
+        // The user's override always wins.
+        var overridden = new[] { Frame("S2"), Frame("SII") };
+        overridden[0].FilterName.SetOverride("Custom");
+        PhysicalFilterResolver.Apply(overridden);
+        Assert(overridden[0].FilterName.Value == "Custom", "L'override utente deve prevalere.");
     }
 
     private static void Product(string raw, string expectedId)

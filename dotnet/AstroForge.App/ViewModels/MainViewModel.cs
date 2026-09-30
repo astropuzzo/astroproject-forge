@@ -1899,6 +1899,7 @@ public sealed class MainViewModel : BindableBase
         MetadataSource.Inferred => "Calcolato",
         MetadataSource.ProjectDefault => "Default progetto",
         MetadataSource.UserOverride => "Override utente",
+        MetadataSource.FilterProfile => "Profilo filtri",
         _ => "Mancante"
     };
 
@@ -1944,6 +1945,8 @@ public sealed class MainViewModel : BindableBase
         foreach (var frame in _frames)
             frame.Issues.RemoveAll(issue => issue.Code.StartsWith("calibration.", StringComparison.Ordinal));
 
+        // One physical filter, one name: confirmed wheel slots and labels from different programs are filed together.
+        PhysicalFilterResolver.Apply(_frames, WheelProfileFor);
         _analysis = ProjectAnalyzer.Analyze(_frames);
         RefreshInstrument();
         BuildQualitySeriesDefinitions();
@@ -2075,7 +2078,8 @@ public sealed class MainViewModel : BindableBase
             _state.FilterWheelProfiles[cameraKey] = profile = new(StringComparer.OrdinalIgnoreCase);
         profile[FilterRecognizer.Normalize(rawName)] = catalogId;
         SaveState();
-        RefreshInstrument();
+        RefreshIntelligence();
+        RebuildTree();
     }
 
     public void ForgetFilter(string cameraKey, string rawName)
@@ -2084,7 +2088,8 @@ public sealed class MainViewModel : BindableBase
         {
             if (profile.Count == 0) _state.FilterWheelProfiles.Remove(cameraKey);
             SaveState();
-            RefreshInstrument();
+            RefreshIntelligence();
+            RebuildTree();
         }
     }
 
