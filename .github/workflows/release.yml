@@ -65,4 +65,13 @@ jobs:
           awk -v h="## $VERSION " 'index($0, h) == 1 { on = 1; next } on && /^## / { exit } on' docs/CHANGELOG.md > notes.md
           test -s notes.md || { echo "No CHANGELOG section for $VERSION"; exit 1; }
           ls -l dist
-          gh release create "$GITHUB_REF_NAME" dist/AstroProjectForge-* --title "AstroProject Forge $VERSION" --notes-file notes.md --latest
+          # same asset labels as the earlier hand-made releases
+          files=()
+          for f in dist/AstroProjectForge-*; do
+            case "$f" in
+              *-win-x64-setup.exe) files+=("$f#Windows installer") ;;
+              *-win-x64-portable.zip) files+=("$f#Windows portable") ;;
+              *) files+=("$f") ;;
+            esac
+          done
+          gh release create "$GITHUB_REF_NAME" "${files[@]}" --title "AstroProject Forge $VERSION" --notes-file notes.md --latest

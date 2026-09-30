@@ -43,8 +43,10 @@ if (-not (Test-Path -LiteralPath $app)) { throw "Eseguibile assente nel publish:
 # SkiaSharp and HarfBuzz ship native .pdb files that DebugType=None does not suppress; keep them out of the ZIP and setup.
 Get-ChildItem -LiteralPath $stage -Filter '*.pdb' -File -Recurse | Remove-Item -Force
 Copy-Item -LiteralPath (Join-Path $root 'docs\CHANGELOG.md') -Destination (Join-Path $stage 'RELEASE-NOTES.md')
-& $dotnet list $appProject package --include-transitive --format json | Set-Content -LiteralPath (Join-Path $distribution 'sbom-dotnet.json') -Encoding utf8
-if ($LASTEXITCODE -ne 0) { throw 'Generazione SBOM fallita.' }
+# L'SBOM accompagna la build ma non è un pacchetto pubblicato: se il comando fallisce se ne mostra l'output e si prosegue.
+$sbom = & $dotnet list $appProject package --include-transitive --format json 2>&1
+if ($LASTEXITCODE -eq 0) { $sbom | Set-Content -LiteralPath (Join-Path $distribution 'sbom-dotnet.json') -Encoding utf8 }
+else { $sbom | Out-Host; Write-Warning 'Generazione SBOM fallita: pacchetti prodotti senza sbom-dotnet.json.' }
 $qaReportSource = Join-Path $root 'artifacts\qa\qa-report.json'
 $qaReportFile = if (Test-Path -LiteralPath $qaReportSource) { 'qa-report.json' } else { $null }
 if ($qaReportFile) { Copy-Item -LiteralPath $qaReportSource -Destination (Join-Path $distribution $qaReportFile) }
