@@ -10,6 +10,8 @@ using AstroForge.Core.Diagnostics;
 using AstroForge.Core.IO;
 using System.IO.Compression;
 
+// dotnet run ... -- --astrobin-benchmark <astrobin-equipment.json>: how many real AstroBin filter names the recogniser places.
+if (args is ["--astrobin-benchmark", var astrobinList]) { FilterQa.Benchmark(astrobinList); return; }
 if (args.Contains("--benchmark"))
 {
     await ScanBenchmark.RunAsync(ScanBenchmark.Full, print: true);

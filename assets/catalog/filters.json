@@ -271,6 +271,54 @@
    "aliases": []
   },
   {
+   "id": "clsccd",
+   "brand": "Astronomik",
+   "name": "CLS-CCD",
+   "series": null,
+   "kind": "lightPollution",
+   "channel": null,
+   "camera": "both",
+   "bands": [
+    {
+     "fromNm": 450,
+     "toNm": 520,
+     "peak": 0.95
+    },
+    {
+     "fromNm": 640,
+     "toNm": 690,
+     "peak": 0.97
+    }
+   ],
+   "approximate": false,
+   "source": "https://www.firstlightoptics.com/light-pollution-reduction-imaging/astronomik-cls-ccd-filter.html",
+   "aliases": []
+  },
+  {
+   "id": "cls",
+   "brand": "Astronomik",
+   "name": "CLS",
+   "series": null,
+   "kind": "lightPollution",
+   "channel": null,
+   "camera": "osc",
+   "bands": [
+    {
+     "fromNm": 450,
+     "toNm": 520,
+     "peak": 0.95
+    },
+    {
+     "fromNm": 640,
+     "toNm": 700,
+     "peak": 0.97
+    }
+   ],
+   "approximate": true,
+   "source": "https://www.firstlightoptics.com/light-pollution-reduction-imaging/astronomik-cls-ccd-filter.html",
+   "aliases": []
+  },
+  {
    "id": "lextreme",
    "brand": "Optolong",
    "name": "L-eXtreme",
@@ -802,7 +850,9 @@
    ],
    "approximate": false,
    "source": "https://altairastro.com/altair-ha-oiii-dualband-ultra-4nm-certified-cmos-filter-2x22-w-test-report-11468-p.asp",
-   "aliases": []
+   "aliases": [
+    "Ha+OIII Ultra DualBand 4nm"
+   ]
   },
   {
    "id": "altair4s",
@@ -826,7 +876,9 @@
    ],
    "approximate": true,
    "source": "https://altairastro.com/altair-sii-oiii--dualband-ultra-4nm-certified-cmos-filter-2x22-w-test-report-13147-p.asp",
-   "aliases": []
+   "aliases": [
+    "SII+OIII Ultra DualBand 4nm"
+   ]
   },
   {
    "id": "altair6s",
@@ -850,7 +902,9 @@
    ],
    "approximate": true,
    "source": null,
-   "aliases": []
+   "aliases": [
+    "SII+OIII Ultra DualBand 6nm"
+   ]
   },
   {
    "id": "askare2",
@@ -1026,7 +1080,10 @@
    ],
    "approximate": true,
    "source": "https://www.seestar.com/blogs/tutorial/seestar-light-pollution-filter-guide",
-   "aliases": []
+   "aliases": [
+    "Seestar S50 Integrated LP",
+    "Seestar S30 Integrated LP"
+   ]
   },
   {
    "id": "duo7",
@@ -1167,6 +1224,63 @@
    "aliases": []
   },
   {
+   "id": "edge-Ha",
+   "brand": "Antlia",
+   "name": "Hα EDGE 4,5 nm",
+   "series": "Antlia EDGE",
+   "kind": "narrowband",
+   "channel": "Ha",
+   "camera": "both",
+   "bands": [
+    {
+     "fromNm": 654.05,
+     "toNm": 658.55,
+     "peak": 0.9
+    }
+   ],
+   "approximate": false,
+   "source": "https://www.highpointscientific.com/antlia-h-alpha-4-5nm-edge-filter-2inch",
+   "aliases": []
+  },
+  {
+   "id": "edge-OIII",
+   "brand": "Antlia",
+   "name": "OIII EDGE 4,5 nm",
+   "series": "Antlia EDGE",
+   "kind": "narrowband",
+   "channel": "OIII",
+   "camera": "both",
+   "bands": [
+    {
+     "fromNm": 498.45,
+     "toNm": 502.95,
+     "peak": 0.85
+    }
+   ],
+   "approximate": false,
+   "source": "https://www.highpointscientific.com/antlia-oiii-4-5nm-edge-filter-2inch",
+   "aliases": []
+  },
+  {
+   "id": "sv227-Ha",
+   "brand": "SVBony",
+   "name": "Hα SV227 5 nm",
+   "series": "SVBony SV227",
+   "kind": "narrowband",
+   "channel": "Ha",
+   "camera": "both",
+   "bands": [
+    {
+     "fromNm": 653.8,
+     "toNm": 658.8,
+     "peak": 0.9
+    }
+   ],
+   "approximate": true,
+   "source": null,
+   "aliases": []
+  },
+  {
    "id": "L",
    "brand": "Generico",
    "name": "L",
@@ -1241,6 +1355,90 @@
    "approximate": false,
    "source": null,
    "aliases": []
+  },
+  {
+   "id": "bdcmos-L",
+   "brand": "Baader",
+   "name": "L LRGB CMOS",
+   "series": "Baader LRGB CMOS",
+   "kind": "broadband",
+   "channel": "L",
+   "camera": "mono",
+   "bands": [
+    {
+     "fromNm": 420,
+     "toNm": 685,
+     "peak": 0.98
+    }
+   ],
+   "approximate": false,
+   "source": "https://optcorp.com/products/baader-cmos-optimized-l-rgb-filter-set-2-round-mounted",
+   "aliases": [
+    "CMOS"
+   ]
+  },
+  {
+   "id": "bdcmos-R",
+   "brand": "Baader",
+   "name": "R LRGB CMOS",
+   "series": "Baader LRGB CMOS",
+   "kind": "broadband",
+   "channel": "R",
+   "camera": "mono",
+   "bands": [
+    {
+     "fromNm": 595,
+     "toNm": 690,
+     "peak": 0.95
+    }
+   ],
+   "approximate": true,
+   "source": "https://optcorp.com/products/baader-cmos-optimized-l-rgb-filter-set-2-round-mounted",
+   "aliases": [
+    "CMOS"
+   ]
+  },
+  {
+   "id": "bdcmos-G",
+   "brand": "Baader",
+   "name": "G LRGB CMOS",
+   "series": "Baader LRGB CMOS",
+   "kind": "broadband",
+   "channel": "G",
+   "camera": "mono",
+   "bands": [
+    {
+     "fromNm": 490,
+     "toNm": 580,
+     "peak": 0.95
+    }
+   ],
+   "approximate": true,
+   "source": "https://optcorp.com/products/baader-cmos-optimized-l-rgb-filter-set-2-round-mounted",
+   "aliases": [
+    "CMOS"
+   ]
+  },
+  {
+   "id": "bdcmos-B",
+   "brand": "Baader",
+   "name": "B LRGB CMOS",
+   "series": "Baader LRGB CMOS",
+   "kind": "broadband",
+   "channel": "B",
+   "camera": "mono",
+   "bands": [
+    {
+     "fromNm": 400,
+     "toNm": 510,
+     "peak": 0.95
+    }
+   ],
+   "approximate": true,
+   "source": "https://optcorp.com/products/baader-cmos-optimized-l-rgb-filter-set-2-round-mounted",
+   "aliases": [
+    "CMOS"
+   ]
   },
   {
    "id": "bd65-Ha",
@@ -1810,6 +2008,291 @@
    ],
    "approximate": false,
    "source": "https://www.zwoastro.com/",
+   "aliases": []
+  },
+  {
+   "id": "ado5-Ha",
+   "brand": "Astrodon",
+   "name": "Hα 5 nm",
+   "series": "Astrodon 5 nm",
+   "kind": "narrowband",
+   "channel": "Ha",
+   "camera": "mono",
+   "bands": [
+    {
+     "fromNm": 653.8,
+     "toNm": 658.8,
+     "peak": 0.9
+    }
+   ],
+   "approximate": true,
+   "source": "https://farpointastro.com/products/astrodon-5-nm-narrowband-filters-h-5nm",
+   "aliases": []
+  },
+  {
+   "id": "ado5-OIII",
+   "brand": "Astrodon",
+   "name": "OIII 5 nm",
+   "series": "Astrodon 5 nm",
+   "kind": "narrowband",
+   "channel": "OIII",
+   "camera": "mono",
+   "bands": [
+    {
+     "fromNm": 498.2,
+     "toNm": 503.2,
+     "peak": 0.9
+    }
+   ],
+   "approximate": true,
+   "source": "https://farpointastro.com/products/astrodon-5-nm-narrowband-filters-h-5nm",
+   "aliases": []
+  },
+  {
+   "id": "ado5-SII",
+   "brand": "Astrodon",
+   "name": "SII 5 nm",
+   "series": "Astrodon 5 nm",
+   "kind": "narrowband",
+   "channel": "SII",
+   "camera": "mono",
+   "bands": [
+    {
+     "fromNm": 669.9,
+     "toNm": 674.9,
+     "peak": 0.9
+    }
+   ],
+   "approximate": true,
+   "source": "https://farpointastro.com/products/astrodon-5-nm-narrowband-filters-h-5nm",
+   "aliases": []
+  },
+  {
+   "id": "ado3-Ha",
+   "brand": "Astrodon",
+   "name": "Hα 3 nm",
+   "series": "Astrodon 3 nm",
+   "kind": "narrowband",
+   "channel": "Ha",
+   "camera": "mono",
+   "bands": [
+    {
+     "fromNm": 654.8,
+     "toNm": 657.8,
+     "peak": 0.9
+    }
+   ],
+   "approximate": true,
+   "source": "https://farpointastro.com/products/astrodon-3-nm-hydrogen-alpha-filter",
+   "aliases": []
+  },
+  {
+   "id": "ado3-OIII",
+   "brand": "Astrodon",
+   "name": "OIII 3 nm",
+   "series": "Astrodon 3 nm",
+   "kind": "narrowband",
+   "channel": "OIII",
+   "camera": "mono",
+   "bands": [
+    {
+     "fromNm": 499.2,
+     "toNm": 502.2,
+     "peak": 0.9
+    }
+   ],
+   "approximate": true,
+   "source": "https://farpointastro.com/products/astrodon-3-nm-hydrogen-alpha-filter",
+   "aliases": []
+  },
+  {
+   "id": "ado3-SII",
+   "brand": "Astrodon",
+   "name": "SII 3 nm",
+   "series": "Astrodon 3 nm",
+   "kind": "narrowband",
+   "channel": "SII",
+   "camera": "mono",
+   "bands": [
+    {
+     "fromNm": 670.9,
+     "toNm": 673.9,
+     "peak": 0.9
+    }
+   ],
+   "approximate": true,
+   "source": "https://farpointastro.com/products/astrodon-3-nm-hydrogen-alpha-filter",
+   "aliases": []
+  },
+  {
+   "id": "chr8-Ha",
+   "brand": "Chroma",
+   "name": "Hα 8 nm",
+   "series": "Chroma 8 nm",
+   "kind": "narrowband",
+   "channel": "Ha",
+   "camera": "mono",
+   "bands": [
+    {
+     "fromNm": 652.3,
+     "toNm": 660.3,
+     "peak": 0.9
+    }
+   ],
+   "approximate": true,
+   "source": "https://www.chroma.com/products/parts/27008-oiii-8nm-bandpass",
+   "aliases": []
+  },
+  {
+   "id": "chr8-OIII",
+   "brand": "Chroma",
+   "name": "OIII 8 nm",
+   "series": "Chroma 8 nm",
+   "kind": "narrowband",
+   "channel": "OIII",
+   "camera": "mono",
+   "bands": [
+    {
+     "fromNm": 496.7,
+     "toNm": 504.7,
+     "peak": 0.9
+    }
+   ],
+   "approximate": true,
+   "source": "https://www.chroma.com/products/parts/27008-oiii-8nm-bandpass",
+   "aliases": []
+  },
+  {
+   "id": "chr8-SII",
+   "brand": "Chroma",
+   "name": "SII 8 nm",
+   "series": "Chroma 8 nm",
+   "kind": "narrowband",
+   "channel": "SII",
+   "camera": "mono",
+   "bands": [
+    {
+     "fromNm": 668.4,
+     "toNm": 676.4,
+     "peak": 0.9
+    }
+   ],
+   "approximate": true,
+   "source": "https://www.chroma.com/products/parts/27008-oiii-8nm-bandpass",
+   "aliases": []
+  },
+  {
+   "id": "bdccd-Ha",
+   "brand": "Baader",
+   "name": "Hα CCD 7/8,5/8 nm",
+   "series": "Baader CCD 7/8,5/8 nm",
+   "kind": "narrowband",
+   "channel": "Ha",
+   "camera": "mono",
+   "bands": [
+    {
+     "fromNm": 652.8,
+     "toNm": 659.8,
+     "peak": 0.9
+    }
+   ],
+   "approximate": true,
+   "source": "https://agenaastro.com/baader-2-narrowband-o-iii-8-5nm-ccd-filter.html",
+   "aliases": []
+  },
+  {
+   "id": "bdccd-OIII",
+   "brand": "Baader",
+   "name": "OIII CCD 7/8,5/8 nm",
+   "series": "Baader CCD 7/8,5/8 nm",
+   "kind": "narrowband",
+   "channel": "OIII",
+   "camera": "mono",
+   "bands": [
+    {
+     "fromNm": 496.45,
+     "toNm": 504.95,
+     "peak": 0.9
+    }
+   ],
+   "approximate": true,
+   "source": "https://agenaastro.com/baader-2-narrowband-o-iii-8-5nm-ccd-filter.html",
+   "aliases": []
+  },
+  {
+   "id": "bdccd-SII",
+   "brand": "Baader",
+   "name": "SII CCD 7/8,5/8 nm",
+   "series": "Baader CCD 7/8,5/8 nm",
+   "kind": "narrowband",
+   "channel": "SII",
+   "camera": "mono",
+   "bands": [
+    {
+     "fromNm": 668.4,
+     "toNm": 676.4,
+     "peak": 0.9
+    }
+   ],
+   "approximate": true,
+   "source": "https://agenaastro.com/baader-2-narrowband-o-iii-8-5nm-ccd-filter.html",
+   "aliases": []
+  },
+  {
+   "id": "tt65-Ha",
+   "brand": "ToupTek",
+   "name": "Hα 6,5 nm",
+   "series": "ToupTek 6,5 nm",
+   "kind": "narrowband",
+   "channel": "Ha",
+   "camera": "mono",
+   "bands": [
+    {
+     "fromNm": 653.05,
+     "toNm": 659.55,
+     "peak": 0.9
+    }
+   ],
+   "approximate": true,
+   "source": "https://www.touptekastro.com/products/sho-filters",
+   "aliases": []
+  },
+  {
+   "id": "tt65-OIII",
+   "brand": "ToupTek",
+   "name": "OIII 6,5 nm",
+   "series": "ToupTek 6,5 nm",
+   "kind": "narrowband",
+   "channel": "OIII",
+   "camera": "mono",
+   "bands": [
+    {
+     "fromNm": 497.45,
+     "toNm": 503.95,
+     "peak": 0.9
+    }
+   ],
+   "approximate": true,
+   "source": "https://www.touptekastro.com/products/sho-filters",
+   "aliases": []
+  },
+  {
+   "id": "tt65-SII",
+   "brand": "ToupTek",
+   "name": "SII 6,5 nm",
+   "series": "ToupTek 6,5 nm",
+   "kind": "narrowband",
+   "channel": "SII",
+   "camera": "mono",
+   "bands": [
+    {
+     "fromNm": 669.15,
+     "toNm": 675.65,
+     "peak": 0.9
+    }
+   ],
+   "approximate": true,
+   "source": "https://www.touptekastro.com/products/sho-filters",
    "aliases": []
   }
  ]

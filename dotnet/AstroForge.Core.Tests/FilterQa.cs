@@ -8,7 +8,7 @@ internal static class FilterQa
     public static void Run()
     {
         var catalog = FilterCatalog.Default;
-        Assert(catalog.Filters.Count >= 80, $"Catalogo filtri incompleto: {catalog.Filters.Count} voci.");
+        Assert(catalog.Filters.Count >= 100, $"Catalogo filtri incompleto: {catalog.Filters.Count} voci.");
         Assert(catalog.Filters.Select(filter => filter.Id).Distinct(StringComparer.OrdinalIgnoreCase).Count() == catalog.Filters.Count, "Id duplicati nel catalogo filtri.");
         Assert(catalog.Filters.All(filter => filter.Bands.Count > 0 && filter.Bands.All(band => band.FromNm < band.ToNm)), "Bande del catalogo non valide.");
         Assert(catalog.Find("lextreme") is { } lextreme && lextreme.Lines.SequenceEqual([EmissionLines.Oiii, EmissionLines.Ha]), "Le righe dell'L-eXtreme devono essere OIII e Hα.");
@@ -34,7 +34,24 @@ internal static class FilterQa
         Product("Antlia 3nm Narrowband H-alpha 2\"", "ant3-Ha");
         Product("Baader H-alpha Ultra-Narrowband 3.5nm (CMOS-Optimized) 36 mm", "bdunb-Ha");
         Product("Chroma OIII 3nm Bandpass 50x50 mm", "chr3-OIII");
-        Generic("Baader S-II 8nm 2\"", FilterKind.Narrowband, [EmissionLines.Sii]);
+        Product("Baader S-II 8nm 2\"", "bdccd-SII");
+        Product("Baader H-alpha 7nm 50 mm", "bdccd-Ha");
+        Product("Astrodon H-alpha 5nm 1.25\"", "ado5-Ha");
+        Product("Astrodon O3 3nm 36mm", "ado3-OIII");
+        Product("Antlia EDGE H-alpha 4.5nm 2\"", "edge-Ha");
+        Product("Antlia EDGE OIII 4.5 nm 36 mm", "edge-OIII");
+        Product("Chroma H-alpha 8nm Bandpass 50 mm", "chr8-Ha");
+        Product("ToupTek OIII 6.5nm 1.25\"", "tt65-OIII");
+        Product("SVBony SV227 H-Alpha 5nm 2\"", "sv227-Ha");
+        Product("Astronomik CLS-CCD 2\"", "clsccd");
+        Product("ZWO Seestar S50 Integrated LP Filter", "seestar");
+        Product("Altair Ha+OIII ULTRA DualBand 4nm CERTIFIED CMOS 2\"", "altair4");
+        Product("Baader Red (CMOS-Optimized) 36 mm", "bdcmos-R");
+        Product("Baader UV/IR CUT Luminance (CMOS Optimized) 2\"", "bdcmos-L");
+        Generic("Baader Red (R-CCD) 2\"", FilterKind.Broadband, []);
+        Generic("Baader UHC-L Booster (CMOS-Optimized) 2''", FilterKind.LightPollution, []);
+        Generic("SVBony CLS 2\"", FilterKind.LightPollution, []);
+        Generic("Baader H-alpha 35nm", FilterKind.Narrowband, [EmissionLines.Ha]);
         Generic("Chroma Blue 50 mm", FilterKind.Broadband, []);
         Generic("Astrodon Gen2 E-Series Tru-Balance Lum 31mm", FilterKind.Broadband, []);
         Generic("Baader Red (R-CCD) 36 mm", FilterKind.Broadband, []);
@@ -98,6 +115,25 @@ internal static class FilterQa
         headers["BAYERPAT"] = "RGGB"; headers["INSTRUME"] = "ZWO ASI2600MC Pro";
         var oscFrame = FrameClassifier.Classify(Path.Combine(Path.GetTempPath(), "Light_M31_120.0s_Bin1_gain100_20260619-231512_-10.0C_0001.fit"), headers, new(TimeZoneInfo.Utc, new TimeOnly(12, 0)));
         Assert(oscFrame.FilterName.Value is null && !oscFrame.Issues.Any(issue => issue.Code == "metadata.filter_missing"), "Una camera a colori senza filtro non deve generare avvisi.");
+    }
+
+    /// <summary>
+    /// Share of AstroBin images, weighted by use, whose filter name maps to a catalogue product, to a generic class, or to nothing.
+    /// The list is scripts/data/astrobin-equipment.json in Skyframe.
+    /// </summary>
+    public static void Benchmark(string astrobinList)
+    {
+        using var document = System.Text.Json.JsonDocument.Parse(File.ReadAllText(astrobinList));
+        var rows = document.RootElement.GetProperty("filters").EnumerateArray()
+            .Select(item => (Name: item.GetProperty("name").GetString() ?? "", Count: item.GetProperty("count").GetInt32()))
+            .Select(row => (row.Name, row.Count, Identity: FilterRecognizer.Recognize(row.Name))).ToArray();
+        double total = rows.Sum(row => row.Count);
+        string Share(FilterMatchSource source) => (rows.Where(row => row.Identity.Source == source).Sum(row => row.Count) / total).ToString("P1", System.Globalization.CultureInfo.InvariantCulture);
+        Console.WriteLine($"{rows.Length} nomi, {total} immagini, {FilterCatalog.Default.Filters.Count} filtri a catalogo");
+        Console.WriteLine($"prodotto {Share(FilterMatchSource.CatalogProduct)} · classe generica {Share(FilterMatchSource.GenericName)} · sconosciuto {Share(FilterMatchSource.Unknown)}");
+        Console.WriteLine("Nomi più usati senza prodotto:");
+        foreach (var row in rows.Where(row => row.Identity.Source != FilterMatchSource.CatalogProduct).OrderByDescending(row => row.Count).Take(40))
+            Console.WriteLine($"{row.Count,6}  {row.Identity.DisplayName,-28} {row.Name}");
     }
 
     private static void Product(string raw, string expectedId)
