@@ -51,6 +51,7 @@ internal static class DemoProjectE2e
 
             var cloudy = await QualityAsync(dataset, analysis);
             await ExportAndWbppAsync(analysis, Path.Combine(root, "progetti"), cloudy);
+            PhysicalFilter(frames, cloudy, Path.Combine(root, "progetti-sii"));
         }
         finally
         {
@@ -214,6 +215,34 @@ internal static class DemoProjectE2e
         var lightFilters = groups.RootElement.EnumerateArray().Where(group => group.GetProperty("imageType").GetInt32() == 4)
             .Select(group => group.GetProperty("filter").GetString()).Distinct().Order().ToArray();
         Assert(lightFilters.SequenceEqual(["Filtro 3", "Ha", "OIII"]), $"Filtri dei gruppi Light WBPP errati: {string.Join(", ", lightFilters)}.");
+    }
+
+    /// <summary>Once "Filtro 3" is confirmed as SII, the whole project files it under SII: groups, Flats, folders and WBPP.</summary>
+    private static void PhysicalFilter(IReadOnlyList<FrameMetadata> frames, string cloudy, string destination)
+    {
+        var profile = new Dictionary<string, string> { [FilterRecognizer.Normalize(DemoDatasetGenerator.CustomFilterName)] = DemoDatasetGenerator.CustomFilterCatalogId };
+        PhysicalFilterResolver.Apply(frames);
+        Assert(frames.Select(frame => frame.FilterName.Value).OfType<string>().Distinct().Order().SequenceEqual(["Filtro 3", "Ha", "OIII"]),
+            "Senza profilo i nomi dei filtri non devono cambiare.");
+
+        PhysicalFilterResolver.Apply(frames, key => key == "asi2600mm" ? profile : null);
+        Assert(frames.Select(frame => frame.FilterName.Value).OfType<string>().Distinct().Order().SequenceEqual(["Ha", "OIII", "SII"]),
+            $"Con il profilo 'Filtro 3' deve diventare SII: {string.Join(", ", frames.Select(frame => frame.FilterName.Value).Distinct())}.");
+        var renamed = frames.Where(frame => frame.RawFilterName == DemoDatasetGenerator.CustomFilterName).ToArray();
+        Assert(renamed.Length > 0 && renamed.All(frame => frame.FilterName.Source == MetadataSource.FilterProfile), "Il nome originale del filtro deve restare leggibile.");
+        var wheel = InstrumentProfile.Build(frames, key => key == "asi2600mm" ? profile : null);
+        Assert(wheel!.Filters.Any(filter => filter.RawName == DemoDatasetGenerator.CustomFilterName), "La ruota deve mostrare lo slot col nome scritto dal software di acquisizione.");
+
+        var analysis = ProjectAnalyzer.Analyze(frames);
+        Assert(analysis.Ready && analysis.FlatGroups.Count == 4, "Con il filtro unificato i Flat devono ancora abbinarsi.");
+        var plan = ProjectExporter.BuildPlan("Cygnus Loop SII", destination, analysis, new HashSet<string>(StringComparer.Ordinal) { cloudy });
+        Assert(plan.Files.Any(file => file.RelativePath.Contains("FILTER_SII")) && !plan.Files.Any(file => file.RelativePath.Contains("Filtro_3")),
+            "L'export deve usare il filtro fisico SII.");
+
+        // Forgetting the slot brings the captured name back.
+        PhysicalFilterResolver.Apply(frames);
+        Assert(renamed.All(frame => frame.FilterName.Value == DemoDatasetGenerator.CustomFilterName && frame.FilterName.Source != MetadataSource.FilterProfile),
+            "Senza profilo deve tornare il nome originale.");
     }
 
     private static TimeZoneInfo RomeTimeZone()
