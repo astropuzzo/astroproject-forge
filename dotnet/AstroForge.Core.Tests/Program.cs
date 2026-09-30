@@ -204,6 +204,7 @@ await RegressionQa.RunAsync();
 FilterQa.Run();
 EquipmentQa.Run();
 AppDataQa.Run();
+await DemoProjectE2e.RunAsync();
 Console.WriteLine("PASS: catalogo filtri, riconoscimento nomi e nomi file ASIAIR/N.I.N.A. verificati.");
 Console.WriteLine($"PASS: {frames.Count} fixture autosufficienti, Flat Epoch multisessione, link manuale, WBPP ed export riprendibile verificati.");
 
