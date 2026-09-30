@@ -17,6 +17,7 @@ public sealed partial class MainWindow : Window
     private const string RepositoryUrl = "https://github.com/astropuzzo/astroproject-forge";
     private const string GuideUrl = RepositoryUrl + "/wiki";
     private const string IssueUrl = RepositoryUrl + "/issues/new?template=bug_report.yml";
+    public const string SmokeTestArgument = "--smoke-test";
     private readonly MainViewModel _viewModel = new();
     private readonly UpdateService _updateService = new();
     private ReleaseArtifact? _availableUpdate;
@@ -46,7 +47,13 @@ public sealed partial class MainWindow : Window
         };
         SizeChanged += (_, args) => ApplyViewportWidth(args.NewSize.Width);
         KeyDown += Window_KeyDown;
-        Opened += async (_, _) => { ApplyViewportWidth(ClientSize.Width); SelectDensity(); ScheduleLocalization(); await CheckUpdatesAsync(false); };
+        Opened += async (_, _) =>
+        {
+            ApplyViewportWidth(ClientSize.Width);
+            SelectDensity();
+            ScheduleLocalization();
+            if (!Environment.GetCommandLineArgs().Contains(SmokeTestArgument)) await CheckUpdatesAsync(false);
+        };
         Closing += (_, _) =>
         {
             _qualityCancellation?.Cancel();
@@ -58,6 +65,34 @@ public sealed partial class MainWindow : Window
         ApplyCommandLine();
         ApplyNavigationLabels();
         UpdateInspectorLayout();
+    }
+
+    /// <summary>
+    /// Opens every workspace once and lets layout, bindings and localization settle, so CI catches
+    /// startup and template crashes that a build alone cannot. Returns the process exit code.
+    /// </summary>
+    public async Task<int> RunSmokeTestAsync()
+    {
+        try
+        {
+            for (var index = 0; index < WorkspaceTabs.ItemCount; index++)
+            {
+                WorkspaceTabs.SelectedIndex = index;
+                await Task.Delay(250);
+            }
+            SettingsPanel.IsVisible = true;
+            await Task.Delay(250);
+            SettingsPanel.IsVisible = false;
+            WorkspaceTabs.SelectedIndex = 0;
+            await Dispatcher.UIThread.InvokeAsync(() => { }, DispatcherPriority.Background);
+            Console.WriteLine($"SMOKE TEST PASSED · {WorkspaceTabs.ItemCount} workspaces opened");
+            return 0;
+        }
+        catch (Exception exception)
+        {
+            Console.Error.WriteLine($"SMOKE TEST FAILED · {exception}");
+            return 1;
+        }
     }
 
     private void ApplyNavigationLabels()
@@ -156,6 +191,8 @@ public sealed partial class MainWindow : Window
 
     private void UpdateInspectorLayout()
     {
+        // TabControl raises SelectionChanged while InitializeComponent is still assigning named controls.
+        if (AnalysisGrid is null) return;
         AnalysisGrid.ColumnDefinitions[1].Width = new GridLength(_viewModel.HasSelection ? 5 : 0);
         AnalysisGrid.ColumnDefinitions[2].Width = new GridLength(_viewModel.HasSelection ? _viewModel.InspectorPanelWidth : 0);
     }
