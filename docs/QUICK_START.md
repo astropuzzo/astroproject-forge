@@ -2,6 +2,8 @@
 
 AstroProject Forge prepares an organized PixInsight WeightedBatchPreprocessing project without modifying original files.
 
+**First time?** Choose **Try the demo project** in the welcome wizard (or **Menu → Open the demo project**). Forge builds two synthetic nights of the Cygnus Loop (ASIAIR and N.I.N.A.) with flats and a master library, analyses them and walks you through every screen on the real controls. Press **F1** on any screen to replay its part of the tour, **Shift+F1** for the online guide.
+
 1. Add FITS/XISF folders or files under **Sources**.
 2. Add one or more Master Dark/Bias folders under **Calibration libraries**.
 3. Select **Analyze**.

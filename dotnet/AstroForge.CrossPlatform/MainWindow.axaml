@@ -21,8 +21,8 @@
           <Button Content="Nuovo" ToolTip.Tip="Crea un nuovo progetto · Ctrl+N" Click="NewProject_Click"/>
           <Button Content="Apri" ToolTip.Tip="Apri progetto · Ctrl+O" Click="OpenProject_Click"/>
           <Button Content="Salva" ToolTip.Tip="Salva progetto · Ctrl+S · Salva con nome Ctrl+Shift+S" Click="SaveProject_Click"/>
-          <Button Content="Menu" ToolTip.Tip="Menu · Ctrl+," Click="ToggleSettings_Click"/>
-          <Button Content="Analizza" ToolTip.Tip="Analizza progetto · Ctrl+Invio" Classes="primary" Click="Analyze_Click" IsEnabled="{Binding CanAnalyzeProject}"/>
+          <Button x:Name="MenuButton" Content="Menu" ToolTip.Tip="Menu · Ctrl+," Click="ToggleSettings_Click"/>
+          <Button x:Name="AnalyzeButton" Content="Analizza" ToolTip.Tip="Analizza progetto · Ctrl+Invio" Classes="primary" Click="Analyze_Click" IsEnabled="{Binding CanAnalyzeProject}"/>
         </StackPanel>
       </Grid>
     </Border>
@@ -238,6 +238,8 @@
         <Border Classes="rule" Margin="0,5"/>
         <TextBlock Text="Aiuto" Classes="eyebrow"/>
         <Button Content="Configurazione iniziale" ToolTip.Tip="Collega librerie, importa immagini e avvia l’analisi" Click="OpenOnboarding_Click"/>
+        <Button Content="Tour guidato" ToolTip.Tip="Mostra ogni schermata sui controlli reali · F1" Click="StartTour_Click"/>
+        <Button Content="Apri il progetto demo" ToolTip.Tip="Crea un progetto di prova con FITS sintetici e lo analizza" Click="OpenDemo_Click"/>
         <Button Content="Guida rapida" Click="OpenGuide_Click"/>
         <Button Content="Segnala un problema" Click="ReportIssue_Click"/>
         <Button Content="GitHub" Click="OpenRepository_Click"/>
@@ -263,6 +265,7 @@
               <TextBlock Text="Prepara il primo progetto" FontSize="34" FontWeight="SemiBold" TextWrapping="Wrap"/>
               <TextBlock Text="Collega le calibrazioni, importa le immagini e avvia la prima analisi. Nessun originale viene modificato." Classes="muted" FontSize="14" TextWrapping="Wrap"/>
               <Grid ColumnDefinitions="*,*,*" ColumnSpacing="9" Margin="0,15,0,0"><Border Classes="note"><StackPanel Spacing="5"><TextBlock Text="01" Classes="eyebrow"/><TextBlock Text="Master Library" FontSize="17" FontWeight="SemiBold"/><TextBlock Text="facoltativa" Classes="muted"/></StackPanel></Border><Border Grid.Column="1" Classes="note"><StackPanel Spacing="5"><TextBlock Text="02" Classes="eyebrow"/><TextBlock Text="Immagini" FontSize="17" FontWeight="SemiBold"/><TextBlock Text="FITS e XISF" Classes="muted"/></StackPanel></Border><Border Grid.Column="2" Classes="note"><StackPanel Spacing="5"><TextBlock Text="03" Classes="eyebrow"/><TextBlock Text="Analisi" FontSize="17" FontWeight="SemiBold"/><TextBlock Text="sessioni e calibrazioni" Classes="muted"/></StackPanel></Border></Grid>
+              <Border Classes="note" Margin="0,6,0,0"><Grid ColumnDefinitions="*,Auto" ColumnSpacing="12"><StackPanel Spacing="3"><TextBlock Text="Vuoi prima provarlo?" FontWeight="SemiBold"/><TextBlock Text="Il progetto demo crea due notti di FITS sintetici (ASIAIR e NINA) e ti accompagna in un tour di tutte le schermate." Classes="muted" TextWrapping="Wrap"/></StackPanel><Button Grid.Column="1" Content="Prova con il progetto demo" Classes="primary" VerticalAlignment="Center" Click="OpenDemo_Click"/></Grid></Border>
             </StackPanel>
             <StackPanel x:Name="OnboardingStep3" IsVisible="False" Spacing="13">
               <TextBlock Text="Passo 1 · Calibrazioni" Classes="eyebrow"/>
@@ -289,6 +292,7 @@
       </Border>
     </Border>
   </Grid>
+  <local:GuidedTour x:Name="Tour"/>
   <local:FirstLightOverlay x:Name="FirstLight" IsVisible="False"/>
   </Panel>
 </Window>
