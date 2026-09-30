@@ -29,6 +29,7 @@ public sealed partial class MainWindow : Window
     private int _blinkIndex = -1;
     private double _qualityZoom = 1;
     private bool _localizationPending;
+    private int _lastWorkspaceIndex;
 
     private static readonly FilePickerFileType AstroImages = new("Immagini astronomiche")
     {
@@ -37,6 +38,7 @@ public sealed partial class MainWindow : Window
 
     public MainWindow()
     {
+        Motion.SetReduced(_viewModel.ReducedMotion);
         InitializeComponent();
         DataContext = _viewModel;
         _viewModel.UiLanguageChanged += (_, _) => ScheduleLocalization();
@@ -44,6 +46,7 @@ public sealed partial class MainWindow : Window
         _viewModel.PropertyChanged += (_, args) =>
         {
             if (args.PropertyName == nameof(MainViewModel.HasSelection)) UpdateInspectorLayout();
+            else if (args.PropertyName == nameof(MainViewModel.ReducedMotion)) Motion.SetReduced(_viewModel.ReducedMotion);
         };
         SizeChanged += (_, args) => ApplyViewportWidth(args.NewSize.Width);
         KeyDown += Window_KeyDown;
@@ -52,6 +55,7 @@ public sealed partial class MainWindow : Window
             ApplyViewportWidth(ClientSize.Width);
             SelectDensity();
             ScheduleLocalization();
+            PlayFirstLight();
             if (!Environment.GetCommandLineArgs().Contains(SmokeTestArgument)) await CheckUpdatesAsync(false);
         };
         Closing += (_, _) =>
@@ -187,6 +191,37 @@ public sealed partial class MainWindow : Window
     private void WorkspaceTabs_SelectionChanged(object? sender, SelectionChangedEventArgs e)
     {
         UpdateInspectorLayout();
+        if (Backdrop is null || e.Source != WorkspaceTabs || WorkspaceTabs.SelectedIndex < 0) return;
+        var index = WorkspaceTabs.SelectedIndex;
+        if (index != _lastWorkspaceIndex) Backdrop.Warp(index > _lastWorkspaceIndex ? 1 : -1);
+        _lastWorkspaceIndex = index;
+    }
+
+    /// <summary>
+    /// Opening sequence: the iris opens on the sky, then the interface comes into focus
+    /// like a star pulled sharp by the focuser.
+    /// </summary>
+    private void PlayFirstLight()
+    {
+        if (Motion.Reduced) return;
+        var blur = new BlurEffect { Radius = 18 };
+        var scale = new ScaleTransform(1.02, 1.02);
+        RootLayout.Opacity = 0;
+        RootLayout.Effect = blur;
+        RootLayout.RenderTransformOrigin = RelativePoint.Center;
+        RootLayout.RenderTransform = scale;
+        _ = FirstLight.PlayAsync(async () =>
+        {
+            await Motion.Tween(this, TimeSpan.FromMilliseconds(950), Motion.EaseOutExpo, t =>
+            {
+                RootLayout.Opacity = Math.Min(1, t * 1.4);
+                blur.Radius = 18 * (1 - t);
+                scale.ScaleX = scale.ScaleY = 1.02 - 0.02 * t;
+            });
+            RootLayout.Effect = null;
+            RootLayout.RenderTransform = null;
+            RootLayout.Opacity = 1;
+        });
     }
 
     private void UpdateInspectorLayout()

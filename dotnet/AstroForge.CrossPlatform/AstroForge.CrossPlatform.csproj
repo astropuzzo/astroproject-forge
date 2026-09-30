@@ -11,6 +11,8 @@
   </PropertyGroup>
   <ItemGroup>
     <AvaloniaResource Include="..\..\assets\astroforge.ico" Link="Assets\astroforge.ico" />
+    <AvaloniaResource Include="..\..\assets\fonts\*.ttf" Link="Assets\Fonts\%(Filename)%(Extension)" />
+    <None Include="..\..\assets\fonts\OFL.txt" Link="licenses\OFL-fonts.txt" CopyToOutputDirectory="PreserveNewest" />
     <EmbeddedResource Include="..\..\assets\i18n\en.json" LogicalName="AstroForge.Localization.en.json" />
     <PackageReference Include="Avalonia" Version="12.1.0" />
     <PackageReference Include="Avalonia.Desktop" Version="12.1.0" />
