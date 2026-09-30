@@ -124,6 +124,19 @@ internal static class DemoProjectE2e
         var sii = FilterRecognizer.Recognize(DemoDatasetGenerator.CustomFilterName, wheelProfile: dataset);
         Assert(sii is { Source: FilterMatchSource.UserProfile, Kind: FilterKind.Narrowband, NeedsConfirmation: false } && sii.Lines.SequenceEqual([EmissionLines.Sii]),
             "Con il profilo della ruota 'Filtro 3' deve risultare SII.");
+
+        // The instrument screen rebuilds the whole train from the scan, then asks only for the unknown slot.
+        var instrument = InstrumentProfile.Build(frames);
+        Assert(instrument is { CameraKey: "asi2600mm", Binning: 1 } && instrument.Telescope.Telescope?.Id == "fra400" && instrument.FocalMm == DemoDatasetGenerator.FocalLengthMm,
+            "Profilo strumento del demo non ricostruito.");
+        Assert(instrument!.ImageScale is { } scale && Math.Abs(scale - 206.265 * 3.76 * 16 / DemoDatasetGenerator.FocalLengthMm) < 0.01, $"Scala immagine errata: {instrument.ImageScale}.");
+        Assert(instrument.FieldOfView is { } fov && Math.Abs(fov.Width - 4.72) < 0.02 && Math.Abs(fov.Height - 3.15) < 0.02, $"Campo inquadrato errato: {instrument.FieldOfView}.");
+        Assert(instrument.Filters.Count == 3 && instrument.PendingConfirmations == 1 && instrument.Filters.Single(filter => filter.NeedsConfirmation).RawName == DemoDatasetGenerator.CustomFilterName,
+            "Solo 'Filtro 3' deve restare da confermare.");
+        Assert(instrument.Filters.Sum(filter => filter.Lights) == frames.Count(frame => frame.Kind == FrameKind.Light && !frame.IsMaster), "Conteggio Light per filtro errato.");
+        var confirmed = InstrumentProfile.Build(frames, key => key == "asi2600mm" ? dataset : null);
+        Assert(confirmed is { PendingConfirmations: 0 } && confirmed.Filters.Any(filter => filter.Identity.Product?.Id == DemoDatasetGenerator.CustomFilterCatalogId),
+            "Con il profilo della ruota nessun filtro deve restare da confermare.");
     }
 
     private static void Calibration(ProjectAnalysis analysis)

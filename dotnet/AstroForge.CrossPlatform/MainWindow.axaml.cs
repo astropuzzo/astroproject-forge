@@ -9,6 +9,9 @@ using Avalonia.Threading;
 using AstroForge.App.Services;
 using AstroForge.App.ViewModels;
 using AstroForge.Core.Releases;
+using AstroForge.CrossPlatform.Controls;
+using AstroForge.CrossPlatform.ViewModels;
+using Avalonia.VisualTree;
 
 namespace AstroForge.CrossPlatform;
 
@@ -19,6 +22,7 @@ public sealed partial class MainWindow : Window
     private const string IssueUrl = RepositoryUrl + "/issues/new?template=bug_report.yml";
     public const string SmokeTestArgument = "--smoke-test";
     private readonly MainViewModel _viewModel = new();
+    private readonly ObservatoryViewModel _observatory;
     private readonly UpdateService _updateService = new();
     private ReleaseArtifact? _availableUpdate;
     private readonly DispatcherTimer _blinkTimer = new() { Interval = TimeSpan.FromMilliseconds(700) };
@@ -41,6 +45,11 @@ public sealed partial class MainWindow : Window
         Motion.SetReduced(_viewModel.ReducedMotion);
         InitializeComponent();
         DataContext = _viewModel;
+        _observatory = new ObservatoryViewModel(_viewModel);
+        OverviewInstrumentCard.DataContext = _observatory;
+        OverviewFilters.DataContext = _observatory;
+        InstrumentPanel.DataContext = _observatory;
+        _observatory.Filters.CollectionChanged += (_, _) => ScheduleLocalization();
         _viewModel.UiLanguageChanged += (_, _) => ScheduleLocalization();
         _blinkTimer.Tick += BlinkTimer_Tick;
         _viewModel.PropertyChanged += (_, args) =>
@@ -102,11 +111,11 @@ public sealed partial class MainWindow : Window
     private void ApplyNavigationLabels()
     {
         var tabs = WorkspaceTabs.Items.OfType<TabItem>().ToArray();
-        if (tabs.Length < 8) return;
-        var ordered = new[] { tabs[0], tabs[5], tabs[1], tabs[2], tabs[3], tabs[4], tabs[6], tabs[7] };
+        if (tabs.Length < 9) return;
+        var ordered = new[] { tabs[3], tabs[4], tabs[0], tabs[6], tabs[1], tabs[2], tabs[5], tabs[7], tabs[8] };
         WorkspaceTabs.Items.Clear();
         foreach (var tab in ordered) WorkspaceTabs.Items.Add(tab);
-        var labels = new[] { "1  Progetto", "2  Risolvi", "3  Esporta", "4  WBPP", "Dati", "Qualità", "Master", "Diagnostica" };
+        var labels = new[] { "Panoramica", "Strumento", "1  Progetto", "2  Risolvi", "3  Esporta", "4  WBPP", "Qualità", "Master", "Diagnostica" };
         for (var index = 0; index < labels.Length; index++) ordered[index].Header = labels[index];
     }
 
@@ -117,7 +126,9 @@ public sealed partial class MainWindow : Window
         Dispatcher.UIThread.Post(() =>
         {
             _localizationPending = false;
+            CanvasText.Language = _viewModel.UiLanguage;
             AvaloniaLocalizationAdapter.Apply(this, _viewModel.UiLanguage);
+            InvalidateCanvasText(this);
         }, DispatcherPriority.Background);
     }
 
@@ -181,7 +192,7 @@ public sealed partial class MainWindow : Window
             SettingsPanel.IsVisible = !SettingsPanel.IsVisible;
             e.Handled = true;
         }
-        else if (alt && e.Key >= Key.D1 && e.Key <= Key.D8)
+        else if (alt && e.Key >= Key.D1 && e.Key <= Key.D9)
         {
             WorkspaceTabs.SelectedIndex = (int)e.Key - (int)Key.D1;
             e.Handled = true;
@@ -191,10 +202,30 @@ public sealed partial class MainWindow : Window
     private void WorkspaceTabs_SelectionChanged(object? sender, SelectionChangedEventArgs e)
     {
         UpdateInspectorLayout();
+        // Tab content is created on first visit, after the last translation pass.
+        if (IsLoaded) ScheduleLocalization();
         if (Backdrop is null || e.Source != WorkspaceTabs || WorkspaceTabs.SelectedIndex < 0) return;
         var index = WorkspaceTabs.SelectedIndex;
         if (index != _lastWorkspaceIndex) Backdrop.Warp(index > _lastWorkspaceIndex ? 1 : -1);
         _lastWorkspaceIndex = index;
+    }
+
+    private void OpenInstrument_Click(object? sender, RoutedEventArgs e) => WorkspaceTabs.SelectedItem = InstrumentTab;
+
+    private void ConfirmFilter_Click(object? sender, RoutedEventArgs e)
+    {
+        if ((sender as Control)?.DataContext is FilterSlotRow row) _observatory.Confirm(row);
+    }
+
+    private void ForgetFilter_Click(object? sender, RoutedEventArgs e)
+    {
+        if ((sender as Control)?.DataContext is FilterSlotRow row) _observatory.Forget(row);
+    }
+
+    private static void InvalidateCanvasText(Visual root)
+    {
+        foreach (var visual in root.GetVisualDescendants())
+            if (visual is SpectrumBar or FieldOfViewView or NightsTimeline) visual.InvalidateVisual();
     }
 
     /// <summary>
@@ -355,7 +386,7 @@ public sealed partial class MainWindow : Window
         }
         finally { UpdateButton.IsEnabled = true; }
     }
-    private void OpenDiagnosticsTab_Click(object? sender, RoutedEventArgs e) { SettingsPanel.IsVisible = false; WorkspaceTabs.SelectedIndex = 7; _viewModel.RefreshDiagnostics(); }
+    private void OpenDiagnosticsTab_Click(object? sender, RoutedEventArgs e) { SettingsPanel.IsVisible = false; WorkspaceTabs.SelectedItem = DiagnosticsTab; _viewModel.RefreshDiagnostics(); }
     private static void OpenUrl(string url) => Process.Start(new ProcessStartInfo(url) { UseShellExecute = true });
     private void OnboardingAddLibrary_Click(object? sender, RoutedEventArgs e) => AddLibrary_Click(sender, e);
     private void OnboardingAddSources_Click(object? sender, RoutedEventArgs e) => AddSources_Click(sender, e);
@@ -622,7 +653,7 @@ public sealed partial class MainWindow : Window
     private void EditReviewMetadata_Click(object? sender, RoutedEventArgs e)
     {
         _viewModel.SelectReviewItem((sender as Control)?.DataContext as ReviewQueueItem);
-        WorkspaceTabs.SelectedIndex = 0;
+        WorkspaceTabs.SelectedItem = ProjectTab;
         UpdateInspectorLayout();
     }
     private void AssignLight_Click(object? sender, RoutedEventArgs e) => _viewModel.AssignReviewCandidate((sender as Control)?.DataContext as ReviewQueueItem, ReviewAssignmentScope.Light);
