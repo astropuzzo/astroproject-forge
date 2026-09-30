@@ -23,7 +23,8 @@ public static class FrameValidator
             frame.Issues.Add(new("binning.mismatch", IssueSeverity.Error, "XBINNING e YBINNING sono diversi.", "Binning"));
         if (frame.SetTemperatureC.Value is { } set && frame.SensorTemperatureC.Value is { } actual && Math.Abs(set - actual) > 2)
             frame.Issues.Add(new("temperature.unstable", IssueSeverity.Warning, $"Sensore distante {Math.Abs(set - actual):0.0} °C dal setpoint.", "SensorTemperatureC"));
-        if (frame.Kind == FrameKind.Light && frame.FilterName.Value is null)
+        // A colour sensor without a filter wheel is a normal setup, not a missing value.
+        if (frame.Kind == FrameKind.Light && frame.FilterName.Value is null && string.IsNullOrWhiteSpace(frame.BayerPattern.Value))
             frame.Issues.Add(new("metadata.filter_missing", IssueSeverity.Warning, "Filtro mancante.", "FilterName"));
         if (frame.IsMaster && frame.Kind is FrameKind.Dark or FrameKind.Bias && frame.Gain.Value is null)
             frame.Issues.Add(new("master.gain_missing", IssueSeverity.Warning, "Gain di acquisizione assente; EGAIN non è equivalente.", "Gain"));

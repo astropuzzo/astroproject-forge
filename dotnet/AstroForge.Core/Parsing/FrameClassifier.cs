@@ -32,9 +32,20 @@ public static partial class FrameClassifier
         Set(frame.FocalLengthMm, Number(headers, "FOCALLEN", "FOCALLENGTH"));
         Set(frame.RotatorAngleDeg, Number(headers, "ROTATANG", "ROTATOR", "ROTANGLE"));
         Set(frame.CapturedAt, Timestamp(headers, "DATE-LOC", "DATE-OBS", "DATE-UTC", "DATE"));
+        ApplyFileName(frame, FileNameMetadata.Parse(path));
         AstronomicalSessionResolver.Apply(frame, sessionSettings);
         FrameValidator.Revalidate(frame);
         return frame;
+    }
+
+    private static void ApplyFileName(FrameMetadata frame, FileNameMetadata name)
+    {
+        if (frame.FilterName.Value is null && name.Filter is { Length: > 0 }) frame.FilterName.SetOriginal(name.Filter, MetadataSource.Filename);
+        if (frame.ExposureSeconds.Value is null && name.ExposureSeconds is { } exposure) frame.ExposureSeconds.SetOriginal(exposure, MetadataSource.Filename);
+        if (frame.Gain.Value is null && name.Gain is { } gain) frame.Gain.SetOriginal(gain, MetadataSource.Filename);
+        if (frame.SensorTemperatureC.Value is null && name.SensorTemperatureC is { } temperature) frame.SensorTemperatureC.SetOriginal(temperature, MetadataSource.Filename);
+        if (frame.XBin.Value is null && name.Binning is { } xbin) frame.XBin.SetOriginal(xbin, MetadataSource.Filename);
+        if (frame.YBin.Value is null && name.Binning is { } ybin) frame.YBin.SetOriginal(ybin, MetadataSource.Filename);
     }
 
     private static FrameKind ParseKind(Dictionary<string, object?> headers, string path)

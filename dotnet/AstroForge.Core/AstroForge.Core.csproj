@@ -5,5 +5,8 @@
     <Nullable>enable</Nullable>
     <LangVersion>14</LangVersion>
   </PropertyGroup>
+  <ItemGroup>
+    <EmbeddedResource Include="..\..\assets\catalog\filters.json" LogicalName="AstroForge.Catalog.filters.json" />
+  </ItemGroup>
 </Project>
 
