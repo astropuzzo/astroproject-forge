@@ -7,6 +7,7 @@
   </PropertyGroup>
   <ItemGroup>
     <EmbeddedResource Include="..\..\assets\catalog\filters.json" LogicalName="AstroForge.Catalog.filters.json" />
+    <EmbeddedResource Include="..\..\assets\catalog\equipment.json" LogicalName="AstroForge.Catalog.equipment.json" />
   </ItemGroup>
 </Project>
 
