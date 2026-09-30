@@ -80,6 +80,14 @@ internal static class FilterQa
             $"Nome file ASIAIR non interpretato: {asiair}.");
         var asiairFlat = FileNameMetadata.Parse("Flat_150.0ms_Bin1_Ha_gain100_20260619-061200_-9.8C_0012.fit");
         Assert(asiairFlat.Kind == FrameKind.Flat && asiairFlat.Filter == "Ha" && Math.Abs(asiairFlat.ExposureSeconds!.Value - 0.15) < 1e-9, $"Flat ASIAIR non interpretato: {asiairFlat}.");
+        // ASIAIR appends a free-text filter after the temperature; a camera token after the binning is no filter.
+        var afterTemperature = FileNameMetadata.Parse("Light_NGC 7000_180.0s_Bin1_gain100_20250812-231512_-10.0C_Dual_0042.fit");
+        Assert(afterTemperature.Filter == "Dual" && afterTemperature.SensorTemperatureC == -10 && afterTemperature.Gain == 100, $"Filtro ASIAIR dopo la temperatura non letto: {afterTemperature}.");
+        Assert(FileNameMetadata.Parse("Light_NGC 7000_180.0s_Bin1_gain100_20250812-231512_-10.0C_Mio filtro_0043.fit").Filter == "Mio filtro", "Un nome filtro ASIAIR libero deve restare quello scritto dall'utente.");
+        Assert(FileNameMetadata.Parse("Dark_600.0s_Bin1_533MM_gain100_20250812-231512_0.0C_0001.fit").Filter is null, "Il modello di camera nel nome di un Dark non è un filtro.");
+        var ninaTarget = FileNameMetadata.Parse("2026-03-02_22-10-05_M101_L-Pro_-9.80_120.00s_0007.fits");
+        Assert(ninaTarget.Filter == "L-Pro", $"Con il target nel nome N.I.N.A. il filtro è quello prima della temperatura: {ninaTarget}.");
+        Assert(FileNameMetadata.Parse("2026-03-03_05-40-02_FlatWizard_Filtro 2_-9.90_0.96s_0000.fits").Filter == "Filtro 2", "Il filtro dei Flat Wizard N.I.N.A. non è stato letto.");
         var nina = FileNameMetadata.Parse("2026-06-15_00-21-26_HOO_-10.00_300.00s_0001.fits");
         Assert(nina.Filter == "HOO" && nina.ExposureSeconds == 300 && nina.SensorTemperatureC == -10, $"Nome file N.I.N.A. non interpretato: {nina}.");
         var osc = FileNameMetadata.Parse("Light_M31_120.0s_Bin1_gain100_20260619-231512_-10.0C_0001.fit");

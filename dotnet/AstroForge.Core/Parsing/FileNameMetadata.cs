@@ -17,7 +17,7 @@ public sealed partial record FileNameMetadata(
     public static readonly FileNameMetadata Empty = new(null, null, null, null, null, null);
 
     /// <summary>
-    /// Reads the common naming schemes: ZWO ASIAIR (<c>Light_M31_300.0s_Bin1_Ha_gain100_20231015-231512_-10.0C_0001</c>)
+    /// Reads the common naming schemes: ZWO ASIAIR (<c>Light_M31_300.0s_Bin1_gain100_20241015-193210_-10.0C_hoo_0001</c>)
     /// and the N.I.N.A. default (<c>2026-06-15_00-21-26_Ha_-10.00_300.00s_0001</c>). Headers always win; these values
     /// only fill what the header leaves empty and are marked as coming from the file name.
     /// </summary>
@@ -52,14 +52,34 @@ public sealed partial record FileNameMetadata(
             candidates.Add((index, token));
         }
 
-        // ASIAIR writes the filter right after the binning token; N.I.N.A. right after date and time.
-        var binIndex = Array.FindIndex(tokens, token => BinRegex().IsMatch(token));
-        var positional = candidates.FirstOrDefault(item => (binIndex >= 0 && item.Index == binIndex + 1) || (ninaLayout && item.Index == 2));
-        if (positional.Token is not null) filter = positional.Token;
-        else filter = candidates.Select(item => item.Token)
-            .FirstOrDefault(token => FilterRecognizer.Recognize(token) is { IsRecognized: true, Kind: not FilterKind.None });
-
+        filter = ChooseFilter(tokens, candidates, ninaLayout);
         return new(kind, filter, exposure, binning, gain, temperature);
+    }
+
+    private static string? ChooseFilter(string[] tokens, List<(int Index, string Token)> candidates, bool ninaLayout)
+    {
+        static bool Recognized(string token) => FilterRecognizer.Recognize(token) is { IsRecognized: true, Kind: not FilterKind.None };
+
+        // ASIAIR appends the filter after the temperature ("…_-10.0C_hoo_0077"): whatever the user typed there is the filter.
+        var temperatureIndex = Array.FindIndex(tokens, token => TemperatureRegex().IsMatch(token));
+        if (temperatureIndex >= 0 && candidates.FirstOrDefault(item => item.Index == temperatureIndex + 1).Token is { } afterTemperature)
+            return afterTemperature;
+
+        // Custom ASIAIR names can put it after the binning; there the camera ("Dark_600.0s_Bin1_2600MC_…") is no filter.
+        var binIndex = Array.FindIndex(tokens, token => BinRegex().IsMatch(token));
+        if (binIndex >= 0 && candidates.FirstOrDefault(item => item.Index == binIndex + 1).Token is { } afterBinning && Recognized(afterBinning))
+            return afterBinning;
+
+        // N.I.N.A.: the default pattern writes the filter right after date and time; patterns with the target or
+        // "FlatWizard" write it just before the temperature. A single recognized name wins, else the last one.
+        if (ninaLayout)
+        {
+            var named = candidates.Where(item => item.Index >= 2).ToArray();
+            var recognized = named.Where(item => Recognized(item.Token)).ToArray();
+            if (recognized.Length == 1) return recognized[0].Token;
+            if (named.Length > 0) return named[^1].Token;
+        }
+        return candidates.Select(item => item.Token).FirstOrDefault(Recognized);
     }
 
     private static FrameKind? KindFrom(string token) => token.ToLowerInvariant() switch
