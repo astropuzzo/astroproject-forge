@@ -1,0 +1,1704 @@
+{
+ "schema": 1,
+ "origin": "Skyframe src/data/filters.js",
+ "filters": [
+  {
+   "id": "uvir",
+   "brand": "Generico",
+   "name": "UV/IR cut",
+   "series": null,
+   "kind": "broadband",
+   "channel": null,
+   "camera": "osc",
+   "bands": [
+    {
+     "fromNm": 400,
+     "toNm": 690,
+     "peak": 0.95
+    }
+   ],
+   "approximate": false,
+   "source": null
+  },
+  {
+   "id": "poahuvir",
+   "brand": "Player One",
+   "name": "Anti-Halo UV/IR-Cut",
+   "series": null,
+   "kind": "broadband",
+   "channel": null,
+   "camera": "osc",
+   "bands": [
+    {
+     "fromNm": 400,
+     "toNm": 690,
+     "peak": 0.95
+    }
+   ],
+   "approximate": true,
+   "source": "https://player-one-astronomy.com/product/anti-halo-pro-dual-band-2-haoiii-filter/"
+  },
+  {
+   "id": "lpro",
+   "brand": "Optolong",
+   "name": "L-Pro",
+   "series": null,
+   "kind": "lightPollution",
+   "channel": null,
+   "camera": "osc",
+   "bands": [
+    {
+     "fromNm": 415,
+     "toNm": 427,
+     "peak": 0.89
+    },
+    {
+     "fromNm": 451,
+     "toNm": 530,
+     "peak": 0.96
+    },
+    {
+     "fromNm": 560,
+     "toNm": 568,
+     "peak": 0.93
+    },
+    {
+     "fromNm": 601,
+     "toNm": 610,
+     "peak": 0.93
+    },
+    {
+     "fromNm": 649,
+     "toNm": 706,
+     "peak": 0.97
+    }
+   ],
+   "approximate": false,
+   "source": "https://www.optolong.com/cms/document/detail/id/13.html"
+  },
+  {
+   "id": "lqef",
+   "brand": "Optolong",
+   "name": "L-QEF (L-Quad Enhance)",
+   "series": null,
+   "kind": "lightPollution",
+   "channel": null,
+   "camera": "osc",
+   "bands": [
+    {
+     "fromNm": 383,
+     "toNm": 419,
+     "peak": 0.92
+    },
+    {
+     "fromNm": 442,
+     "toNm": 528,
+     "peak": 0.96
+    },
+    {
+     "fromNm": 561,
+     "toNm": 568,
+     "peak": 0.93
+    },
+    {
+     "fromNm": 633,
+     "toNm": 709,
+     "peak": 0.96
+    }
+   ],
+   "approximate": false,
+   "source": "https://optolong.com/cms/document/detail/id/286.html"
+  },
+  {
+   "id": "triband",
+   "brand": "Antlia",
+   "name": "Triband RGB Ultra",
+   "series": null,
+   "kind": "lightPollution",
+   "channel": null,
+   "camera": "osc",
+   "bands": [
+    {
+     "fromNm": 446,
+     "toNm": 471,
+     "peak": 0.92
+    },
+    {
+     "fromNm": 490,
+     "toNm": 515,
+     "peak": 0.92
+    },
+    {
+     "fromNm": 650,
+     "toNm": 676,
+     "peak": 0.92
+    }
+   ],
+   "approximate": true,
+   "source": "https://www.cloudynights.com/articles/astro-gear-today/reviews/a-hybrid-light-pollution-filter-for-color-imaging-antlia-triband-rgb-ultra-review-r4632/"
+  },
+  {
+   "id": "triband2",
+   "brand": "Antlia",
+   "name": "Triband RGB Ultra II",
+   "series": null,
+   "kind": "lightPollution",
+   "channel": null,
+   "camera": "osc",
+   "bands": [
+    {
+     "fromNm": 446,
+     "toNm": 471,
+     "peak": 0.92
+    },
+    {
+     "fromNm": 483,
+     "toNm": 508,
+     "peak": 0.92
+    },
+    {
+     "fromNm": 650,
+     "toNm": 676,
+     "peak": 0.92
+    }
+   ],
+   "approximate": true,
+   "source": "https://starizona.com/products/antlia-triband-rgb-ultra-filter-2-mounted"
+  },
+  {
+   "id": "aquad",
+   "brand": "Antlia",
+   "name": "Quad Band",
+   "series": null,
+   "kind": "lightPollution",
+   "channel": null,
+   "camera": "osc",
+   "bands": [
+    {
+     "fromNm": 481,
+     "toNm": 508,
+     "peak": 0.92
+    },
+    {
+     "fromNm": 650,
+     "toNm": 678,
+     "peak": 0.92
+    }
+   ],
+   "approximate": true,
+   "source": "https://shop.antliafilter.com/products/antlia-quad-band-anti-light-pollution-filter-2-mounted"
+  },
+  {
+   "id": "uhce",
+   "brand": "Astronomik",
+   "name": "UHC-E",
+   "series": null,
+   "kind": "lightPollution",
+   "channel": null,
+   "camera": "osc",
+   "bands": [
+    {
+     "fromNm": 465,
+     "toNm": 530,
+     "peak": 0.94
+    },
+    {
+     "fromNm": 645,
+     "toNm": 700,
+     "peak": 0.94
+    }
+   ],
+   "approximate": true,
+   "source": "https://www.astronomik.com/en/Visual-Filters/UHC-E/"
+  },
+  {
+   "id": "ouhc",
+   "brand": "Optolong",
+   "name": "UHC",
+   "series": null,
+   "kind": "lightPollution",
+   "channel": null,
+   "camera": "osc",
+   "bands": [
+    {
+     "fromNm": 484,
+     "toNm": 506,
+     "peak": 0.95
+    },
+    {
+     "fromNm": 649,
+     "toNm": 676,
+     "peak": 0.95
+    }
+   ],
+   "approximate": true,
+   "source": "https://www.optolong.com/cms/document/detail/id/73.html"
+  },
+  {
+   "id": "buhcs",
+   "brand": "Baader",
+   "name": "UHC-S",
+   "series": null,
+   "kind": "lightPollution",
+   "channel": null,
+   "camera": "osc",
+   "bands": [
+    {
+     "fromNm": 470,
+     "toNm": 530,
+     "peak": 0.97
+    },
+    {
+     "fromNm": 640,
+     "toNm": 680,
+     "peak": 0.97
+    }
+   ],
+   "approximate": true,
+   "source": "http://www.company7.com/baader/options/uhc-s.html"
+  },
+  {
+   "id": "lextreme",
+   "brand": "Optolong",
+   "name": "L-eXtreme",
+   "series": null,
+   "kind": "multiband",
+   "channel": null,
+   "camera": "osc",
+   "bands": [
+    {
+     "fromNm": 497.2,
+     "toNm": 504.2,
+     "peak": 0.9
+    },
+    {
+     "fromNm": 652.8,
+     "toNm": 659.8,
+     "peak": 0.9
+    }
+   ],
+   "approximate": false,
+   "source": "https://agenaastro.com/optolong-l-extreme-dual-bandpass-light-pollution-reduction-imaging-filter-2.html"
+  },
+  {
+   "id": "lenhance",
+   "brand": "Optolong",
+   "name": "L-eNhance",
+   "series": null,
+   "kind": "multiband",
+   "channel": null,
+   "camera": "osc",
+   "bands": [
+    {
+     "fromNm": 484,
+     "toNm": 508,
+     "peak": 0.9
+    },
+    {
+     "fromNm": 651.3,
+     "toNm": 661.3,
+     "peak": 0.9
+    }
+   ],
+   "approximate": false,
+   "source": "https://ontariotelescope.com/blogs/news/navigating-optolong-filters-lenhance-lextreme-and-lultimate-for-astrophotography"
+  },
+  {
+   "id": "lultimate",
+   "brand": "Optolong",
+   "name": "L-Ultimate",
+   "series": null,
+   "kind": "multiband",
+   "channel": null,
+   "camera": "osc",
+   "bands": [
+    {
+     "fromNm": 499.2,
+     "toNm": 502.2,
+     "peak": 0.9
+    },
+    {
+     "fromNm": 654.8,
+     "toNm": 657.8,
+     "peak": 0.9
+    }
+   ],
+   "approximate": false,
+   "source": "https://agenaastro.com/optolong-l-ultimate-dual-bandpass-light-pollution-reduction-imaging-filter-1-25in.html"
+  },
+  {
+   "id": "lsynergy",
+   "brand": "Optolong",
+   "name": "L-Synergy",
+   "series": null,
+   "kind": "multiband",
+   "channel": null,
+   "camera": "osc",
+   "bands": [
+    {
+     "fromNm": 497.2,
+     "toNm": 504.2,
+     "peak": 0.9
+    },
+    {
+     "fromNm": 668.9,
+     "toNm": 675.9,
+     "peak": 0.9
+    }
+   ],
+   "approximate": false,
+   "source": "https://agenaastro.com/optolong-filters-l2-dual-combo-filter-set-l-extreme-l-synergy-filters-2-mounted.html"
+  },
+  {
+   "id": "alpt5",
+   "brand": "Antlia",
+   "name": "ALP-T 5 nm",
+   "series": null,
+   "kind": "multiband",
+   "channel": null,
+   "camera": "both",
+   "bands": [
+    {
+     "fromNm": 498.2,
+     "toNm": 503.2,
+     "peak": 0.82
+    },
+    {
+     "fromNm": 653.8,
+     "toNm": 658.8,
+     "peak": 0.88
+    }
+   ],
+   "approximate": false,
+   "source": "https://starizona.com/products/antlia-alp-t-high-speed-filter"
+  },
+  {
+   "id": "askard1",
+   "brand": "Askar",
+   "name": "ColorMagic D1",
+   "series": null,
+   "kind": "multiband",
+   "channel": null,
+   "camera": "osc",
+   "bands": [
+    {
+     "fromNm": 497.45,
+     "toNm": 503.95,
+     "peak": 0.85
+    },
+    {
+     "fromNm": 652.05,
+     "toNm": 660.55,
+     "peak": 0.85
+    }
+   ],
+   "approximate": false,
+   "source": "https://www.highpointscientific.com/askar-color-magic-super-d1-duo-narrowband-filter-oiii-and-ha-2-inch"
+  },
+  {
+   "id": "askard2",
+   "brand": "Askar",
+   "name": "ColorMagic D2",
+   "series": null,
+   "kind": "multiband",
+   "channel": null,
+   "camera": "osc",
+   "bands": [
+    {
+     "fromNm": 497.45,
+     "toNm": 503.95,
+     "peak": 0.85
+    },
+    {
+     "fromNm": 667.75,
+     "toNm": 676.25,
+     "peak": 0.85
+    }
+   ],
+   "approximate": false,
+   "source": "https://www.highpointscientific.com/askar-color-magic-super-d2-duo-narrowband-filter-oiii-and-sii-2-inch"
+  },
+  {
+   "id": "nbz2",
+   "brand": "IDAS",
+   "name": "NBZ-II",
+   "series": null,
+   "kind": "multiband",
+   "channel": null,
+   "camera": "osc",
+   "bands": [
+    {
+     "fromNm": 496.7,
+     "toNm": 504.7,
+     "peak": 0.9
+    },
+    {
+     "fromNm": 651.3,
+     "toNm": 661.3,
+     "peak": 0.9
+    }
+   ],
+   "approximate": false,
+   "source": "https://agenaastro.com/idas-nbz-ii-high-speed-imaging-filter-2-inch-mounted-m48.html"
+  },
+  {
+   "id": "stcduo",
+   "brand": "STC",
+   "name": "Astro Duo-NB",
+   "series": null,
+   "kind": "multiband",
+   "channel": null,
+   "camera": "osc",
+   "bands": [
+    {
+     "fromNm": 495.7,
+     "toNm": 505.7,
+     "peak": 0.85
+    },
+    {
+     "fromNm": 651.3,
+     "toNm": 661.3,
+     "peak": 0.85
+    }
+   ],
+   "approximate": true,
+   "source": "https://www.stcoptics.com/products/astro-duo-narrowband-duo-nb-filter"
+  },
+  {
+   "id": "zwoduo",
+   "brand": "ZWO",
+   "name": "Duo-Band",
+   "series": null,
+   "kind": "multiband",
+   "channel": null,
+   "camera": "osc",
+   "bands": [
+    {
+     "fromNm": 483.2,
+     "toNm": 518.2,
+     "peak": 0.9
+    },
+    {
+     "fromNm": 648.8,
+     "toNm": 663.8,
+     "peak": 0.9
+    }
+   ],
+   "approximate": false,
+   "source": "https://agenaastro.com/zwo-duo-band-narrowband-light-pollution-reduction-imaging-filter-2.html"
+  },
+  {
+   "id": "poahpro",
+   "brand": "Player One",
+   "name": "Anti-Halo PRO Dual-Band",
+   "series": null,
+   "kind": "multiband",
+   "channel": null,
+   "camera": "osc",
+   "bands": [
+    {
+     "fromNm": 499.1,
+     "toNm": 502.3,
+     "peak": 0.85
+    },
+    {
+     "fromNm": 654.45,
+     "toNm": 658.15,
+     "peak": 0.85
+    }
+   ],
+   "approximate": false,
+   "source": "https://player-one-astronomy.com/product/anti-halo-pro-dual-band-2-haoiii-filter/"
+  },
+  {
+   "id": "triad",
+   "brand": "Radian",
+   "name": "Triad Ultra",
+   "series": null,
+   "kind": "multiband",
+   "channel": null,
+   "camera": "osc",
+   "bands": [
+    {
+     "fromNm": 483.6,
+     "toNm": 488.6,
+     "peak": 0.79
+    },
+    {
+     "fromNm": 498.7,
+     "toNm": 502.7,
+     "peak": 0.97
+    },
+    {
+     "fromNm": 654.3,
+     "toNm": 658.3,
+     "peak": 0.87
+    },
+    {
+     "fromNm": 670.4,
+     "toNm": 674.4,
+     "peak": 0.9
+    }
+   ],
+   "approximate": false,
+   "source": "https://optcorp.com/products/radian-telescopes-2-inch-triad-ultra-filter"
+  },
+  {
+   "id": "lpara",
+   "brand": "Optolong",
+   "name": "L-Para",
+   "series": null,
+   "kind": "multiband",
+   "channel": null,
+   "camera": "osc",
+   "bands": [
+    {
+     "fromNm": 495.7,
+     "toNm": 505.7,
+     "peak": 0.85
+    },
+    {
+     "fromNm": 651.3,
+     "toNm": 661.3,
+     "peak": 0.85
+    }
+   ],
+   "approximate": false,
+   "source": "https://agenaastro.com/optolong-l-para-dual-band-oiii-10nm-h-a-10nm-filter-2-mounted.html"
+  },
+  {
+   "id": "alpt3",
+   "brand": "Antlia",
+   "name": "ALP-T 3 nm",
+   "series": null,
+   "kind": "multiband",
+   "channel": null,
+   "camera": "both",
+   "bands": [
+    {
+     "fromNm": 499.2,
+     "toNm": 502.2,
+     "peak": 0.85
+    },
+    {
+     "fromNm": 654.8,
+     "toNm": 657.8,
+     "peak": 0.88
+    }
+   ],
+   "approximate": true,
+   "source": "https://starizona.com/collections/antlia"
+  },
+  {
+   "id": "nbz",
+   "brand": "IDAS",
+   "name": "NBZ",
+   "series": null,
+   "kind": "multiband",
+   "channel": null,
+   "camera": "osc",
+   "bands": [
+    {
+     "fromNm": 495.7,
+     "toNm": 505.7,
+     "peak": 0.9
+    },
+    {
+     "fromNm": 651.3,
+     "toNm": 661.3,
+     "peak": 0.9
+    }
+   ],
+   "approximate": false,
+   "source": "https://optcorp.com/products/idas-nbz-nebula-booster-filter-52mm"
+  },
+  {
+   "id": "askarc1",
+   "brand": "Askar",
+   "name": "ColorMagic C1",
+   "series": null,
+   "kind": "multiband",
+   "channel": null,
+   "camera": "osc",
+   "bands": [
+    {
+     "fromNm": 483.2,
+     "toNm": 518.2,
+     "peak": 0.9
+    },
+    {
+     "fromNm": 649.1,
+     "toNm": 664.1,
+     "peak": 0.9
+    }
+   ],
+   "approximate": false,
+   "source": "https://www.highpointscientific.com/askar-c1-colourmagic-2-duo-band-filter-ha-and-oiii"
+  },
+  {
+   "id": "askarc2",
+   "brand": "Askar",
+   "name": "ColorMagic C2",
+   "series": null,
+   "kind": "multiband",
+   "channel": null,
+   "camera": "osc",
+   "bands": [
+    {
+     "fromNm": 483.2,
+     "toNm": 518.2,
+     "peak": 0.9
+    },
+    {
+     "fromNm": 664.5,
+     "toNm": 679.5,
+     "peak": 0.9
+    }
+   ],
+   "approximate": false,
+   "source": "https://www.highpointscientific.com/colour-magic-c-2-duo-band-filter-package"
+  },
+  {
+   "id": "sv220",
+   "brand": "SVBony",
+   "name": "SV220 7 nm",
+   "series": null,
+   "kind": "multiband",
+   "channel": null,
+   "camera": "osc",
+   "bands": [
+    {
+     "fromNm": 497.2,
+     "toNm": 504.2,
+     "peak": 0.9
+    },
+    {
+     "fromNm": 652.8,
+     "toNm": 659.8,
+     "peak": 0.94
+    }
+   ],
+   "approximate": false,
+   "source": "https://www.svbony.com/products/sv220-dual-band-7nm-nebula-filter"
+  },
+  {
+   "id": "sv220-3",
+   "brand": "SVBony",
+   "name": "SV220 3 nm",
+   "series": null,
+   "kind": "multiband",
+   "channel": null,
+   "camera": "osc",
+   "bands": [
+    {
+     "fromNm": 499.2,
+     "toNm": 502.2,
+     "peak": 0.85
+    },
+    {
+     "fromNm": 654.8,
+     "toNm": 657.8,
+     "peak": 0.88
+    }
+   ],
+   "approximate": true,
+   "source": "https://www.svbony.com/blog/review-of-svbony-sv220-3nm-filter"
+  },
+  {
+   "id": "sv220s",
+   "brand": "SVBony",
+   "name": "SV220 SII+OIII 7 nm",
+   "series": null,
+   "kind": "multiband",
+   "channel": null,
+   "camera": "osc",
+   "bands": [
+    {
+     "fromNm": 497.2,
+     "toNm": 504.2,
+     "peak": 0.9
+    },
+    {
+     "fromNm": 668.9,
+     "toNm": 675.9,
+     "peak": 0.9
+    }
+   ],
+   "approximate": true,
+   "source": "https://www.svbony.com/products/7nm-oiii-sii-narrowband-filter"
+  },
+  {
+   "id": "altair4",
+   "brand": "Altair",
+   "name": "DualBand Ultra 4 nm Hα+OIII",
+   "series": null,
+   "kind": "multiband",
+   "channel": null,
+   "camera": "osc",
+   "bands": [
+    {
+     "fromNm": 498.7,
+     "toNm": 502.7,
+     "peak": 0.89
+    },
+    {
+     "fromNm": 654.3,
+     "toNm": 658.3,
+     "peak": 0.92
+    }
+   ],
+   "approximate": false,
+   "source": "https://altairastro.com/altair-ha-oiii-dualband-ultra-4nm-certified-cmos-filter-2x22-w-test-report-11468-p.asp"
+  },
+  {
+   "id": "altair4s",
+   "brand": "Altair",
+   "name": "DualBand Ultra 4 nm SII+OIII",
+   "series": null,
+   "kind": "multiband",
+   "channel": null,
+   "camera": "osc",
+   "bands": [
+    {
+     "fromNm": 498.7,
+     "toNm": 502.7,
+     "peak": 0.89
+    },
+    {
+     "fromNm": 670.4,
+     "toNm": 674.4,
+     "peak": 0.9
+    }
+   ],
+   "approximate": true,
+   "source": "https://altairastro.com/altair-sii-oiii--dualband-ultra-4nm-certified-cmos-filter-2x22-w-test-report-13147-p.asp"
+  },
+  {
+   "id": "altair6s",
+   "brand": "Altair",
+   "name": "DualBand Ultra 6 nm SII+OIII",
+   "series": null,
+   "kind": "multiband",
+   "channel": null,
+   "camera": "osc",
+   "bands": [
+    {
+     "fromNm": 497.7,
+     "toNm": 503.7,
+     "peak": 0.9
+    },
+    {
+     "fromNm": 669.4,
+     "toNm": 675.4,
+     "peak": 0.9
+    }
+   ],
+   "approximate": true,
+   "source": null
+  },
+  {
+   "id": "askare2",
+   "brand": "Askar",
+   "name": "ColorMagic E2",
+   "series": null,
+   "kind": "multiband",
+   "channel": null,
+   "camera": "osc",
+   "bands": [
+    {
+     "fromNm": 498.85,
+     "toNm": 502.55,
+     "peak": 0.85
+    },
+    {
+     "fromNm": 670,
+     "toNm": 674,
+     "peak": 0.85
+    }
+   ],
+   "approximate": false,
+   "source": "https://www.firstlightoptics.com/narrowband/askar-colour-magic-e2-2-dual-narrow-band-filter-siioiii.html"
+  },
+  {
+   "id": "alpt3s",
+   "brand": "Antlia",
+   "name": "ALP-T 3 nm SII+OIII",
+   "series": null,
+   "kind": "multiband",
+   "channel": null,
+   "camera": "osc",
+   "bands": [
+    {
+     "fromNm": 499.2,
+     "toNm": 502.2,
+     "peak": 0.85
+    },
+    {
+     "fromNm": 670.9,
+     "toNm": 673.9,
+     "peak": 0.85
+    }
+   ],
+   "approximate": true,
+   "source": "https://starizona.com/collections/antlia"
+  },
+  {
+   "id": "alptsh",
+   "brand": "Antlia",
+   "name": "ALP-T 5 nm SII+Hβ",
+   "series": null,
+   "kind": "multiband",
+   "channel": null,
+   "camera": "osc",
+   "bands": [
+    {
+     "fromNm": 483.6,
+     "toNm": 488.6,
+     "peak": 0.85
+    },
+    {
+     "fromNm": 669.9,
+     "toNm": 674.9,
+     "peak": 0.85
+    }
+   ],
+   "approximate": true,
+   "source": "https://shop.antliafilter.com/products/antlia-alp-t-dual-band-5nm-sii-h-beta-filter-2-inch-mounted"
+  },
+  {
+   "id": "sv240",
+   "brand": "SVBony",
+   "name": "SV240",
+   "series": null,
+   "kind": "multiband",
+   "channel": null,
+   "camera": "osc",
+   "bands": [
+    {
+     "fromNm": 482,
+     "toNm": 502,
+     "peak": 0.9
+    },
+    {
+     "fromNm": 644.3,
+     "toNm": 668.3,
+     "peak": 0.95
+    }
+   ],
+   "approximate": true,
+   "source": "https://www.svbony.com/products/sv240-multi-narrowband-filter"
+  },
+  {
+   "id": "nb1",
+   "brand": "IDAS",
+   "name": "Nebula Booster NB1",
+   "series": null,
+   "kind": "multiband",
+   "channel": null,
+   "camera": "osc",
+   "bands": [
+    {
+     "fromNm": 483,
+     "toNm": 503,
+     "peak": 0.9
+    },
+    {
+     "fromNm": 641,
+     "toNm": 671,
+     "peak": 0.9
+    }
+   ],
+   "approximate": true,
+   "source": "https://idas.uno/space/en/IDAS/nb1.htm"
+  },
+  {
+   "id": "nb3",
+   "brand": "IDAS",
+   "name": "Nebula Booster NB3",
+   "series": null,
+   "kind": "multiband",
+   "channel": null,
+   "camera": "osc",
+   "bands": [
+    {
+     "fromNm": 490,
+     "toNm": 511,
+     "peak": 0.9
+    },
+    {
+     "fromNm": 662.5,
+     "toNm": 681.5,
+     "peak": 0.9
+    }
+   ],
+   "approximate": true,
+   "source": "https://cloudbreakoptics.com/products/nebula-booster-nb3"
+  },
+  {
+   "id": "seestar",
+   "brand": "ZWO",
+   "name": "Seestar LP (integrato)",
+   "series": null,
+   "kind": "multiband",
+   "channel": null,
+   "camera": "osc",
+   "bands": [
+    {
+     "fromNm": 485.7,
+     "toNm": 515.7,
+     "peak": 0.9
+    },
+    {
+     "fromNm": 646.3,
+     "toNm": 666.3,
+     "peak": 0.9
+    }
+   ],
+   "approximate": true,
+   "source": "https://www.seestar.com/blogs/tutorial/seestar-light-pollution-filter-guide"
+  },
+  {
+   "id": "duo7",
+   "brand": "Generico",
+   "name": "Dual-band 7 nm",
+   "series": null,
+   "kind": "multiband",
+   "channel": null,
+   "camera": "osc",
+   "bands": [
+    {
+     "fromNm": 497.2,
+     "toNm": 504.2,
+     "peak": 0.9
+    },
+    {
+     "fromNm": 652.8,
+     "toNm": 659.8,
+     "peak": 0.9
+    }
+   ],
+   "approximate": false,
+   "source": null
+  },
+  {
+   "id": "edge-SII",
+   "brand": "Antlia",
+   "name": "SII EDGE 4,5 nm",
+   "series": "Antlia EDGE",
+   "kind": "narrowband",
+   "channel": "SII",
+   "camera": "both",
+   "bands": [
+    {
+     "fromNm": 670.15,
+     "toNm": 674.65,
+     "peak": 0.9
+    }
+   ],
+   "approximate": true,
+   "source": null
+  },
+  {
+   "id": "sv227-OIII",
+   "brand": "SVBony",
+   "name": "OIII SV227 5 nm",
+   "series": "SVBony SV227",
+   "kind": "narrowband",
+   "channel": "OIII",
+   "camera": "both",
+   "bands": [
+    {
+     "fromNm": 498.2,
+     "toNm": 503.2,
+     "peak": 0.9
+    }
+   ],
+   "approximate": true,
+   "source": null
+  },
+  {
+   "id": "ant35-Ha",
+   "brand": "Antlia",
+   "name": "Hα 3,5 nm",
+   "series": "Antlia 3,5 nm",
+   "kind": "narrowband",
+   "channel": "Ha",
+   "camera": "both",
+   "bands": [
+    {
+     "fromNm": 654.55,
+     "toNm": 658.05,
+     "peak": 0.9
+    }
+   ],
+   "approximate": true,
+   "source": null
+  },
+  {
+   "id": "ant35-OIII",
+   "brand": "Antlia",
+   "name": "OIII 3,5 nm",
+   "series": "Antlia 3,5 nm",
+   "kind": "narrowband",
+   "channel": "OIII",
+   "camera": "both",
+   "bands": [
+    {
+     "fromNm": 498.95,
+     "toNm": 502.45,
+     "peak": 0.9
+    }
+   ],
+   "approximate": true,
+   "source": null
+  },
+  {
+   "id": "ant35-SII",
+   "brand": "Antlia",
+   "name": "SII 3,5 nm",
+   "series": "Antlia 3,5 nm",
+   "kind": "narrowband",
+   "channel": "SII",
+   "camera": "both",
+   "bands": [
+    {
+     "fromNm": 670.65,
+     "toNm": 674.15,
+     "peak": 0.9
+    }
+   ],
+   "approximate": true,
+   "source": null
+  },
+  {
+   "id": "sv227-SII",
+   "brand": "SVBony",
+   "name": "SII SV227 5 nm",
+   "series": "SVBony SV227",
+   "kind": "narrowband",
+   "channel": "SII",
+   "camera": "both",
+   "bands": [
+    {
+     "fromNm": 669.9,
+     "toNm": 674.9,
+     "peak": 0.9
+    }
+   ],
+   "approximate": true,
+   "source": null
+  },
+  {
+   "id": "L",
+   "brand": "Generico",
+   "name": "L",
+   "series": null,
+   "kind": "broadband",
+   "channel": "L",
+   "camera": "mono",
+   "bands": [
+    {
+     "fromNm": 400,
+     "toNm": 700,
+     "peak": 0.97
+    }
+   ],
+   "approximate": false,
+   "source": null
+  },
+  {
+   "id": "R",
+   "brand": "Generico",
+   "name": "R",
+   "series": null,
+   "kind": "broadband",
+   "channel": "R",
+   "camera": "mono",
+   "bands": [
+    {
+     "fromNm": 595,
+     "toNm": 700,
+     "peak": 0.95
+    }
+   ],
+   "approximate": false,
+   "source": null
+  },
+  {
+   "id": "G",
+   "brand": "Generico",
+   "name": "G",
+   "series": null,
+   "kind": "broadband",
+   "channel": "G",
+   "camera": "mono",
+   "bands": [
+    {
+     "fromNm": 500,
+     "toNm": 575,
+     "peak": 0.95
+    }
+   ],
+   "approximate": false,
+   "source": null
+  },
+  {
+   "id": "B",
+   "brand": "Generico",
+   "name": "B",
+   "series": null,
+   "kind": "broadband",
+   "channel": "B",
+   "camera": "mono",
+   "bands": [
+    {
+     "fromNm": 400,
+     "toNm": 500,
+     "peak": 0.95
+    }
+   ],
+   "approximate": false,
+   "source": null
+  },
+  {
+   "id": "bd65-Ha",
+   "brand": "Baader",
+   "name": "Hα CMOS 6,5 nm",
+   "series": "Baader CMOS 6,5 nm",
+   "kind": "narrowband",
+   "channel": "Ha",
+   "camera": "mono",
+   "bands": [
+    {
+     "fromNm": 653.05,
+     "toNm": 659.55,
+     "peak": 0.9
+    }
+   ],
+   "approximate": false,
+   "source": "https://www.highpointscientific.com/baader-6-5nm-narrowband-2-inch-cmos-optimized-filter-set-ha-oiii-sii-fcsetn-2"
+  },
+  {
+   "id": "bd65-OIII",
+   "brand": "Baader",
+   "name": "OIII CMOS 6,5 nm",
+   "series": "Baader CMOS 6,5 nm",
+   "kind": "narrowband",
+   "channel": "OIII",
+   "camera": "mono",
+   "bands": [
+    {
+     "fromNm": 497.45,
+     "toNm": 503.95,
+     "peak": 0.9
+    }
+   ],
+   "approximate": false,
+   "source": "https://www.highpointscientific.com/baader-6-5nm-narrowband-2-inch-cmos-optimized-filter-set-ha-oiii-sii-fcsetn-2"
+  },
+  {
+   "id": "bd65-SII",
+   "brand": "Baader",
+   "name": "SII CMOS 6,5 nm",
+   "series": "Baader CMOS 6,5 nm",
+   "kind": "narrowband",
+   "channel": "SII",
+   "camera": "mono",
+   "bands": [
+    {
+     "fromNm": 669.15,
+     "toNm": 675.65,
+     "peak": 0.9
+    }
+   ],
+   "approximate": false,
+   "source": "https://www.highpointscientific.com/baader-6-5nm-narrowband-2-inch-cmos-optimized-filter-set-ha-oiii-sii-fcsetn-2"
+  },
+  {
+   "id": "bdunb-Ha",
+   "brand": "Baader",
+   "name": "Hα Ultra-Narrowband 3,5/4 nm",
+   "series": "Baader Ultra-Narrowband 3,5/4 nm",
+   "kind": "narrowband",
+   "channel": "Ha",
+   "camera": "mono",
+   "bands": [
+    {
+     "fromNm": 654.55,
+     "toNm": 658.05,
+     "peak": 0.9
+    }
+   ],
+   "approximate": false,
+   "source": "https://www.baader-planetarium.com/en/baader-3.5--4nm-ultra-narrowband-filter-set-%E2%80%93-cmos-optimized-(h-alpha--o-iii--s-ii).html"
+  },
+  {
+   "id": "bdunb-OIII",
+   "brand": "Baader",
+   "name": "OIII Ultra-Narrowband 3,5/4 nm",
+   "series": "Baader Ultra-Narrowband 3,5/4 nm",
+   "kind": "narrowband",
+   "channel": "OIII",
+   "camera": "mono",
+   "bands": [
+    {
+     "fromNm": 498.7,
+     "toNm": 502.7,
+     "peak": 0.9
+    }
+   ],
+   "approximate": false,
+   "source": "https://www.baader-planetarium.com/en/baader-3.5--4nm-ultra-narrowband-filter-set-%E2%80%93-cmos-optimized-(h-alpha--o-iii--s-ii).html"
+  },
+  {
+   "id": "bdunb-SII",
+   "brand": "Baader",
+   "name": "SII Ultra-Narrowband 3,5/4 nm",
+   "series": "Baader Ultra-Narrowband 3,5/4 nm",
+   "kind": "narrowband",
+   "channel": "SII",
+   "camera": "mono",
+   "bands": [
+    {
+     "fromNm": 670.4,
+     "toNm": 674.4,
+     "peak": 0.9
+    }
+   ],
+   "approximate": false,
+   "source": "https://www.baader-planetarium.com/en/baader-3.5--4nm-ultra-narrowband-filter-set-%E2%80%93-cmos-optimized-(h-alpha--o-iii--s-ii).html"
+  },
+  {
+   "id": "ast6-Ha",
+   "brand": "Astronomik",
+   "name": "Hα 6 nm",
+   "series": "Astronomik 6 nm",
+   "kind": "narrowband",
+   "channel": "Ha",
+   "camera": "mono",
+   "bands": [
+    {
+     "fromNm": 653.3,
+     "toNm": 659.3,
+     "peak": 0.96
+    }
+   ],
+   "approximate": false,
+   "source": "https://www.astronomik.com/en/Narrowband-Filters/"
+  },
+  {
+   "id": "ast6-OIII",
+   "brand": "Astronomik",
+   "name": "OIII 6 nm",
+   "series": "Astronomik 6 nm",
+   "kind": "narrowband",
+   "channel": "OIII",
+   "camera": "mono",
+   "bands": [
+    {
+     "fromNm": 497.7,
+     "toNm": 503.7,
+     "peak": 0.93
+    }
+   ],
+   "approximate": false,
+   "source": "https://www.astronomik.com/en/Narrowband-Filters/"
+  },
+  {
+   "id": "ast6-SII",
+   "brand": "Astronomik",
+   "name": "SII 6 nm",
+   "series": "Astronomik 6 nm",
+   "kind": "narrowband",
+   "channel": "SII",
+   "camera": "mono",
+   "bands": [
+    {
+     "fromNm": 669.4,
+     "toNm": 675.4,
+     "peak": 0.94
+    }
+   ],
+   "approximate": false,
+   "source": "https://www.astronomik.com/en/Narrowband-Filters/"
+  },
+  {
+   "id": "ast12-Ha",
+   "brand": "Astronomik",
+   "name": "Hα 12 nm",
+   "series": "Astronomik 12 nm",
+   "kind": "narrowband",
+   "channel": "Ha",
+   "camera": "mono",
+   "bands": [
+    {
+     "fromNm": 650.3,
+     "toNm": 662.3,
+     "peak": 0.96
+    }
+   ],
+   "approximate": false,
+   "source": "https://www.astronomik.com/en/Narrowband-Filters/"
+  },
+  {
+   "id": "ast12-OIII",
+   "brand": "Astronomik",
+   "name": "OIII 12 nm",
+   "series": "Astronomik 12 nm",
+   "kind": "narrowband",
+   "channel": "OIII",
+   "camera": "mono",
+   "bands": [
+    {
+     "fromNm": 494.7,
+     "toNm": 506.7,
+     "peak": 0.93
+    }
+   ],
+   "approximate": false,
+   "source": "https://www.astronomik.com/en/Narrowband-Filters/"
+  },
+  {
+   "id": "ast12-SII",
+   "brand": "Astronomik",
+   "name": "SII 12 nm",
+   "series": "Astronomik 12 nm",
+   "kind": "narrowband",
+   "channel": "SII",
+   "camera": "mono",
+   "bands": [
+    {
+     "fromNm": 666.4,
+     "toNm": 678.4,
+     "peak": 0.94
+    }
+   ],
+   "approximate": false,
+   "source": "https://www.astronomik.com/en/Narrowband-Filters/"
+  },
+  {
+   "id": "chr3-Ha",
+   "brand": "Chroma",
+   "name": "Hα 3 nm",
+   "series": "Chroma 3 nm",
+   "kind": "narrowband",
+   "channel": "Ha",
+   "camera": "mono",
+   "bands": [
+    {
+     "fromNm": 654.8,
+     "toNm": 657.8,
+     "peak": 0.9
+    }
+   ],
+   "approximate": false,
+   "source": "https://www.chroma.com/products/filters/astronomy/narrowband/"
+  },
+  {
+   "id": "chr3-OIII",
+   "brand": "Chroma",
+   "name": "OIII 3 nm",
+   "series": "Chroma 3 nm",
+   "kind": "narrowband",
+   "channel": "OIII",
+   "camera": "mono",
+   "bands": [
+    {
+     "fromNm": 499.2,
+     "toNm": 502.2,
+     "peak": 0.9
+    }
+   ],
+   "approximate": false,
+   "source": "https://www.chroma.com/products/filters/astronomy/narrowband/"
+  },
+  {
+   "id": "chr3-SII",
+   "brand": "Chroma",
+   "name": "SII 3 nm",
+   "series": "Chroma 3 nm",
+   "kind": "narrowband",
+   "channel": "SII",
+   "camera": "mono",
+   "bands": [
+    {
+     "fromNm": 670.9,
+     "toNm": 673.9,
+     "peak": 0.9
+    }
+   ],
+   "approximate": false,
+   "source": "https://www.chroma.com/products/filters/astronomy/narrowband/"
+  },
+  {
+   "id": "chr5-Ha",
+   "brand": "Chroma",
+   "name": "Hα 5 nm",
+   "series": "Chroma 5 nm",
+   "kind": "narrowband",
+   "channel": "Ha",
+   "camera": "mono",
+   "bands": [
+    {
+     "fromNm": 653.8,
+     "toNm": 658.8,
+     "peak": 0.9
+    }
+   ],
+   "approximate": false,
+   "source": "https://www.chroma.com/products/filters/astronomy/narrowband/"
+  },
+  {
+   "id": "chr5-OIII",
+   "brand": "Chroma",
+   "name": "OIII 5 nm",
+   "series": "Chroma 5 nm",
+   "kind": "narrowband",
+   "channel": "OIII",
+   "camera": "mono",
+   "bands": [
+    {
+     "fromNm": 498.2,
+     "toNm": 503.2,
+     "peak": 0.9
+    }
+   ],
+   "approximate": false,
+   "source": "https://www.chroma.com/products/filters/astronomy/narrowband/"
+  },
+  {
+   "id": "chr5-SII",
+   "brand": "Chroma",
+   "name": "SII 5 nm",
+   "series": "Chroma 5 nm",
+   "kind": "narrowband",
+   "channel": "SII",
+   "camera": "mono",
+   "bands": [
+    {
+     "fromNm": 669.9,
+     "toNm": 674.9,
+     "peak": 0.9
+    }
+   ],
+   "approximate": false,
+   "source": "https://www.chroma.com/products/filters/astronomy/narrowband/"
+  },
+  {
+   "id": "ant3-Ha",
+   "brand": "Antlia",
+   "name": "Hα 3 nm Pro",
+   "series": "Antlia 3 nm Pro",
+   "kind": "narrowband",
+   "channel": "Ha",
+   "camera": "mono",
+   "bands": [
+    {
+     "fromNm": 654.8,
+     "toNm": 657.8,
+     "peak": 0.9
+    }
+   ],
+   "approximate": false,
+   "source": "https://starizona.com/collections/antlia"
+  },
+  {
+   "id": "ant3-OIII",
+   "brand": "Antlia",
+   "name": "OIII 3 nm Pro",
+   "series": "Antlia 3 nm Pro",
+   "kind": "narrowband",
+   "channel": "OIII",
+   "camera": "mono",
+   "bands": [
+    {
+     "fromNm": 499.2,
+     "toNm": 502.2,
+     "peak": 0.9
+    }
+   ],
+   "approximate": false,
+   "source": "https://starizona.com/collections/antlia"
+  },
+  {
+   "id": "ant3-SII",
+   "brand": "Antlia",
+   "name": "SII 3 nm Pro",
+   "series": "Antlia 3 nm Pro",
+   "kind": "narrowband",
+   "channel": "SII",
+   "camera": "mono",
+   "bands": [
+    {
+     "fromNm": 670.9,
+     "toNm": 673.9,
+     "peak": 0.9
+    }
+   ],
+   "approximate": false,
+   "source": "https://starizona.com/collections/antlia"
+  },
+  {
+   "id": "opt7-Ha",
+   "brand": "Optolong",
+   "name": "Hα 7 nm",
+   "series": "Optolong 7 nm",
+   "kind": "narrowband",
+   "channel": "Ha",
+   "camera": "mono",
+   "bands": [
+    {
+     "fromNm": 652.8,
+     "toNm": 659.8,
+     "peak": 0.9
+    }
+   ],
+   "approximate": false,
+   "source": "https://www.optolong.com/"
+  },
+  {
+   "id": "opt7-OIII",
+   "brand": "Optolong",
+   "name": "OIII 7 nm",
+   "series": "Optolong 7 nm",
+   "kind": "narrowband",
+   "channel": "OIII",
+   "camera": "mono",
+   "bands": [
+    {
+     "fromNm": 497.45,
+     "toNm": 503.95,
+     "peak": 0.9
+    }
+   ],
+   "approximate": false,
+   "source": "https://www.optolong.com/"
+  },
+  {
+   "id": "opt7-SII",
+   "brand": "Optolong",
+   "name": "SII 7 nm",
+   "series": "Optolong 7 nm",
+   "kind": "narrowband",
+   "channel": "SII",
+   "camera": "mono",
+   "bands": [
+    {
+     "fromNm": 669.15,
+     "toNm": 675.65,
+     "peak": 0.9
+    }
+   ],
+   "approximate": false,
+   "source": "https://www.optolong.com/"
+  },
+  {
+   "id": "opt3-Ha",
+   "brand": "Optolong",
+   "name": "Hα 3 nm",
+   "series": "Optolong 3 nm",
+   "kind": "narrowband",
+   "channel": "Ha",
+   "camera": "mono",
+   "bands": [
+    {
+     "fromNm": 654.8,
+     "toNm": 657.8,
+     "peak": 0.9
+    }
+   ],
+   "approximate": false,
+   "source": "https://www.optolong.com/"
+  },
+  {
+   "id": "opt3-OIII",
+   "brand": "Optolong",
+   "name": "OIII 3 nm",
+   "series": "Optolong 3 nm",
+   "kind": "narrowband",
+   "channel": "OIII",
+   "camera": "mono",
+   "bands": [
+    {
+     "fromNm": 499.2,
+     "toNm": 502.2,
+     "peak": 0.9
+    }
+   ],
+   "approximate": false,
+   "source": "https://www.optolong.com/"
+  },
+  {
+   "id": "opt3-SII",
+   "brand": "Optolong",
+   "name": "SII 3 nm",
+   "series": "Optolong 3 nm",
+   "kind": "narrowband",
+   "channel": "SII",
+   "camera": "mono",
+   "bands": [
+    {
+     "fromNm": 670.9,
+     "toNm": 673.9,
+     "peak": 0.9
+    }
+   ],
+   "approximate": false,
+   "source": "https://www.optolong.com/"
+  },
+  {
+   "id": "zwo7-Ha",
+   "brand": "ZWO",
+   "name": "Hα 7 nm",
+   "series": "ZWO 7 nm",
+   "kind": "narrowband",
+   "channel": "Ha",
+   "camera": "mono",
+   "bands": [
+    {
+     "fromNm": 652.8,
+     "toNm": 659.8,
+     "peak": 0.9
+    }
+   ],
+   "approximate": false,
+   "source": "https://www.zwoastro.com/"
+  },
+  {
+   "id": "zwo7-OIII",
+   "brand": "ZWO",
+   "name": "OIII 7 nm",
+   "series": "ZWO 7 nm",
+   "kind": "narrowband",
+   "channel": "OIII",
+   "camera": "mono",
+   "bands": [
+    {
+     "fromNm": 497.2,
+     "toNm": 504.2,
+     "peak": 0.9
+    }
+   ],
+   "approximate": false,
+   "source": "https://www.zwoastro.com/"
+  },
+  {
+   "id": "zwo7-SII",
+   "brand": "ZWO",
+   "name": "SII 7 nm",
+   "series": "ZWO 7 nm",
+   "kind": "narrowband",
+   "channel": "SII",
+   "camera": "mono",
+   "bands": [
+    {
+     "fromNm": 668.9,
+     "toNm": 675.9,
+     "peak": 0.9
+    }
+   ],
+   "approximate": false,
+   "source": "https://www.zwoastro.com/"
+  }
+ ]
+}
