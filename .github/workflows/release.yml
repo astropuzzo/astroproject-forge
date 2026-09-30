@@ -27,9 +27,25 @@ jobs:
       - name: Install Inno Setup 7
         shell: pwsh
         # The script uses Inno Setup 7 directives (SetupArchitecture, WizardStyle dynamic); runners ship 6.x.
+        env:
+          GH_TOKEN: ${{ github.token }}
         run: |
-          Invoke-WebRequest https://jrsoftware.org/download.php/is.exe -OutFile "$env:RUNNER_TEMP\is.exe"
-          Start-Process "$env:RUNNER_TEMP\is.exe" -ArgumentList '/VERYSILENT', '/SUPPRESSMSGBOXES', '/NORESTART', '/SP-', '/ALLUSERS' -Wait
+          # Installer from the official jrsoftware/issrc GitHub release, then jrsoftware.org, then winget.
+          $exe = "$env:RUNNER_TEMP\is.exe"
+          $sources = @()
+          try {
+            $sources += (gh api repos/jrsoftware/issrc/releases --jq '[.[] | select(.prerelease | not) | .assets[] | select(.name | test("^innosetup-7[0-9.]*\\.exe$")) | .browser_download_url][0]')
+          } catch { }
+          $sources += 'https://jrsoftware.org/download.php/is.exe'
+          $installed = $false
+          foreach ($url in $sources | Where-Object { $_ }) {
+            try {
+              Invoke-WebRequest $url -OutFile $exe -MaximumRetryCount 3 -RetryIntervalSec 5
+              Start-Process $exe -ArgumentList '/VERYSILENT', '/SUPPRESSMSGBOXES', '/NORESTART', '/SP-', '/ALLUSERS' -Wait
+              $installed = $true; "Installed from $url"; break
+            } catch { Write-Warning "$url : $_" }
+          }
+          if (-not $installed) { winget install --id JRSoftware.InnoSetup -e --silent --accept-package-agreements --accept-source-agreements }
           $iscc = Get-ChildItem 'C:\Program Files', 'C:\Program Files (x86)' -Filter ISCC.exe -Recurse -Depth 2 -ErrorAction SilentlyContinue |
             Where-Object { $_.VersionInfo.FileMajorPart -ge 7 } | Select-Object -First 1
           if (-not $iscc) { throw 'Inno Setup 7 ISCC.exe not found' }
