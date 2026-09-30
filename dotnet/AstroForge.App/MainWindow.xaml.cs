@@ -1,3 +1,4 @@
+using AstroForge.Core.IO;
 using System.IO;
 using System.Diagnostics;
 using System.Net.Http;
@@ -325,10 +326,7 @@ public partial class MainWindow : Window
     {
         if (_availableUpdate is null) return;
         var artifact = _availableUpdate.Installer;
-        var updatesDirectory = Path.Combine(
-            Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
-            "AstroProjectForge",
-            "Updates");
+        var updatesDirectory = AppDataPaths.Combine("Updates");
         var installerPath = Path.Combine(updatesDirectory, artifact.FileName);
         try
         {
