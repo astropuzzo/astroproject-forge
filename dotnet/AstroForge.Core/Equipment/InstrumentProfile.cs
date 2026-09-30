@@ -85,6 +85,15 @@ public sealed record InstrumentProfile(
         var pixelSource = user?.PixelUm is > 0 ? EquipmentSource.User : headerPixel is not null || pixel is null ? EquipmentSource.Header : EquipmentSource.Catalog;
         var width = Mode(ownFrames.Select(frame => frame.Width.Value)) ?? camera.Camera?.Width;
         var height = Mode(ownFrames.Select(frame => frame.Height.Value)) ?? camera.Camera?.Height;
+        // Resampled frames keep the sensor's physical size but not its pitch: read them at the native pitch.
+        if (user?.PixelUm is not > 0 && pixel is { } read && width is { } across && camera.Camera is { PixelUm: { } native, Width: { } nativeWidth }
+            && Math.Abs(read - native) / native > 0.1 && Math.Abs(read * across * binning - native * nativeWidth) / (native * nativeWidth) < 0.03)
+        {
+            pixel = native;
+            width = nativeWidth / Math.Max(1, binning);
+            height = camera.Camera.Height is { } nativeHeight ? nativeHeight / Math.Max(1, binning) : height;
+            pixelSource = EquipmentSource.Catalog;
+        }
 
         var filters = ownFrames
             .GroupBy(frame => WheelLabel(frame), StringComparer.OrdinalIgnoreCase)

@@ -32,6 +32,8 @@ public sealed partial class MainWindow : Window
     public const string ProjectFileExtension = ".astroforge";
     private readonly MainViewModel _viewModel = new();
     private readonly ObservatoryViewModel _observatory;
+    private readonly ShellViewModel _shell;
+    private readonly DispatcherTimer _toastTimer = new() { Interval = TimeSpan.FromMilliseconds(2800) };
     private readonly UpdateService _updateService = new();
     private ReleaseArtifact? _availableUpdate;
     private bool _availableUpdateSigned;
@@ -40,12 +42,12 @@ public sealed partial class MainWindow : Window
     private readonly DispatcherTimer _blinkTimer = new() { Interval = TimeSpan.FromMilliseconds(700) };
     private CancellationTokenSource? _qualityCancellation;
     private CancellationTokenSource? _previewCancellation;
-    private bool _sourcesVisible = true;
     private int _onboardingStep = 1;
     private int _blinkIndex = -1;
     private double _qualityZoom = 1;
     private bool _localizationPending;
-    private int _lastWorkspaceIndex;
+    private int _lastScreen;
+    private bool _playingNights;
 
     private static readonly FilePickerFileType AstroImages = new("Immagini astronomiche")
     {
@@ -58,9 +60,17 @@ public sealed partial class MainWindow : Window
         InitializeComponent();
         DataContext = _viewModel;
         _observatory = new ObservatoryViewModel(_viewModel);
-        OverviewInstrumentCard.DataContext = _observatory;
+        _shell = new ShellViewModel(_viewModel, _observatory);
+        TopBar.DataContext = _shell;
+        Constellation.DataContext = _shell;
+        OverviewScreen.DataContext = _shell;
         OverviewFilters.DataContext = _observatory;
         InstrumentPanel.DataContext = _observatory;
+        StatsNights.DataContext = _observatory;
+        PaletteHost.DataContext = _shell;
+        Constellation.StepInvoked += (_, step) => OpenStep(step);
+        NightSkyView.NightInvoked += (_, night) => _shell.NightIndex = night + 1;
+        _toastTimer.Tick += (_, _) => { _toastTimer.Stop(); Toast.IsVisible = false; };
         _observatory.Filters.CollectionChanged += (_, _) => ScheduleLocalization();
         _viewModel.UiLanguageChanged += (_, _) => { ScheduleLocalization(); Dispatcher.UIThread.Post(RefreshCalibrationVisuals); ScheduleDarkCoverage(); };
         _blinkTimer.Tick += BlinkTimer_Tick;
@@ -70,17 +80,17 @@ public sealed partial class MainWindow : Window
             else if (args.PropertyName == nameof(MainViewModel.ReducedMotion)) Motion.SetReduced(_viewModel.ReducedMotion);
             else if (args.PropertyName == nameof(MainViewModel.Analysis)) { RefreshCalibrationVisuals(); PreparePlanPreview(); ScheduleExportVisuals(); ScheduleDarkCoverage(); }
             else if (args.PropertyName is nameof(MainViewModel.ExportProgress) or nameof(MainViewModel.ExportState)) RefreshExportProgress();
+            else if (args.PropertyName == nameof(MainViewModel.Status)) ShowToast(_viewModel.Status);
+            else if (args.PropertyName is nameof(MainViewModel.Progress) or nameof(MainViewModel.IsScanning)) UpdateNextFill();
         };
         CalibrationMapView.CellActivated += CalibrationMap_CellActivated;
         _viewModel.PlannedTreeRoots.CollectionChanged += (_, _) => ScheduleExportVisuals();
         _viewModel.MasterOrganizerItems.CollectionChanged += (_, _) => ScheduleDarkCoverage();
-        SizeChanged += (_, args) => ApplyViewportWidth(args.NewSize.Width);
         KeyDown += Window_KeyDown;
         // Tunnel so the tour keys win over focus navigation in whatever control has focus.
         AddHandler(KeyDownEvent, Tour_KeyDown, Avalonia.Interactivity.RoutingStrategies.Tunnel);
         Opened += async (_, _) =>
         {
-            ApplyViewportWidth(ClientSize.Width);
             SelectDensity();
             ScheduleLocalization();
             PlayFirstLight();
@@ -92,12 +102,10 @@ public sealed partial class MainWindow : Window
         {
             _qualityCancellation?.Cancel();
             _previewCancellation?.Cancel();
-            if (WorkspaceGrid.ColumnDefinitions[0].ActualWidth >= 300) _viewModel.SourcePanelWidth = WorkspaceGrid.ColumnDefinitions[0].ActualWidth;
             if (AnalysisGrid.ColumnDefinitions[2].ActualWidth >= 280) _viewModel.InspectorPanelWidth = AnalysisGrid.ColumnDefinitions[2].ActualWidth;
             _viewModel.SaveState();
         };
         ApplyCommandLine();
-        ApplyNavigationLabels();
         UpdateInspectorLayout();
     }
 
@@ -109,17 +117,26 @@ public sealed partial class MainWindow : Window
     {
         try
         {
-            for (var index = 0; index < WorkspaceTabs.ItemCount; index++)
+            for (var index = 0; index < ScreenTabs.ItemCount; index++)
             {
-                WorkspaceTabs.SelectedIndex = index;
+                ScreenTabs.SelectedIndex = index;
                 await Task.Delay(250);
             }
+            for (var index = 0; index < SheetTabs.ItemCount; index++)
+            {
+                OpenSheet(index);
+                await Task.Delay(250);
+            }
+            CloseSheet();
+            OpenPalette();
+            await Task.Delay(150);
+            ClosePalette();
             SettingsPanel.IsVisible = true;
             await Task.Delay(250);
             SettingsPanel.IsVisible = false;
-            WorkspaceTabs.SelectedIndex = 0;
+            ScreenTabs.SelectedIndex = 0;
             await Dispatcher.UIThread.InvokeAsync(() => { }, DispatcherPriority.Background);
-            Console.WriteLine($"SMOKE TEST PASSED · {WorkspaceTabs.ItemCount} workspaces opened");
+            Console.WriteLine($"SMOKE TEST PASSED · {ScreenTabs.ItemCount} screens and {SheetTabs.ItemCount} panels opened");
             return 0;
         }
         catch (Exception exception)
@@ -129,16 +146,205 @@ public sealed partial class MainWindow : Window
         }
     }
 
-    private void ApplyNavigationLabels()
+    // ---- Screens, panels and the command palette ----
+
+    private static readonly string[] SheetEyebrows =
+        ["Passo 1 di 4 · Progetto", "Passo 2 di 4 · Risolvi", "Passo 3 di 4 · Esporta", "Passo 4 di 4 · PixInsight WBPP", "Strumenti · Statistiche", "Strumenti · Qualità dei frame", "Strumenti · Libreria Master", "Diagnostica"];
+    private const int ProjectSheet = 0, ResolveSheet = 1, ExportSheet = 2, WbppSheet = 3, StatisticsSheet = 4, QualitySheet = 5, MastersSheet = 6, LogSheet = 7;
+
+    private void OpenStep(int step)
     {
-        var tabs = WorkspaceTabs.Items.OfType<TabItem>().ToArray();
-        if (tabs.Length < 9) return;
-        var ordered = new[] { tabs[3], tabs[4], tabs[0], tabs[6], tabs[1], tabs[2], tabs[5], tabs[7], tabs[8] };
-        WorkspaceTabs.Items.Clear();
-        foreach (var tab in ordered) WorkspaceTabs.Items.Add(tab);
-        var labels = new[] { "Panoramica", "Strumento", "1  Progetto", "2  Risolvi", "3  Esporta", "4  WBPP", "Qualità", "Master", "Diagnostica" };
-        for (var index = 0; index < labels.Length; index++) ordered[index].Header = labels[index];
+        // With every calibration assigned, what is left to resolve is the filter wheel.
+        if (step == 1 && _viewModel.ReviewQueue.Count == 0 && _observatory.PendingCount > 0) { CloseSheet(); ScreenTabs.SelectedIndex = 1; return; }
+        OpenSheet(step switch { 0 => ProjectSheet, 1 => ResolveSheet, 2 => ExportSheet, _ => WbppSheet });
     }
+
+    private void OpenSheet(int index)
+    {
+        SettingsPanel.IsVisible = false;
+        ClosePalette();
+        SheetTabs.SelectedIndex = index;
+        SheetEyebrow.Text = CanvasText.T(SheetEyebrows[index]).ToUpperInvariant();
+        if (index == ExportSheet) PreparePlanPreview();
+        if (index == LogSheet) _viewModel.RefreshDiagnostics();
+        if (SheetHost.IsVisible) return;
+        SheetHost.IsVisible = true;
+        var shift = new TranslateTransform(48, 0);
+        Drawer.RenderTransform = shift;
+        Drawer.Opacity = 0;
+        SheetHost.Opacity = 0;
+        _ = Motion.Tween(this, TimeSpan.FromMilliseconds(420), Motion.EaseOutExpo, t =>
+        {
+            SheetHost.Opacity = Math.Min(1, t * 2);
+            Drawer.Opacity = t;
+            shift.X = 48 * (1 - t);
+        });
+        ScheduleLocalization();
+    }
+
+    private void CloseSheet()
+    {
+        if (!SheetHost.IsVisible) return;
+        SheetHost.IsVisible = false;
+        Drawer.RenderTransform = null;
+        Drawer.Opacity = 1;
+        SheetHost.Opacity = 1;
+    }
+
+    private void OpenPalette()
+    {
+        _shell.Query = "";
+        PaletteHost.IsVisible = true;
+        Dispatcher.UIThread.Post(() => PaletteQuery.Focus(), DispatcherPriority.Input);
+    }
+
+    private void ClosePalette() => PaletteHost.IsVisible = false;
+
+    private void RunCommand(CommandItem? command)
+    {
+        ClosePalette();
+        switch (command?.Id)
+        {
+            case "next": Next_Click(null, new RoutedEventArgs()); break;
+            case "overview": CloseSheet(); ScreenTabs.SelectedIndex = 0; break;
+            case "instrument": CloseSheet(); ScreenTabs.SelectedIndex = 1; break;
+            case "project": OpenSheet(ProjectSheet); break;
+            case "resolve": OpenSheet(ResolveSheet); break;
+            case "export": OpenSheet(ExportSheet); break;
+            case "wbpp": OpenSheet(WbppSheet); break;
+            case "stats": OpenSheet(StatisticsSheet); break;
+            case "quality": OpenSheet(QualitySheet); break;
+            case "masters": OpenSheet(MastersSheet); break;
+            case "log": OpenSheet(LogSheet); break;
+            case "analyze": if (_viewModel.CanAnalyzeProject) Analyze_Click(null, new RoutedEventArgs()); break;
+            case "addFolder": AddSources_Click(null, new RoutedEventArgs()); break;
+            case "new": NewProject_Click(null, new RoutedEventArgs()); break;
+            case "open": OpenProject_Click(null, new RoutedEventArgs()); break;
+            case "save": SaveProject_Click(null, new RoutedEventArgs()); break;
+            case "saveAs": SaveProjectAs_Click(null, new RoutedEventArgs()); break;
+            case "demo": OpenDemo_Click(null, new RoutedEventArgs()); break;
+            case "tour": StartTour(-1); break;
+            case "menu": CloseSheet(); SettingsPanel.IsVisible = true; break;
+            case "updates": CheckUpdates_Click(null, new RoutedEventArgs()); CloseSheet(); SettingsPanel.IsVisible = true; break;
+        }
+    }
+
+    private void OpenPalette_Click(object? sender, RoutedEventArgs e) => OpenPalette();
+    private void PaletteScrim_PointerPressed(object? sender, PointerPressedEventArgs e) => ClosePalette();
+    private void PaletteList_Tapped(object? sender, TappedEventArgs e) => RunCommand(PaletteList.SelectedItem as CommandItem);
+
+    private void PaletteQuery_KeyDown(object? sender, KeyEventArgs e)
+    {
+        var count = _shell.Commands.Count;
+        if (e.Key == Key.Down && count > 0) { _shell.CommandIndex = (_shell.CommandIndex + 1) % count; e.Handled = true; }
+        else if (e.Key == Key.Up && count > 0) { _shell.CommandIndex = (_shell.CommandIndex + count - 1) % count; e.Handled = true; }
+        else if (e.Key == Key.Enter) { RunCommand(_shell.Commands.ElementAtOrDefault(Math.Max(0, _shell.CommandIndex))); e.Handled = true; }
+        else if (e.Key == Key.Escape) { ClosePalette(); e.Handled = true; }
+    }
+
+    private void CloseSheet_Click(object? sender, RoutedEventArgs e) => CloseSheet();
+    private void SheetScrim_PointerPressed(object? sender, PointerPressedEventArgs e) => CloseSheet();
+    private void Drawer_PointerPressed(object? sender, PointerPressedEventArgs e) => e.Handled = true;
+    private void OpenStatistics_Click(object? sender, RoutedEventArgs e) => OpenSheet(StatisticsSheet);
+    private void OpenQuality_Click(object? sender, RoutedEventArgs e) => OpenSheet(QualitySheet);
+    private void OpenMasters_Click(object? sender, RoutedEventArgs e) => OpenSheet(MastersSheet);
+    private void OpenResolve_Click(object? sender, RoutedEventArgs e) => OpenSheet(ResolveSheet);
+
+    private void SheetTabs_SelectionChanged(object? sender, SelectionChangedEventArgs e)
+    {
+        if (e.Source != SheetTabs) return;
+        UpdateInspectorLayout();
+        if (IsLoaded) ScheduleLocalization();
+    }
+
+    /// <summary>The one button that always does the next thing the project needs.</summary>
+    private void Next_Click(object? sender, RoutedEventArgs e)
+    {
+        switch (_shell.NextKind)
+        {
+            case NextActionKind.AddSources: AddSources_Click(sender, e); break;
+            case NextActionKind.Analyze: Analyze_Click(sender, e); break;
+            case NextActionKind.ConfirmFilters: CloseSheet(); ScreenTabs.SelectedIndex = 1; break;
+            case NextActionKind.Resolve:
+                if (_viewModel.ReviewQueue.Count == 1 && _viewModel.ReviewQueue[0].CanAssignCandidate) { CloseSheet(); ScreenTabs.SelectedIndex = 0; PulseResolveCard(); }
+                else OpenSheet(ResolveSheet);
+                break;
+            case NextActionKind.Export or NextActionKind.Exporting: OpenSheet(ExportSheet); break;
+            case NextActionKind.OpenPixInsight: OpenWbppInstance_Click(sender, e); break;
+        }
+    }
+
+    private void PulseResolveCard()
+    {
+        var scale = new ScaleTransform(1, 1);
+        ResolveCard.RenderTransformOrigin = RelativePoint.Center;
+        ResolveCard.RenderTransform = scale;
+        _ = Motion.Tween(this, TimeSpan.FromMilliseconds(700), t => t, t =>
+        {
+            var bump = Math.Sin(t * Math.PI) * 0.025;
+            scale.ScaleX = scale.ScaleY = 1 + bump;
+        }).ContinueWith(_ => Dispatcher.UIThread.Post(() => ResolveCard.RenderTransform = null));
+    }
+
+    private void UpdateNextFill()
+    {
+        var width = NextButton.Bounds.Width + 40;
+        NextFill.Width = _viewModel.IsScanning ? width * Math.Clamp(_viewModel.Progress / 100, 0, 1) : 0;
+    }
+
+    private void UseCandidate(int index)
+    {
+        if (_shell.Choice is not { } item || index >= item.Candidates.Count) return;
+        item.SelectedCandidate = item.Candidates[index];
+        _viewModel.AssignReviewCandidate(item, ReviewAssignmentScope.Light);
+    }
+
+    private void UseFirstCandidate_Click(object? sender, RoutedEventArgs e) => UseCandidate(0);
+    private void UseSecondCandidate_Click(object? sender, RoutedEventArgs e) => UseCandidate(1);
+
+    private void ResolveImport_Click(object? sender, RoutedEventArgs e)
+    {
+        switch (_shell.Choice)
+        {
+            case { CanImportFlat: true }: AddSources_Click(sender, e); break;
+            case { CanAddMasterLibrary: true }: AddLibrary_Click(sender, e); break;
+            case { CanEditMetadata: true } item: _viewModel.SelectReviewItem(item); OpenSheet(ProjectSheet); break;
+            default: OpenSheet(ResolveSheet); break;
+        }
+    }
+
+    /// <summary>Space replays the nights stacking up one by one, as the mockup's play button.</summary>
+    private async void PlayNights_Click(object? sender, RoutedEventArgs e)
+    {
+        if (_playingNights || !_shell.HasNights) return;
+        _playingNights = true;
+        try
+        {
+            if (Motion.Reduced) { _shell.NightIndex = _shell.NightCount; return; }
+            var delay = Math.Clamp(2400 / _shell.NightCount, 90, 400);
+            for (var night = 1; night <= _shell.NightCount; night++)
+            {
+                _shell.NightIndex = night;
+                await Task.Delay(delay);
+            }
+        }
+        finally { _playingNights = false; }
+    }
+
+    private void ShowToast(string message)
+    {
+        if (string.IsNullOrWhiteSpace(message) || _viewModel.IsScanning || !IsLoaded) return;
+        ToastText.Text = message;
+        Toast.IsVisible = true;
+        _toastTimer.Stop();
+        _toastTimer.Start();
+    }
+
+    private void EditProfile_Click(object? sender, RoutedEventArgs e) => _observatory.BeginEdit();
+    private void ConfirmProfile_Click(object? sender, RoutedEventArgs e) => _observatory.ConfirmProfile();
+    private void ResetProfile_Click(object? sender, RoutedEventArgs e) => _observatory.ResetProfile();
+    private void CancelProfile_Click(object? sender, RoutedEventArgs e) => _observatory.IsEditing = false;
+    private void ApplyProfile_Click(object? sender, RoutedEventArgs e) => _observatory.ApplyEdit();
 
     private void ScheduleLocalization()
     {
@@ -171,9 +377,12 @@ public sealed partial class MainWindow : Window
 
     private async void Window_KeyDown(object? sender, KeyEventArgs e)
     {
-        if (e.Key == Key.Escape && SettingsPanel.IsVisible)
+        if (e.Key == Key.Escape)
         {
-            SettingsPanel.IsVisible = false;
+            if (PaletteHost.IsVisible) ClosePalette();
+            else if (SettingsPanel.IsVisible) SettingsPanel.IsVisible = false;
+            else if (SheetHost.IsVisible) CloseSheet();
+            else return;
             e.Handled = true;
             return;
         }
@@ -181,7 +390,7 @@ public sealed partial class MainWindow : Window
         if (e.Key == Key.F1)
         {
             if (e.KeyModifiers.HasFlag(KeyModifiers.Shift)) OpenUrl(GuideUrl);
-            else StartTour(WorkspaceTabs.SelectedIndex);
+            else StartTour(SheetHost.IsVisible ? -1 : ScreenTabs.SelectedIndex);
             e.Handled = true;
             return;
         }
@@ -189,7 +398,12 @@ public sealed partial class MainWindow : Window
         var control = e.KeyModifiers.HasFlag(KeyModifiers.Control);
         var shift = e.KeyModifiers.HasFlag(KeyModifiers.Shift);
         var alt = e.KeyModifiers.HasFlag(KeyModifiers.Alt);
-        if (control && e.Key == Key.O)
+        if (control && e.Key == Key.K)
+        {
+            if (PaletteHost.IsVisible) ClosePalette(); else OpenPalette();
+            e.Handled = true;
+        }
+        else if (control && e.Key == Key.O)
         {
             OpenProject_Click(sender, e);
             e.Handled = true;
@@ -214,25 +428,37 @@ public sealed partial class MainWindow : Window
             SettingsPanel.IsVisible = !SettingsPanel.IsVisible;
             e.Handled = true;
         }
-        else if (alt && e.Key >= Key.D1 && e.Key <= Key.D9)
+        else if (alt && e.Key is Key.D1 or Key.D2)
         {
-            WorkspaceTabs.SelectedIndex = (int)e.Key - (int)Key.D1;
+            CloseSheet();
+            ScreenTabs.SelectedIndex = e.Key == Key.D1 ? 0 : 1;
+            e.Handled = true;
+        }
+        else if (alt && e.Key >= Key.D3 && e.Key <= Key.D9)
+        {
+            OpenSheet((int)e.Key - (int)Key.D3);
+            e.Handled = true;
+        }
+        else if (e.Key == Key.Space && e.KeyModifiers == KeyModifiers.None && !SheetHost.IsVisible && !PaletteHost.IsVisible
+                 && ScreenTabs.SelectedIndex == 0 && FocusManager?.GetFocusedElement() is not (TextBox or Slider or Button or ComboBox or ListBoxItem))
+        {
+            PlayNights_Click(sender, e);
             e.Handled = true;
         }
     }
 
-    private void WorkspaceTabs_SelectionChanged(object? sender, SelectionChangedEventArgs e)
+    private void ScreenTabs_SelectionChanged(object? sender, SelectionChangedEventArgs e)
     {
-        UpdateInspectorLayout();
-        // Tab content is created on first visit, after the last translation pass.
+        if (e.Source != ScreenTabs) return;
+        // Screen content is created on first visit, after the last translation pass.
         if (IsLoaded) ScheduleLocalization();
-        if (Backdrop is null || e.Source != WorkspaceTabs || WorkspaceTabs.SelectedIndex < 0) return;
-        var index = WorkspaceTabs.SelectedIndex;
-        if (index != _lastWorkspaceIndex) Backdrop.Warp(index > _lastWorkspaceIndex ? 1 : -1);
-        _lastWorkspaceIndex = index;
+        if (Backdrop is null || ScreenTabs.SelectedIndex < 0) return;
+        var index = ScreenTabs.SelectedIndex;
+        if (index != _lastScreen) Backdrop.Warp(index > _lastScreen ? 1 : -1);
+        _lastScreen = index;
     }
 
-    private void OpenInstrument_Click(object? sender, RoutedEventArgs e) => WorkspaceTabs.SelectedItem = InstrumentTab;
+    private void OpenInstrument_Click(object? sender, RoutedEventArgs e) { CloseSheet(); ScreenTabs.SelectedIndex = 1; }
 
     private void ConfirmFilter_Click(object? sender, RoutedEventArgs e)
     {
@@ -247,7 +473,8 @@ public sealed partial class MainWindow : Window
     private static void InvalidateCanvasText(Visual root)
     {
         foreach (var visual in root.GetVisualDescendants())
-            if (visual is SpectrumBar or FieldOfViewView or NightsTimeline) visual.InvalidateVisual();
+            if (visual is SpectrumBar or FieldOfViewView or NightsTimeline or StepConstellation or NightSky or CalibrationRing or ResolvePaths or OpticalTrain or SamplingGauge or SensorFrame)
+                visual.InvalidateVisual();
     }
 
     /// <summary>
@@ -283,20 +510,6 @@ public sealed partial class MainWindow : Window
         if (AnalysisGrid is null) return;
         AnalysisGrid.ColumnDefinitions[1].Width = new GridLength(_viewModel.HasSelection ? 5 : 0);
         AnalysisGrid.ColumnDefinitions[2].Width = new GridLength(_viewModel.HasSelection ? _viewModel.InspectorPanelWidth : 0);
-    }
-
-    private void ApplyViewportWidth(double width)
-    {
-        RootLayout.Width = width;
-        WorkspaceGrid.Width = width;
-        HeaderGrid.Width = Math.Max(760, width - 36);
-        if (width < 1200 && _sourcesVisible)
-        {
-            _sourcesVisible = false;
-            SourcesPanel.IsVisible = false;
-            WorkspaceGrid.ColumnDefinitions[0].Width = new GridLength(0);
-            WorkspaceGrid.ColumnDefinitions[1].Width = new GridLength(0);
-        }
     }
 
     private void ApplyCommandLine()
@@ -359,14 +572,6 @@ public sealed partial class MainWindow : Window
     private void ClearAnalysisFilters_Click(object? sender, RoutedEventArgs e) { _viewModel.SearchText = ""; _viewModel.ShowIssuesOnly = false; }
     private void TreeMark_Click(object? sender, RoutedEventArgs e) => _viewModel.RefreshManualSelection();
 
-    private void ToggleSources_Click(object? sender, RoutedEventArgs e)
-    {
-        _sourcesVisible = !_sourcesVisible;
-        WorkspaceGrid.ColumnDefinitions[0].Width = _sourcesVisible ? new GridLength(_viewModel.SourcePanelWidth) : new GridLength(0);
-        WorkspaceGrid.ColumnDefinitions[1].Width = _sourcesVisible ? new GridLength(5) : new GridLength(0);
-        SourcesPanel.IsVisible = _sourcesVisible;
-    }
-
     private void ToggleSettings_Click(object? sender, RoutedEventArgs e) => SettingsPanel.IsVisible = !SettingsPanel.IsVisible;
     private void OpenOnboarding_Click(object? sender, RoutedEventArgs e)
     {
@@ -387,44 +592,51 @@ public sealed partial class MainWindow : Window
 
     private void StartTour_Click(object? sender, RoutedEventArgs e) { SettingsPanel.IsVisible = false; StartTour(-1); }
 
-    /// <summary>The tour across every workspace, each stop on the real control it explains.</summary>
-    private IReadOnlyList<TourStop> TourStops() =>
-    [
-        new(WorkspaceTabs.SelectedIndex < 0 ? 0 : WorkspaceTabs.SelectedIndex, () => _sourcesVisible ? SourcesPanel : null, "Sorgenti",
-            "Cartelle e file FITS/XISF da ASIAIR, N.I.N.A. o altri software. Accesso in sola lettura."),
-        new(0, () => AnalyzeButton, "Analisi",
-            "Legge gli header, ricostruisce le notti e abbina Flat, Dark e Bias a ogni Light. Ctrl+Invio."),
-        new(0, () => OverviewFilters, "Panoramica",
-            "Integrazione per filtro e per notte."),
-        new(1, () => InstrumentPanel, "Strumento",
-            "Camera, telescopio e ruota portafiltri da header. I filtri non riconosciuti si confermano una volta, per tutti i progetti."),
-        new(3, () => CalibrationMapView, "Calibrazioni",
-            "Una riga per gruppo di Light, una colonna per Flat, Dark e Bias. Le celle rosse sono da assegnare: selezionale per risolverle."),
-        new(4, () => ExportMapView, "Esportazione",
-            "Struttura della cartella di progetto. Avanzamento della copia per ramo."),
-        new(5, () => PipelineFlowView, "WBPP",
-            "Pipeline per filtro e Grouping Keywords da impostare."),
-        new(6, () => QualitySkyView, "Qualità",
-            "Un punto per sub: FWHM in ascissa, SNR in ordinata. In ambra i sospetti. Selezionane uno per l’anteprima."),
-        new(7, () => DarkCoverageView, "Copertura Dark",
-            "Master Dark disponibili e combinazioni richieste dai Light. In rosso le combinazioni senza Dark."),
-        new(WorkspaceTabs.SelectedIndex < 0 ? 0 : WorkspaceTabs.SelectedIndex, () => MenuButton, "Guida",
-            "F1 apre la guida della schermata corrente. Il progetto demo è nel Menu."),
-    ];
+    /// <summary>The tour: the four steps, the next action, then each card of the two screens on the real control.</summary>
+    private IReadOnlyList<TourStop> TourStops()
+    {
+        var current = Math.Max(0, ScreenTabs.SelectedIndex);
+        return
+        [
+            new(current, () => Constellation, "Quattro passi",
+                "Progetto, Risolvi, Esporta, PixInsight WBPP. Una stella si accende a passo completato. Clic per aprire il passo."),
+            new(current, () => NextButton, "Prossima azione",
+                "Il passo successivo del progetto, sempre nello stesso punto."),
+            new(0, () => StackCard, "Integrazione",
+                "Ore integrate notte per notte, SNR e rumore relativi alla prima notte. Spazio riproduce l’accumulo, HOO e SHO cambiano palette."),
+            new(0, () => OverviewFilters, "Filtri",
+                "Ore, Light, bande sullo spettro e quota calibrata per filtro."),
+            new(0, () => NightsCard, "Notti",
+                "Una riga per notte dalle 18 alle 6: un segno per posa, fase lunare, crepuscolo dal sito negli header."),
+            new(0, () => ResolveCard, "Da risolvere",
+                "La prima scelta aperta con il candidato consigliato. L’elenco completo è in Risolvi."),
+            new(1, () => FieldCard, "Campo inquadrato",
+                "Sensore in scala sul cielo, con e senza riduttore, e campionamento rispetto al seeing."),
+            new(1, () => WheelCard, "Ruota portafiltri",
+                "I filtri con nome non riconoscibile si confermano una volta per camera."),
+            new(1, () => ProfileCard, "Profilo strumento",
+                "Ottica, riduttore e pixel modificabili. Valgono per ogni progetto con questa camera."),
+            new(current, () => MenuButton, "Comandi",
+                "Ctrl K per tutti i comandi, F1 per il tour, il logo per il Menu. Il progetto demo è nel Menu."),
+        ];
+    }
 
-    /// <summary>Starts the tour: from the stop that explains <paramref name="tab"/>, or from the beginning when it is -1.</summary>
-    private void StartTour(int tab)
+    /// <summary>Starts the tour: from the first stop on <paramref name="screen"/>, or from the beginning when it is -1.</summary>
+    private void StartTour(int screen)
     {
         SettingsPanel.IsVisible = false;
+        CloseSheet();
+        ClosePalette();
         var stops = TourStops();
-        var from = tab < 0 ? 0 : Math.Max(0, stops.Select((stop, index) => (stop, index)).Skip(2).FirstOrDefault(pair => pair.stop.Tab == tab).index);
-        Tour.Start(stops, from, index => { if (index >= 0 && index < WorkspaceTabs.ItemCount) WorkspaceTabs.SelectedIndex = index; });
+        var from = screen <= 0 ? 0 : Math.Max(0, stops.Select((stop, index) => (stop, index)).Skip(2).FirstOrDefault(pair => pair.stop.Tab == screen).index);
+        Tour.Start(stops, from, index => { if (index >= 0 && index < ScreenTabs.ItemCount) ScreenTabs.SelectedIndex = index; });
     }
 
     /// <summary>Builds the Cygnus Loop demo in the app data folder, opens it as the current project, analyses it and starts the tour.</summary>
     private async void OpenDemo_Click(object? sender, RoutedEventArgs e)
     {
         SettingsPanel.IsVisible = false;
+        CloseSheet();
         if (_viewModel.ShowOnboarding) _viewModel.CompleteOnboarding();
         if (!await ConfirmProjectReplacementAsync(opening: true)) return;
         await RunAsync("AF-DEMO-001", async () =>
@@ -537,7 +749,7 @@ public sealed partial class MainWindow : Window
         else Close();
     }
 
-    private void OpenDiagnosticsTab_Click(object? sender, RoutedEventArgs e) { SettingsPanel.IsVisible = false; WorkspaceTabs.SelectedItem = DiagnosticsTab; _viewModel.RefreshDiagnostics(); }
+    private void OpenDiagnosticsTab_Click(object? sender, RoutedEventArgs e) => OpenSheet(LogSheet);
     private static void OpenUrl(string url) => Process.Start(new ProcessStartInfo(url) { UseShellExecute = true });
     private void OnboardingAddLibrary_Click(object? sender, RoutedEventArgs e) => AddLibrary_Click(sender, e);
     private void OnboardingAddSources_Click(object? sender, RoutedEventArgs e) => AddSources_Click(sender, e);
@@ -960,8 +1172,7 @@ public sealed partial class MainWindow : Window
     private void EditReviewMetadata_Click(object? sender, RoutedEventArgs e)
     {
         _viewModel.SelectReviewItem((sender as Control)?.DataContext as ReviewQueueItem);
-        WorkspaceTabs.SelectedItem = ProjectTab;
-        UpdateInspectorLayout();
+        OpenSheet(ProjectSheet);
     }
     private void AssignLight_Click(object? sender, RoutedEventArgs e) => _viewModel.AssignReviewCandidate((sender as Control)?.DataContext as ReviewQueueItem, ReviewAssignmentScope.Light);
     private void AssignNight_Click(object? sender, RoutedEventArgs e) => _viewModel.AssignReviewCandidate((sender as Control)?.DataContext as ReviewQueueItem, ReviewAssignmentScope.Night);

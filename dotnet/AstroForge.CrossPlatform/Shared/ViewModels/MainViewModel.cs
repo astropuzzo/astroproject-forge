@@ -265,6 +265,10 @@ public sealed class MainViewModel : BindableBase
     public string AnalysisPromptDetail => _awaitingReanalysis
         ? "Rianalizza per includere le sorgenti correnti."
         : "Legge gli header e raggruppa per filtro, notte e sessione.";
+    public bool NeedsReanalysis => _awaitingReanalysis;
+    public int AnalyzedFileCount => _frames.Count;
+    public long? PlannedBytes => _plan?.RequiredBytes;
+    public long? BytesToCopy => _exportPreflight?.BytesToCopy;
     public string AnalysisActionLabel => IsScanning ? "Analisi in corso…" : HasAnalysis || _awaitingReanalysis ? "Rianalizza" : "Analizza";
     public string RecoverySummary => _pendingRecovery is null
         ? "Nessun recupero necessario"
