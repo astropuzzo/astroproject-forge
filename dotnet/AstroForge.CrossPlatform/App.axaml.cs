@@ -11,7 +11,12 @@ public sealed partial class App : Application
     public override void OnFrameworkInitializationCompleted()
     {
         if (ApplicationLifetime is IClassicDesktopStyleApplicationLifetime desktop)
-            desktop.MainWindow = new MainWindow();
+        {
+            var window = new MainWindow();
+            desktop.MainWindow = window;
+            if (desktop.Args?.Contains(MainWindow.SmokeTestArgument) == true)
+                window.Opened += async (_, _) => desktop.Shutdown(await window.RunSmokeTestAsync());
+        }
         base.OnFrameworkInitializationCompleted();
     }
 }
