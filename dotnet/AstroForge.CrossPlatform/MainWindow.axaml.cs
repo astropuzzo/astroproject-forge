@@ -53,17 +53,18 @@ public sealed partial class MainWindow : Window
         OverviewFilters.DataContext = _observatory;
         InstrumentPanel.DataContext = _observatory;
         _observatory.Filters.CollectionChanged += (_, _) => ScheduleLocalization();
-        _viewModel.UiLanguageChanged += (_, _) => { ScheduleLocalization(); Dispatcher.UIThread.Post(RefreshCalibrationVisuals); };
+        _viewModel.UiLanguageChanged += (_, _) => { ScheduleLocalization(); Dispatcher.UIThread.Post(RefreshCalibrationVisuals); ScheduleDarkCoverage(); };
         _blinkTimer.Tick += BlinkTimer_Tick;
         _viewModel.PropertyChanged += (_, args) =>
         {
             if (args.PropertyName == nameof(MainViewModel.HasSelection)) UpdateInspectorLayout();
             else if (args.PropertyName == nameof(MainViewModel.ReducedMotion)) Motion.SetReduced(_viewModel.ReducedMotion);
-            else if (args.PropertyName == nameof(MainViewModel.Analysis)) { RefreshCalibrationVisuals(); PreparePlanPreview(); ScheduleExportVisuals(); }
+            else if (args.PropertyName == nameof(MainViewModel.Analysis)) { RefreshCalibrationVisuals(); PreparePlanPreview(); ScheduleExportVisuals(); ScheduleDarkCoverage(); }
             else if (args.PropertyName is nameof(MainViewModel.ExportProgress) or nameof(MainViewModel.ExportState)) RefreshExportProgress();
         };
         CalibrationMapView.CellActivated += CalibrationMap_CellActivated;
         _viewModel.PlannedTreeRoots.CollectionChanged += (_, _) => ScheduleExportVisuals();
+        _viewModel.MasterOrganizerItems.CollectionChanged += (_, _) => ScheduleDarkCoverage();
         SizeChanged += (_, args) => ApplyViewportWidth(args.NewSize.Width);
         KeyDown += Window_KeyDown;
         Opened += async (_, _) =>
@@ -676,6 +677,57 @@ public sealed partial class MainWindow : Window
             .Select(group => new PipelineStream(group.Key, ColourOf(group.First().Light), group.Count(), group.Sum(item => item.Light.ExposureSeconds.Value ?? 0)))
             .OrderByDescending(stream => stream.Colour.R - stream.Colour.B)
             .ToList();
+    }
+
+    private bool _darkCoverageQueued;
+
+    private void ScheduleDarkCoverage()
+    {
+        if (_darkCoverageQueued) return;
+        _darkCoverageQueued = true;
+        Dispatcher.UIThread.Post(() => { _darkCoverageQueued = false; RefreshDarkCoverage(); });
+    }
+
+    /// <summary>Lays the Dark masters on the shelf (library scan and project candidates) against the Lights that need one, per gain setting.</summary>
+    private void RefreshDarkCoverage()
+    {
+        var analysis = _viewModel.Analysis;
+        var culture = System.Globalization.CultureInfo.CurrentCulture;
+        var shelf = _viewModel.MasterOrganizerItems.Select(item => item.Frame)
+            .Concat(analysis?.Lights.SelectMany(item => item.Dark.Candidates.Concat(item.Bias.Candidates)).Select(candidate => candidate.Frame) ?? [])
+            .Where(frame => frame.Kind is FrameKind.Dark or FrameKind.Bias)
+            .DistinctBy(frame => frame.Path, StringComparer.OrdinalIgnoreCase)
+            .ToList();
+        static (double? Gain, double? Offset) Setting(FrameMetadata frame) => (frame.Gain.Value, frame.Offset.Value);
+        static double Slot(double? value, double step) => value is { } v ? Math.Round(v / step) * step : double.NaN;
+        var lights = analysis?.Lights ?? [];
+        var settings = shelf.Where(frame => frame.Kind == FrameKind.Dark).Select(Setting).Concat(lights.Select(item => Setting(item.Light))).Distinct()
+            .OrderBy(setting => setting.Gain ?? double.MaxValue).ThenBy(setting => setting.Offset ?? double.MaxValue).ToList();
+        var groups = new List<CoverageGroup>();
+        foreach (var setting in settings)
+        {
+            var masters = shelf.Where(frame => frame.Kind == FrameKind.Dark && Setting(frame) == setting && frame.ExposureSeconds.Value is not null && frame.EffectiveTemperatureC is not null)
+                .GroupBy(frame => (Exposure: Slot(frame.ExposureSeconds.Value, 0.001), Temperature: Slot(frame.EffectiveTemperatureC, 1)))
+                .ToDictionary(group => group.Key, group => group.Count());
+            var demand = lights.Where(item => Setting(item.Light) == setting && item.Light.ExposureSeconds.Value is not null && item.Light.EffectiveTemperatureC is not null)
+                .GroupBy(item => (Exposure: Slot(item.Light.ExposureSeconds.Value, 0.001), Temperature: Slot(item.Light.EffectiveTemperatureC, 1)))
+                .ToDictionary(group => group.Key, group => (Count: group.Count(), Covered: group.All(item => item.Dark.IsAccepted)));
+            var cells = masters.Keys.Union(demand.Keys)
+                .Select(key => new CoverageCell(key.Exposure, key.Temperature, masters.GetValueOrDefault(key), demand.TryGetValue(key, out var need) ? need.Count : 0, need.Covered))
+                .ToList();
+            if (cells.Count == 0) continue;
+            var title = setting.Gain is { } gain ? string.Format(culture, CanvasText.T("Gain {0}"), gain.ToString("0.##", culture)) : CanvasText.T("Gain sconosciuto");
+            if (setting.Offset is { } offset) title += " · " + string.Format(culture, CanvasText.T("Offset {0}"), offset.ToString("0.##", culture));
+            var bias = shelf.Count(frame => frame.Kind == FrameKind.Bias && Setting(frame) == setting);
+            groups.Add(new(title, cells, bias));
+        }
+        DarkCoverageView.Groups = groups;
+        var needed = groups.Sum(group => group.Cells.Count(cell => cell.Lights > 0));
+        var covered = groups.Sum(group => group.Cells.Count(cell => cell.Lights > 0 && cell.Covered));
+        var darkMasters = groups.Sum(group => group.Cells.Sum(cell => cell.Masters));
+        DarkCoverageSummary.Text = needed > 0
+            ? string.Format(culture, CanvasText.T("{0}/{1} combinazioni coperte"), covered, needed)
+            : darkMasters > 0 ? string.Format(culture, CanvasText.T("{0} Dark master"), darkMasters) : "";
     }
 
     private bool _exportVisualsQueued;
