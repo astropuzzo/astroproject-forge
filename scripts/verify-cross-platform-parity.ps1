@@ -20,8 +20,8 @@ if ($projectText -match 'AstroForge\.App[\\/]') { throw 'The Avalonia project mu
 if (Test-Path (Join-Path $root 'dotnet/AstroForge.App')) { throw 'The retired WPF project must not come back: the Avalonia app is the only UI.' }
 if (Test-Path (Join-Path $root 'dotnet/AstroForge.CrossPlatform/ViewModels/CrossPlatformViewModel.cs')) { throw 'Reduced preview ViewModel must not exist.' }
 
-# The statistics workspace is the Overview (Panoramica).
-$requiredWorkspaces = @('Analisi','Esporta','WBPP','Panoramica','Strumento','Qualità','Risolvi','Libreria Master','Log')
+# Two screens (Panoramica, Strumento) and the panels that open over them.
+$requiredWorkspaces = @('Progetto','Risolvi','Esporta','WBPP','Panoramica','Strumento','Statistiche','Qualità','Libreria Master','Log')
 $missing = @($requiredWorkspaces | Where-Object { $windowText -notmatch [regex]::Escape(('Header="{0}"' -f $_)) })
 if ($missing.Count -gt 0) { throw "Missing workspaces: $($missing -join ', ')" }
 

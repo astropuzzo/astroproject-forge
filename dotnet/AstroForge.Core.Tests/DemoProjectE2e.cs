@@ -130,8 +130,10 @@ internal static class DemoProjectE2e
         var instrument = InstrumentProfile.Build(frames);
         Assert(instrument is { CameraKey: "asi2600mm", Binning: 1 } && instrument.Telescope.Telescope?.Id == "fra400" && instrument.FocalMm == DemoDatasetGenerator.FocalLengthMm,
             "Profilo strumento del demo non ricostruito.");
-        Assert(instrument!.ImageScale is { } scale && Math.Abs(scale - 206.265 * 3.76 * 16 / DemoDatasetGenerator.FocalLengthMm) < 0.01, $"Scala immagine errata: {instrument.ImageScale}.");
-        Assert(instrument.FieldOfView is { } fov && Math.Abs(fov.Width - 4.72) < 0.02 && Math.Abs(fov.Height - 3.15) < 0.02, $"Campo inquadrato errato: {instrument.FieldOfView}.");
+        // The demo frames are downscaled 1/16: Forge reads them at the sensor's native pitch and size.
+        Assert(instrument!.ImageScale is { } scale && Math.Abs(scale - 206.265 * 3.76 / DemoDatasetGenerator.FocalLengthMm) < 0.01, $"Scala immagine errata: {instrument.ImageScale}.");
+        Assert(instrument.PixelSource == EquipmentSource.Catalog && instrument.PixelUm == 3.76, $"Passo pixel errato: {instrument.PixelUm}.");
+        Assert(instrument.FieldOfView is { } fov && Math.Abs(fov.Width - 4.80) < 0.02 && Math.Abs(fov.Height - 3.21) < 0.02, $"Campo inquadrato errato: {instrument.FieldOfView}.");
         Assert(instrument.Filters.Count == 3 && instrument.PendingConfirmations == 1 && instrument.Filters.Single(filter => filter.NeedsConfirmation).RawName == DemoDatasetGenerator.CustomFilterName,
             "Solo 'Filtro 3' deve restare da confermare.");
         Assert(instrument.Filters.Sum(filter => filter.Lights) == frames.Count(frame => frame.Kind == FrameKind.Light && !frame.IsMaster), "Conteggio Light per filtro errato.");

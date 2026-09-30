@@ -62,14 +62,34 @@ public sealed class FilterSlotRow : BindableBase
     public FilterChoice? Choice { get => _choice; set => Set(ref _choice, value); }
 }
 
-/// <summary>A filter's card on the overview: its hours, its light and how close it is to ready.</summary>
-public sealed record FilterCard(string Name, string Detail, string Integration, string Lights, string Status, bool Ready, double Percentage, IReadOnlyList<Core.Filters.FilterBand> Bands, IBrush Accent);
+/// <summary>A filter's card on the overview: its hours, its light and how much of it is calibrated.</summary>
+public sealed record FilterCard(string Name, string Detail, string Integration, string Lights, string Status, bool Ready, double Percentage, IReadOnlyList<Core.Filters.FilterBand> Bands, IBrush Accent)
+{
+    public string RawFilter { get; init; } = "";
+    public string Hours { get; init; } = "";
+    public double Calibrated { get; init; }
+    public string CalibratedText { get; init; } = "";
+    public string CalibratedDetail { get; init; } = "";
+    public bool NeedsConfirmation { get; init; }
+}
+
+/// <summary>A telescope in the profile picker: a catalogue entry, or the optics the headers name.</summary>
+public sealed record TelescopeChoice(string? Id, string Name, double? ApertureMm, double? FocalMm)
+{
+    public override string ToString() => Name;
+}
+
+/// <summary>A reducer option for the chosen optics; factor 1 means none.</summary>
+public sealed record ReducerChoice(double Factor, string Name)
+{
+    public override string ToString() => Name;
+}
 
 /// <summary>
 /// Avalonia-side state for the overview and instrument screens, derived from the shared MainViewModel
 /// so the WPF app is untouched.
 /// </summary>
-public sealed class ObservatoryViewModel : BindableBase
+public sealed partial class ObservatoryViewModel : BindableBase
 {
     private readonly MainViewModel _main;
     private IReadOnlyList<WheelSlot> _slots = [];
@@ -99,7 +119,7 @@ public sealed class ObservatoryViewModel : BindableBase
     public int SelectedSlot
     {
         get => _selectedSlot;
-        set { if (Set(ref _selectedSlot, value)) Raise(nameof(SelectedFilter)); }
+        set { if (Set(ref _selectedSlot, value)) { Raise(nameof(SelectedFilter)); RaiseSelectedFilterViews(); } }
     }
 
     public FilterSlotRow? SelectedFilter => SelectedSlot >= 0 && SelectedSlot < Filters.Count ? Filters[SelectedSlot] : null;
@@ -159,6 +179,7 @@ public sealed class ObservatoryViewModel : BindableBase
     private void Main_PropertyChanged(object? sender, PropertyChangedEventArgs e)
     {
         if (e.PropertyName is nameof(MainViewModel.Instrument) or nameof(MainViewModel.UiLanguage)) Rebuild();
+        else if (e.PropertyName is nameof(MainViewModel.Analysis)) RebuildOverview();
     }
 
     private void Rebuild()
@@ -175,25 +196,42 @@ public sealed class ObservatoryViewModel : BindableBase
                      nameof(PendingCount), nameof(HasPending), nameof(PendingText), nameof(WheelCaption), nameof(SelectedFilter)
                  })
             Raise(name);
+        RebuildInstrumentScreen();
         RebuildOverview();
     }
 
     private void RebuildOverview()
     {
         FilterCards.Clear();
+        var lights = _main.Analysis?.Lights ?? [];
         foreach (var row in _main.FilterStatistics)
         {
             var slot = Filters.FirstOrDefault(filter => string.Equals(filter.Filter.RawName, row.Filter, StringComparison.OrdinalIgnoreCase));
             var identity = slot?.Filter.Identity ?? FilterRecognizer.Recognize(row.Filter);
             var bands = slot?.Bands ?? SpectrumColors.BandsOf(identity);
             var name = identity.NeedsConfirmation ? row.Filter : identity.DisplayName;
+            var lines = slot?.Lines ?? string.Join(" + ", identity.Lines.Select(line => line.Name));
+            var width = identity.BandwidthNm is { } nm ? $"{nm.ToString("0.#", CultureInfo.CurrentCulture)} nm" : "";
             var detail = identity.NeedsConfirmation
-                ? (English ? "Filter to confirm in Instrument" : "Filtro da confermare in Strumento")
-                : string.Equals(FilterRecognizer.Normalize(name), FilterRecognizer.Normalize(row.Filter), StringComparison.OrdinalIgnoreCase) || name.Replace("α", "a") == row.Filter
-                    ? slot?.Lines ?? ""
-                    : $"«{row.Filter}» · {slot?.Lines}";
-            FilterCards.Add(new FilterCard(name, detail, row.Integration, $"{row.Lights} Light · {row.NightsLabel}", row.Status, row.Ready, row.Percentage,
-                bands, new SolidColorBrush(SpectrumColors.Glass(bands, identity.Kind))));
+                ? (English ? "to confirm" : "da confermare")
+                : string.Join(" · ", new[] { width, lines }.Where(part => part.Length > 0));
+            if (!identity.NeedsConfirmation && !string.Equals(FilterRecognizer.Normalize(name), FilterRecognizer.Normalize(row.Filter), StringComparison.OrdinalIgnoreCase) && name.Replace("α", "a") != row.Filter)
+                detail = $"«{row.Filter}» · {detail}";
+            var own = lights.Where(item => string.Equals(item.Light.FilterName.Value, row.Filter, StringComparison.OrdinalIgnoreCase)).ToList();
+            var calibrated = own.Count(item => item.Flat.IsAccepted && item.Dark.IsAccepted && item.Bias.IsAccepted);
+            var share = own.Count == 0 ? 0 : calibrated / (double)own.Count;
+            var open = own.Count - calibrated;
+            var hours = _main.NightStatistics.Where(night => string.Equals(night.Filter, row.Filter, StringComparison.OrdinalIgnoreCase)).Sum(night => night.Hours);
+            FilterCards.Add(new FilterCard(name, detail, row.Integration, $"{row.Lights} Light · {NightsLabel(row.Nights)}", row.Status, row.Ready, row.Percentage,
+                bands, new SolidColorBrush(SpectrumColors.Glass(bands, identity.Kind)))
+            {
+                RawFilter = row.Filter,
+                Hours = HoursLabel(hours),
+                Calibrated = share * 100,
+                CalibratedText = $"{share * 100:0} %",
+                CalibratedDetail = open == 0 ? (English ? "Calibration" : "Calibrazione") : English ? $"{open} Light to resolve" : $"{open} Light da risolvere",
+                NeedsConfirmation = identity.NeedsConfirmation
+            });
         }
 
         var colours = FilterCards.Zip(_main.FilterStatistics).ToDictionary(pair => pair.Second.Filter, pair => ((SolidColorBrush)pair.First.Accent).Color, StringComparer.OrdinalIgnoreCase);
@@ -205,6 +243,16 @@ public sealed class ObservatoryViewModel : BindableBase
                 .Select(filter => new NightSegment(colours.GetValueOrDefault(filter.Key, Color.Parse("#9DB8FF")), filter.Sum(row => row.Hours)))
                 .ToList()))
             .ToList();
+    }
+
+    private string NightsLabel(int nights) => nights == 1 ? (English ? "1 night" : "1 notte") : English ? $"{nights} nights" : $"{nights} notti";
+
+    /// <summary>Hours and minutes the way an imager says them: "40 h 30", "3 h", "45 min".</summary>
+    public static string HoursLabel(double hours)
+    {
+        var minutes = (int)Math.Round(hours * 60);
+        if (minutes < 60) return $"{minutes} min";
+        return minutes % 60 == 0 ? $"{minutes / 60} h" : $"{minutes / 60} h {minutes % 60:00}";
     }
 
     private string NightLabel(string night) =>

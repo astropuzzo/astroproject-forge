@@ -265,6 +265,10 @@ public sealed class MainViewModel : BindableBase
     public string AnalysisPromptDetail => _awaitingReanalysis
         ? "Rianalizza per includere le sorgenti correnti."
         : "Legge gli header e raggruppa per filtro, notte e sessione.";
+    public bool NeedsReanalysis => _awaitingReanalysis;
+    public int AnalyzedFileCount => _frames.Count;
+    public long? PlannedBytes => _plan?.RequiredBytes;
+    public long? BytesToCopy => _exportPreflight?.BytesToCopy;
     public string AnalysisActionLabel => IsScanning ? "Analisi in corso…" : HasAnalysis || _awaitingReanalysis ? "Rianalizza" : "Analizza";
     public string RecoverySummary => _pendingRecovery is null
         ? "Nessun recupero necessario"
@@ -2098,9 +2102,30 @@ public sealed class MainViewModel : BindableBase
         }
     }
 
+    public EquipmentOverride? EquipmentFor(string cameraKey) =>
+        _state.EquipmentProfiles.TryGetValue(cameraKey, out var equipment) ? equipment : null;
+
+    /// <summary>Remembers the real optics, reducer and pixel size of this camera's train, for this and every later project.</summary>
+    public void SetEquipment(string cameraKey, EquipmentOverride equipment)
+    {
+        if (equipment.IsEmpty) { ClearEquipment(cameraKey); return; }
+        if (EquipmentFor(cameraKey) == equipment) return;
+        _state.EquipmentProfiles[cameraKey] = equipment;
+        SaveState();
+        RefreshInstrument();
+    }
+
+    public void ClearEquipment(string cameraKey)
+    {
+        if (!_state.EquipmentProfiles.Remove(cameraKey)) return;
+        SaveState();
+        RefreshInstrument();
+    }
+
+    // Focal length and pixel size only feed the instrument profile (scale, field of view); calibration matching keeps using the headers.
     private void RefreshInstrument()
     {
-        Instrument = InstrumentProfile.Build(_frames, WheelProfileFor);
+        Instrument = InstrumentProfile.Build(_frames, WheelProfileFor, EquipmentFor);
         Raise(nameof(Instrument));
     }
 

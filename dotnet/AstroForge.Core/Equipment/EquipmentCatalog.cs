@@ -63,6 +63,14 @@ public sealed class EquipmentCatalog
     public CatalogCamera? FindCamera(string? id) => Cameras.FirstOrDefault(camera => string.Equals(camera.Id, id, StringComparison.OrdinalIgnoreCase));
     public CatalogTelescope? FindTelescope(string? id) => Telescopes.FirstOrDefault(telescope => string.Equals(telescope.Id, id, StringComparison.OrdinalIgnoreCase));
 
+    /// <summary>Reducers and flatteners that fit a telescope, including those listed under a twin entry with the same optics.</summary>
+    public IReadOnlyList<TelescopeReducer> ReducersFor(CatalogTelescope telescope) =>
+        Telescopes.Where(item => item.ApertureMm == telescope.ApertureMm && item.FocalMm == telescope.FocalMm)
+            .SelectMany(item => item.Reducers).DistinctBy(item => item.Factor).OrderBy(item => item.Factor).ToArray();
+
+    /// <summary>Telescopes for a picker, most used first.</summary>
+    public IEnumerable<CatalogTelescope> TelescopesByUse => Telescopes.OrderByDescending(item => item.Uses).ThenBy(item => item.Name, StringComparer.OrdinalIgnoreCase);
+
     public static EquipmentCatalog Parse(string json)
     {
         var document = JsonSerializer.Deserialize<CatalogDocument>(json, JsonOptions) ?? throw new InvalidDataException("Catalogo attrezzatura vuoto.");
