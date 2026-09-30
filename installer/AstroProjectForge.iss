@@ -233,19 +233,27 @@ begin
   Result := CompareText(ExpandConstant('{param:APFUPDATE|0}'), '1') = 0;
 end;
 
+// Inno Setup 7 dropped the DisableFsRedir argument of RegisterExtraCloseApplicationsResource.
+procedure RegisterCloseResource(const Path: String);
+begin
+#if Ver >= 0x07000000
+  RegisterExtraCloseApplicationsResource(Path);
+#else
+  RegisterExtraCloseApplicationsResource(False, Path);
+#endif
+end;
+
 procedure RegisterExtraCloseApplicationsResources();
 var
   Index: Integer;
 begin
   // A WPF-era AstroForge.App.exe in the target folder is deleted, not replaced, so it
   // must be registered explicitly for Restart Manager to close it first.
-  RegisterExtraCloseApplicationsResource(ExpandConstant('{app}\{#LegacyAppExeName}'));
+  RegisterCloseResource(ExpandConstant('{app}\{#LegacyAppExeName}'));
   for Index := 0 to GetArrayLength(LegacyInstallDirectories) - 1 do
   begin
-    RegisterExtraCloseApplicationsResource(
-      AddBackslash(LegacyInstallDirectories[Index]) + '{#LegacyAppExeName}');
-    RegisterExtraCloseApplicationsResource(
-      AddBackslash(LegacyInstallDirectories[Index]) + '{#MyAppExeName}');
+    RegisterCloseResource(AddBackslash(LegacyInstallDirectories[Index]) + '{#LegacyAppExeName}');
+    RegisterCloseResource(AddBackslash(LegacyInstallDirectories[Index]) + '{#MyAppExeName}');
   end;
 end;
 
