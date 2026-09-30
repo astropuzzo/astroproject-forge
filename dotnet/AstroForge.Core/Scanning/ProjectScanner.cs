@@ -1,4 +1,3 @@
-using System.Collections.Concurrent;
 using AstroForge.Core.Models;
 using AstroForge.Core.Parsing;
 using AstroForge.Core.Sessions;
@@ -20,48 +19,57 @@ public sealed class ProjectScanner
         CancellationToken cancellationToken = default,
         IHeaderCache? cache = null)
     {
-        var files = roots.SelectMany(Enumerate).Distinct(StringComparer.OrdinalIgnoreCase).ToArray();
-        var frames = new ConcurrentBag<FrameMetadata>();
+        // Enumeration already carries size and write time (on Windows for free from the directory listing): no stat per file.
+        var files = roots.SelectMany(Enumerate).DistinctBy(file => file.FullName, StringComparer.OrdinalIgnoreCase).ToArray();
+        var frames = new FrameMetadata[files.Length];
         var completed = 0;
         var cacheHits = 0;
         var parsedFiles = 0;
-        await Parallel.ForEachAsync(files, new ParallelOptions { MaxDegreeOfParallelism = Math.Max(2, Environment.ProcessorCount / 2), CancellationToken = cancellationToken }, async (path, token) =>
+        // Thousands of files would flood the UI thread with one report each: report about every 0.5%, always the last one.
+        var progressStep = Math.Max(1, files.Length / 200);
+        // Header reads are small and synchronous: the bounded parallel loop keeps a fixed number of workers busy without
+        // paying the async overhead per file.
+        await Parallel.ForEachAsync(Enumerable.Range(0, files.Length), new ParallelOptions { MaxDegreeOfParallelism = Math.Max(2, Environment.ProcessorCount / 2), CancellationToken = cancellationToken }, (index, token) =>
         {
+            var info = files[index];
+            var path = info.FullName;
             try
             {
-                var info = new FileInfo(path);
                 Dictionary<string, object?> headers;
                 if (cache?.TryGet(path, info.Length, info.LastWriteTimeUtc.Ticks, out headers!) == true)
                     Interlocked.Increment(ref cacheHits);
                 else
                 {
                     headers = path.EndsWith(".xisf", StringComparison.OrdinalIgnoreCase)
-                        ? await XisfHeaderReader.ReadAsync(path, token)
-                        : await FitsHeaderReader.ReadAsync(path, token);
+                        ? XisfHeaderReader.Read(path, token)
+                        : FitsHeaderReader.Read(path, token);
                     cache?.Put(path, info.Length, info.LastWriteTimeUtc.Ticks, headers);
                     Interlocked.Increment(ref parsedFiles);
                 }
-                frames.Add(FrameClassifier.Classify(path, headers, sessionSettings));
+                frames[index] = FrameClassifier.Classify(path, headers, sessionSettings);
             }
-            catch (Exception exception)
+            catch (Exception exception) when (exception is not OperationCanceledException)
             {
                 var frame = new FrameMetadata { Path = path, Kind = FrameKind.Unknown };
                 frame.Issues.Add(new("image.unreadable", IssueSeverity.Error, exception.Message));
-                frames.Add(frame);
+                frames[index] = frame;
             }
             var done = Interlocked.Increment(ref completed);
-            progress?.Report(new(done, files.Length, System.IO.Path.GetFileName(path)));
+            if (done % progressStep == 0 || done == files.Length)
+                progress?.Report(new(done, files.Length, info.Name));
+            return ValueTask.CompletedTask;
         });
         if (cache is not null) await cache.SaveAsync(cancellationToken);
         LastCacheHits = cacheHits;
         LastParsedFiles = parsedFiles;
-        return frames.OrderBy(frame => frame.Path, StringComparer.OrdinalIgnoreCase).ToArray();
+        Array.Sort(frames, (left, right) => StringComparer.OrdinalIgnoreCase.Compare(left.Path, right.Path));
+        return frames;
     }
 
-    private static IEnumerable<string> Enumerate(string root)
+    private static IEnumerable<FileInfo> Enumerate(string root)
     {
-        if (File.Exists(root) && Extensions.Contains(System.IO.Path.GetExtension(root).ToLowerInvariant())) return [System.IO.Path.GetFullPath(root)];
+        if (File.Exists(root) && Extensions.Contains(System.IO.Path.GetExtension(root).ToLowerInvariant())) return [new FileInfo(System.IO.Path.GetFullPath(root))];
         if (!Directory.Exists(root)) return [];
-        return Directory.EnumerateFiles(root, "*", SearchOption.AllDirectories).Where(path => Extensions.Contains(System.IO.Path.GetExtension(path).ToLowerInvariant()));
+        return new DirectoryInfo(root).EnumerateFiles("*", SearchOption.AllDirectories).Where(file => Extensions.Contains(file.Extension.ToLowerInvariant()));
     }
 }

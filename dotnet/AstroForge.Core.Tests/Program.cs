@@ -12,6 +12,11 @@ using System.IO.Compression;
 
 // dotnet run ... -- --astrobin-benchmark <astrobin-equipment.json>: how many real AstroBin filter names the recogniser places.
 if (args is ["--astrobin-benchmark", var astrobinList]) { FilterQa.Benchmark(astrobinList); return; }
+if (args.Contains("--benchmark"))
+{
+    await ScanBenchmark.RunAsync(ScanBenchmark.Full, print: true);
+    return;
+}
 
 Assert(PathIdentity.Comparer.Equals("Frame.fit", "frame.fit") == (OperatingSystem.IsWindows() || OperatingSystem.IsMacOS()), "La semantica dei path deve seguire il filesystem host.");
 var pathRoot = Path.Combine(Path.GetTempPath(), "AstroForge-PathRoot");
@@ -69,8 +74,12 @@ var priorityMatch = CalibrationMatcher.Find(lightBeforeMidnight, [lowerPriorityB
 Assert(priorityMatch.Selected?.Frame == bias100, "La libreria con priorità più alta deve vincere tra Master equivalenti.");
 Assert(preferredBias.Selected?.Frame == bias100, "La libreria configurata deve avere priorità su copie Master equivalenti trovate nelle sorgenti.");
 lightBeforeMidnight.ManualBiasPath.SetOverride(duplicateBias.Path);
-var manualMasterAnalysis = ProjectAnalyzer.Analyze(frames.Append(duplicateBias));
+var twinLight = Synthetic(FrameKind.Light, "twin-light.fits", "SIOIII", new DateTimeOffset(2026, 6, 15, 0, 31, 26, TimeSpan.Zero));
+twinLight.SetTemperatureC.SetOriginal(-10, MetadataSource.Header);
+var manualMasterAnalysis = ProjectAnalyzer.Analyze(frames.Append(duplicateBias).Append(twinLight));
 Assert(manualMasterAnalysis.Lights.Single(item => item.Light == lightBeforeMidnight).Bias.Selected?.Frame == duplicateBias, "L'assegnazione manuale Bias deve avere precedenza sull'automatismo.");
+var twinBias = manualMasterAnalysis.Lights.Single(item => item.Light == twinLight).Bias.Selected;
+Assert(twinBias?.Frame == bias100 && !twinBias.Reasons.Any(reason => reason.Contains("manualmente")), "L'assegnazione manuale di un Light non deve propagarsi ai Light con la stessa firma.");
 lightBeforeMidnight.ManualBiasPath.ClearOverride();
 var analysis = ProjectAnalyzer.Analyze(frames);
 Assert(analysis.Ready, $"Analisi calibrazioni non pronta: {analysis.UnresolvedCount} casi irrisolti.");
@@ -208,6 +217,7 @@ FilterQa.Run();
 EquipmentQa.Run();
 AppDataQa.Run();
 await DemoProjectE2e.RunAsync();
+await ScanBenchmark.RunAsync(ScanBenchmark.Smoke, print: true);
 Console.WriteLine("PASS: catalogo filtri, riconoscimento nomi e nomi file ASIAIR/N.I.N.A. verificati.");
 Console.WriteLine($"PASS: {frames.Count} fixture autosufficienti, Flat Epoch multisessione, link manuale, WBPP ed export riprendibile verificati.");
 
@@ -280,7 +290,8 @@ static void AssertThrows(Action action, string message)
 
 sealed class MemoryHeaderCache : IHeaderCache
 {
-    private readonly Dictionary<string, (long Length, long Ticks, Dictionary<string, object?> Headers)> _entries = new(StringComparer.OrdinalIgnoreCase);
+    // The scanner reads files in parallel: the cache must accept concurrent Put calls.
+    private readonly System.Collections.Concurrent.ConcurrentDictionary<string, (long Length, long Ticks, Dictionary<string, object?> Headers)> _entries = new(StringComparer.OrdinalIgnoreCase);
     public bool TryGet(string path, long length, long lastWriteUtcTicks, out Dictionary<string, object?> headers)
     {
         if (_entries.TryGetValue(path, out var entry) && entry.Length == length && entry.Ticks == lastWriteUtcTicks) { headers = new(entry.Headers); return true; }
