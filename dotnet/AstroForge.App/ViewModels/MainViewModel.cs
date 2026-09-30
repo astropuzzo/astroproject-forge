@@ -6,6 +6,8 @@ using System.Text;
 using System.Text.Json;
 using AstroForge.Core.Models;
 using AstroForge.Core.Analysis;
+using AstroForge.Core.Filters;
+using AstroForge.Core.Equipment;
 using AstroForge.Core.Diagnostics;
 using AstroForge.Core.Export;
 using AstroForge.Core.Matching;
@@ -549,6 +551,8 @@ public sealed class MainViewModel : BindableBase
         _frames = [];
         _analysis = null;
         _statistics = null;
+        Instrument = null;
+        Raise(nameof(Instrument));
         _undo.Clear();
         SelectedNode = null;
         TreeRoots.Clear();
@@ -1941,6 +1945,7 @@ public sealed class MainViewModel : BindableBase
             frame.Issues.RemoveAll(issue => issue.Code.StartsWith("calibration.", StringComparison.Ordinal));
 
         _analysis = ProjectAnalyzer.Analyze(_frames);
+        RefreshInstrument();
         BuildQualitySeriesDefinitions();
         RefreshStatistics();
         RefreshFlatSetOptions();
@@ -2057,6 +2062,38 @@ public sealed class MainViewModel : BindableBase
     private static string DisplayExposure(double? value) => value.HasValue ? $"{value.Value:0.###} s" : "—";
     private static string DisplayBinning(FrameMetadata frame) => frame.XBin.Value.HasValue && frame.YBin.Value.HasValue ? $"{frame.XBin.Value}×{frame.YBin.Value}" : "—";
 
+    /// <summary>The imaging train read from the project's headers, with the filters still waiting for a one-time confirmation.</summary>
+    public InstrumentProfile? Instrument { get; private set; }
+
+    public IReadOnlyDictionary<string, string>? WheelProfileFor(string cameraKey) =>
+        _state.FilterWheelProfiles.TryGetValue(cameraKey, out var profile) ? profile : null;
+
+    /// <summary>Remembers what a wheel slot really is for this camera, for this and every later project.</summary>
+    public void ConfirmFilter(string cameraKey, string rawName, string catalogId)
+    {
+        if (!_state.FilterWheelProfiles.TryGetValue(cameraKey, out var profile))
+            _state.FilterWheelProfiles[cameraKey] = profile = new(StringComparer.OrdinalIgnoreCase);
+        profile[FilterRecognizer.Normalize(rawName)] = catalogId;
+        SaveState();
+        RefreshInstrument();
+    }
+
+    public void ForgetFilter(string cameraKey, string rawName)
+    {
+        if (_state.FilterWheelProfiles.TryGetValue(cameraKey, out var profile) && profile.Remove(FilterRecognizer.Normalize(rawName)))
+        {
+            if (profile.Count == 0) _state.FilterWheelProfiles.Remove(cameraKey);
+            SaveState();
+            RefreshInstrument();
+        }
+    }
+
+    private void RefreshInstrument()
+    {
+        Instrument = InstrumentProfile.Build(_frames, WheelProfileFor);
+        Raise(nameof(Instrument));
+    }
+
     private void RefreshStatistics()
     {
         FilterStatistics.Clear();
@@ -2083,7 +2120,7 @@ public sealed class MainViewModel : BindableBase
         }
         foreach (var item in _statistics.Nights)
             NightStatistics.Add(new(item.Filter, item.ConfigurationSession, item.Night, FormatHours(item.ExposureSeconds), item.LightCount,
-                $"{item.AverageExposureSeconds:0.##} s", TemperatureRange(item.MinimumTemperatureC, item.MaximumTemperatureC), item.IssueCount));
+                $"{item.AverageExposureSeconds:0.##} s", TemperatureRange(item.MinimumTemperatureC, item.MaximumTemperatureC), item.IssueCount, item.ExposureHours));
         Raise(nameof(TotalIntegrationText)); Raise(nameof(StatisticsSummary)); Raise(nameof(StatisticsDateRange));
     }
 
@@ -2290,7 +2327,7 @@ public sealed record SessionStatsRow(string Filter, string Session, string Techn
 {
     public string NightsLabel => Nights == 1 ? "1 notte" : $"{Nights} notti";
 }
-public sealed record NightStatsRow(string Filter, string Session, string Night, string Integration, int Lights, string AverageExposure, string Temperature, int Issues);
+public sealed record NightStatsRow(string Filter, string Session, string Night, string Integration, int Lights, string AverageExposure, string Temperature, int Issues, double Hours = 0);
 public enum ReviewAssignmentScope { Light, Night, Configuration }
 public sealed class ReviewQueueItem(IReadOnlyList<FrameMetadata> targets, string calibration, MatchStatus status, string state, string reason, string suggestedAction, int candidateCount, string filter, string night, int priority, IReadOnlyList<ReviewCandidateOption> candidates, bool english)
 {

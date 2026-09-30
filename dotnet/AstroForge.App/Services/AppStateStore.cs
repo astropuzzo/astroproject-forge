@@ -37,6 +37,8 @@ public sealed class AppState
     public double InspectorPanelWidth { get; set; } = 390;
     public bool HasCompletedOnboarding { get; set; }
     public Dictionary<string, FrameOverrides> Overrides { get; set; } = new(PathIdentity.Comparer);
+    /// <summary>Confirmed filter names per camera: camera key → normalised wheel name → catalogue filter id. Asked once, reused by every project.</summary>
+    public Dictionary<string, Dictionary<string, string>> FilterWheelProfiles { get; set; } = new(StringComparer.OrdinalIgnoreCase);
 }
 
 public sealed class MasterLibraryDefinition
