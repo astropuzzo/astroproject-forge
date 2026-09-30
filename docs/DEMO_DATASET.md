@@ -31,8 +31,8 @@ Dettagli pensati per i tutorial:
 ```
 ASIAIR/Autorun/Light/Cygnus Loop/Light_Cygnus Loop_300.0s_Bin1_Ha_gain100_20260814-223104_-10.0C_0001.fit
 ASIAIR/Autorun/Flat/Flat_3.0s_Bin1_Ha_gain100_20260815-054821_-9.9C_0001.fit
-N.I.N.A./Cygnus Loop/2026-08-20/LIGHT/2026-08-20_22-39-24_Filtro 3_-10.10_300.00s_0004.fits
-N.I.N.A./Cygnus Loop/2026-08-20/FLAT/2026-08-21_05-40-02_Ha_-10.10_2.50s_0000.fits
+NINA/Cygnus Loop/2026-08-20/LIGHT/2026-08-20_22-39-24_Filtro 3_-10.10_300.00s_0004.fits
+NINA/Cygnus Loop/2026-08-20/FLAT/2026-08-21_05-40-02_Ha_-10.10_2.50s_0000.fits
 Libreria Master/ASI2600MM_G100_O50_-10C/masterDark_BIN-1_384x256_EXPOSURE-300.00s.fits
 Libreria Master/ASI2600MM_G100_O50_-10C/masterBias_BIN-1_384x256.fits
 ```

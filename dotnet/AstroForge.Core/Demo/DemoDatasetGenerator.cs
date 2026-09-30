@@ -92,7 +92,7 @@ public static class DemoDatasetGenerator
                 var local = ninaStart.AddSeconds(number * (LightExposureSeconds + 11));
                 var cloudy = filter == CustomFilterName && index == 2;
                 var name = string.Create(CultureInfo.InvariantCulture, $"{local:yyyy-MM-dd_HH-mm-ss}_{filter}_{-10.0 + Jitter(number + 80):0.00}_{LightExposureSeconds:0.00}s_{number:0000}.fits");
-                var frame = new DemoFrame(Path.Combine("N.I.N.A.", Target, NinaNight, "LIGHT", name), FrameKind.Light, DemoCaptureSoftware.Nina, filter, NinaNight, cloudy);
+                var frame = new DemoFrame(Path.Combine("NINA", Target, NinaNight, "LIGHT", name), FrameKind.Light, DemoCaptureSoftware.Nina, filter, NinaNight, cloudy);
                 var pixels = sky.Light(filter == CustomFilterName ? "SII" : filter, dither: 20 + number, fwhm: cloudy ? 4.4 : 3.0, transparency: cloudy ? 0.4 : 1, dust: 1);
                 await WriteFitsAsync(Path.Combine(root, frame.RelativePath), NinaHeaders("LIGHT", filter, local, LightExposureSeconds, number + 80), pixels, cancellationToken);
                 frames.Add(frame);
@@ -106,7 +106,7 @@ public static class DemoDatasetGenerator
             {
                 var local = ninaFlatStart.AddSeconds(number * 8);
                 var name = string.Create(CultureInfo.InvariantCulture, $"{local:yyyy-MM-dd_HH-mm-ss}_{filter}_{-10.0 + Jitter(number + 120):0.00}_{exposure:0.00}s_{number:0000}.fits");
-                var frame = new DemoFrame(Path.Combine("N.I.N.A.", Target, NinaNight, "FLAT", name), FrameKind.Flat, DemoCaptureSoftware.Nina, filter, NinaNight);
+                var frame = new DemoFrame(Path.Combine("NINA", Target, NinaNight, "FLAT", name), FrameKind.Flat, DemoCaptureSoftware.Nina, filter, NinaNight);
                 await WriteFitsAsync(Path.Combine(root, frame.RelativePath), NinaHeaders("FLAT", filter, local, exposure, number + 120), sky.Flat(20 + number, dust: 1), cancellationToken);
                 frames.Add(frame);
             }

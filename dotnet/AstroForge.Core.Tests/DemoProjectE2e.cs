@@ -8,6 +8,7 @@ using AstroForge.Core.Demo;
 using AstroForge.Core.Equipment;
 using AstroForge.Core.Export;
 using AstroForge.Core.Filters;
+using AstroForge.Core.IO;
 using AstroForge.Core.Matching;
 using AstroForge.Core.Models;
 using AstroForge.Core.Parsing;
@@ -34,7 +35,7 @@ internal static class DemoProjectE2e
 
     private static async Task RunCoreAsync()
     {
-        var root = Path.Combine(Path.GetTempPath(), $"AstroForge-Demo-{Guid.NewGuid():N}");
+        var root = Path.Combine(Path.GetTempPath(), $"AF-Demo-{Guid.NewGuid().ToString("N")[..8]}");
         try
         {
             var dataset = await DemoDatasetGenerator.GenerateAsync(Path.Combine(root, "dati"));
@@ -75,7 +76,7 @@ internal static class DemoProjectE2e
             string.Join(", ", frames.SelectMany(frame => frame.Issues.Where(issue => issue.Severity == IssueSeverity.Error).Select(issue => $"{frame.FileName}: {issue.Code}"))));
         foreach (var expected in dataset.Frames)
         {
-            var frame = frames.Single(item => Path.GetFullPath(item.Path) == dataset.PathOf(expected));
+            var frame = frames.Single(item => PathIdentity.Equals(item.Path, dataset.PathOf(expected)));
             Assert(frame.Kind == expected.Kind, $"{expected.RelativePath}: tipo {frame.Kind}, atteso {expected.Kind}.");
             Assert(frame.FilterName.Value == expected.FilterName, $"{expected.RelativePath}: filtro '{frame.FilterName.Value}', atteso '{expected.FilterName}'.");
             Assert(frame.SessionId.Value == expected.SessionId, $"{expected.RelativePath}: notte {frame.SessionId.Value}, attesa {expected.SessionId}.");
@@ -155,7 +156,7 @@ internal static class DemoProjectE2e
         var metrics = new List<QualityMetrics>();
         foreach (var item in analysis.Lights) metrics.Add(await FitsQualityAnalyzer.AnalyzeAsync(item.Light.Path));
         var cloudyPath = dataset.PathOf(dataset.Frames.Single(frame => frame.Cloudy));
-        var cloudy = metrics.Single(item => Path.GetFullPath(item.Path) == cloudyPath);
+        var cloudy = metrics.Single(item => PathIdentity.Equals(item.Path, cloudyPath));
         var clear = metrics.Where(item => item != cloudy).ToArray();
         Assert(clear.All(item => item.StarCount >= 20 && item.FwhmPixels is > 1.5 and < 4.5), "Le stelle dei Light sereni devono essere rilevate: " +
             string.Join(", ", clear.Select(item => $"{Path.GetFileName(item.Path)} {item.StarCount} stelle FWHM {item.FwhmPixels:0.0}")));
