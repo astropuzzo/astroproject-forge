@@ -18,7 +18,8 @@ $windowText = Get-Content -LiteralPath $window -Raw
 if ($projectText -notmatch 'AstroForge\.App\\ViewModels\\MainViewModel\.cs') { throw 'The cross-platform app is not linked to the shared MainViewModel.' }
 if (Test-Path (Join-Path $root 'dotnet/AstroForge.CrossPlatform/ViewModels/CrossPlatformViewModel.cs')) { throw 'Reduced preview ViewModel must not exist.' }
 
-$requiredWorkspaces = @('Analisi','Esporta','WBPP','Statistiche','Qualità','Risolvi','Libreria Master','Log')
+# The statistics workspace is the Overview (Panoramica) in the Avalonia shell; Strumento has no WPF counterpart.
+$requiredWorkspaces = @('Analisi','Esporta','WBPP','Panoramica','Strumento','Qualità','Risolvi','Libreria Master','Log')
 $missing = @($requiredWorkspaces | Where-Object { $windowText -notmatch [regex]::Escape(('Header="{0}"' -f $_)) })
 if ($missing.Count -gt 0) { throw "Missing workspaces: $($missing -join ', ')" }
 
@@ -30,7 +31,7 @@ $requiredModelCapabilities = @(
 $viewModelText = Get-Content -LiteralPath $viewModel -Raw
 $missing = @($requiredModelCapabilities | Where-Object { $viewModelText -notmatch [regex]::Escape($_) })
 if ($missing.Count -gt 0) { throw "Shared model capabilities missing: $($missing -join ', ')" }
-$requiredUiContracts = @('TreeRoots','PlannedTreeRoots','ApplyOverridesCommand','LinkFlatSetCommand','WbppKeywords','FilterStatistics','QualitySeries','ReviewQueue','MasterOrganizerItems','DiagnosticEvents','Export_Click','AnalyzeAllQuality_Click','NewProject_Click','SaveProjectAs_Click','RestoreRecovery_Click','ShowOnboarding','OnboardingNext_Click')
+$requiredUiContracts = @('TreeRoots','PlannedTreeRoots','ApplyOverridesCommand','LinkFlatSetCommand','WbppKeywords','FilterCards','SessionStatistics','QualitySeries','ReviewQueue','MasterOrganizerItems','DiagnosticEvents','Export_Click','AnalyzeAllQuality_Click','NewProject_Click','SaveProjectAs_Click','RestoreRecovery_Click','ShowOnboarding','OnboardingNext_Click')
 $missing = @($requiredUiContracts | Where-Object { $windowText -notmatch [regex]::Escape($_) })
 if ($missing.Count -gt 0) { throw "Capabilities not exposed by the cross-platform UI: $($missing -join ', ')" }
 
