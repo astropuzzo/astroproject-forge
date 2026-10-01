@@ -618,6 +618,30 @@
     <Setter Property="Transitions"><Transitions><BrushTransition Property="Background" Duration="0:0:0.3"/><BrushTransition Property="BorderBrush" Duration="0:0:0.3"/></Transitions></Setter>
   </Style>
   <Style Selector="Border.drop:pointerover"><Setter Property="Background" Value="#1C9DB8FF"/><Setter Property="BorderBrush" Value="{StaticResource AccentBrush}"/></Style>
+
+  <!-- Dragging something over the window: two large targets, the one under the pointer lights up. -->
+  <Style Selector="Border.dropZone">
+    <Setter Property="Background" Value="#F5080E1E"/>
+    <Setter Property="CornerRadius" Value="28"/>
+    <Setter Property="RenderTransform" Value="scale(0.985)"/>
+    <Setter Property="Transitions"><Transitions>
+      <TransformOperationsTransition Property="RenderTransform" Duration="0:0:0.22" Easing="CubicEaseOut"/>
+      <BrushTransition Property="Background" Duration="0:0:0.2"/>
+    </Transitions></Setter>
+  </Style>
+  <Style Selector="Border.dropZone > Grid"><Setter Property="Opacity" Value="0.5"/><Setter Property="Transitions"><Transitions><DoubleTransition Property="Opacity" Duration="0:0:0.2"/></Transitions></Setter></Style>
+  <Style Selector="Border.dropZone.over"><Setter Property="Background" Value="#F5102448"/><Setter Property="RenderTransform" Value="scale(1)"/></Style>
+  <Style Selector="Border.dropZone.over > Grid"><Setter Property="Opacity" Value="1"/></Style>
+  <Style Selector="Border.dropZone Rectangle.dash"><Setter Property="Stroke" Value="{StaticResource LineHiBrush}"/><Setter Property="Transitions"><Transitions><BrushTransition Property="Stroke" Duration="0:0:0.2"/></Transitions></Setter></Style>
+  <Style Selector="Border.dropZone.over Rectangle.dash"><Setter Property="Stroke" Value="{StaticResource AccentBrush}"/></Style>
+  <Style Selector="Border.dropZone.marching Rectangle.dash">
+    <Style.Animations>
+      <Animation Duration="0:0:1.2" IterationCount="INFINITE">
+        <KeyFrame Cue="0%"><Setter Property="StrokeDashOffset" Value="0"/></KeyFrame>
+        <KeyFrame Cue="100%"><Setter Property="StrokeDashOffset" Value="-14"/></KeyFrame>
+      </Animation>
+    </Style.Animations>
+  </Style>
   <Style Selector="Button.link">
     <Setter Property="Background" Value="Transparent"/>
     <Setter Property="BorderThickness" Value="0"/>

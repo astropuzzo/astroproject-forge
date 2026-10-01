@@ -104,7 +104,8 @@
                     <StackPanel VerticalAlignment="Center" HorizontalAlignment="Center" Spacing="12">
                       <Path Data="M12 3 V15 M7 10 L12 15 L17 10 M4 19 H20" Stroke="{StaticResource AccentBrush}" StrokeThickness="2" Width="30" Height="30" Stretch="Uniform" StrokeLineCap="Round" StrokeJoin="Round" HorizontalAlignment="Center"/>
                       <Button Content="+ Aggiungi Master Library" Classes="primary" Click="AddLibrary_Click" HorizontalAlignment="Center" ToolTip.Tip="Scegli la cartella con i Master Dark e Bias"/>
-                      <TextBlock Text="Non ce l’hai? Salta: la aggiungi quando vuoi." Classes="muted" HorizontalAlignment="Center"/>
+                      <TextBlock Text="o trascina qui la cartella" Classes="muted" HorizontalAlignment="Center"/>
+                      <TextBlock Text="Non ce l’hai? Salta: la aggiungi quando vuoi." Classes="muted" HorizontalAlignment="Center" Opacity="0.7"/>
                     </StackPanel>
                   </Border>
                   <StackPanel Grid.Row="2" Spacing="9" IsVisible="{Binding HasLibraries}">
@@ -145,6 +146,7 @@
                         <Button Content="+ Importa cartella" Classes="primary" Click="AddSources_Click" ToolTip.Tip="Importa ricorsivamente FITS e XISF"/>
                         <Button Content="+ Singoli file" Click="AddFiles_Click"/>
                       </StackPanel>
+                      <TextBlock Text="o trascina qui cartelle e file" Classes="muted" HorizontalAlignment="Center"/>
                       <Button Content="Prova con il progetto demo" Classes="link" Click="OpenDemo_Click" HorizontalAlignment="Center" ToolTip.Tip="Due notti di FITS sintetici con Flat e Master"/>
                     </StackPanel>
                   </Border>
@@ -694,5 +696,35 @@
   </Border>
   <local:GuidedTour x:Name="Tour"/>
   <local:FirstLightOverlay x:Name="FirstLight" IsVisible="False"/>
+
+  <!-- Dragging folders or files over the window: left is the Master Library, right the captures. Pointer-transparent, so the window keeps receiving the drag. -->
+  <Grid x:Name="DropOverlay" IsVisible="False" IsHitTestVisible="False" Opacity="0" ZIndex="50" Background="{StaticResource ScrimBrush}">
+    <Grid.Transitions><Transitions><DoubleTransition Property="Opacity" Duration="0:0:0.18"/></Transitions></Grid.Transitions>
+    <Grid ColumnDefinitions="*,*" ColumnSpacing="26" Margin="44,56,44,76" MaxWidth="1560">
+      <Border x:Name="DropLibraryZone" Classes="dropZone" ClipToBounds="True">
+        <Grid>
+          <Rectangle Classes="dash" RadiusX="28" RadiusY="28" StrokeThickness="2" StrokeDashArray="5,5" Margin="1"/>
+          <StackPanel VerticalAlignment="Center" HorizontalAlignment="Center" Spacing="12" Margin="30">
+            <Path Data="M12 3 V15 M7 10 L12 15 L17 10 M4 19 H20" Stroke="{StaticResource AccentBrush}" StrokeThickness="1.8" Width="46" Height="46" Stretch="Uniform" StrokeLineCap="Round" StrokeJoin="Round" HorizontalAlignment="Center"/>
+            <TextBlock Text="LIBRERIA MASTER" Classes="eyebrow accent" HorizontalAlignment="Center"/>
+            <TextBlock Text="Dark e Bias" Classes="pageTitle" HorizontalAlignment="Center"/>
+            <TextBlock Text="Rilascia la cartella dei tuoi Master" Classes="serif note" HorizontalAlignment="Center" TextAlignment="Center" TextWrapping="Wrap"/>
+          </StackPanel>
+        </Grid>
+      </Border>
+      <Border x:Name="DropCapturesZone" Grid.Column="1" Classes="dropZone" ClipToBounds="True">
+        <Grid>
+          <Rectangle Classes="dash" RadiusX="28" RadiusY="28" StrokeThickness="2" StrokeDashArray="5,5" Margin="1"/>
+          <StackPanel VerticalAlignment="Center" HorizontalAlignment="Center" Spacing="12" Margin="30">
+            <Path Data="M3 7 H9 L11 9 H21 V19 H3 Z" Stroke="{StaticResource AccentBrush}" StrokeThickness="1.8" Width="46" Height="46" Stretch="Uniform" StrokeLineCap="Round" StrokeJoin="Round" HorizontalAlignment="Center"/>
+            <TextBlock Text="ACQUISIZIONI" Classes="eyebrow accent" HorizontalAlignment="Center"/>
+            <TextBlock Text="Light e Flat" Classes="pageTitle" HorizontalAlignment="Center"/>
+            <TextBlock Text="Rilascia cartelle o file FITS e XISF" Classes="serif note" HorizontalAlignment="Center" TextAlignment="Center" TextWrapping="Wrap"/>
+          </StackPanel>
+        </Grid>
+      </Border>
+    </Grid>
+    <TextBlock Text="Gli originali non vengono mai modificati" Classes="muted" HorizontalAlignment="Center" VerticalAlignment="Bottom" Margin="0,0,0,34"/>
+  </Grid>
   </Panel>
 </Window>

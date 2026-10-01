@@ -13,6 +13,8 @@ Nella pagina **Importa** trovi due schede:
 - **Libreria Master**: collega una volta sola una o più cartelle con Master Dark e Master Bias. Restano salvate per ogni progetto. L’app cerca la combinazione corretta usando camera, dimensioni, binning, Gain, Offset, temperatura, readout ed esposizione. Se non hai Dark o Bias puoi saltare questo passaggio.
 - **Acquisizioni**: aggiungi cartelle o singoli file FITS/XISF. I file possono provenire da N.I.N.A., ASIAIR, SGP, Voyager, SharpCap o qualsiasi software che scriva metadati utili negli header.
 
+**Trascina e rilascia.** Puoi anche trascinare cartelle e file dal tuo gestore di file su qualsiasi punto della finestra, in qualunque passo. Compaiono due zone: a sinistra la Libreria Master, a destra le acquisizioni; rilascia su quella che ti serve. Un singolo Master trascinato sulla Libreria collega la cartella in cui si trova. Ciò che non è FITS o XISF viene lasciato fuori e un messaggio ti dice cosa è entrato.
+
 In **Opzioni avanzate** trovi i valori di riserva, usati soltanto quando header e percorso non contengono l’informazione, e l’ora in cui cambia la notte.
 
 ## 2. Analizza

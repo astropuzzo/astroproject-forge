@@ -99,6 +99,12 @@ public sealed partial class MainWindow : Window
         _viewModel.PlannedTreeRoots.CollectionChanged += (_, _) => ScheduleExportVisuals();
         _viewModel.MasterOrganizerItems.CollectionChanged += (_, _) => ScheduleDarkCoverage();
         KeyDown += Window_KeyDown;
+        // Folders and files can be dropped anywhere on the window.
+        DragDrop.SetAllowDrop(this, true);
+        AddHandler(DragDrop.DragEnterEvent, Window_DragOver, handledEventsToo: true);
+        AddHandler(DragDrop.DragOverEvent, Window_DragOver, handledEventsToo: true);
+        AddHandler(DragDrop.DragLeaveEvent, Window_DragLeave, handledEventsToo: true);
+        AddHandler(DragDrop.DropEvent, Window_Drop, handledEventsToo: true);
         // Tunnel so the tour keys win over focus navigation in whatever control has focus.
         AddHandler(KeyDownEvent, Tour_KeyDown, Avalonia.Interactivity.RoutingStrategies.Tunnel);
         Opened += async (_, _) =>
@@ -212,6 +218,9 @@ public sealed partial class MainWindow : Window
         // Data added to a project that was exported: read again in place, what came in is marked, the update copies only that.
         await RunUpdateScenarioAsync(null);
 
+        // Folders and files dropped on the window: sorted, linked where they were dropped, and said.
+        await RunDropScenarioAsync(null);
+
         // The tour walks the real controls of every step to its end.
         StartTour(-1);
         for (var index = 0; index < 30 && Tour.IsRunning; index++) { await Settle(); Tour.Next(); }
@@ -279,6 +288,7 @@ public sealed partial class MainWindow : Window
                 await CaptureAsync(Path.Combine(folder, "4-export-done.png"));
             }
             await RunUpdateScenarioAsync(folder);
+            await RunDropScenarioAsync(folder);
             Console.WriteLine($"CAPTURE DONE · {folder}");
             return 0;
         }
@@ -314,7 +324,7 @@ public sealed partial class MainWindow : Window
 
         _shell.CurrentStep = ShellViewModel.ImportStep;
         await Task.Delay(900);
-        _viewModel.AddSource(Path.Combine(root, "NINA"));
+        HandleDrop([Path.Combine(root, "NINA")], DropTarget.Captures);
         await Task.Delay(150);
         await Shot("u2-new-source-added.png");
 
@@ -341,6 +351,78 @@ public sealed partial class MainWindow : Window
         await _viewModel.ExportAsync();
         await Settle();
         Check(_viewModel.Novelty is null && _viewModel.ExportState == ExportRunState.Completed, "Once exported, nothing is new any more.");
+    }
+
+    /// <summary>Dragging over the window and dropping: the two targets, what each one links, and what is left out.</summary>
+    private async Task RunDropScenarioAsync(string? folder)
+    {
+        static void Check(bool condition, string message) { if (!condition) throw new InvalidOperationException(message); }
+        static async Task Settle() => await Task.Delay(450);
+        async Task Shot(string name) { if (folder is not null) await CaptureAsync(Path.Combine(folder, name)); }
+        var root = AppDataPaths.Combine("Demo");
+        _viewModel.NewProject();
+        _shell.CurrentStep = ShellViewModel.ImportStep;
+        await Settle();
+
+        // The overlay: right half lights the captures, left half the library, and it goes away by itself.
+        ShowDropOverlay(DropTarget.Captures);
+        await Settle();
+        await Shot("d1-drag-captures.png");
+        Check(DropOverlay.IsVisible && DropCapturesZone.Classes.Contains("over") && !DropLibraryZone.Classes.Contains("over"), "Dragging over the right half must light the captures.");
+        ShowDropOverlay(DropTarget.MasterLibrary);
+        await Settle();
+        await Shot("d2-drag-library.png");
+        Check(DropLibraryZone.Classes.Contains("over") && !DropCapturesZone.Classes.Contains("over"), "Dragging over the left half must light the library.");
+        HideDropOverlay();
+        await Settle();
+        Check(!DropOverlay.IsVisible && !DropLibraryZone.Classes.Contains("over"), "The overlay must go away when the drag ends.");
+
+        // Captures: a folder is linked whole, a text file is left out and counted.
+        var notes = Path.Combine(root, "notes.txt");
+        File.WriteAllText(notes, "not an image");
+        var asiair = Path.Combine(root, "ASIAIR");
+        var plan = HandleDrop([asiair, notes], DropTarget.Captures);
+        await Settle();
+        Check(plan.Folders.Count == 1 && plan.Ignored.Count == 1 && _viewModel.SourcePaths.Contains(asiair, PathIdentity.Comparer), "The dropped folder must become a source and the text file must be left out.");
+        Check(ToastText.Text is { } toast && (toast.Contains("Aggiunto") || toast.Contains("Added")) && toast.Contains("ASIAIR") && (toast.Contains("non FITS") || toast.Contains("not FITS")), $"The drop must say what it did ({ToastText.Text}).");
+        await Shot("d3-dropped-captures.png");
+
+        // The same folder again: nothing doubles.
+        HandleDrop([asiair], DropTarget.Captures);
+        Check(_viewModel.SourcePaths.Count == 1 && ToastText.Text is { } again && (again.Contains("Già") || again.Contains("Already")), "A folder dropped twice must stay one.");
+
+        // A single Master dropped on the library stands for its folder; a single capture on the captures is a source of its own.
+        var masters = Path.Combine(root, "Libreria Master");
+        var master = Directory.EnumerateFiles(masters, "*.fits", SearchOption.AllDirectories).First();
+        HandleDrop([master], DropTarget.MasterLibrary);
+        Check(_viewModel.MasterLibraries.Any(item => PathIdentity.Equals(item.Path, Path.GetDirectoryName(master))), "A Master dropped on the library must link the folder it lives in.");
+        var light = Directory.EnumerateFiles(Path.Combine(root, "NINA"), "*.fits", SearchOption.AllDirectories).First();
+        HandleDrop([light], DropTarget.Captures);
+        Check(_viewModel.SourcePaths.Contains(light, PathIdentity.Comparer), "A single capture dropped must become a source.");
+        await Settle();
+        await Shot("d4-dropped-library.png");
+
+        // The window's own drag events, carrying a real folder: enter lights the overlay, drop links it and puts the overlay away.
+        var nina = Path.Combine(root, "NINA");
+        var item = await StorageProvider.TryGetFolderFromPathAsync(nina);
+        Check(item is not null, "The storage provider must find the folder to drop.");
+        var data = new DataTransfer();
+        data.Add(DataTransferItem.CreateFile(item!));
+        var position = new Point(Bounds.Width * 0.75, Bounds.Height / 2);
+        RaiseEvent(new DragEventArgs(DragDrop.DragOverEvent, data, this, position, KeyModifiers.None));
+        await Settle();
+        Check(DropOverlay.IsVisible && DropCapturesZone.Classes.Contains("over"), "A drag over the right half of the window must light the captures.");
+        RaiseEvent(new DragEventArgs(DragDrop.DropEvent, data, this, position, KeyModifiers.None) { RoutedEvent = DragDrop.DropEvent });
+        await Settle();
+        Check(_viewModel.SourcePaths.Contains(nina, PathIdentity.Comparer) && !DropOverlay.IsVisible, "Dropping a folder on the window must link it.");
+        Check(!_viewModel.ShowOnboarding, "Dropping data on the welcome must close it: the person is ready.");
+
+        // Nothing usable: nothing changes, and it is said.
+        var count = _viewModel.SourcePaths.Count;
+        HandleDrop([notes], DropTarget.Captures);
+        Check(_viewModel.SourcePaths.Count == count && ToastText.Text is { } nothing && (nothing.Contains("Niente") || nothing.Contains("Nothing")), "A drop without images must change nothing.");
+        _viewModel.NewProject();
+        await Settle();
     }
 
     // One control at double size, to look at its drawing closely.
@@ -848,6 +930,105 @@ public sealed partial class MainWindow : Window
         if (!TappedOnButton(e)) AddSources_Click(sender, e);
     }
 
+    // ---- Drag and drop: folders and files dropped anywhere on the window ----
+
+    private long _dragSeen;
+
+    // The welcome on a first launch does not get in the way: dropping a folder there is the person saying they are ready. The tour, which walks the real controls, does not take drops.
+    private bool CanTakeDrop(DragEventArgs e) => e.DataTransfer.Contains(DataFormat.File) && !Tour.IsRunning;
+
+    // Left half of the window is the Master Library, right half the captures: the same order as the Import page.
+    private DropTarget DropZoneAt(DragEventArgs e) => e.GetPosition(this).X < Bounds.Width / 2 ? DropTarget.MasterLibrary : DropTarget.Captures;
+
+    private void Window_DragOver(object? sender, DragEventArgs e)
+    {
+        if (!CanTakeDrop(e)) { e.DragEffects = DragDropEffects.None; return; }
+        e.DragEffects = DragDropEffects.Copy;
+        e.Handled = true;
+        _dragSeen = Stopwatch.GetTimestamp();
+        ShowDropOverlay(DropZoneAt(e));
+    }
+
+    // Leaving the window and moving between its children both raise a leave: only a silence of the drag really means "gone".
+    private void Window_DragLeave(object? sender, DragEventArgs e)
+    {
+        var seen = _dragSeen;
+        DispatcherTimer.RunOnce(() => { if (_dragSeen == seen) HideDropOverlay(); }, TimeSpan.FromMilliseconds(180));
+    }
+
+    private void Window_Drop(object? sender, DragEventArgs e)
+    {
+        var zone = DropZoneAt(e);
+        _dragSeen = Stopwatch.GetTimestamp();
+        HideDropOverlay();
+        if (!CanTakeDrop(e)) return;
+        e.Handled = true;
+        var paths = (e.DataTransfer.TryGetFiles() ?? []).Select(item => item.TryGetLocalPath()).OfType<string>().ToList();
+        HandleDrop(paths, zone);
+    }
+
+    private static void SetClass(Control control, string name, bool on)
+    {
+        if (on && !control.Classes.Contains(name)) control.Classes.Add(name);
+        else if (!on) control.Classes.Remove(name);
+    }
+
+    internal void ShowDropOverlay(DropTarget zone)
+    {
+        if (!DropOverlay.IsVisible)
+        {
+            DropOverlay.IsVisible = true;
+            Dispatcher.UIThread.Post(() => DropOverlay.Opacity = 1, DispatcherPriority.Render);
+        }
+        else DropOverlay.Opacity = 1;
+        foreach (var (control, mine) in new[] { (DropLibraryZone, DropTarget.MasterLibrary), (DropCapturesZone, DropTarget.Captures) })
+        {
+            SetClass(control, "over", zone == mine);
+            SetClass(control, "marching", zone == mine && !Motion.Reduced);
+        }
+    }
+
+    internal void HideDropOverlay()
+    {
+        DropOverlay.Opacity = 0;
+        foreach (var control in new[] { DropLibraryZone, DropCapturesZone }) { SetClass(control, "over", false); SetClass(control, "marching", false); }
+        DispatcherTimer.RunOnce(() => { if (DropOverlay.Opacity == 0) DropOverlay.IsVisible = false; }, TimeSpan.FromMilliseconds(220));
+    }
+
+    /// <summary>Links what was dropped where it was dropped, says what happened, and leaves the person on the step they were on.</summary>
+    internal DropPlan HandleDrop(IEnumerable<string> dropped, DropTarget target)
+    {
+        var english = _viewModel.UiLanguage == UiLocalization.English;
+        var plan = DroppedItems.Plan(dropped, target);
+        if (plan.Accepted == 0)
+        {
+            ShowToast(english ? "Nothing to add: drop folders or FITS and XISF files." : "Niente da aggiungere: trascina cartelle o file FITS e XISF.");
+            return plan;
+        }
+
+        if (_viewModel.ShowOnboarding) _viewModel.CompleteOnboarding();
+        int Count() => target == DropTarget.MasterLibrary ? _viewModel.MasterLibraries.Count : _viewModel.SourcePaths.Count;
+        var before = Count();
+        foreach (var folder in plan.Folders)
+        {
+            if (target == DropTarget.MasterLibrary) _viewModel.AddMasterLibrary(folder);
+            else _viewModel.AddSource(folder);
+        }
+        foreach (var file in plan.Files) _viewModel.AddSource(file);
+
+        var added = Count() - before;
+        var where = target == DropTarget.MasterLibrary ? (english ? "the Master Library" : "alla Libreria Master") : (english ? "the captures" : "alle acquisizioni");
+        // Gender-neutral on purpose: a folder and a file are both "elementi". One item is named, several are counted.
+        var what = plan.Accepted == 1 ? Path.GetFileName(Path.TrimEndingDirectorySeparator(plan.Paths.First())) : (english ? $"{plan.Accepted} items" : $"{plan.Accepted} elementi");
+        var message = added > 0
+            ? (english ? $"Added to {where}: {what}" : $"Aggiunto {where}: {what}")
+            : (english ? "Already linked" : "Già collegato");
+        if (plan.Ignored.Count > 0) message += english ? $" · {plan.Ignored.Count} {(plan.Ignored.Count == 1 ? "file" : "files")} ignored (not FITS/XISF)" : $" · {plan.Ignored.Count} file ignorat{(plan.Ignored.Count == 1 ? "o" : "i")} (non FITS/XISF)";
+        ShowToast(message);
+        if (_shell.CurrentStep == ShellViewModel.ImportStep && added > 0) PulseCard(target == DropTarget.MasterLibrary ? LibraryCard : SourcesCard);
+        return plan;
+    }
+
     // ---- The gear: every part Forge detected can be corrected ----
 
     private void EditProfile_Click(object? sender, RoutedEventArgs e) => OpenProfileEditor((sender as Control)?.Tag as string);
@@ -920,7 +1101,7 @@ public sealed partial class MainWindow : Window
             new(ShellViewModel.ImportStep, () => LibraryCard, "Libreria Master",
                 "Collega una volta sola la cartella dei Dark e Bias. Resta salvata per ogni progetto; se non ce l’hai, salta."),
             new(ShellViewModel.ImportStep, () => SourcesCard, "Acquisizioni",
-                "Cartelle o file FITS e XISF da qualsiasi software. Forge legge solo gli header: gli originali restano intatti."),
+                "Cartelle o file FITS e XISF da qualsiasi software, anche trascinati ovunque sulla finestra. Forge legge solo gli header: gli originali restano intatti."),
         ];
         if (_shell.Analyzed)
         {

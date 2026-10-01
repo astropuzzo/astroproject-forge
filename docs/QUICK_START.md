@@ -6,7 +6,7 @@ AstroProject Forge prepares an organized PixInsight WeightedBatchPreprocessing p
 
 The window has four steps, always in order, and one button at the bottom right that does the next thing the project needs.
 
-1. **Import.** Link your Master Dark/Bias folder under **Master Library** (once: it is remembered for every project), add FITS/XISF folders or files under **Captures**, then select **Analyze**. The analysis carries on to step 2 by itself.
+1. **Import.** Link your Master Dark/Bias folder under **Master Library** (once: it is remembered for every project), add FITS/XISF folders or files under **Captures**, then select **Analyze**. The analysis carries on to step 2 by itself. You can also drag folders and files from your file manager onto the window, on any step: the left half is the Master Library, the right half the captures.
 2. **Gear.** Check the camera, optics, reducer, pixel size and filters Forge read from the headers. Anything that is not right can be changed: select **Change**, or tap a part of the optical train. Filters can be changed too, even the ones Forge recognised. What you choose is remembered for that camera.
 3. **Calibration.** See how many Lights have Flat, Dark and Bias. When Forge cannot choose by itself it asks one thing at a time.
 4. **Export.** Name the project, choose a destination and export the verified structure. Then select **Open in PixInsight**: the generated `.xpsm` already contains the files, masters, grouping keywords and output directory.

@@ -791,5 +791,13 @@
   "Chiudi le novità: i dati restano nel progetto": "Close the news: the data stays in the project",
   "Sfoglia il catalogo dei telescopi": "Browse the telescope catalogue",
   "Sfoglia il catalogo delle camere": "Browse the camera catalogue",
-  "nuovi": "new"
+  "nuovi": "new",
+  "Dark e Bias": "Darks and Bias",
+  "Light e Flat": "Lights and Flats",
+  "Rilascia la cartella dei tuoi Master": "Drop the folder with your Masters",
+  "Rilascia cartelle o file FITS e XISF": "Drop folders or FITS and XISF files",
+  "Gli originali non vengono mai modificati": "Your originals are never modified",
+  "o trascina qui la cartella": "or drop the folder here",
+  "o trascina qui cartelle e file": "or drop folders and files here",
+  "Cartelle o file FITS e XISF da qualsiasi software, anche trascinati ovunque sulla finestra. Forge legge solo gli header: gli originali restano intatti.": "FITS and XISF folders or files from any software, also dropped anywhere on the window. Forge reads only the headers: your originals stay untouched."
 }
