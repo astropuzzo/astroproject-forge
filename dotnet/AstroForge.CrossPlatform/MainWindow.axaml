@@ -201,6 +201,21 @@
             <TextBlock Text="PASSO 2 DI 4 · STRUMENTO" Classes="eyebrow accent"/>
             <TextBlock Text="È questo il tuo setup?" Classes="pageTitle"/>
             <TextBlock Text="Camera, ottica e filtri letti da header e nomi file. Tocca una voce per dire cos’è davvero." Classes="serif note" TextWrapping="Wrap"/>
+            <StackPanel IsVisible="{Binding HasSeveralSetups}" Spacing="8" Margin="0,8,0,0">
+              <TextBlock Text="{Binding SetupHint}" Classes="muted" FontSize="12" TextWrapping="Wrap"/>
+              <ItemsControl ItemsSource="{Binding SetupRows}">
+                <ItemsControl.ItemsPanel><ItemsPanelTemplate><WrapPanel/></ItemsPanelTemplate></ItemsControl.ItemsPanel>
+                <ItemsControl.ItemTemplate><DataTemplate>
+                  <Button Classes="setupChip" Classes.selected="{Binding IsSelected}" Tag="{Binding Key}" Click="SetupChip_Click" Margin="0,0,10,8">
+                    <StackPanel Spacing="3">
+                      <StackPanel Orientation="Horizontal" Spacing="7"><Ellipse Width="9" Height="9" Fill="{Binding Dot}" VerticalAlignment="Center"/><TextBlock Text="{Binding Title}" FontWeight="SemiBold" FontSize="12.5"/><TextBlock Text="{Binding Camera}" FontSize="12.5"/></StackPanel>
+                      <TextBlock Text="{Binding Optics}" Classes="muted" FontSize="11"/>
+                      <TextBlock Text="{Binding Usage}" Classes="muted mono" FontSize="10.5"/>
+                    </StackPanel>
+                  </Button>
+                </DataTemplate></ItemsControl.ItemTemplate>
+              </ItemsControl>
+            </StackPanel>
           </StackPanel>
           <Border Grid.Row="1" Classes="card hero" IsVisible="{Binding HasNoInstrument}" MaxWidth="620" HorizontalAlignment="Left" VerticalAlignment="Top" Padding="24"><StackPanel Spacing="12">
             <TextBlock Text="Analizza il progetto per vedere camera, ottica e filtri trovati." Classes="muted" TextWrapping="Wrap"/>

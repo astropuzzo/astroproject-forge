@@ -283,6 +283,9 @@ public sealed partial class MainWindow : Window
         Check(SkyMath.MoonAltitude(new DateTime(2026, 8, 28, 23, 0, 0, DateTimeKind.Utc), 41.9, 12.5) > 15 && SkyMath.MoonAltitude(new DateTime(2026, 8, 28, 10, 0, 0, DateTimeKind.Utc), 41.9, 12.5) < -10,
             "The Moon must be high at night and low by day at full Moon.");
 
+        // A project that mixes rigs: each one is a card to pick, with its own camera, optics and filters, and they share the sky.
+        await RunSetupScenarioAsync(null);
+
         // Data added to a project that was exported: read again in place, what came in is marked, the update copies only that.
         await RunUpdateScenarioAsync(null);
 
@@ -382,6 +385,7 @@ public sealed partial class MainWindow : Window
                 await Task.Delay(2200);
                 await CaptureAsync(Path.Combine(folder, "4-export-done.png"));
             }
+            await RunSetupScenarioAsync(folder);
             await RunUpdateScenarioAsync(folder);
             await RunDropScenarioAsync(folder);
             Console.WriteLine($"CAPTURE DONE · {folder}");
@@ -446,6 +450,78 @@ public sealed partial class MainWindow : Window
         await _viewModel.ExportAsync();
         await Settle();
         Check(_viewModel.Novelty is null && _viewModel.ExportState == ExportRunState.Completed, "Once exported, nothing is new any more.");
+    }
+
+    /// <summary>
+    /// The demo plus six Lights of a second camera on a short lens, pointed at the same target: the project has two rigs. The gear page offers both, describes the one picked
+    /// (camera, optics, wheel) and keeps what the user says about one from leaking into the other; the sky shows both fields.
+    /// </summary>
+    private async Task RunSetupScenarioAsync(string? folder)
+    {
+        static void Check(bool condition, string message) { if (!condition) throw new InvalidOperationException(message); }
+        static async Task Settle() => await Task.Delay(450);
+        var root = AppDataPaths.Combine("Demo");
+        var second = AppDataPaths.Combine("SecondRig");
+        if (Directory.Exists(second)) Directory.Delete(second, true);
+        Directory.CreateDirectory(second);
+        for (var index = 0; index < 16; index++) WriteTinyLight(Path.Combine(second, $"light_{index:00}.fits"), index);
+        _viewModel.NewProject();
+        _viewModel.ProjectName = "Cygnus Loop (due setup)";
+        _viewModel.DestinationPath = Path.Combine(root, "ExportTwoRigs");
+        foreach (var source in new[] { "ASIAIR", "NINA", "Libreria Master" }) _viewModel.AddSource(Path.Combine(root, source));
+        _viewModel.AddSource(second);
+        await _viewModel.ScanAsync();
+        _shell.CurrentStep = ShellViewModel.SetupStep;
+        await Settle();
+        await _observatory.SkyLoading;
+
+        var setups = _viewModel.Setups;
+        Check(setups.Count == 2 && setups[0].CameraName.Contains("2600") && setups[1].CameraName.Contains("294") && setups[1].FocalMm == 135 && setups[1].Lights == 16,
+            $"The project must have two rigs, the demo's first ({string.Join(" | ", setups.Select(item => $"{item.Key}/{item.FocalMm}/{item.Lights}"))}).");
+        Check(_observatory.HasSeveralSetups && _observatory.SetupRows.Count == 2 && _observatory.SetupRows[0].IsSelected && !_observatory.SetupRows[1].IsSelected, "Both rigs must be offered, the main one picked.");
+        Check(_observatory.CameraName.Contains("2600") && _observatory.Filters.Count > 1, $"The gear page must describe the main rig ({_observatory.CameraName}).");
+        Check(_observatory.Sky is { Rigs.Count: 1 } && _observatory.Sky.Rigs[0].WidthDeg > _observatory.PreviewWidth, $"The other rig must be on the sky, with its wider field ({_observatory.Sky?.Rigs.Count} rigs, {_observatory.Sky?.Rigs.FirstOrDefault()?.WidthDeg} against {_observatory.PreviewWidth}).");
+        if (folder is not null) { await Task.Delay(1500); await CaptureAsync(Path.Combine(folder, "2-gear-two-setups.png")); }
+
+        // Picking the second rig describes it: its camera, its focal length, its own wheel; the first becomes the dashed one on the sky.
+        _observatory.SelectSetup(setups[1].Key);
+        await Settle();
+        await _observatory.SkyLoading;
+        Check(_observatory.SetupRows[1].IsSelected && _observatory.CameraName.Contains("294") && _observatory.FocalText == "135 mm", $"Picking the second rig must describe it ({_observatory.CameraName}, {_observatory.FocalText}).");
+        Check(_observatory.Filters.Count == 8 && _observatory.Filters.Any(row => row.RawName == "OIII"), $"The second rig has its own wheel, with its eight filters ({_observatory.Filters.Count}).");
+        Check(_observatory.Sky is { Rigs.Count: 1 } && _observatory.Sky.Rigs[0].WidthDeg < _observatory.PreviewWidth, $"Now the first rig is the dashed one, with its narrower field ({_observatory.Sky?.Rigs.Count} rigs, {_observatory.Sky?.Rigs.FirstOrDefault()?.WidthDeg} against {_observatory.PreviewWidth}).");
+        if (folder is not null) { await Task.Delay(1500); await CaptureAsync(Path.Combine(folder, "2-gear-second-setup.png")); }
+
+        // What is said about this rig is this rig's: the first keeps what it had.
+        var profile = _viewModel.Instrument!;
+        _viewModel.SetEquipment(profile, new AstroForge.Core.Equipment.EquipmentOverride { TelescopeName = "Obiettivo 135", FocalMm = 135, ApertureMm = 50, ReducerFactor = 1 });
+        Check(_viewModel.Instrument?.Override is { TelescopeName: "Obiettivo 135" } && _viewModel.EquipmentFor(setups[1].Key) is not null && _viewModel.EquipmentFor(setups[0].CameraKey) is null
+            && _viewModel.InstrumentFor(setups[0])!.Override is null, "The optics said for the second rig must stay with it.");
+        _viewModel.ClearEquipment(_viewModel.Instrument!);
+        Check(_viewModel.Instrument?.Override is null && _viewModel.EquipmentFor(setups[1].Key) is null, "Forgetting what was said about the second rig must forget it.");
+
+        _observatory.SelectSetup(setups[0].Key);
+        await Settle();
+        Check(_observatory.SetupRows[0].IsSelected && _observatory.CameraName.Contains("2600"), "Going back to the first rig must describe it again.");
+        try { Directory.Delete(second, true); } catch (IOException) { }
+    }
+
+    // A header and one block of nothing: enough for a scan to read the camera, the lens, the filter and where it pointed.
+    private static void WriteTinyLight(string path, int index)
+    {
+        static string Card(string key, object value) =>
+            (key.PadRight(8) + "= " + (value is string text ? ("'" + text + "'").PadRight(20) : Convert.ToString(value, System.Globalization.CultureInfo.InvariantCulture)!.PadLeft(20))).PadRight(80);
+        var cards = new List<string>
+        {
+            Card("SIMPLE", "T"), Card("BITPIX", 16), Card("NAXIS", 2), Card("NAXIS1", 4144), Card("NAXIS2", 2822), Card("BZERO", 32768), Card("BSCALE", 1),
+            Card("IMAGETYP", "Light"), Card("INSTRUME", "ZWO ASI294MC Pro"), Card("TELESCOP", "Obiettivo corto"), Card("FOCALLEN", 135.0), Card("XPIXSZ", 4.63), Card("YPIXSZ", 4.63),
+            Card("EXPTIME", 120.0), Card("FILTER", new[] { "L", "R", "G", "B", "Ha", "OIII", "SII", "L-eXtreme" }[index % 8]), Card("GAIN", 120.0), Card("OFFSET", 30.0), Card("SET-TEMP", -10.0), Card("CCD-TEMP", -10.0), Card("XBINNING", 1), Card("YBINNING", 1),
+            Card("DATE-OBS", $"2026-08-2{1 + index % 2}T22:{10 + index:00}:00"), Card("OBJECT", "Cygnus Loop"), Card("OBJCTRA", "20 56 24"), Card("OBJCTDEC", "+31 43 00"), Card("ROTATOR", 12.0),
+            "END".PadRight(80)
+        };
+        var header = string.Concat(cards).PadRight((string.Concat(cards).Length + 2879) / 2880 * 2880);
+        var bytes = System.Text.Encoding.ASCII.GetBytes(header).Concat(new byte[2880]).ToArray();
+        File.WriteAllBytes(path, bytes);
     }
 
     /// <summary>Dragging over the window and dropping: the two targets, what each one links, and what is left out.</summary>
@@ -880,6 +956,11 @@ public sealed partial class MainWindow : Window
         }
     }
     private void UiPreferenceChanged_Click(object? sender, RoutedEventArgs e) => _viewModel.SaveState();
+
+    private void SetupChip_Click(object? sender, RoutedEventArgs e)
+    {
+        if (sender is Button { Tag: string key }) _observatory.SelectSetup(key);
+    }
 
     private async void Window_KeyDown(object? sender, KeyEventArgs e)
     {

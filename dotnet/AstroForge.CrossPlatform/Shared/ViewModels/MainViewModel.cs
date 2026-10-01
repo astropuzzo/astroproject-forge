@@ -597,6 +597,8 @@ public sealed class MainViewModel : BindableBase
         _analysis = null;
         _statistics = null;
         Instrument = null;
+        Setups = [];
+        Raise(nameof(Setups));
         Raise(nameof(Instrument));
         Raise(nameof(Analysis));
         _undo.Clear();
@@ -2127,6 +2129,21 @@ public sealed class MainViewModel : BindableBase
     /// <summary>The imaging train read from the project's headers, with the filters still waiting for a one-time confirmation.</summary>
     public InstrumentProfile? Instrument { get; private set; }
 
+    private string? _selectedSetupKey;
+    /// <summary>The rigs of the project (a camera on a focal length), the main one first: one for the usual project, several when the project mixes cameras or focal lengths.</summary>
+    public IReadOnlyList<InstrumentSetup> Setups { get; private set; } = [];
+
+    /// <summary>Makes another rig of the project the one the gear page describes.</summary>
+    public void SelectSetup(string key)
+    {
+        if (_selectedSetupKey == key) return;
+        _selectedSetupKey = key;
+        RefreshInstrument();
+    }
+
+    /// <summary>The train of a rig of the project, whether or not it is the one shown.</summary>
+    public InstrumentProfile? InstrumentFor(InstrumentSetup setup) => InstrumentProfile.Build(_frames, WheelProfileFor, EquipmentFor, setup: setup);
+
     public IReadOnlyDictionary<string, string>? WheelProfileFor(string cameraKey) =>
         _state.FilterWheelProfiles.TryGetValue(cameraKey, out var profile) ? profile : null;
 
@@ -2170,6 +2187,30 @@ public sealed class MainViewModel : BindableBase
         ApplyEquipmentChange(previous, equipment);
     }
 
+    /// <summary>
+    /// Remembers what this rig really is. The main rig of a camera is stored under the camera, like always; for a camera's other rigs what is about the camera
+    /// (which camera it is, its pixel size) still goes under the camera and the optics and reducer under the rig's own entry.
+    /// </summary>
+    public void SetEquipment(InstrumentProfile instrument, EquipmentOverride equipment)
+    {
+        if (instrument.Setup is not { IsPrimary: false } setup) { SetEquipment(instrument.CameraKey, equipment); return; }
+        var existing = EquipmentFor(setup.CameraKey) ?? new EquipmentOverride();
+        var camera = existing with { CameraId = equipment.CameraId, CameraName = equipment.CameraName, CameraType = equipment.CameraType, PixelUm = equipment.PixelUm };
+        var own = equipment with { CameraId = null, CameraName = null, CameraType = null, PixelUm = null };
+        if (own.IsEmpty) _state.EquipmentProfiles.Remove(setup.Key); else _state.EquipmentProfiles[setup.Key] = own;
+        SetEquipment(setup.CameraKey, camera);
+        SaveState();
+        RefreshInstrument();
+    }
+
+    public void ClearEquipment(InstrumentProfile instrument)
+    {
+        if (instrument.Setup is not { IsPrimary: false } setup) { ClearEquipment(instrument.CameraKey); return; }
+        if (!_state.EquipmentProfiles.Remove(setup.Key)) return;
+        SaveState();
+        RefreshInstrument();
+    }
+
     public void ClearEquipment(string cameraKey)
     {
         if (!_state.EquipmentProfiles.Remove(cameraKey, out var previous)) return;
@@ -2192,7 +2233,11 @@ public sealed class MainViewModel : BindableBase
     // Focal length and pixel size only feed the instrument profile (scale, field of view).
     private void RefreshInstrument()
     {
-        Instrument = InstrumentProfile.Build(_frames, WheelProfileFor, EquipmentFor);
+        Setups = InstrumentProfile.Setups(_frames);
+        var setup = Setups.FirstOrDefault(item => item.Key == _selectedSetupKey) ?? Setups.FirstOrDefault();
+        _selectedSetupKey = setup?.Key;
+        Instrument = InstrumentProfile.Build(_frames, WheelProfileFor, EquipmentFor, setup: setup);
+        Raise(nameof(Setups));
         Raise(nameof(Instrument));
     }
 

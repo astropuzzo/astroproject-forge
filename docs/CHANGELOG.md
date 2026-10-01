@@ -1,5 +1,13 @@
 # AstroProject Forge — note di rilascio
 
+## 1.13.0 — 1 ottobre 2026
+
+- **Più setup in un progetto.** Prima la pagina Strumento descriveva solo il treno principale (la camera con più Light) e nascondeva il resto in silenzio. Ora un progetto che mescola camere o focali (due camere, o la stessa camera con e senza riduttore) offre una scheda per ogni setup: camera, ottica, focale, Light, ore e notti. Scegliendone una la pagina descrive quel setup, con la sua camera, la sua ottica, il suo riduttore e la sua ruota portafiltri (anche con otto filtri e più).
+- Le correzioni restano di chi le riceve: la camera e la dimensione del pixel valgono per la camera, ottica e riduttore per il setup. Il setup principale di una camera tiene la chiave di sempre, quindi ciò che avevi già detto continua a valere per lui; l’ottica detta per il primo setup non viene presa per quella del secondo. Un solo setup resta un solo setup, e nulla cambia per i progetti di sempre.
+- Sul cielo reale, accanto al riquadro del setup scelto, gli altri setup compaiono tratteggiati, nel colore della loro scheda e con la propria focale e il proprio campo (un obiettivo corto accanto a un telescopio, per esempio). Un setup che ha puntato un altro bersaglio non viene disegnato.
+- I Flat seguono il setup di cui portano la focale; un Flat senza focale appartiene a tutti i setup della sua camera.
+- Controlli QA: test del Core con tre setup sintetici (stessa camera su 800 e 560 mm, un’altra camera a 250 mm) e con le correzioni dell’utente per camera e per setup; lo smoke test aggiunge una seconda camera con otto filtri, sceglie ciascun setup, controlla ruota, focale, cielo con l’altro setup e che ciò che si dice su uno non finisca nell’altro.
+
 ## 1.12.1 — 1 ottobre 2026
 
 - Il riquadro del **Campo inquadrato** ora sta dove sono state riprese le stelle. Sui Light veri di una Nebulosa Mago (N.I.N.A., montatura con ribaltamento del meridiano) le coordinate RA/DEC della montatura sbagliavano fino a mezzo grado dopo il ribaltamento, mentre il Light inquadrava lo stesso campo: confrontando le stelle del Light con il DSS2 il bersaglio (OBJCTRA/OBJCTDEC) cadeva entro un primo. Ora la posizione si legge, in ordine: WCS risolto, **bersaglio**, RA/DEC della montatura; se la montatura si scostava di più di un decimo di grado la scheda lo dice.
