@@ -1,5 +1,6 @@
 using System.Globalization;
 using Avalonia;
+using Avalonia.Input;
 using Avalonia.Media;
 using Avalonia.Media.Immutable;
 
@@ -7,6 +8,8 @@ namespace AstroForge.CrossPlatform.Controls;
 
 /// <summary>One element of the optical train and where Forge learnt about it.</summary>
 public sealed record TrainPart(string Title, string Detail, string Source, bool Confirmed);
+
+public enum TrainPartKind { Telescope, Reducer, Wheel, Camera }
 
 /// <summary>
 /// Telescope, reducer, filter wheel and camera side by side, with starlight entering the objective, converging
@@ -43,6 +46,41 @@ public sealed class OpticalTrain : AmbientControl
     public Color Beam { get => GetValue(BeamProperty); set => SetValue(BeamProperty, value); }
 
     protected override bool WantsAmbient => Camera is not null;
+
+    // Where each part sits this frame, so a click on the drawing opens that part's editor.
+    private readonly List<(TrainPartKind Kind, Rect Area)> _hit = [];
+    private int _hover = -1;
+
+    /// <summary>A part of the drawing was clicked: the telescope, reducer, filter wheel or camera.</summary>
+    public event EventHandler<TrainPartKind>? PartInvoked;
+
+    private int HitTest(Point point) => _hit.FindIndex(item => item.Area.Contains(point));
+
+    protected override void OnPointerMoved(PointerEventArgs e)
+    {
+        base.OnPointerMoved(e);
+        var hit = HitTest(e.GetPosition(this));
+        Cursor = hit >= 0 ? new Cursor(StandardCursorType.Hand) : Cursor.Default;
+        if (hit == _hover) return;
+        _hover = hit;
+        InvalidateVisual();
+    }
+
+    protected override void OnPointerExited(PointerEventArgs e)
+    {
+        base.OnPointerExited(e);
+        _hover = -1;
+        InvalidateVisual();
+    }
+
+    protected override void OnPointerReleased(PointerReleasedEventArgs e)
+    {
+        base.OnPointerReleased(e);
+        var hit = HitTest(e.GetPosition(this));
+        if (hit < 0) return;
+        PartInvoked?.Invoke(this, _hit[hit].Kind);
+        e.Handled = true;
+    }
 
     protected override Size MeasureOverride(Size availableSize) => new(double.IsInfinity(availableSize.Width) ? 620 : availableSize.Width, 170);
 
@@ -113,6 +151,15 @@ public sealed class OpticalTrain : AmbientControl
             context.DrawText(detail, new Point(X(wheelX + 36), 20 + title.Height));
         }
         DrawLabel(context, Camera, X(hasReducer ? 462 : 470), 124, bounds.Width - X(hasReducer ? 462 : 470));
+
+        // Each part, with its label, is a button: tap it to say what it really is.
+        _hit.Clear();
+        _hit.Add((TrainPartKind.Telescope, new Rect(X(0), 10, X(tubeEnd + 4), Bounds.Height - 10)));
+        if (hasReducer) _hit.Add((TrainPartKind.Reducer, new Rect(X(262), 10, X(190), Bounds.Height - 10)));
+        _hit.Add((TrainPartKind.Wheel, new Rect(X(wheelX - 2), 4, X(cameraX - wheelX - 6), 112)));
+        _hit.Add((TrainPartKind.Camera, new Rect(X(cameraX - 4), 10, Math.Max(0, bounds.Width - X(cameraX - 4)), Bounds.Height - 10)));
+        if (_hover >= 0 && _hover < _hit.Count)
+            context.DrawRectangle(new SolidColorBrush(Color.FromArgb(18, 157, 184, 255)), new Pen(new SolidColorBrush(Color.FromArgb(120, 157, 184, 255)), 1, new DashStyle([3, 3], 0)), _hit[_hover].Area.Deflate(2), 12, 12);
     }
 
     private static void DrawLabel(DrawingContext context, TrainPart? part, double x, double y, double width)

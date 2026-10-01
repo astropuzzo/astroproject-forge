@@ -8,217 +8,200 @@
         WindowStartupLocation="CenterScreen">
   <Panel>
   <local:StarfieldBackdrop x:Name="Backdrop"/>
-  <Grid x:Name="RootLayout" ColumnDefinitions="250,*">
+  <Grid x:Name="RootLayout" RowDefinitions="Auto,Auto,*,Auto" Margin="30,20,30,20" MaxWidth="1680">
 
-    <!-- Rail: the project's four steps as a constellation, then the tools. -->
-    <Border x:Name="Rail" Classes="rail" Padding="20,26,20,22">
-      <DockPanel>
-        <Button DockPanel.Dock="Top" x:Name="MenuButton" Classes="brand" Click="ToggleSettings_Click" ToolTip.Tip="Menu · Ctrl+,">
-          <StackPanel Orientation="Horizontal" Spacing="12">
-            <Panel Width="34" Height="34">
-              <Ellipse Width="34" Height="34" Fill="{StaticResource BrandGlowBrush}"/>
-              <Path Data="M17 3 L19 15 L31 17 L19 19 L17 31 L15 19 L3 17 L15 15Z" Fill="White"/>
-            </Panel>
-            <StackPanel VerticalAlignment="Center" Spacing="1">
-              <TextBlock Text="ASTROPROJECT FORGE" FontWeight="Medium" FontSize="12" LetterSpacing="0.7"/>
-              <TextBlock Text="per PixInsight WBPP" Classes="muted" FontSize="11"/>
-            </StackPanel>
+    <!-- Header: where the project is (the four steps), what it is, and the tools. -->
+    <Grid x:Name="TopBar" ColumnDefinitions="Auto,*,Auto" ColumnSpacing="30" MinHeight="70">
+      <Button Grid.Column="0" x:Name="MenuButton" Classes="brand" Click="ToggleSettings_Click" ToolTip.Tip="Menu · Ctrl+," VerticalAlignment="Top" MinWidth="44">
+        <StackPanel Orientation="Horizontal" Spacing="12">
+          <Panel Width="34" Height="34">
+            <Ellipse Width="34" Height="34" Fill="{StaticResource BrandGlowBrush}"/>
+            <Path Data="M17 3 L19 15 L31 17 L19 19 L17 31 L15 19 L3 17 L15 15Z" Fill="White"/>
+          </Panel>
+          <StackPanel x:Name="BrandText" VerticalAlignment="Center" Spacing="1">
+            <TextBlock Text="ASTROPROJECT FORGE" FontWeight="Medium" FontSize="12" LetterSpacing="0.7"/>
+            <TextBlock Text="per PixInsight WBPP" Classes="muted" FontSize="11"/>
+          </StackPanel>
+        </StackPanel>
+      </Button>
+
+      <local:StepperBar Grid.Column="1" x:Name="Stepper" Steps="{Binding Steps}" MaxWidth="780" HorizontalAlignment="Center" VerticalAlignment="Top"/>
+
+      <StackPanel Grid.Column="2" Orientation="Horizontal" Spacing="10" VerticalAlignment="Top" HorizontalAlignment="Right">
+        <StackPanel x:Name="ProjectChip" VerticalAlignment="Center" Margin="0,0,6,0" MaxWidth="230" HorizontalAlignment="Right">
+          <StackPanel Orientation="Horizontal" Spacing="6" HorizontalAlignment="Right">
+            <Ellipse Width="6" Height="6" Fill="{StaticResource OkBrush}" IsVisible="{Binding StateLive}" Classes="live" VerticalAlignment="Center"/>
+            <TextBlock Text="{Binding StateLabel}" Classes="eyebrow" VerticalAlignment="Center"/>
+          </StackPanel>
+          <TextBlock Text="{Binding TargetTitle}" FontSize="16" FontWeight="SemiBold" TextTrimming="CharacterEllipsis" HorizontalAlignment="Right"/>
+        </StackPanel>
+        <Button x:Name="ToolsButton" Classes="cmdk" ToolTip.Tip="Statistiche, qualità, metadati e Libreria Master">
+          <Button.Flyout>
+            <Flyout Placement="BottomEdgeAlignedRight">
+              <StackPanel Width="270" Spacing="2" Margin="-6">
+                <TextBlock Text="STRUMENTI" Classes="eyebrow" Margin="10,6,10,6"/>
+                <Button Classes="tool" Click="OpenMetadata_Click"><Grid ColumnDefinitions="*,Auto"><TextBlock Text="Frame e metadati"/><TextBlock Grid.Column="1" Text="Alt 5" Classes="kbd"/></Grid></Button>
+                <Button Classes="tool" Click="OpenStatistics_Click"><Grid ColumnDefinitions="*,Auto"><TextBlock Text="Statistiche"/><TextBlock Grid.Column="1" Text="Alt 6" Classes="kbd"/></Grid></Button>
+                <Button Classes="tool" Click="OpenQuality_Click"><Grid ColumnDefinitions="*,Auto"><TextBlock Text="Qualità dei frame"/><TextBlock Grid.Column="1" Text="Alt 7" Classes="kbd"/></Grid></Button>
+                <Button Classes="tool" Click="OpenMasters_Click"><Grid ColumnDefinitions="*,Auto"><TextBlock Text="Libreria Master"/><TextBlock Grid.Column="1" Text="Alt 8" Classes="kbd"/></Grid></Button>
+                <Border Classes="rule" Margin="10,6"/>
+                <Button Classes="tool" Click="OpenDiagnosticsTab_Click"><TextBlock Text="Diagnostica e log"/></Button>
+              </StackPanel>
+            </Flyout>
+          </Button.Flyout>
+          <StackPanel Orientation="Horizontal" Spacing="8" VerticalAlignment="Center">
+            <Path Data="M3 6 H21 M3 12 H21 M3 18 H21" Stroke="{StaticResource MutedBrush}" StrokeThickness="2" Width="14" Height="14" Stretch="Uniform" StrokeLineCap="Round"/>
+            <TextBlock Text="Strumenti" FontSize="12.5"/>
           </StackPanel>
         </Button>
-        <StackPanel DockPanel.Dock="Bottom" Spacing="4">
-          <TextBlock Text="STRUMENTI" Classes="eyebrow" Margin="0,0,0,6"/>
-          <Button Classes="tool" Click="OpenStatistics_Click"><Grid ColumnDefinitions="*,Auto"><TextBlock Text="Statistiche"/><TextBlock Grid.Column="1" Text="Alt 7" Classes="kbd"/></Grid></Button>
-          <Button Classes="tool" Click="OpenQuality_Click"><Grid ColumnDefinitions="*,Auto"><TextBlock Text="Qualità dei frame"/><TextBlock Grid.Column="1" Text="Alt 8" Classes="kbd"/></Grid></Button>
-          <Button Classes="tool" Click="OpenMasters_Click"><Grid ColumnDefinitions="*,Auto"><TextBlock Text="Libreria Master"/><TextBlock Grid.Column="1" Text="Alt 9" Classes="kbd"/></Grid></Button>
-          <Border Classes="rule" Margin="0,12,0,8"/>
-          <Grid ColumnDefinitions="*,Auto">
-            <TextBlock Text="Riduci animazioni" Classes="muted" FontSize="12.5" VerticalAlignment="Center"/>
-            <ToggleSwitch Grid.Column="1" Classes="small" IsChecked="{Binding ReducedMotion}" Click="UiPreferenceChanged_Click" OnContent="" OffContent="" AutomationProperties.Name="Riduci animazioni"/>
-          </Grid>
+        <Button Classes="cmdk" Click="OpenPalette_Click" ToolTip.Tip="Comandi · Ctrl+K">
+          <StackPanel Orientation="Horizontal" Spacing="10" VerticalAlignment="Center">
+            <Path Data="M10.5 3.5 A7 7 0 1 1 10.49 3.5 Z M15.5 15.5 L21 21" Stroke="{StaticResource MutedBrush}" StrokeThickness="2" Width="14" Height="14" Stretch="Uniform"/>
+            <Border Classes="kbd"><TextBlock Text="Ctrl K"/></Border>
+          </StackPanel>
+        </Button>
+      </StackPanel>
+    </Grid>
+    <ProgressBar Grid.Row="0" VerticalAlignment="Bottom" Margin="0,0,0,-8" Height="2" MinHeight="2" Maximum="100" Value="{Binding Progress}" IsVisible="{Binding IsScanning}"/>
+
+    <!-- What is new: data added to a project that already had some. -->
+    <Border Grid.Row="1" x:Name="NoveltyBar" Classes="novelty" IsVisible="{Binding HasNovelty}" Margin="0,12,0,0">
+      <Grid ColumnDefinitions="Auto,*,Auto,Auto" ColumnSpacing="14">
+        <Path Data="M12 3 L13.8 10.2 L21 12 L13.8 13.8 L12 21 L10.2 13.8 L3 12 L10.2 10.2Z" Fill="{StaticResource OiiiBrush}" Width="16" Height="16" Stretch="Uniform" VerticalAlignment="Center"/>
+        <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="12" VerticalAlignment="Center">
+          <TextBlock Text="{Binding NoveltyTitle}" FontWeight="SemiBold"/>
+          <TextBlock Text="{Binding NoveltyText}" Classes="muted" TextTrimming="CharacterEllipsis"/>
         </StackPanel>
-        <local:StepConstellation x:Name="Constellation" Steps="{Binding Steps}" Margin="0,26,0,0" VerticalAlignment="Top"/>
-      </DockPanel>
+        <Button Grid.Column="2" Content="{Binding NoveltyAction}" Classes="primary" Padding="14,5" IsVisible="{Binding !IsExportStep}" Click="NoveltyGoToExport_Click"/>
+        <Button Grid.Column="3" Classes="icon" Content="✕" Click="DismissNovelty_Click" ToolTip.Tip="Chiudi le novità: i dati restano nel progetto"/>
+      </Grid>
     </Border>
 
-    <Grid Grid.Column="1" x:Name="MainArea" RowDefinitions="Auto,Auto,*" Margin="26,24,28,24">
-      <!-- Title bar: target, where the project stands, the two screens and the one next action. -->
-      <Grid x:Name="TopBar" ColumnDefinitions="*,Auto" ColumnSpacing="20">
-        <StackPanel VerticalAlignment="Bottom" ClipToBounds="True">
-          <StackPanel Orientation="Horizontal" Spacing="10">
-            <StackPanel Orientation="Horizontal" Spacing="6" VerticalAlignment="Center">
-              <Ellipse Width="6" Height="6" Fill="{StaticResource OkBrush}" IsVisible="{Binding StateLive}" Classes="live"/>
-              <TextBlock Text="{Binding StateLabel}" Classes="eyebrow state" Foreground="{StaticResource OkBrush}" IsVisible="{Binding StateLive}"/>
-              <TextBlock Text="{Binding StateLabel}" Classes="eyebrow" IsVisible="{Binding !StateLive}"/>
-            </StackPanel>
-            <TextBlock Text="{Binding RangeLabel}" Classes="eyebrow" VerticalAlignment="Center"/>
-            <Button Classes="chip" Content="{Binding FilterChip}" IsVisible="{Binding HasPendingFilters}" Click="OpenInstrument_Click"/>
-          </StackPanel>
-          <StackPanel Orientation="Horizontal" Spacing="10" Margin="0,4,0,0">
-            <TextBlock Text="{Binding TargetTitle}" Classes="target" TextTrimming="CharacterEllipsis"/>
-            <TextBlock Text="{Binding TargetAccent}" Classes="serif targetAccent" VerticalAlignment="Bottom" TextTrimming="CharacterEllipsis"/>
-          </StackPanel>
-        </StackPanel>
-        <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="12" VerticalAlignment="Bottom">
-          <Border Classes="tabs">
-            <TabControl x:Name="ScreenTabs" Classes="screens" SelectionChanged="ScreenTabs_SelectionChanged">
-              <TabItem x:Name="OverviewTab" Header="Panoramica"/>
-              <TabItem x:Name="InstrumentTab" Header="Strumento"/>
-            </TabControl>
-          </Border>
-          <Button Classes="cmdk" Click="OpenPalette_Click" ToolTip.Tip="Comandi · Ctrl+K">
-            <StackPanel Orientation="Horizontal" Spacing="10" VerticalAlignment="Center">
-              <Path Data="M10.5 3.5 A7 7 0 1 1 10.49 3.5 Z M15.5 15.5 L21 21" Stroke="{StaticResource MutedBrush}" StrokeThickness="2" Width="14" Height="14" Stretch="Uniform"/>
-              <Border Classes="kbd"><TextBlock Text="Ctrl K"/></Border>
-            </StackPanel>
-          </Button>
-          <Button x:Name="NextButton" Classes="next" Click="Next_Click" IsEnabled="{Binding NextEnabled}">
-            <Panel>
-              <Border x:Name="NextFill" Classes="nextFill" HorizontalAlignment="Left" Width="0"/>
-              <TextBlock Text="{Binding NextLabel}" VerticalAlignment="Center" HorizontalAlignment="Center"/>
-            </Panel>
-          </Button>
-        </StackPanel>
-      </Grid>
-      <ProgressBar Grid.Row="0" VerticalAlignment="Bottom" Margin="0,0,0,-10" Height="2" MinHeight="2" Maximum="100" Value="{Binding Progress}" IsVisible="{Binding IsScanning}"/>
-
-      <Border Grid.Row="1" Classes="warningBanner" IsVisible="{Binding HasRecoverySnapshot}" Margin="0,16,0,0"><Grid ColumnDefinitions="*,Auto,Auto" ColumnSpacing="7"><StackPanel><TextBlock Text="RECUPERO DISPONIBILE" Classes="eyebrow"/><TextBlock Text="{Binding RecoverySummary}" TextWrapping="Wrap"/></StackPanel><Button Grid.Column="1" Content="Ripristina" Click="RestoreRecovery_Click"/><Button Grid.Column="2" Content="Ignora" Click="DiscardRecovery_Click"/></Grid></Border>
-
-      <Carousel Grid.Row="2" x:Name="ScreenPages" Margin="0,18,0,0" SelectedIndex="{Binding #ScreenTabs.SelectedIndex}">
+    <!-- One page per step. -->
+    <Grid Grid.Row="2" Margin="0,16,0,10">
+      <Border x:Name="RecoveryBanner" Classes="warningBanner" IsVisible="{Binding Main.HasRecoverySnapshot}" VerticalAlignment="Top" ZIndex="5" Margin="0,0,0,8"><Grid ColumnDefinitions="*,Auto,Auto" ColumnSpacing="7"><StackPanel><TextBlock Text="RECUPERO DISPONIBILE" Classes="eyebrow"/><TextBlock Text="{Binding Main.RecoverySummary}" TextWrapping="Wrap"/></StackPanel><Button Grid.Column="1" Content="Ripristina" Click="RestoreRecovery_Click"/><Button Grid.Column="2" Content="Ignora" Click="DiscardRecovery_Click"/></Grid></Border>
+      <Carousel x:Name="ScreenPages" SelectedIndex="{Binding CurrentStep, Mode=TwoWay}">
         <Carousel.PageTransition><local:SlewPageTransition/></Carousel.PageTransition>
 
-        <!-- Panoramica -->
-        <Grid x:Name="OverviewScreen" ColumnDefinitions="1.55*,*" RowDefinitions="*,232" ColumnSpacing="16" RowSpacing="16">
-          <Border x:Name="StackCard" Classes="card stack" Padding="0" ClipToBounds="True">
-            <Grid RowDefinitions="*,Auto">
-              <local:StackPreview Grid.RowSpan="2" Snr="{Binding Snr}" Palette="{Binding Palette}" Seed="{Binding Seed}"/>
-              <Border Grid.RowSpan="2" Background="{StaticResource StackShadeBrush}" IsHitTestVisible="False"/>
-              <Border Classes="seg" HorizontalAlignment="Right" VerticalAlignment="Top" Margin="0,16,16,0" IsVisible="{Binding CanSho}">
-                <StackPanel Orientation="Horizontal">
-                  <RadioButton Classes="seg" GroupName="palette" IsChecked="{Binding IsHoo}">
-                    <StackPanel Orientation="Horizontal" Spacing="6"><StackPanel Orientation="Horizontal" Spacing="2" VerticalAlignment="Center"><Ellipse Width="5" Height="5" Fill="{StaticResource HaBrush}"/><Ellipse Width="5" Height="5" Fill="{StaticResource OiiiBrush}"/><Ellipse Width="5" Height="5" Fill="{StaticResource OiiiBrush}"/></StackPanel><TextBlock Text="HOO"/></StackPanel>
-                  </RadioButton>
-                  <RadioButton Classes="seg" GroupName="palette" IsChecked="{Binding IsSho}">
-                    <StackPanel Orientation="Horizontal" Spacing="6"><StackPanel Orientation="Horizontal" Spacing="2" VerticalAlignment="Center"><Ellipse Width="5" Height="5" Fill="{StaticResource SiiBrush}"/><Ellipse Width="5" Height="5" Fill="#7CDC6A"/><Ellipse Width="5" Height="5" Fill="#4B8BFF"/></StackPanel><TextBlock Text="SHO"/></StackPanel>
-                  </RadioButton>
-                </StackPanel>
-              </Border>
-              <StackPanel Margin="24,22,24,0" Spacing="6" IsVisible="{Binding HasNights}">
-                <TextBlock Text="{Binding StackEyebrow}" Classes="eyebrow"/>
-                <TextBlock Classes="bignum"><Run Text="{Binding HoursBig}"/><Run Text="{Binding HoursSmall}" Classes="unit"/></TextBlock>
-                <TextBlock Text="{Binding StackNote}" Classes="serif note" MaxWidth="330" TextWrapping="Wrap"/>
-              </StackPanel>
-              <StackPanel x:Name="EmptyProject" Margin="28,26,28,0" Spacing="12" MaxWidth="440" HorizontalAlignment="Left" IsVisible="{Binding !HasNights}">
-                <TextBlock Text="{Binding StateLabel}" Classes="eyebrow"/>
-                <TextBlock Text="Acquisizioni" FontWeight="Light" FontSize="44"/>
-                <TextBlock Text="Cartelle o file FITS e XISF da ASIAIR, N.I.N.A. o altri software. Sola lettura." Classes="serif note" TextWrapping="Wrap"/>
-                <StackPanel Orientation="Horizontal" Spacing="8" Margin="0,6,0,0">
-                  <Button Content="+ Importa cartella" Classes="primary" Click="AddSources_Click"/>
-                  <Button Content="+ Singoli file" Click="AddFiles_Click"/>
-                  <Button Content="Progetto demo" Click="OpenDemo_Click"/>
-                </StackPanel>
-              </StackPanel>
-              <Border Grid.Row="1" Classes="dock" IsVisible="{Binding HasNights}">
-                <Grid ColumnDefinitions="Auto,*,Auto" ColumnSpacing="18">
-                  <Button Classes="play" Click="PlayNights_Click" ToolTip.Tip="Riproduci l’accumulo delle notti · Spazio"><Path Data="M7 4 L7 20 L20 12 Z" Fill="{StaticResource FgBrush}" Width="12" Height="12" Stretch="Uniform"/></Button>
-                  <StackPanel Grid.Column="1" VerticalAlignment="Center" Spacing="2">
-                    <Grid ColumnDefinitions="*,Auto"><TextBlock Text="Notti integrate" Classes="muted" FontSize="12"/><TextBlock Grid.Column="1" Text="{Binding NightLabel}" Classes="muted" FontSize="12"/></Grid>
-                    <Slider x:Name="NightSlider" Classes="nights" Minimum="1" Maximum="{Binding NightCount}" Value="{Binding NightIndex}" IsSnapToTickEnabled="True" TickFrequency="1" SmallChange="1" LargeChange="1" AutomationProperties.Name="Notti integrate"/>
+        <!-- 1 · Importa: the Master Library first, then the captures. -->
+        <ScrollViewer x:Name="ImportPage" VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
+          <StackPanel Margin="0,4,0,18" Spacing="24" HorizontalAlignment="Stretch">
+            <StackPanel Spacing="6">
+              <TextBlock Text="PASSO 1 DI 4 · IMPORTA" Classes="eyebrow accent"/>
+              <TextBlock Text="Cosa vuoi elaborare?" Classes="pageTitle"/>
+              <TextBlock Text="Collega le tue calibrazioni una volta sola, poi aggiungi le acquisizioni." Classes="serif note" TextWrapping="Wrap"/>
+            </StackPanel>
+            <Grid ColumnDefinitions="*,*" ColumnSpacing="22">
+              <Border x:Name="LibraryCard" Classes="card hero step" MinHeight="380">
+                <Grid RowDefinitions="Auto,Auto,*" RowSpacing="14">
+                  <Grid ColumnDefinitions="Auto,*,Auto" ColumnSpacing="12">
+                    <Border Classes="badge"><TextBlock Text="1"/></Border>
+                    <StackPanel Grid.Column="1" VerticalAlignment="Center"><TextBlock Text="LIBRERIA MASTER" Classes="eyebrow"/><TextBlock Text="Dark e Bias, una volta sola" Classes="stepTitle"/></StackPanel>
+                    <Border Grid.Column="2" Classes="count" VerticalAlignment="Top"><TextBlock Text="{Binding Main.MasterLibraryCountLabel}"/></Border>
+                  </Grid>
+                  <TextBlock Grid.Row="1" Text="Collega la cartella dei tuoi Master Dark e Bias. Forge li abbina per camera, gain, offset e temperatura e li ricorda per ogni progetto." Classes="muted" TextWrapping="Wrap" LineHeight="20"/>
+                  <Border Grid.Row="2" x:Name="LibraryDrop" Classes="drop" IsVisible="{Binding NoLibraries}" PointerReleased="LibraryDrop_PointerReleased" MinHeight="220">
+                    <StackPanel VerticalAlignment="Center" HorizontalAlignment="Center" Spacing="12">
+                      <Path Data="M12 3 V15 M7 10 L12 15 L17 10 M4 19 H20" Stroke="{StaticResource AccentBrush}" StrokeThickness="2" Width="30" Height="30" Stretch="Uniform" StrokeLineCap="Round" StrokeJoin="Round" HorizontalAlignment="Center"/>
+                      <Button Content="+ Aggiungi Master Library" Classes="primary" Click="AddLibrary_Click" HorizontalAlignment="Center" ToolTip.Tip="Scegli la cartella con i Master Dark e Bias"/>
+                      <TextBlock Text="o trascina qui la cartella" Classes="muted" HorizontalAlignment="Center"/>
+                      <TextBlock Text="Non ce l’hai? Salta: la aggiungi quando vuoi." Classes="muted" HorizontalAlignment="Center" Opacity="0.7"/>
+                    </StackPanel>
+                  </Border>
+                  <StackPanel Grid.Row="2" Spacing="9" IsVisible="{Binding HasLibraries}">
+                    <ItemsControl ItemsSource="{Binding Main.MasterLibraries}">
+                      <ItemsControl.ItemsPanel><ItemsPanelTemplate><StackPanel Spacing="8"/></ItemsPanelTemplate></ItemsControl.ItemsPanel>
+                      <ItemsControl.ItemTemplate><DataTemplate>
+                        <Border Classes="pathCard"><Grid ColumnDefinitions="Auto,*,Auto,Auto,Auto,Auto" ColumnSpacing="8">
+                          <CheckBox IsChecked="{Binding Enabled}" ToolTip.Tip="Includi questa libreria nell’analisi" VerticalAlignment="Center"/>
+                          <StackPanel Grid.Column="1" VerticalAlignment="Center"><TextBlock Text="{Binding Name}" FontWeight="SemiBold" TextTrimming="CharacterEllipsis"/><TextBlock Text="{Binding Path}" Classes="muted" FontSize="10.5" TextTrimming="CharacterEllipsis" ToolTip.Tip="{Binding Path}"/></StackPanel>
+                          <Border Grid.Column="2" Classes="count" Margin="0"><TextBlock Text="{Binding Status}"/></Border>
+                          <Button Grid.Column="3" Classes="icon" Content="↑" Click="MoveLibraryItemUp_Click" ToolTip.Tip="Aumenta priorità"/>
+                          <Button Grid.Column="4" Classes="icon" Content="↓" Click="MoveLibraryItemDown_Click" ToolTip.Tip="Riduci priorità"/>
+                          <Button Grid.Column="5" Classes="icon" Content="✕" Click="RemoveLibraryItem_Click" ToolTip.Tip="Rimuovi la libreria dall’app senza cancellare i Master"/>
+                        </Grid></Border>
+                      </DataTemplate></ItemsControl.ItemTemplate>
+                    </ItemsControl>
+                    <WrapPanel ItemSpacing="8" LineSpacing="8">
+                      <Button Content="+ Un’altra libreria" Click="AddLibrary_Click"/>
+                      <Button Content="Aggiorna stato" Click="RefreshLibraries_Click"/>
+                      <Button Content="Verifica e organizza…" Click="OpenMasters_Click" ToolTip.Tip="Copertura dei Dark, controllo metadati e copie ordinate"/>
+                    </WrapPanel>
                   </StackPanel>
-                  <StackPanel Grid.Column="2" Orientation="Horizontal" Spacing="22" VerticalAlignment="Center">
-                    <StackPanel><TextBlock Text="{Binding SnrText}" Classes="metric"/><TextBlock Text="SNR vs 1 notte" Classes="muted" FontSize="11"/></StackPanel>
-                    <StackPanel><TextBlock Text="{Binding NoiseText}" Classes="metric"/><TextBlock Text="rumore" Classes="muted" FontSize="11"/></StackPanel>
-                    <StackPanel><TextBlock Text="{Binding LightsText}" Classes="metric"/><TextBlock Text="Light" Classes="muted" FontSize="11"/></StackPanel>
+                </Grid>
+              </Border>
+
+              <Border Grid.Column="1" x:Name="SourcesCard" Classes="card hero step" MinHeight="380">
+                <Grid RowDefinitions="Auto,Auto,*" RowSpacing="14">
+                  <Grid ColumnDefinitions="Auto,*,Auto" ColumnSpacing="12">
+                    <Border Classes="badge"><TextBlock Text="2"/></Border>
+                    <StackPanel Grid.Column="1" VerticalAlignment="Center"><TextBlock Text="ACQUISIZIONI" Classes="eyebrow"/><TextBlock Text="Le immagini del progetto" Classes="stepTitle"/></StackPanel>
+                    <Border Grid.Column="2" Classes="count" VerticalAlignment="Top"><TextBlock Text="{Binding Main.SourceSummary}"/></Border>
+                  </Grid>
+                  <TextBlock Grid.Row="1" Text="Cartelle o file FITS e XISF da ASIAIR, N.I.N.A. o altri software. Forge legge solo gli header: i tuoi file non vengono mai modificati." Classes="muted" TextWrapping="Wrap" LineHeight="20"/>
+                  <Border Grid.Row="2" x:Name="SourcesDrop" Classes="drop" IsVisible="{Binding NoSources}" PointerReleased="SourcesDrop_PointerReleased" MinHeight="220">
+                    <StackPanel VerticalAlignment="Center" HorizontalAlignment="Center" Spacing="12">
+                      <Path Data="M3 7 H9 L11 9 H21 V19 H3 Z" Stroke="{StaticResource AccentBrush}" StrokeThickness="2" Width="30" Height="30" Stretch="Uniform" StrokeLineCap="Round" StrokeJoin="Round" HorizontalAlignment="Center"/>
+                      <StackPanel Orientation="Horizontal" Spacing="8" HorizontalAlignment="Center">
+                        <Button Content="+ Importa cartella" Classes="primary" Click="AddSources_Click" ToolTip.Tip="Importa ricorsivamente FITS e XISF"/>
+                        <Button Content="+ Singoli file" Click="AddFiles_Click"/>
+                      </StackPanel>
+                      <TextBlock Text="o trascina qui cartelle e file" Classes="muted" HorizontalAlignment="Center"/>
+                      <Button Content="Prova con il progetto demo" Classes="link" Click="OpenDemo_Click" HorizontalAlignment="Center" ToolTip.Tip="Due notti di FITS sintetici con Flat e Master"/>
+                    </StackPanel>
+                  </Border>
+                  <StackPanel Grid.Row="2" Spacing="9" IsVisible="{Binding HasSources}">
+                    <ItemsControl ItemsSource="{Binding Main.SourcePaths}">
+                      <ItemsControl.ItemsPanel><ItemsPanelTemplate><StackPanel Spacing="8"/></ItemsPanelTemplate></ItemsControl.ItemsPanel>
+                      <ItemsControl.ItemTemplate><DataTemplate>
+                        <Border Classes="pathCard"><Grid ColumnDefinitions="Auto,*,Auto" ColumnSpacing="10">
+                          <Border Width="22" Height="22" CornerRadius="6" Classes="iconTile" VerticalAlignment="Center"><TextBlock Text="↳" Foreground="{StaticResource AccentBrush}" HorizontalAlignment="Center" VerticalAlignment="Center"/></Border>
+                          <TextBlock Grid.Column="1" Text="{Binding}" TextTrimming="CharacterEllipsis" ToolTip.Tip="{Binding}" VerticalAlignment="Center"/>
+                          <Button Grid.Column="2" Classes="icon" Content="✕" Click="RemoveSourceItem_Click" ToolTip.Tip="Rimuove il collegamento. I file restano su disco"/>
+                        </Grid></Border>
+                      </DataTemplate></ItemsControl.ItemTemplate>
+                    </ItemsControl>
+                    <WrapPanel ItemSpacing="8" LineSpacing="8">
+                      <Button Content="+ Altra cartella" Click="AddSources_Click"/>
+                      <Button Content="+ Singoli file" Click="AddFiles_Click"/>
+                    </WrapPanel>
                   </StackPanel>
                 </Grid>
               </Border>
             </Grid>
-          </Border>
 
-          <Grid Grid.Column="1" RowDefinitions="*,Auto" RowSpacing="16">
-            <ScrollViewer x:Name="OverviewFilters" VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
-              <ItemsControl ItemsSource="{Binding FilterCards}">
-                <ItemsControl.ItemsPanel><ItemsPanelTemplate><StackPanel Spacing="16"/></ItemsPanelTemplate></ItemsControl.ItemsPanel>
-                <ItemsControl.ItemTemplate><DataTemplate>
-                  <Border Classes="card filter" Padding="18,14">
-                    <Grid RowDefinitions="Auto,Auto,Auto" RowSpacing="9">
-                      <Grid ColumnDefinitions="*,Auto" ColumnSpacing="10">
-                        <StackPanel Orientation="Horizontal" Spacing="9" VerticalAlignment="Top">
-                          <TextBlock Text="{Binding Name}" FontWeight="Light" FontSize="20" TextTrimming="CharacterEllipsis" MaxWidth="200"/>
-                          <TextBlock Text="{Binding Detail}" Classes="mono muted" FontSize="10" VerticalAlignment="Center" TextTrimming="CharacterEllipsis"/>
-                        </StackPanel>
-                        <StackPanel Grid.Column="1" HorizontalAlignment="Right">
-                          <TextBlock Text="{Binding Hours}" Classes="mono" FontSize="16" HorizontalAlignment="Right"/>
-                          <TextBlock Text="{Binding Lights}" Classes="muted" FontSize="11" HorizontalAlignment="Right"/>
-                        </StackPanel>
-                      </Grid>
-                      <local:SpectrumBar Grid.Row="1" Bands="{Binding Bands}" Large="True"/>
-                      <Grid Grid.Row="2" ColumnDefinitions="*,Auto" RowDefinitions="Auto,Auto" RowSpacing="6">
-                        <TextBlock Text="{Binding CalibratedDetail}" Classes="muted" FontSize="12"/>
-                        <TextBlock Grid.Column="1" Text="{Binding CalibratedText}" FontWeight="SemiBold" FontSize="12"/>
-                        <ProgressBar Grid.Row="1" Grid.ColumnSpan="2" Classes="goal" Maximum="100" Value="{Binding Calibrated}" Foreground="{Binding Accent}"/>
-                      </Grid>
-                    </Grid>
-                  </Border>
-                </DataTemplate></ItemsControl.ItemTemplate>
-              </ItemsControl>
-            </ScrollViewer>
-            <Border Grid.Row="1" x:Name="CalibrationCard" Classes="card" Padding="20,16">
-              <Grid ColumnDefinitions="118,*" ColumnSpacing="20">
-                <local:CalibrationRing Width="118" Height="118" Flat="{Binding FlatShare}" Dark="{Binding DarkShare}" Bias="{Binding BiasShare}" Centre="{Binding CalibratedPercent}"/>
-                <StackPanel Grid.Column="1" Spacing="8" VerticalAlignment="Center">
-                  <TextBlock Text="CALIBRAZIONE" Classes="eyebrow"/>
-                  <ItemsControl ItemsSource="{Binding CalibrationLines}">
-                    <ItemsControl.ItemsPanel><ItemsPanelTemplate><StackPanel Spacing="7"/></ItemsPanelTemplate></ItemsControl.ItemsPanel>
-                    <ItemsControl.ItemTemplate><DataTemplate><Grid ColumnDefinitions="Auto,*,Auto" ColumnSpacing="9"><Ellipse Width="7" Height="7" Fill="{Binding Dot}" VerticalAlignment="Center"/><TextBlock Grid.Column="1" Text="{Binding Label}" FontSize="12.5" TextTrimming="CharacterEllipsis"/><TextBlock Grid.Column="2" Text="{Binding Count}" Classes="mono" FontSize="12"/></Grid></DataTemplate></ItemsControl.ItemTemplate>
-                  </ItemsControl>
-                  <Grid ColumnDefinitions="Auto,*,Auto" ColumnSpacing="9" IsVisible="{Binding HasOpenLights}"><Ellipse Width="7" Height="7" Fill="{StaticResource WarnBrush}" VerticalAlignment="Center"/><TextBlock Grid.Column="1" Text="{Binding OpenLabel}" FontSize="12.5"/><TextBlock Grid.Column="2" Text="{Binding OpenLights}" Classes="mono" FontSize="12" Foreground="{StaticResource WarnBrush}"/></Grid>
-                </StackPanel>
+            <Expander Header="Opzioni avanzate" Foreground="{StaticResource MutedBrush}" ToolTip.Tip="Valori di riserva e cambio notte">
+              <Grid ColumnDefinitions="*,*" ColumnSpacing="22" Margin="0,10,0,0">
+                <Border Classes="card" Padding="20,16"><StackPanel Spacing="9">
+                  <TextBlock Text="VALORI DI RISERVA" Classes="eyebrow"/>
+                  <TextBlock Text="Usati solo quando header e nome file non dicono il valore." Classes="muted" FontSize="12" TextWrapping="Wrap"/>
+                  <Grid ColumnDefinitions="*,100" RowDefinitions="Auto,Auto,Auto" RowSpacing="6"><TextBlock Text="Gain" VerticalAlignment="Center"/><TextBox Grid.Column="1" AutomationProperties.Name="Gain predefinito" Text="{Binding Main.ProjectDefaultGain}"/><TextBlock Grid.Row="1" Text="Offset" VerticalAlignment="Center"/><TextBox Grid.Row="1" Grid.Column="1" AutomationProperties.Name="Offset predefinito" Text="{Binding Main.ProjectDefaultOffset}"/><TextBlock Grid.Row="2" Text="Setpoint °C" VerticalAlignment="Center"/><TextBox Grid.Row="2" Grid.Column="1" AutomationProperties.Name="Temperatura predefinita" Text="{Binding Main.ProjectDefaultTemperature}"/></Grid>
+                  <Button Content="Applica valori e rianalizza" Command="{Binding Main.ApplyProjectDefaultsCommand}" HorizontalAlignment="Left"/>
+                </StackPanel></Border>
+                <Border Grid.Column="1" Classes="card" Padding="20,16"><StackPanel Spacing="9">
+                  <TextBlock Text="NOTTE ASTRONOMICA" Classes="eyebrow"/>
+                  <TextBlock Text="{Binding Main.AstronomicalNightExplanation}" Classes="muted" FontSize="12" TextWrapping="Wrap"/>
+                  <Border Classes="note"><TextBlock Text="{Binding Main.AstronomicalNightExample}" FontSize="11" TextWrapping="Wrap"/></Border>
+                  <Grid ColumnDefinitions="*,90"><StackPanel><TextBlock Text="La nuova notte inizia alle" FontWeight="SemiBold"/><TextBlock Text="Predefinito: 12:00" Classes="muted" FontSize="10"/></StackPanel><NumericUpDown Grid.Column="1" AutomationProperties.Name="Ora di cambio notte" Minimum="0" Maximum="23" Value="{Binding Main.SessionBoundaryHour}" ToolTip.Tip="I file precedenti a quest’ora appartengono alla notte prima"/></Grid>
+                </StackPanel></Border>
               </Grid>
-            </Border>
-          </Grid>
+            </Expander>
+          </StackPanel>
+        </ScrollViewer>
 
-          <Border Grid.Row="1" x:Name="NightsCard" Classes="card" Padding="20,16">
-            <Grid RowDefinitions="Auto,*" RowSpacing="10">
-              <Grid ColumnDefinitions="*,Auto"><TextBlock Text="NOTTI OSSERVATIVE · 18:00 → 06:00" Classes="eyebrow"/><TextBlock Grid.Column="1" Text="luna e crepuscolo per notte" Classes="serif" FontSize="16" Foreground="{StaticResource MutedBrush}"/></Grid>
-              <local:NightSky Grid.Row="1" x:Name="NightSkyView" Nights="{Binding SkyNights}" Shown="{Binding NightIndex}"/>
-            </Grid>
-          </Border>
-
-          <Border Grid.Row="1" Grid.Column="1" x:Name="ResolveCard" Classes="card" Padding="20,16">
-            <Grid RowDefinitions="Auto,Auto,*,Auto" RowSpacing="8">
-              <Grid ColumnDefinitions="*,Auto"><TextBlock Text="DA RISOLVERE" Classes="eyebrow" VerticalAlignment="Center"/><Button Grid.Column="1" Classes="chip" Content="{Binding ChoiceBadge}" IsVisible="{Binding HasChoice}" Click="OpenResolve_Click"/></Grid>
-              <StackPanel Grid.Row="1" Orientation="Horizontal" Spacing="8" IsVisible="{Binding HasChoice}" ToolTip.Tip="{Binding ChoiceReason}">
-                <TextBlock Text="{Binding ChoiceTitle}" FontSize="16" FontWeight="SemiBold"/>
-                <TextBlock Text="{Binding ChoiceSubtitle}" Classes="muted" FontSize="14" VerticalAlignment="Bottom"/>
-              </StackPanel>
-              <local:ResolvePaths Grid.Row="2" x:Name="ResolvePathsView" IsVisible="{Binding HasChoice}" Source="{Binding ChoiceSource}" Options="{Binding ChoiceOptions}" Accent="{Binding ChoiceAccent}"/>
-              <StackPanel Grid.Row="3" Orientation="Horizontal" Spacing="8" IsVisible="{Binding HasChoice}">
-                <Button Content="{Binding UseFirstLabel}" Classes="primary" IsVisible="{Binding HasFirst}" Click="UseFirstCandidate_Click"/>
-                <Button Content="{Binding UseSecondLabel}" IsVisible="{Binding HasSecond}" Click="UseSecondCandidate_Click"/>
-                <Button Content="{Binding ImportLabel}" Classes="primary" IsVisible="{Binding NeedsImport}" Click="ResolveImport_Click"/>
-              </StackPanel>
-              <StackPanel Grid.Row="1" Grid.RowSpan="3" Spacing="8" VerticalAlignment="Center" IsVisible="{Binding NoChoiceClean}">
-                <TextBlock Text="Calibrazione completa" FontWeight="Light" FontSize="24"/>
-                <TextBlock Text="{Binding AllCalibratedLabel}" Classes="muted"/>
-              </StackPanel>
-              <StackPanel Grid.Row="1" Grid.RowSpan="3" Spacing="10" VerticalAlignment="Center" IsVisible="{Binding NoChoiceFilter}">
-                <TextBlock Text="{Binding PendingFilterTitle}" FontSize="16" FontWeight="SemiBold" TextTrimming="CharacterEllipsis"/>
-                <TextBlock Text="{Binding PendingFilterDetail}" Classes="muted" TextWrapping="Wrap"/>
-                <Button Content="{Binding PendingFilterAction}" Classes="primary" HorizontalAlignment="Left" Margin="0,6,0,0" Click="OpenInstrument_Click"/>
-              </StackPanel>
-            </Grid>
-          </Border>
-        </Grid>
-
-        <!-- Strumento -->
-        <Panel x:Name="InstrumentPanel">
-          <Border Classes="card hero" IsVisible="{Binding HasNoInstrument}" MaxWidth="620" HorizontalAlignment="Left" VerticalAlignment="Top" Padding="24"><StackPanel Spacing="10">
-            <TextBlock Text="STRUMENTO" Classes="eyebrow accent"/>
-            <TextBlock Text="Treno ottico" Classes="title" TextWrapping="Wrap"/>
-            <TextBlock Text="Camera, telescopio, riduttore e filtri da header e nomi file (ASIAIR, N.I.N.A.). I filtri con nome non riconoscibile si confermano una volta per camera." Classes="muted" TextWrapping="Wrap"/>
+        <!-- 2 · Strumento: is this your gear? Everything detected can be changed. -->
+        <Grid x:Name="SetupPage" DataContext="{Binding Observatory}" RowDefinitions="Auto,*" RowSpacing="16">
+          <StackPanel Spacing="6">
+            <TextBlock Text="PASSO 2 DI 4 · STRUMENTO" Classes="eyebrow accent"/>
+            <TextBlock Text="È questo il tuo setup?" Classes="pageTitle"/>
+            <TextBlock Text="Camera, ottica e filtri letti da header e nomi file. Tocca una voce per dire cos’è davvero." Classes="serif note" TextWrapping="Wrap"/>
+          </StackPanel>
+          <Border Grid.Row="1" Classes="card hero" IsVisible="{Binding HasNoInstrument}" MaxWidth="620" HorizontalAlignment="Left" VerticalAlignment="Top" Padding="24"><StackPanel Spacing="12">
+            <TextBlock Text="Analizza il progetto per vedere camera, ottica e filtri trovati." Classes="muted" TextWrapping="Wrap"/>
+            <Button Content="Analizza" Classes="primary" HorizontalAlignment="Left" Click="Analyze_Click"/>
           </StackPanel></Border>
-          <Grid IsVisible="{Binding HasInstrument}" ColumnDefinitions="1.55*,*" RowDefinitions="*,Auto" ColumnSpacing="16" RowSpacing="16">
-            <Border x:Name="FieldCard" Classes="card stack" Padding="0" ClipToBounds="True">
+          <ScrollViewer Grid.Row="1" x:Name="SetupScroll" IsVisible="{Binding HasInstrument}" VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled"><Grid ColumnDefinitions="1.35*,*" RowDefinitions="*,Auto" ColumnSpacing="20" RowSpacing="20" Margin="0,0,6,0">
+            <Border x:Name="FieldCard" MinHeight="360" Classes="card stack" Padding="0" ClipToBounds="True">
               <Grid RowDefinitions="*,Auto">
                 <local:StackPreview Grid.RowSpan="2" Snr="8" Palette="0" Seed="{Binding CameraName}"/>
                 <local:SensorFrame Grid.RowSpan="2" WidthDeg="{Binding PreviewWidth}" HeightDeg="{Binding PreviewHeight}" AltWidthDeg="{Binding OtherWidth}" AltHeightDeg="{Binding OtherHeight}" AltLabel="{Binding OtherLabel}" Warn="{Binding HasPending}"/>
@@ -248,94 +231,333 @@
               </Grid>
             </Border>
 
-            <Border Grid.Column="1" x:Name="WheelCard" Classes="card" Padding="20,18">
-              <Grid RowDefinitions="Auto,*,Auto" RowSpacing="12">
-                <Grid ColumnDefinitions="*,Auto" ColumnSpacing="8">
-                  <TextBlock Text="{Binding WheelTitle}" Classes="eyebrow" TextWrapping="Wrap" VerticalAlignment="Center"/>
-                  <Border Grid.Column="1" Classes="warning" Margin="0" IsVisible="{Binding HasPending}"><TextBlock Text="{Binding PendingText}"/></Border>
-                  <Border Grid.Column="1" Classes="count" Margin="0" IsVisible="{Binding !HasPending}"><TextBlock Text="{Binding PendingText}"/></Border>
-                </Grid>
-                <ScrollViewer Grid.Row="1" VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
-                  <Grid ColumnDefinitions="Auto,*" ColumnSpacing="16">
-                    <local:FilterWheelView Slots="{Binding Slots}" SelectedIndex="{Binding SelectedSlot}" Width="190" Height="190" VerticalAlignment="Top"/>
-                    <StackPanel Grid.Column="1" DataContext="{Binding SelectedFilter}" IsVisible="{Binding $self.DataContext, Converter={x:Static ObjectConverters.IsNotNull}}" Spacing="8" VerticalAlignment="Center">
-                      <TextBlock Text="{Binding RawName}" Classes="mono" FontSize="11" Foreground="{StaticResource MutedBrush}"/>
-                      <TextBlock Text="{Binding DisplayName}" FontSize="19" FontWeight="SemiBold" TextWrapping="Wrap"/>
-                      <WrapPanel ItemSpacing="6" LineSpacing="6"><Border Classes="count" Margin="0"><TextBlock Text="{Binding Lines}"/></Border><Border Classes="count" Margin="0"><TextBlock Text="{Binding Source}"/></Border></WrapPanel>
-                      <local:SpectrumBar Bands="{Binding Bands}"/>
-                      <TextBlock Text="{Binding Usage}" Classes="muted" FontSize="11"/>
-                      <StackPanel Spacing="7" IsVisible="{Binding NeedsConfirmation}">
-                        <ComboBox ItemsSource="{Binding Choices}" SelectedItem="{Binding Choice}" HorizontalAlignment="Stretch" PlaceholderText="Scegli dal catalogo" MaxDropDownHeight="320"/>
-                        <Button Content="Conferma" Classes="primary" Click="ConfirmFilter_Click" IsEnabled="{Binding Choice, Converter={x:Static ObjectConverters.IsNotNull}}"/>
-                      </StackPanel>
-                      <Button Content="Annulla conferma" IsVisible="{Binding IsConfirmed}" HorizontalAlignment="Left" Click="ForgetFilter_Click" ToolTip.Tip="Ripristina il riconoscimento automatico"/>
-                    </StackPanel>
-                  </Grid>
-                </ScrollViewer>
-                <ListBox Grid.Row="2" Classes="slots" ItemsSource="{Binding Filters}" SelectedIndex="{Binding SelectedSlot}" AutoScrollToSelectedItem="False">
-                  <ListBox.ItemsPanel><ItemsPanelTemplate><WrapPanel ItemSpacing="6" LineSpacing="6"/></ItemsPanelTemplate></ListBox.ItemsPanel>
-                  <ListBox.ItemTemplate><DataTemplate><StackPanel Spacing="4" Width="46" ToolTip.Tip="{Binding Usage}"><Ellipse Width="14" Height="14" Fill="{Binding Glass}" HorizontalAlignment="Center"/><TextBlock Text="{Binding RawName}" Classes="mono" FontSize="9.5" HorizontalAlignment="Center" TextTrimming="CharacterEllipsis"/></StackPanel></DataTemplate></ListBox.ItemTemplate>
-                </ListBox>
-              </Grid>
-            </Border>
-
             <Border Grid.Row="1" x:Name="TrainCard" Classes="card" Padding="20,16">
               <Grid RowDefinitions="Auto,*" RowSpacing="8">
-                <Grid ColumnDefinitions="*,Auto"><TextBlock Text="TRENO OTTICO" Classes="eyebrow"/><TextBlock Grid.Column="1" Text="la luce attraversa il filtro in uso" Classes="serif" FontSize="16" Foreground="{StaticResource MutedBrush}"/></Grid>
-                <local:OpticalTrain Grid.Row="1" Telescope="{Binding TrainTelescope}" Reducer="{Binding TrainReducer}" Wheel="{Binding TrainWheel}" Camera="{Binding TrainCamera}" Beam="{Binding BeamColor}"/>
+                <Grid ColumnDefinitions="*,Auto"><TextBlock Text="TRENO OTTICO" Classes="eyebrow"/><TextBlock Grid.Column="1" Text="tocca una parte per cambiarla" Classes="serif" FontSize="16" Foreground="{StaticResource MutedBrush}"/></Grid>
+                <local:OpticalTrain Grid.Row="1" x:Name="TrainView" Telescope="{Binding TrainTelescope}" Reducer="{Binding TrainReducer}" Wheel="{Binding TrainWheel}" Camera="{Binding TrainCamera}" Beam="{Binding BeamColor}"/>
               </Grid>
             </Border>
 
-            <Border Grid.Row="1" Grid.Column="1" x:Name="ProfileCard" Classes="card" Padding="20,16">
-              <Grid RowDefinitions="Auto,*" RowSpacing="10">
-                <Grid ColumnDefinitions="*,Auto"><TextBlock Text="PROFILO STRUMENTO" Classes="eyebrow" VerticalAlignment="Center"/>
-                  <Border Grid.Column="1" Classes="warning" Margin="0" IsVisible="{Binding !IsProfileConfirmed}"><TextBlock Text="{Binding ProfileBadge}"/></Border>
-                  <Border Grid.Column="1" Classes="count" Margin="0" IsVisible="{Binding IsProfileConfirmed}"><TextBlock Text="{Binding ProfileBadge}"/></Border>
-                </Grid>
-                <StackPanel Grid.Row="1" Spacing="7" IsVisible="{Binding IsViewing}">
-                  <Grid ColumnDefinitions="78,*,Auto" RowDefinitions="Auto,Auto,Auto,Auto,Auto" RowSpacing="7" ColumnSpacing="8">
-                    <TextBlock Text="Camera" Classes="muted" FontSize="12.5"/><TextBlock Grid.Column="1" Text="{Binding CameraName}" FontWeight="SemiBold" FontSize="12.5" TextTrimming="CharacterEllipsis"/><Border Grid.Column="2" Classes="chipOk"><TextBlock Text="{Binding CameraChip}"/></Border>
-                    <TextBlock Grid.Row="1" Text="Ottica" Classes="muted" FontSize="12.5"/><TextBlock Grid.Row="1" Grid.Column="1" Text="{Binding OpticsRow}" FontWeight="SemiBold" FontSize="12.5" TextTrimming="CharacterEllipsis"/><Border Grid.Row="1" Grid.Column="2" Classes="chipOk"><TextBlock Text="{Binding OpticsChip}"/></Border>
-                    <TextBlock Grid.Row="2" Text="Riduttore" Classes="muted" FontSize="12.5"/><TextBlock Grid.Row="2" Grid.Column="1" Text="{Binding ReducerRow}" FontWeight="SemiBold" FontSize="12.5"/><Border Grid.Row="2" Grid.Column="2" Classes="chipOk"><TextBlock Text="{Binding ReducerChip}"/></Border>
-                    <TextBlock Grid.Row="3" Text="Pixel" Classes="muted" FontSize="12.5"/><TextBlock Grid.Row="3" Grid.Column="1" Text="{Binding PixelRow}" FontWeight="SemiBold" FontSize="12.5"/><Border Grid.Row="3" Grid.Column="2" Classes="chipOk"><TextBlock Text="{Binding PixelChip}"/></Border>
-                    <TextBlock Grid.Row="4" Text="Ruota" Classes="muted" FontSize="12.5"/><TextBlock Grid.Row="4" Grid.Column="1" Text="{Binding WheelRow}" FontWeight="SemiBold" FontSize="12.5" TextTrimming="CharacterEllipsis"/><Border Grid.Row="4" Grid.Column="2" Classes="warning" Margin="0" IsVisible="{Binding HasPending}"><TextBlock Text="{Binding WheelChip}"/></Border>
-                  </Grid>
-                  <Grid ColumnDefinitions="*,Auto,Auto" ColumnSpacing="8" Margin="0,4,0,0">
-                    <TextBlock Text="Vale per ogni progetto con questa camera." Classes="muted" FontSize="11.5" TextWrapping="Wrap" VerticalAlignment="Center"/>
-                    <Button Grid.Column="1" Content="Modifica" Click="EditProfile_Click"/>
-                    <Button Grid.Column="2" Content="Conferma profilo" Classes="primary" IsVisible="{Binding !IsProfileConfirmed}" Click="ConfirmProfile_Click"/>
-                  </Grid>
-                </StackPanel>
-                <StackPanel Grid.Row="1" Spacing="8" IsVisible="{Binding IsEditing}">
-                  <Grid ColumnDefinitions="78,*" RowDefinitions="Auto,Auto,Auto,Auto" RowSpacing="7" ColumnSpacing="8">
-                    <TextBlock Text="Ottica" Classes="muted" FontSize="12.5" VerticalAlignment="Center"/>
-                    <AutoCompleteBox Grid.Column="1" ItemsSource="{Binding TelescopeChoices}" SelectedItem="{Binding SelectedTelescope}" Text="{Binding TelescopeText}" FilterMode="Contains" MinimumPrefixLength="1" MaxDropDownHeight="260" AutomationProperties.Name="Ottica"/>
-                    <TextBlock Grid.Row="1" Text="Focale" Classes="muted" FontSize="12.5" VerticalAlignment="Center" IsVisible="{Binding IsCustomTelescope}"/>
-                    <Grid Grid.Row="1" Grid.Column="1" ColumnDefinitions="*,*" ColumnSpacing="8" IsVisible="{Binding IsCustomTelescope}">
-                      <NumericUpDown Value="{Binding CustomFocal}" Minimum="50" Maximum="10000" Increment="1" FormatString="0 mm" AutomationProperties.Name="Focale nativa"/>
-                      <NumericUpDown Grid.Column="1" Value="{Binding CustomAperture}" Minimum="20" Maximum="1000" Increment="1" FormatString="Ø 0 mm" AutomationProperties.Name="Apertura"/>
+            <StackPanel Grid.Column="1" Grid.RowSpan="2" Spacing="20" VerticalAlignment="Top">
+                <Border x:Name="ProfileCard" Classes="card" Padding="20,18">
+                  <StackPanel Spacing="12">
+                    <Grid ColumnDefinitions="*,Auto"><TextBlock Text="CAMERA E OTTICA" Classes="eyebrow" VerticalAlignment="Center"/>
+                      <Border Grid.Column="1" Classes="warning" Margin="0" IsVisible="{Binding !IsProfileConfirmed}"><TextBlock Text="{Binding ProfileBadge}"/></Border>
+                      <Border Grid.Column="1" Classes="count" Margin="0" IsVisible="{Binding IsProfileConfirmed}"><TextBlock Text="{Binding ProfileBadge}"/></Border>
                     </Grid>
-                    <TextBlock Grid.Row="2" Text="Riduttore" Classes="muted" FontSize="12.5" VerticalAlignment="Center"/>
-                    <ComboBox Grid.Row="2" Grid.Column="1" ItemsSource="{Binding ReducerChoices}" SelectedItem="{Binding SelectedReducer}" HorizontalAlignment="Stretch" AutomationProperties.Name="Riduttore"/>
-                    <TextBlock Grid.Row="3" Text="Pixel" Classes="muted" FontSize="12.5" VerticalAlignment="Center"/>
-                    <NumericUpDown Grid.Row="3" Grid.Column="1" Value="{Binding PixelValue}" Minimum="1" Maximum="30" Increment="0.01" FormatString="0.00 µm" AutomationProperties.Name="Dimensione pixel"/>
-                  </Grid>
-                  <StackPanel Orientation="Horizontal" Spacing="8" HorizontalAlignment="Right">
-                    <Button Content="Ripristina rilevato" IsVisible="{Binding IsProfileConfirmed}" Click="ResetProfile_Click"/>
-                    <Button Content="Annulla" Click="CancelProfile_Click"/>
-                    <Button Content="Applica" Classes="primary" Click="ApplyProfile_Click"/>
+                    <StackPanel Spacing="4" IsVisible="{Binding IsViewing}">
+                      <Grid ColumnDefinitions="82,*,Auto,Auto" ColumnSpacing="8" Classes="partRow">
+                        <TextBlock Text="Camera" Classes="muted" FontSize="12.5" VerticalAlignment="Center"/>
+                        <StackPanel Grid.Column="1" VerticalAlignment="Center"><TextBlock Text="{Binding CameraName}" FontWeight="SemiBold" FontSize="13" TextTrimming="CharacterEllipsis"/><TextBlock Text="{Binding DetectedCameraNote}" Classes="muted" FontSize="10.5" TextTrimming="CharacterEllipsis" IsVisible="{Binding CameraWasChanged}"/></StackPanel>
+                        <Border Grid.Column="2" Classes="chipOk"><TextBlock Text="{Binding CameraChip}"/></Border>
+                        <Button Grid.Column="3" Classes="link" Content="Cambia" Tag="camera" Click="EditProfile_Click" ToolTip.Tip="Di’ quale camera ha scattato davvero"/>
+                      </Grid>
+                      <Grid ColumnDefinitions="82,*,Auto,Auto" ColumnSpacing="8" Classes="partRow">
+                        <TextBlock Text="Ottica" Classes="muted" FontSize="12.5" VerticalAlignment="Center"/><TextBlock Grid.Column="1" Text="{Binding OpticsRow}" FontWeight="SemiBold" FontSize="13" TextTrimming="CharacterEllipsis" VerticalAlignment="Center"/>
+                        <Border Grid.Column="2" Classes="chipOk"><TextBlock Text="{Binding OpticsChip}"/></Border>
+                        <Button Grid.Column="3" Classes="link" Content="Cambia" Tag="optics" Click="EditProfile_Click" ToolTip.Tip="Telescopio, focale e apertura"/>
+                      </Grid>
+                      <Grid ColumnDefinitions="82,*,Auto,Auto" ColumnSpacing="8" Classes="partRow">
+                        <TextBlock Text="Riduttore" Classes="muted" FontSize="12.5" VerticalAlignment="Center"/><TextBlock Grid.Column="1" Text="{Binding ReducerRow}" FontWeight="SemiBold" FontSize="13" VerticalAlignment="Center"/>
+                        <Border Grid.Column="2" Classes="chipOk"><TextBlock Text="{Binding ReducerChip}"/></Border>
+                        <Button Grid.Column="3" Classes="link" Content="Cambia" Tag="reducer" Click="EditProfile_Click" ToolTip.Tip="Riduttore o flattener nel treno"/>
+                      </Grid>
+                      <Grid ColumnDefinitions="82,*,Auto,Auto" ColumnSpacing="8" Classes="partRow">
+                        <TextBlock Text="Pixel" Classes="muted" FontSize="12.5" VerticalAlignment="Center"/><TextBlock Grid.Column="1" Text="{Binding PixelRow}" FontWeight="SemiBold" FontSize="13" VerticalAlignment="Center"/>
+                        <Border Grid.Column="2" Classes="chipOk"><TextBlock Text="{Binding PixelChip}"/></Border>
+                        <Button Grid.Column="3" Classes="link" Content="Cambia" Tag="pixel" Click="EditProfile_Click" ToolTip.Tip="Dimensione del pixel del sensore"/>
+                      </Grid>
+                      <Grid ColumnDefinitions="*,Auto" ColumnSpacing="8" Margin="0,6,0,0">
+                        <TextBlock Text="Vale per ogni progetto con questa camera." Classes="muted" FontSize="11.5" TextWrapping="Wrap" VerticalAlignment="Center"/>
+                        <Button Grid.Column="1" Content="Va bene così" Classes="primary" IsVisible="{Binding !IsProfileConfirmed}" Click="ConfirmProfile_Click" ToolTip.Tip="Conferma camera, ottica, riduttore e pixel"/>
+                      </Grid>
+                    </StackPanel>
+                    <StackPanel Spacing="9" IsVisible="{Binding IsEditing}">
+                      <Grid ColumnDefinitions="82,*" RowDefinitions="Auto,Auto,Auto,Auto,Auto,Auto" RowSpacing="8" ColumnSpacing="8">
+                        <TextBlock Text="Camera" Classes="muted" FontSize="12.5" VerticalAlignment="Center"/>
+                        <StackPanel Grid.Column="1" Spacing="5">
+                          <Grid ColumnDefinitions="*,Auto" ColumnSpacing="6"><AutoCompleteBox x:Name="CameraBox" ItemsSource="{Binding CameraChoices}" SelectedItem="{Binding SelectedCamera}" Text="{Binding CameraText}" FilterMode="Contains" MinimumPrefixLength="0" MaxDropDownHeight="260" AutomationProperties.Name="Camera reale"/><Button Grid.Column="1" Classes="icon" Content="▾" Click="BrowseCameras_Click" ToolTip.Tip="Sfoglia il catalogo delle camere"/></Grid>
+                          <Border Classes="seg" IsVisible="{Binding IsCustomCamera}" HorizontalAlignment="Left">
+                            <StackPanel Orientation="Horizontal">
+                              <RadioButton Classes="seg" GroupName="cameraType" IsChecked="{Binding CustomCameraMono}" Content="Mono"/>
+                              <RadioButton Classes="seg" GroupName="cameraType" IsChecked="{Binding CustomCameraColor}" Content="Colore"/>
+                            </StackPanel>
+                          </Border>
+                          <TextBlock Text="{Binding DetectedCameraNote}" Classes="muted" FontSize="10.5" TextTrimming="CharacterEllipsis"/>
+                        </StackPanel>
+                        <TextBlock Grid.Row="1" Text="Ottica" Classes="muted" FontSize="12.5" VerticalAlignment="Center"/>
+                        <Grid Grid.Row="1" Grid.Column="1" ColumnDefinitions="*,Auto" ColumnSpacing="6"><AutoCompleteBox x:Name="TelescopeBox" ItemsSource="{Binding TelescopeChoices}" SelectedItem="{Binding SelectedTelescope}" Text="{Binding TelescopeText}" FilterMode="Contains" MinimumPrefixLength="0" MaxDropDownHeight="260" AutomationProperties.Name="Ottica"/><Button Grid.Column="1" Classes="icon" Content="▾" Click="BrowseTelescopes_Click" ToolTip.Tip="Sfoglia il catalogo dei telescopi"/></Grid>
+                        <TextBlock Grid.Row="2" Text="Focale" Classes="muted" FontSize="12.5" VerticalAlignment="Center" IsVisible="{Binding IsCustomTelescope}"/>
+                        <Grid Grid.Row="2" Grid.Column="1" ColumnDefinitions="*,*" ColumnSpacing="8" IsVisible="{Binding IsCustomTelescope}">
+                          <NumericUpDown Value="{Binding CustomFocal}" Minimum="50" Maximum="10000" Increment="1" FormatString="0 mm" AutomationProperties.Name="Focale nativa"/>
+                          <NumericUpDown Grid.Column="1" Value="{Binding CustomAperture}" Minimum="20" Maximum="1000" Increment="1" FormatString="Ø 0 mm" AutomationProperties.Name="Apertura"/>
+                        </Grid>
+                        <TextBlock Grid.Row="3" Text="Riduttore" Classes="muted" FontSize="12.5" VerticalAlignment="Center"/>
+                        <ComboBox Grid.Row="3" Grid.Column="1" x:Name="ReducerBox" ItemsSource="{Binding ReducerChoices}" SelectedItem="{Binding SelectedReducer}" HorizontalAlignment="Stretch" AutomationProperties.Name="Riduttore"/>
+                        <TextBlock Grid.Row="4" Text="Pixel" Classes="muted" FontSize="12.5" VerticalAlignment="Center"/>
+                        <NumericUpDown Grid.Row="4" Grid.Column="1" x:Name="PixelBox" Value="{Binding PixelValue}" Minimum="1" Maximum="30" Increment="0.01" FormatString="0.00 µm" AutomationProperties.Name="Dimensione pixel"/>
+                      </Grid>
+                      <StackPanel Orientation="Horizontal" Spacing="8" HorizontalAlignment="Right">
+                        <Button Content="Ripristina rilevato" IsVisible="{Binding IsProfileConfirmed}" Click="ResetProfile_Click" ToolTip.Tip="Torna a camera, ottica e pixel letti dagli header"/>
+                        <Button Content="Annulla" Click="CancelProfile_Click"/>
+                        <Button Content="Applica" Classes="primary" Click="ApplyProfile_Click"/>
+                      </StackPanel>
+                    </StackPanel>
                   </StackPanel>
+                </Border>
+
+                <Border x:Name="WheelCard" Classes="card" Padding="20,18">
+                  <StackPanel Spacing="12">
+                    <Grid ColumnDefinitions="*,Auto" ColumnSpacing="8">
+                      <TextBlock Text="{Binding WheelTitle}" Classes="eyebrow" TextWrapping="Wrap" VerticalAlignment="Center"/>
+                      <Border Grid.Column="1" Classes="warning" Margin="0" IsVisible="{Binding HasPending}"><TextBlock Text="{Binding PendingText}"/></Border>
+                      <Border Grid.Column="1" Classes="count" Margin="0" IsVisible="{Binding !HasPending}"><TextBlock Text="{Binding PendingText}"/></Border>
+                    </Grid>
+                    <Grid ColumnDefinitions="Auto,*" ColumnSpacing="16">
+                      <local:FilterWheelView x:Name="WheelView" Slots="{Binding Slots}" SelectedIndex="{Binding SelectedSlot}" Width="170" Height="170" VerticalAlignment="Top"/>
+                      <StackPanel Grid.Column="1" DataContext="{Binding SelectedFilter}" IsVisible="{Binding $self.DataContext, Converter={x:Static ObjectConverters.IsNotNull}}" Spacing="7" VerticalAlignment="Center">
+                        <TextBlock Text="{Binding RawName}" Classes="mono" FontSize="11" Foreground="{StaticResource MutedBrush}"/>
+                        <TextBlock Text="{Binding DisplayName}" FontSize="19" FontWeight="SemiBold" TextWrapping="Wrap"/>
+                        <WrapPanel ItemSpacing="6" LineSpacing="6"><Border Classes="count" Margin="0"><TextBlock Text="{Binding Lines}"/></Border><Border Classes="count" Margin="0"><TextBlock Text="{Binding Source}"/></Border></WrapPanel>
+                        <local:SpectrumBar Bands="{Binding Bands}"/>
+                        <TextBlock Text="{Binding Usage}" Classes="muted" FontSize="11"/>
+                      </StackPanel>
+                    </Grid>
+                    <StackPanel DataContext="{Binding SelectedFilter}" IsVisible="{Binding $self.DataContext, Converter={x:Static ObjectConverters.IsNotNull}}" Spacing="7">
+                      <TextBlock Text="{Binding ChangeHint}" Classes="muted" FontSize="12"/>
+                      <ComboBox ItemsSource="{Binding Choices}" SelectedItem="{Binding Choice}" HorizontalAlignment="Stretch" PlaceholderText="Scegli dal catalogo" MaxDropDownHeight="320" AutomationProperties.Name="Filtro reale"/>
+                      <WrapPanel ItemSpacing="8" LineSpacing="6">
+                        <Button Content="{Binding ApplyLabel}" Classes="primary" Click="ConfirmFilter_Click" IsEnabled="{Binding Choice, Converter={x:Static ObjectConverters.IsNotNull}}"/>
+                        <Button Content="Ripristina il riconoscimento" IsVisible="{Binding IsConfirmed}" Click="ForgetFilter_Click" ToolTip.Tip="Torna al filtro riconosciuto dal nome"/>
+                      </WrapPanel>
+                    </StackPanel>
+                    <TextBlock Text="Ciò che scegli resta salvato per questa camera in ogni progetto." Classes="muted" FontSize="11.5" TextWrapping="Wrap"/>
+                    <ListBox Classes="slots" ItemsSource="{Binding Filters}" SelectedIndex="{Binding SelectedSlot}" AutoScrollToSelectedItem="False">
+                      <ListBox.ItemsPanel><ItemsPanelTemplate><WrapPanel ItemSpacing="6" LineSpacing="6"/></ItemsPanelTemplate></ListBox.ItemsPanel>
+                      <ListBox.ItemTemplate><DataTemplate><StackPanel Spacing="4" Width="46" ToolTip.Tip="{Binding Usage}"><Ellipse Width="14" Height="14" Fill="{Binding Glass}" HorizontalAlignment="Center"/><TextBlock Text="{Binding RawName}" Classes="mono" FontSize="9.5" HorizontalAlignment="Center" TextTrimming="CharacterEllipsis"/></StackPanel></DataTemplate></ListBox.ItemTemplate>
+                    </ListBox>
+                  </StackPanel>
+                </Border>
+              </StackPanel>
+          </Grid></ScrollViewer>
+        </Grid>
+
+        <!-- 3 · Calibrazioni: every Light with its Flat, Dark and Bias; the open choices one at a time. -->
+        <Grid x:Name="CalibrationPage" RowDefinitions="Auto,*" RowSpacing="16">
+          <StackPanel Spacing="6">
+            <TextBlock Text="PASSO 3 DI 4 · CALIBRAZIONI" Classes="eyebrow accent"/>
+            <TextBlock Text="Ogni Light ha le sue calibrazioni?" Classes="pageTitle"/>
+            <TextBlock Text="Flat, Dark e Bias abbinati a ogni posa. Se Forge non può scegliere da solo, ti chiede una cosa alla volta." Classes="serif note" TextWrapping="Wrap"/>
+          </StackPanel>
+          <Border Grid.Row="1" Classes="card hero" IsVisible="{Binding NeedsAnalysis}" MaxWidth="620" HorizontalAlignment="Left" VerticalAlignment="Top" Padding="24"><StackPanel Spacing="12">
+            <TextBlock Text="Analizza il progetto per abbinare Flat, Dark e Bias." Classes="muted" TextWrapping="Wrap"/>
+            <Button Content="Analizza" Classes="primary" HorizontalAlignment="Left" Click="Analyze_Click"/>
+          </StackPanel></Border>
+          <ScrollViewer Grid.Row="1" x:Name="CalibrationScroll" IsVisible="{Binding Analyzed}" VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled"><Grid ColumnDefinitions="420,*" ColumnSpacing="20" Margin="0,0,6,0">
+            <StackPanel x:Name="OverviewFilters" Spacing="16" VerticalAlignment="Top">
+                <Border x:Name="CalibrationCard" Classes="card" Padding="20,18">
+                  <Grid ColumnDefinitions="130,*" ColumnSpacing="20">
+                    <local:CalibrationRing Width="130" Height="130" Flat="{Binding FlatShare}" Dark="{Binding DarkShare}" Bias="{Binding BiasShare}" Centre="{Binding CalibratedPercent}"/>
+                    <StackPanel Grid.Column="1" Spacing="8" VerticalAlignment="Center">
+                      <TextBlock Text="CALIBRAZIONE" Classes="eyebrow"/>
+                      <ItemsControl ItemsSource="{Binding CalibrationLines}">
+                        <ItemsControl.ItemsPanel><ItemsPanelTemplate><StackPanel Spacing="7"/></ItemsPanelTemplate></ItemsControl.ItemsPanel>
+                        <ItemsControl.ItemTemplate><DataTemplate><Grid ColumnDefinitions="Auto,*,Auto" ColumnSpacing="9"><Ellipse Width="7" Height="7" Fill="{Binding Dot}" VerticalAlignment="Center"/><TextBlock Grid.Column="1" Text="{Binding Label}" FontSize="12.5" TextTrimming="CharacterEllipsis"/><TextBlock Grid.Column="2" Text="{Binding Count}" Classes="mono" FontSize="12"/></Grid></DataTemplate></ItemsControl.ItemTemplate>
+                      </ItemsControl>
+                      <Grid ColumnDefinitions="Auto,*,Auto" ColumnSpacing="9" IsVisible="{Binding HasOpenLights}"><Ellipse Width="7" Height="7" Fill="{StaticResource WarnBrush}" VerticalAlignment="Center"/><TextBlock Grid.Column="1" Text="{Binding OpenLabel}" FontSize="12.5"/><TextBlock Grid.Column="2" Text="{Binding OpenLights}" Classes="mono" FontSize="12" Foreground="{StaticResource WarnBrush}"/></Grid>
+                    </StackPanel>
+                  </Grid>
+                </Border>
+                <ItemsControl DataContext="{Binding Observatory}" ItemsSource="{Binding FilterCards}">
+                  <ItemsControl.ItemsPanel><ItemsPanelTemplate><StackPanel Spacing="16"/></ItemsPanelTemplate></ItemsControl.ItemsPanel>
+                  <ItemsControl.ItemTemplate><DataTemplate>
+                    <Border Classes="card filter" Padding="18,14">
+                      <Grid RowDefinitions="Auto,Auto,Auto" RowSpacing="9">
+                        <Grid ColumnDefinitions="*,Auto" ColumnSpacing="10">
+                          <StackPanel Orientation="Horizontal" Spacing="9" VerticalAlignment="Top">
+                            <TextBlock Text="{Binding Name}" FontWeight="Light" FontSize="20" TextTrimming="CharacterEllipsis" MaxWidth="170"/>
+                            <TextBlock Text="{Binding Detail}" Classes="mono muted" FontSize="10" VerticalAlignment="Center" TextTrimming="CharacterEllipsis"/>
+                          </StackPanel>
+                          <StackPanel Grid.Column="1" HorizontalAlignment="Right">
+                            <TextBlock Text="{Binding Hours}" Classes="mono" FontSize="16" HorizontalAlignment="Right"/>
+                            <TextBlock Text="{Binding Lights}" Classes="muted" FontSize="11" HorizontalAlignment="Right"/>
+                          </StackPanel>
+                        </Grid>
+                        <local:SpectrumBar Grid.Row="1" Bands="{Binding Bands}" Large="True"/>
+                        <Grid Grid.Row="2" ColumnDefinitions="*,Auto" RowDefinitions="Auto,Auto" RowSpacing="6">
+                          <TextBlock Text="{Binding CalibratedDetail}" Classes="muted" FontSize="12"/>
+                          <TextBlock Grid.Column="1" Text="{Binding CalibratedText}" FontWeight="SemiBold" FontSize="12"/>
+                          <ProgressBar Grid.Row="1" Grid.ColumnSpan="2" Classes="goal" Maximum="100" Value="{Binding Calibrated}" Foreground="{Binding Accent}"/>
+                        </Grid>
+                      </Grid>
+                    </Border>
+                  </DataTemplate></ItemsControl.ItemTemplate>
+                </ItemsControl>
+              </StackPanel>
+
+            <StackPanel Grid.Column="1" x:Name="ResolveColumn" Spacing="16" VerticalAlignment="Top">
+                <Border x:Name="ResolveCard" Classes="card hero" Padding="22,18">
+                  <Grid RowDefinitions="Auto,Auto,Auto,Auto" RowSpacing="10">
+                    <Grid ColumnDefinitions="*,Auto"><TextBlock Text="DA RISOLVERE" Classes="eyebrow" VerticalAlignment="Center"/><Border Grid.Column="1" Classes="warning" Margin="0" IsVisible="{Binding HasChoice}"><TextBlock Text="{Binding ChoiceBadge}"/></Border></Grid>
+                    <StackPanel Grid.Row="1" Orientation="Horizontal" Spacing="8" IsVisible="{Binding HasChoice}" ToolTip.Tip="{Binding ChoiceReason}">
+                      <TextBlock Text="{Binding ChoiceTitle}" FontSize="20" FontWeight="SemiBold"/>
+                      <TextBlock Text="{Binding ChoiceSubtitle}" Classes="muted" FontSize="14" VerticalAlignment="Bottom"/>
+                    </StackPanel>
+                    <local:ResolvePaths Grid.Row="2" x:Name="ResolvePathsView" Height="190" IsVisible="{Binding HasChoice}" Source="{Binding ChoiceSource}" Options="{Binding ChoiceOptions}" Accent="{Binding ChoiceAccent}"/>
+                    <WrapPanel Grid.Row="3" ItemSpacing="8" LineSpacing="8" IsVisible="{Binding HasChoice}">
+                      <Button Content="{Binding UseFirstLabel}" Classes="primary" IsVisible="{Binding HasFirst}" Click="UseFirstCandidate_Click"/>
+                      <Button Content="{Binding UseSecondLabel}" IsVisible="{Binding HasSecond}" Click="UseSecondCandidate_Click"/>
+                      <Button Content="{Binding ImportLabel}" Classes="primary" IsVisible="{Binding NeedsImport}" Click="ResolveImport_Click"/>
+                    </WrapPanel>
+                    <StackPanel Grid.Row="1" Grid.RowSpan="3" Spacing="8" VerticalAlignment="Center" IsVisible="{Binding AllCalibrated}" MinHeight="150">
+                      <TextBlock Text="Calibrazione completa" FontWeight="Light" FontSize="30"/>
+                      <TextBlock Text="{Binding AllCalibratedLabel}" Classes="muted"/>
+                    </StackPanel>
+                  </Grid>
+                </Border>
+                <Border Classes="card hero" Padding="18,14">
+                  <StackPanel Spacing="8">
+                    <TextBlock Text="MAPPA DELLE CALIBRAZIONI" Classes="eyebrow"/>
+                    <ScrollViewer MaxHeight="260" VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled"><local:CalibrationMap x:Name="CalibrationMapView"/></ScrollViewer>
+                  </StackPanel>
+                </Border>
+                <Expander x:Name="ReviewExpander" Header="Tutte le scelte aperte, con candidati e ambito" Foreground="{StaticResource MutedBrush}" IsVisible="{Binding HasChoice}">
+                  <ListBox x:Name="ReviewList" Margin="0,8,0,0" ItemsSource="{Binding Main.ReviewQueue}" SelectionChanged="ReviewQueue_SelectionChanged" DoubleTapped="ReviewQueue_DoubleTapped"><ListBox.ItemTemplate><DataTemplate><Border Classes="card" Margin="0,0,0,8"><Grid ColumnDefinitions="76,*,150"><TextBlock Text="{Binding Calibration}" Foreground="{StaticResource WarnBrush}" FontWeight="SemiBold"/><StackPanel Grid.Column="1" Spacing="6"><TextBlock Text="{Binding State}" FontSize="16" FontWeight="SemiBold"/><TextBlock Text="{Binding ExampleFileLabel}" Classes="muted" TextTrimming="CharacterEllipsis"/><TextBlock Text="{Binding Reason}" TextWrapping="Wrap"/><StackPanel IsVisible="{Binding CanAssignCandidate}" Spacing="7"><ComboBox ItemsSource="{Binding Candidates}" SelectedItem="{Binding SelectedCandidate}" DisplayMemberBinding="{Binding Display}" ToolTip.Tip="Scegli la calibrazione da assegnare"/><Expander Header="Dettagli candidati"><DataGrid ItemsSource="{Binding Candidates}" SelectedItem="{Binding SelectedCandidate}" IsReadOnly="True" AutoGenerateColumns="False" MaxHeight="180"><DataGrid.Columns><DataGridTextColumn Header="File" Binding="{Binding FileName}" Width="2*"/><DataGridTextColumn Header="Camera" Binding="{Binding Camera}" Width="*"/><DataGridTextColumn Header="Gain" Binding="{Binding Gain}" Width="70"/><DataGridTextColumn Header="Temp." Binding="{Binding Temperature}" Width="80"/><DataGridTextColumn Header="Esp." Binding="{Binding Exposure}" Width="75"/><DataGridTextColumn Header="Score" Binding="{Binding Score}" Width="65"/></DataGrid.Columns></DataGrid></Expander><WrapPanel><Button Content="{Binding GroupActionLabel}" Classes="primary" Click="AssignLight_Click"/><Button Content="{Binding NightActionLabel}" Click="AssignNight_Click"/><Button Content="{Binding ConfigurationActionLabel}" Click="AssignSession_Click"/></WrapPanel></StackPanel><WrapPanel><Button Content="Modifica metadati" Click="EditReviewMetadata_Click" ToolTip.Tip="Apre il gruppo in Frame e metadati" IsVisible="{Binding CanEditMetadata}"/><Button Content="Aggiungi libreria Master" Click="AddLibrary_Click" IsVisible="{Binding CanAddMasterLibrary}"/><Button Content="Importa Flat" Click="AddSources_Click" IsVisible="{Binding CanImportFlat}"/></WrapPanel></StackPanel><StackPanel Grid.Column="2"><TextBlock Text="{Binding Scope}" TextWrapping="Wrap" TextAlignment="Right"/><TextBlock Text="{Binding AffectedLabel}" Foreground="{StaticResource AccentBrush}" TextAlignment="Right"/><TextBlock Text="{Binding CandidateLabel}" Classes="muted" TextAlignment="Right"/></StackPanel></Grid></Border></DataTemplate></ListBox.ItemTemplate></ListBox>
+                </Expander>
+              </StackPanel>
+          </Grid></ScrollViewer>
+        </Grid>
+
+        <!-- 4 · Esporta: the stack you built, where it goes, then PixInsight. -->
+        <Grid x:Name="ExportPage" RowDefinitions="Auto,*" RowSpacing="16">
+          <StackPanel Spacing="6">
+            <TextBlock Text="{Binding ExportEyebrow}" Classes="eyebrow accent"/>
+            <TextBlock Text="{Binding ExportTitle}" Classes="pageTitle"/>
+            <TextBlock Text="{Binding ExportSubtitle}" Classes="serif note" TextWrapping="Wrap"/>
+          </StackPanel>
+          <Border Grid.Row="1" Classes="card hero" IsVisible="{Binding NeedsAnalysis}" MaxWidth="620" HorizontalAlignment="Left" VerticalAlignment="Top" Padding="24"><StackPanel Spacing="12">
+            <TextBlock Text="Analizza il progetto per preparare l’esportazione." Classes="muted" TextWrapping="Wrap"/>
+            <Button Content="Analizza" Classes="primary" HorizontalAlignment="Left" Click="Analyze_Click"/>
+          </StackPanel></Border>
+          <ScrollViewer Grid.Row="1" x:Name="ExportScroll" IsVisible="{Binding Analyzed}" VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled"><Grid ColumnDefinitions="1.3*,*" RowDefinitions="*,210" ColumnSpacing="20" RowSpacing="20" Margin="0,0,6,0">
+            <Border x:Name="StackCard" MinHeight="430" Classes="card stack" Padding="0" ClipToBounds="True">
+              <Grid RowDefinitions="*,Auto">
+                <local:StackPreview Grid.RowSpan="2" Snr="{Binding Snr}" Palette="{Binding Palette}" Seed="{Binding Seed}"/>
+                <Border Grid.RowSpan="2" Background="{StaticResource StackShadeBrush}" IsHitTestVisible="False"/>
+                <Border Classes="seg" HorizontalAlignment="Right" VerticalAlignment="Top" Margin="0,16,16,0" IsVisible="{Binding CanSho}">
+                  <StackPanel Orientation="Horizontal">
+                    <RadioButton Classes="seg" GroupName="palette" IsChecked="{Binding IsHoo}">
+                      <StackPanel Orientation="Horizontal" Spacing="6"><StackPanel Orientation="Horizontal" Spacing="2" VerticalAlignment="Center"><Ellipse Width="5" Height="5" Fill="{StaticResource HaBrush}"/><Ellipse Width="5" Height="5" Fill="{StaticResource OiiiBrush}"/><Ellipse Width="5" Height="5" Fill="{StaticResource OiiiBrush}"/></StackPanel><TextBlock Text="HOO"/></StackPanel>
+                    </RadioButton>
+                    <RadioButton Classes="seg" GroupName="palette" IsChecked="{Binding IsSho}">
+                      <StackPanel Orientation="Horizontal" Spacing="6"><StackPanel Orientation="Horizontal" Spacing="2" VerticalAlignment="Center"><Ellipse Width="5" Height="5" Fill="{StaticResource SiiBrush}"/><Ellipse Width="5" Height="5" Fill="#7CDC6A"/><Ellipse Width="5" Height="5" Fill="#4B8BFF"/></StackPanel><TextBlock Text="SHO"/></StackPanel>
+                    </RadioButton>
+                  </StackPanel>
+                </Border>
+                <StackPanel Margin="24,22,24,0" Spacing="6" IsVisible="{Binding HasNights}">
+                  <TextBlock Text="{Binding StackEyebrow}" Classes="eyebrow"/>
+                  <TextBlock Classes="bignum"><Run Text="{Binding HoursBig}"/><Run Text="{Binding HoursSmall}" Classes="unit"/></TextBlock>
+                  <TextBlock Text="{Binding StackNote}" Classes="serif note" MaxWidth="330" TextWrapping="Wrap"/>
                 </StackPanel>
+                <Border Grid.Row="1" Classes="dock" IsVisible="{Binding HasNights}">
+                  <Grid ColumnDefinitions="Auto,*,Auto" ColumnSpacing="18">
+                    <Button Classes="play" Click="PlayNights_Click" ToolTip.Tip="Riproduci l’accumulo delle notti · Spazio"><Path Data="M7 4 L7 20 L20 12 Z" Fill="{StaticResource FgBrush}" Width="12" Height="12" Stretch="Uniform"/></Button>
+                    <StackPanel Grid.Column="1" VerticalAlignment="Center" Spacing="2">
+                      <Grid ColumnDefinitions="*,Auto"><TextBlock Text="Notti integrate" Classes="muted" FontSize="12"/><TextBlock Grid.Column="1" Text="{Binding NightLabel}" Classes="muted" FontSize="12"/></Grid>
+                      <Slider x:Name="NightSlider" Classes="nights" Minimum="1" Maximum="{Binding NightCount}" Value="{Binding NightIndex}" IsSnapToTickEnabled="True" TickFrequency="1" SmallChange="1" LargeChange="1" AutomationProperties.Name="Notti integrate"/>
+                    </StackPanel>
+                    <StackPanel Grid.Column="2" Orientation="Horizontal" Spacing="22" VerticalAlignment="Center">
+                      <StackPanel><TextBlock Text="{Binding SnrText}" Classes="metric"/><TextBlock Text="SNR vs 1 notte" Classes="muted" FontSize="11"/></StackPanel>
+                      <StackPanel><TextBlock Text="{Binding NoiseText}" Classes="metric"/><TextBlock Text="rumore" Classes="muted" FontSize="11"/></StackPanel>
+                      <StackPanel><TextBlock Text="{Binding LightsText}" Classes="metric"/><TextBlock Text="Light" Classes="muted" FontSize="11"/></StackPanel>
+                    </StackPanel>
+                  </Grid>
+                </Border>
               </Grid>
             </Border>
-          </Grid>
-        </Panel>
+
+            <Border Grid.Row="1" x:Name="NightsCard" Classes="card" Padding="20,16">
+              <Grid RowDefinitions="Auto,*" RowSpacing="10">
+                <Grid ColumnDefinitions="*,Auto"><TextBlock Text="NOTTI OSSERVATIVE · 18:00 → 06:00" Classes="eyebrow"/><TextBlock Grid.Column="1" Text="luna e crepuscolo per notte" Classes="serif" FontSize="16" Foreground="{StaticResource MutedBrush}"/></Grid>
+                <local:NightSky Grid.Row="1" x:Name="NightSkyView" Nights="{Binding SkyNights}" Shown="{Binding NightIndex}"/>
+              </Grid>
+            </Border>
+
+            <StackPanel Grid.Column="1" Grid.RowSpan="2" Spacing="20" VerticalAlignment="Top">
+                <Border x:Name="ExportCard" Classes="card hero" Padding="22,18">
+                  <StackPanel Spacing="14">
+                    <Grid ColumnDefinitions="*,Auto">
+                      <StackPanel Spacing="3"><TextBlock Text="{Binding Main.ExportStateLabel}" Classes="eyebrow accent"/><TextBlock Text="{Binding Main.PlanSummary}" Classes="muted" TextWrapping="Wrap" FontSize="12"/></StackPanel>
+                      <TextBlock Grid.Column="1" x:Name="ExportPercentText" Classes="display" FontSize="30" VerticalAlignment="Center"/>
+                    </Grid>
+                    <local:ExportMap x:Name="ExportMapView"/>
+                    <TextBlock Text="{Binding Main.ExportProgressDetail}" TextWrapping="Wrap" FontSize="12.5"/>
+                    <UniformGrid Columns="4"><StackPanel Spacing="2"><TextBlock Text="File" Classes="eyebrow"/><TextBlock Text="{Binding Main.ExportFileSummary}" Classes="mono" FontSize="12"/></StackPanel><StackPanel Spacing="2"><TextBlock Text="Da copiare" Classes="eyebrow"/><TextBlock Text="{Binding Main.ExportBytesSummary}" Classes="mono" FontSize="12"/></StackPanel><StackPanel Spacing="2"><TextBlock Text="Spazio" Classes="eyebrow"/><TextBlock Text="{Binding Main.ExportSpaceSummary}" Classes="mono" FontSize="12"/></StackPanel><StackPanel Spacing="2"><TextBlock Text="Tempo stimato" Classes="eyebrow"/><TextBlock Text="{Binding Main.ExportEtaSummary}" Classes="mono" FontSize="12"/></StackPanel></UniformGrid>
+                    <Border Classes="rule"/>
+                    <Grid ColumnDefinitions="*,Auto" RowDefinitions="Auto,Auto,Auto" ColumnSpacing="8" RowSpacing="8">
+                      <TextBox x:Name="ProjectNameBox" Grid.ColumnSpan="2" PlaceholderText="Nome progetto" Text="{Binding Main.ProjectName}"/>
+                      <TextBox x:Name="DestinationBox" Grid.Row="1" PlaceholderText="Cartella destinazione" Text="{Binding Main.DestinationPath}"/>
+                      <Button Grid.Row="1" Grid.Column="1" Content="Scegli…" Click="ChooseDestination_Click" ToolTip.Tip="Seleziona la cartella di destinazione"/>
+                      <Grid Grid.Row="2" Grid.ColumnSpan="2" ColumnDefinitions="Auto,*" ColumnSpacing="10"><CheckBox Content="Cartella risultati PixInsight" IsChecked="{Binding Main.CreatePixInsightOutputFolder}" ToolTip.Tip="Usata come Output Directory di WBPP"/><TextBox Grid.Column="1" Text="{Binding Main.PixInsightOutputFolderName}" IsEnabled="{Binding Main.CreatePixInsightOutputFolder}" PlaceholderText="PixInsight Output"/></Grid>
+                    </Grid>
+                    <WrapPanel ItemSpacing="8" LineSpacing="8">
+                      <Button Content="Pausa" Click="PauseExport_Click" IsEnabled="{Binding Main.CanPauseExport}" IsVisible="{Binding Main.CanPauseExport}"/>
+                      <Button Content="Riprendi" Click="ResumeExport_Click" IsEnabled="{Binding Main.CanResumeExport}" IsVisible="{Binding Main.CanResumeExport}"/>
+                      <Button Content="Annulla" Click="CancelExport_Click" IsEnabled="{Binding Main.CanCancelExport}" IsVisible="{Binding Main.CanCancelExport}"/>
+                      <Button Content="Controlla prima" Click="ExportPreflight_Click" IsEnabled="{Binding Main.CanRunExportPreflight}" ToolTip.Tip="Verifica spazio, percorsi e conflitti senza copiare nulla"/>
+                    </WrapPanel>
+                    <Expander Header="Dettagli: controlli, cronologia e tutti i file" Foreground="{StaticResource MutedBrush}">
+                      <StackPanel Spacing="8" Margin="0,8,0,0">
+                        <TextBlock Text="{Binding Main.ExportChangeSummary}" Classes="muted" TextWrapping="Wrap"/>
+                        <ItemsControl ItemsSource="{Binding Main.ExportPreflightFindings}"><ItemsControl.ItemsPanel><ItemsPanelTemplate><WrapPanel/></ItemsPanelTemplate></ItemsControl.ItemsPanel><ItemsControl.ItemTemplate><DataTemplate><Border Classes="note" Margin="0,3,6,0"><TextBlock Text="{Binding Title}" ToolTip.Tip="{Binding Detail}"/></Border></DataTemplate></ItemsControl.ItemTemplate></ItemsControl>
+                        <TextBlock Text="Cronologia dati" Classes="eyebrow"/>
+                        <ItemsControl ItemsSource="{Binding Main.ExportHistory}"><ItemsControl.ItemTemplate><DataTemplate><Border Classes="note" Margin="0,0,0,6"><StackPanel><TextBlock Text="{Binding Title}" FontWeight="SemiBold"/><TextBlock Text="{Binding Date}" Classes="muted"/><TextBlock Text="{Binding Detail}" TextWrapping="Wrap"/></StackPanel></Border></DataTemplate></ItemsControl.ItemTemplate></ItemsControl>
+                        <Button Content="Genera anteprima dei file" Click="BuildPlan_Click" HorizontalAlignment="Left" ToolTip.Tip="Calcola cartelle e nomi senza copiare file"/>
+                        <Border Classes="card" Padding="10" MaxHeight="320"><TreeView ItemsSource="{Binding Main.PlannedTreeRoots}"><TreeView.ItemTemplate><TreeDataTemplate ItemsSource="{Binding Children}"><Grid ColumnDefinitions="Auto,*,Auto" Margin="3"><TextBlock Text="{Binding Icon}" Foreground="{StaticResource AccentBrush}" Margin="4"/><StackPanel Grid.Column="1"><TextBlock Text="{Binding Name}" FontWeight="SemiBold"/><TextBlock Text="{Binding Detail}" Classes="muted" FontSize="10"/></StackPanel><Border Grid.Column="2" Classes="count"><TextBlock Text="{Binding Count}"/></Border></Grid></TreeDataTemplate></TreeView.ItemTemplate></TreeView></Border>
+                      </StackPanel>
+                    </Expander>
+                  </StackPanel>
+                </Border>
+
+                <Border x:Name="WbppCard" Classes="card" Padding="22,18">
+                  <StackPanel Spacing="12">
+                    <Grid ColumnDefinitions="*,Auto"><StackPanel Spacing="2"><TextBlock Text="PIXINSIGHT WBPP" Classes="eyebrow accent"/><TextBlock Text="Un master integrato per filtro" Classes="stepTitle"/></StackPanel><Button Grid.Column="1" VerticalAlignment="Center" Content="Apri in PixInsight" Click="OpenWbppInstance_Click" Classes="primary" ToolTip.Tip="Genera l’istanza XPSM e la apre in PixInsight: WBPP resta fermo finché non premi Run"/></Grid>
+                    <local:PipelineFlow x:Name="PipelineFlowView"/>
+                    <Border Classes="warningBanner"><TextBlock Text="Prima di premere Run in WBPP, apri Calibration e controlla Flat, Dark e Bias di ogni gruppo Light." TextWrapping="Wrap"/></Border>
+                    <Expander Header="Grouping Keywords da inserire a mano" Foreground="{StaticResource MutedBrush}">
+                      <StackPanel Spacing="8" Margin="0,8,0,0">
+                        <Border Classes="note"><TextBlock Text="Grouping Keywords: una riga per keyword, Pre ON, Post OFF." TextWrapping="Wrap"/></Border>
+                        <Grid ColumnDefinitions="130,70,70,*" Margin="14,5,14,0"><TextBlock Text="KEYWORD" Classes="eyebrow"/><TextBlock Grid.Column="1" Text="PRE" Classes="eyebrow"/><TextBlock Grid.Column="2" Text="POST" Classes="eyebrow"/><TextBlock Grid.Column="3" Text="FUNZIONE" Classes="eyebrow"/></Grid>
+                        <ItemsControl ItemsSource="{Binding Main.WbppKeywords}"><ItemsControl.ItemTemplate><DataTemplate><Border Classes="card" Margin="0,0,0,7" Padding="14,10"><Grid ColumnDefinitions="130,70,70,*"><TextBlock Text="{Binding Keyword}" Foreground="{StaticResource AccentBrush}" FontWeight="SemiBold"/><TextBlock Grid.Column="1" Text="{Binding Pre}"/><TextBlock Grid.Column="2" Text="{Binding Post}"/><TextBlock Grid.Column="3" Text="{Binding Reason}" TextWrapping="Wrap"/></Grid></Border></DataTemplate></ItemsControl.ItemTemplate></ItemsControl>
+                        <ItemsControl ItemsSource="{Binding Main.WbppNotes}"><ItemsControl.ItemTemplate><DataTemplate><Border Classes="note" Margin="0,0,0,6"><TextBlock Text="{Binding}" TextWrapping="Wrap"/></Border></DataTemplate></ItemsControl.ItemTemplate></ItemsControl>
+                      </StackPanel>
+                    </Expander>
+                  </StackPanel>
+                </Border>
+              </StackPanel>
+          </Grid></ScrollViewer>
+        </Grid>
       </Carousel>
+    </Grid>
+
+    <!-- Footer: back, what this step asks, and the one button that moves on. -->
+    <Grid Grid.Row="3" x:Name="Footer" ColumnDefinitions="Auto,*,Auto" ColumnSpacing="18" MinHeight="56">
+      <Button x:Name="BackButton" Classes="ghost" Content="← Indietro" Click="Back_Click" IsVisible="{Binding CanGoBack}" VerticalAlignment="Center" MinWidth="110"/>
+      <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="12" VerticalAlignment="Center" Margin="4,0">
+        <Ellipse Width="6" Height="6" Fill="{StaticResource AccentBrush}" VerticalAlignment="Center"/>
+        <TextBlock Text="{Binding StepHint}" Classes="muted" FontSize="13" TextWrapping="Wrap" MaxWidth="820" VerticalAlignment="Center"/>
+      </StackPanel>
+      <Button Grid.Column="2" x:Name="NextButton" Classes="next" Click="Next_Click" IsEnabled="{Binding NextEnabled}" MinWidth="240" ToolTip.Tip="Il passo successivo · Invio">
+        <Panel>
+          <Border x:Name="NextFill" Classes="nextFill" HorizontalAlignment="Left" Width="0"/>
+          <TextBlock Text="{Binding NextLabel}" VerticalAlignment="Center" HorizontalAlignment="Center"/>
+        </Panel>
+      </Button>
     </Grid>
   </Grid>
 
-  <!-- Sheets: the steps and tools open over the screens, the rail stays in view. -->
-  <Border x:Name="SheetHost" IsVisible="False" Margin="250,0,0,0" Background="{StaticResource SheetScrimBrush}" PointerPressed="SheetScrim_PointerPressed">
+  <!-- Tools: statistics, quality, frame metadata and the Master Library open over the steps. The steps themselves never hide in here. -->
+  <Border x:Name="SheetHost" IsVisible="False" Background="{StaticResource SheetScrimBrush}" PointerPressed="SheetScrim_PointerPressed">
     <Border x:Name="Drawer" Classes="drawer" Margin="40,18,18,18" PointerPressed="Drawer_PointerPressed">
       <Grid RowDefinitions="Auto,*">
         <Grid ColumnDefinitions="*,Auto" Margin="24,16,16,6">
@@ -345,37 +567,17 @@
           <Button Grid.Column="1" Classes="close" Content="✕" Click="CloseSheet_Click" ToolTip.Tip="Chiudi · Esc"/>
         </Grid>
         <TabControl Grid.Row="1" x:Name="SheetTabs" Classes="sheets" Margin="24,0,24,20" SelectionChanged="SheetTabs_SelectionChanged">
-          <TabItem x:Name="ProjectTab" Header="Progetto">
-            <Grid ColumnDefinitions="340,*" ColumnSpacing="18" Margin="0,4,0,0">
-              <ScrollViewer x:Name="SourcesPanel"><StackPanel Spacing="13" Margin="0,0,10,0">
-          <Border Classes="card hero" Padding="15"><StackPanel Spacing="10"><Grid ColumnDefinitions="46,*,Auto"><Border Width="40" Height="40" CornerRadius="12" Classes="iconTile"><TextBlock Text="✦" Foreground="{StaticResource AccentBrush}" FontSize="19" HorizontalAlignment="Center" VerticalAlignment="Center"/></Border><StackPanel Grid.Column="1" Margin="10,0"><TextBlock Text="SORGENTI DEL PROGETTO" Classes="eyebrow"/><TextBlock Text="Acquisizioni" FontSize="17" FontWeight="SemiBold" TextWrapping="Wrap"/></StackPanel><Border Grid.Column="2" Classes="count"><TextBlock Text="{Binding SourcePaths.Count}"/></Border></Grid><TextBlock Text="Cartelle o singoli file FITS/XISF, in sola lettura." Classes="muted" FontSize="11" TextWrapping="Wrap"/></StackPanel></Border>
-          <Button Content="+ Importa cartella" Classes="primary" Click="AddSources_Click"/>
-          <Grid ColumnDefinitions="*,*" ColumnSpacing="7"><Button Content="+ Singoli file" Click="AddFiles_Click"/><Button Grid.Column="1" Content="Rimuovi selezionata" Click="RemoveSource_Click" ToolTip.Tip="Rimuove il collegamento. I file restano su disco"/></Grid>
-          <ListBox x:Name="SourcesList" ItemsSource="{Binding SourcePaths}" MaxHeight="180">
-            <ListBox.ItemTemplate><DataTemplate><Border Classes="pathCard" Margin="0,0,0,5"><Grid ColumnDefinitions="26,*"><Border Width="21" Height="21" CornerRadius="6" Classes="iconTile"><TextBlock Text="↳" Foreground="{StaticResource AccentBrush}" HorizontalAlignment="Center" VerticalAlignment="Center"/></Border><TextBlock Grid.Column="1" Text="{Binding}" TextTrimming="CharacterEllipsis" ToolTip.Tip="{Binding}" Margin="7,0,0,0"/></Grid></Border></DataTemplate></ListBox.ItemTemplate>
-          </ListBox>
-          <Border Classes="card hero" Padding="13"><StackPanel Spacing="8"><Grid ColumnDefinitions="*,Auto"><StackPanel><TextBlock Text="MASTER LIBRARY" Classes="eyebrow"/><TextBlock Text="Dark e Bias automatici" FontSize="17" FontWeight="SemiBold" TextWrapping="Wrap"/></StackPanel><Border Grid.Column="1" Classes="count"><TextBlock Text="{Binding MasterLibraryCountLabel}"/></Border></Grid><TextBlock Text="Abbinamento per camera, gain, offset e temperatura." Classes="muted" FontSize="10" TextWrapping="Wrap"/><Button Content="+ Aggiungi Master Library" Classes="primary" ToolTip.Tip="Scegli una cartella contenente Master Dark e Bias" Click="AddLibrary_Click"/></StackPanel></Border>
-          <Grid ColumnDefinitions="*,*,*" ColumnSpacing="5"><Button Content="Rimuovi" Click="RemoveLibrary_Click"/><Button Grid.Column="1" Content="↑ Priorità" Click="MoveLibraryUp_Click"/><Button Grid.Column="2" Content="↓ Priorità" Click="MoveLibraryDown_Click"/></Grid>
-          <ListBox ItemsSource="{Binding MasterLibraries}" SelectedItem="{Binding SelectedMasterLibrary}" MaxHeight="170">
-            <ListBox.ItemTemplate><DataTemplate><Border Classes="pathCard" Margin="0,0,0,5"><Grid ColumnDefinitions="Auto,*,Auto"><CheckBox IsChecked="{Binding Enabled}"/><StackPanel Grid.Column="1" Margin="7,0"><TextBlock Text="{Binding Name}" FontWeight="SemiBold"/><TextBlock Text="{Binding Path}" Classes="muted" FontSize="10" TextTrimming="CharacterEllipsis" ToolTip.Tip="{Binding Path}"/></StackPanel><TextBlock Grid.Column="2" Text="{Binding Status}" Foreground="{StaticResource AccentBrush}"/></Grid></Border></DataTemplate></ListBox.ItemTemplate>
-          </ListBox>
-          <Button Content="Aggiorna stato librerie" Click="RefreshLibraries_Click"/>
-          <Border Classes="card"><StackPanel Spacing="8"><TextBlock Text="Valori predefiniti" Classes="eyebrow"/><TextBlock Text="Usati solo se assenti da header e percorso." Classes="muted" FontSize="10"/>
-            <Grid ColumnDefinitions="*,88" RowDefinitions="Auto,Auto,Auto" RowSpacing="6"><TextBlock Text="Gain"/><TextBox Grid.Column="1" AutomationProperties.Name="Gain predefinito" Text="{Binding ProjectDefaultGain}"/><TextBlock Grid.Row="1" Text="Offset"/><TextBox Grid.Row="1" Grid.Column="1" AutomationProperties.Name="Offset predefinito" Text="{Binding ProjectDefaultOffset}"/><TextBlock Grid.Row="2" Text="Setpoint °C"/><TextBox Grid.Row="2" Grid.Column="1" AutomationProperties.Name="Temperatura predefinita" Text="{Binding ProjectDefaultTemperature}"/></Grid>
-            <Button Content="Applica valori e rianalizza" Command="{Binding ApplyProjectDefaultsCommand}" ToolTip.Tip="Valori di riserva per metadati mancanti"/>
-          </StackPanel></Border>
-          <Border Classes="card hero" Padding="14"><StackPanel Spacing="8"><TextBlock Text="RAGGRUPPAMENTO NOTTURNO" Classes="eyebrow"/><TextBlock Text="Notte astronomica" FontSize="17" FontWeight="SemiBold" TextWrapping="Wrap"/><TextBlock Text="{Binding AstronomicalNightExplanation}" Classes="muted" FontSize="11" TextWrapping="Wrap"/><Border Classes="note"><TextBlock Text="{Binding AstronomicalNightExample}" FontSize="10" TextWrapping="Wrap"/></Border><Grid ColumnDefinitions="*,78"><StackPanel><TextBlock Text="La nuova notte inizia alle" FontWeight="SemiBold"/><TextBlock Text="Predefinito: 12:00" Classes="muted" FontSize="9"/></StackPanel><NumericUpDown Grid.Column="1" AutomationProperties.Name="Ora di cambio notte" Minimum="0" Maximum="23" Value="{Binding SessionBoundaryHour}" ToolTip.Tip="I file precedenti a quest’ora appartengono alla notte prima"/></Grid></StackPanel></Border>
-              </StackPanel></ScrollViewer>
-              <Grid Grid.Column="1" RowDefinitions="Auto,*" RowSpacing="12">
-                <Grid ColumnDefinitions="*,Auto" ColumnSpacing="12">
-                  <StackPanel><TextBlock Text="Progetto" Classes="title"/><TextBlock Text="{Binding ProjectDocumentStatus}" Classes="muted"/></StackPanel>
-                  <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="6" VerticalAlignment="Center">
-                    <Button Content="Nuovo" ToolTip.Tip="Crea un nuovo progetto · Ctrl+N" Click="NewProject_Click"/>
-                    <Button Content="Apri" ToolTip.Tip="Apri progetto · Ctrl+O" Click="OpenProject_Click"/>
-                    <Button Content="Salva" ToolTip.Tip="Salva progetto · Ctrl+S · Salva con nome Ctrl+Shift+S" Click="SaveProject_Click"/>
-                    <Button x:Name="AnalyzeButton" Content="{Binding AnalysisActionLabel}" ToolTip.Tip="Analizza progetto · Ctrl+Invio" Classes="primary" Click="Analyze_Click" IsEnabled="{Binding CanAnalyzeProject}"/>
-                  </StackPanel>
-                </Grid>
+          <TabItem x:Name="ProjectTab" Header="Metadati">
+            <Grid Margin="0,4,0,0" RowDefinitions="Auto,*" RowSpacing="12">
+              <Grid ColumnDefinitions="*,Auto" ColumnSpacing="12">
+                <StackPanel><TextBlock Text="Frame e metadati" Classes="title"/><TextBlock Text="{Binding ProjectDocumentStatus}" Classes="muted"/></StackPanel>
+                <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="6" VerticalAlignment="Center">
+                  <Button Content="Nuovo" ToolTip.Tip="Crea un nuovo progetto · Ctrl+N" Click="NewProject_Click"/>
+                  <Button Content="Apri" ToolTip.Tip="Apri progetto · Ctrl+O" Click="OpenProject_Click"/>
+                  <Button Content="Salva" ToolTip.Tip="Salva progetto · Ctrl+S · Salva con nome Ctrl+Shift+S" Click="SaveProject_Click"/>
+                  <Button x:Name="AnalyzeButton" Content="{Binding AnalysisActionLabel}" ToolTip.Tip="Analizza progetto · Ctrl+Invio" Classes="primary" Click="Analyze_Click" IsEnabled="{Binding CanAnalyzeProject}"/>
+                </StackPanel>
+              </Grid>
             <Grid x:Name="AnalysisGrid" Grid.Row="1" ColumnDefinitions="*,0,0">
               <Border Classes="card" Padding="10"><Grid RowDefinitions="Auto,*">
                 <Grid ColumnDefinitions="*,Auto,Auto" ColumnSpacing="8"><TextBox PlaceholderText="Cerca file, filtro, sessione…" Text="{Binding SearchText}"/><CheckBox Grid.Column="1" Content="Solo da rivedere" IsChecked="{Binding ShowIssuesOnly}" VerticalAlignment="Center"/><Button Grid.Column="2" Content="Pulisci filtri" Click="ClearAnalysisFilters_Click"/></Grid>
@@ -397,22 +599,8 @@
                 <Expander Header="Header effettivi"><TextBox AutomationProperties.Name="Header effettivi" Text="{Binding RawHeaders}" IsReadOnly="True" AcceptsReturn="True" MinHeight="160" FontFamily="{StaticResource MonoFont}"/></Expander>
               </StackPanel></ScrollViewer></Border>
             </Grid>
-              </Grid>
             </Grid>
           </TabItem>
-          <TabItem Header="Risolvi"><Grid Margin="0,4,0,0" RowDefinitions="Auto,Auto,*" RowSpacing="10"><Grid ColumnDefinitions="*,Auto"><StackPanel><TextBlock Text="Calibrazioni" Classes="title"/><TextBlock Text="Assegnazioni mancanti o ambigue." Classes="muted"/></StackPanel><Border Grid.Column="1" Classes="count" VerticalAlignment="Center"><TextBlock Text="{Binding ReviewQueueSummary}"/></Border></Grid><Border Grid.Row="1" Classes="card hero" Padding="18,14"><ScrollViewer MaxHeight="300" VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled"><local:CalibrationMap x:Name="CalibrationMapView"/></ScrollViewer></Border><ListBox x:Name="ReviewList" Grid.Row="2" ItemsSource="{Binding ReviewQueue}" SelectionChanged="ReviewQueue_SelectionChanged" DoubleTapped="ReviewQueue_DoubleTapped"><ListBox.ItemTemplate><DataTemplate><Border Classes="card" Margin="0,0,0,8"><Grid ColumnDefinitions="76,*,150"><TextBlock Text="{Binding Calibration}" Foreground="{StaticResource WarnBrush}" FontWeight="SemiBold"/><StackPanel Grid.Column="1" Spacing="6"><TextBlock Text="{Binding State}" FontSize="16" FontWeight="SemiBold"/><TextBlock Text="{Binding ExampleFileLabel}" Classes="muted" TextTrimming="CharacterEllipsis"/><TextBlock Text="{Binding Reason}" TextWrapping="Wrap"/><StackPanel IsVisible="{Binding CanAssignCandidate}" Spacing="7"><ComboBox ItemsSource="{Binding Candidates}" SelectedItem="{Binding SelectedCandidate}" DisplayMemberBinding="{Binding Display}" ToolTip.Tip="Scegli la calibrazione da assegnare"/><Expander Header="Dettagli candidati"><DataGrid ItemsSource="{Binding Candidates}" SelectedItem="{Binding SelectedCandidate}" IsReadOnly="True" AutoGenerateColumns="False" MaxHeight="180"><DataGrid.Columns><DataGridTextColumn Header="File" Binding="{Binding FileName}" Width="2*"/><DataGridTextColumn Header="Camera" Binding="{Binding Camera}" Width="*"/><DataGridTextColumn Header="Gain" Binding="{Binding Gain}" Width="70"/><DataGridTextColumn Header="Temp." Binding="{Binding Temperature}" Width="80"/><DataGridTextColumn Header="Esp." Binding="{Binding Exposure}" Width="75"/><DataGridTextColumn Header="Score" Binding="{Binding Score}" Width="65"/></DataGrid.Columns></DataGrid></Expander><WrapPanel><Button Content="{Binding GroupActionLabel}" Classes="primary" Click="AssignLight_Click"/><Button Content="{Binding NightActionLabel}" Click="AssignNight_Click"/><Button Content="{Binding ConfigurationActionLabel}" Click="AssignSession_Click"/></WrapPanel></StackPanel><WrapPanel><Button Content="Modifica metadati" Click="EditReviewMetadata_Click" ToolTip.Tip="Apre il gruppo nell’Inspector" IsVisible="{Binding CanEditMetadata}"/><Button Content="Aggiungi libreria Master" Click="AddLibrary_Click" IsVisible="{Binding CanAddMasterLibrary}"/><Button Content="Importa Flat" Click="AddSources_Click" IsVisible="{Binding CanImportFlat}"/></WrapPanel></StackPanel><StackPanel Grid.Column="2"><TextBlock Text="{Binding Scope}" TextWrapping="Wrap" TextAlignment="Right"/><TextBlock Text="{Binding AffectedLabel}" Foreground="{StaticResource AccentBrush}" TextAlignment="Right"/><TextBlock Text="{Binding CandidateLabel}" Classes="muted" TextAlignment="Right"/></StackPanel></Grid></Border></DataTemplate></ListBox.ItemTemplate></ListBox></Grid></TabItem>
-          <TabItem Header="Esporta"><ScrollViewer><StackPanel Margin="0,4,0,0" Spacing="10">
-            <Grid ColumnDefinitions="*,Auto" ColumnSpacing="12"><StackPanel><TextBlock Text="Esporta" Classes="title"/><TextBlock Text="Cartella di progetto per PixInsight." Classes="muted" TextWrapping="Wrap"/></StackPanel><StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="6" VerticalAlignment="Center"><Button Content="Verifica" Click="ExportPreflight_Click" ToolTip.Tip="Verifica spazio, percorsi e conflitti" IsEnabled="{Binding CanRunExportPreflight}"/><Button Content="{Binding ExportActionLabel}" ToolTip.Tip="Copia solo i file nuovi, con cronologia" Classes="primary" Click="Export_Click" IsEnabled="{Binding CanStartExport}"/><Button Content="Pausa" Click="PauseExport_Click" IsEnabled="{Binding CanPauseExport}"/><Button Content="Riprendi" Click="ResumeExport_Click" IsEnabled="{Binding CanResumeExport}"/><Button Content="Annulla" Click="CancelExport_Click" IsEnabled="{Binding CanCancelExport}"/></StackPanel></Grid>
-            <Border Classes="card hero" Padding="18,14"><Grid RowDefinitions="Auto,Auto,Auto" RowSpacing="12">
-              <Grid ColumnDefinitions="*,Auto"><StackPanel Spacing="3"><TextBlock Text="{Binding ExportStateLabel}" Classes="eyebrow accent"/><TextBlock Text="{Binding PlanSummary}" Classes="muted" TextWrapping="Wrap"/><TextBlock Text="{Binding ExportProgressDetail}" TextWrapping="Wrap"/></StackPanel><TextBlock Grid.Column="1" x:Name="ExportPercentText" Classes="display" FontSize="30" VerticalAlignment="Center"/></Grid>
-              <local:ExportMap Grid.Row="1" x:Name="ExportMapView"/>
-              <UniformGrid Grid.Row="2" Columns="4"><StackPanel Spacing="2"><TextBlock Text="File" Classes="eyebrow"/><TextBlock Text="{Binding ExportFileSummary}" Classes="mono"/></StackPanel><StackPanel Spacing="2"><TextBlock Text="Da copiare" Classes="eyebrow"/><TextBlock Text="{Binding ExportBytesSummary}" Classes="mono"/></StackPanel><StackPanel Spacing="2"><TextBlock Text="Spazio" Classes="eyebrow"/><TextBlock Text="{Binding ExportSpaceSummary}" Classes="mono"/></StackPanel><StackPanel Spacing="2"><TextBlock Text="Tempo stimato" Classes="eyebrow"/><TextBlock Text="{Binding ExportEtaSummary}" Classes="mono"/></StackPanel></UniformGrid>
-            </Grid></Border>
-            <Border Classes="card"><Grid ColumnDefinitions="220,*,Auto,Auto" RowDefinitions="Auto,Auto" ColumnSpacing="8" RowSpacing="8"><TextBox PlaceholderText="Nome progetto" Text="{Binding ProjectName}"/><TextBox Grid.Column="1" PlaceholderText="Cartella destinazione" Text="{Binding DestinationPath}"/><Button Grid.Column="2" Content="Scegli…" Click="ChooseDestination_Click" ToolTip.Tip="Seleziona la cartella di destinazione"/><Button Grid.Column="3" Content="Genera anteprima" Click="BuildPlan_Click" ToolTip.Tip="Calcola cartelle e nomi senza copiare file"/><CheckBox Grid.Row="1" Grid.ColumnSpan="2" Content="Crea cartella risultati PixInsight" IsChecked="{Binding CreatePixInsightOutputFolder}" ToolTip.Tip="Usata come Output Directory di WBPP"/><TextBox Grid.Row="1" Grid.Column="2" Grid.ColumnSpan="2" Text="{Binding PixInsightOutputFolderName}" IsEnabled="{Binding CreatePixInsightOutputFolder}" Watermark="PixInsight Output"/></Grid></Border>
-            <Border Classes="card"><StackPanel Spacing="8"><TextBlock Text="{Binding ExportChangeSummary}" Classes="muted" TextWrapping="Wrap"/><ItemsControl ItemsSource="{Binding ExportPreflightFindings}"><ItemsControl.ItemsPanel><ItemsPanelTemplate><WrapPanel/></ItemsPanelTemplate></ItemsControl.ItemsPanel><ItemsControl.ItemTemplate><DataTemplate><Border Classes="note" Margin="0,3,6,0"><TextBlock Text="{Binding Title}" ToolTip.Tip="{Binding Detail}"/></Border></DataTemplate></ItemsControl.ItemTemplate></ItemsControl><TextBlock Text="Cronologia dati" Classes="eyebrow"/><ItemsControl ItemsSource="{Binding ExportHistory}"><ItemsControl.ItemTemplate><DataTemplate><Border Classes="note" Margin="0,0,6,0"><StackPanel><TextBlock Text="{Binding Title}" FontWeight="SemiBold"/><TextBlock Text="{Binding Date}" Classes="muted"/><TextBlock Text="{Binding Detail}" TextWrapping="Wrap"/></StackPanel></Border></DataTemplate></ItemsControl.ItemTemplate></ItemsControl></StackPanel></Border>
-            <Expander Header="Tutti i file del piano"><Border Classes="card" Padding="10" MaxHeight="380"><TreeView ItemsSource="{Binding PlannedTreeRoots}"><TreeView.ItemTemplate><TreeDataTemplate ItemsSource="{Binding Children}"><Grid ColumnDefinitions="Auto,*,Auto" Margin="3"><TextBlock Text="{Binding Icon}" Foreground="{StaticResource AccentBrush}" Margin="4"/><StackPanel Grid.Column="1"><TextBlock Text="{Binding Name}" FontWeight="SemiBold"/><TextBlock Text="{Binding Detail}" Classes="muted" FontSize="10"/></StackPanel><Border Grid.Column="2" Classes="count"><TextBlock Text="{Binding Count}"/></Border></Grid></TreeDataTemplate></TreeView.ItemTemplate></TreeView></Border></Expander>
-          </StackPanel></ScrollViewer></TabItem>
-          <TabItem Header="WBPP"><ScrollViewer><StackPanel Margin="0,4,0,0" Spacing="10"><Grid ColumnDefinitions="*,Auto"><StackPanel><TextBlock Text="Impostazioni WBPP" Classes="title"/><TextBlock Text="Un master integrato per filtro." Classes="muted"/></StackPanel><Button Grid.Column="1" VerticalAlignment="Center" Content="Crea e apri in PixInsight" Click="OpenWbppInstance_Click" Classes="primary" ToolTip.Tip="Genera l’istanza XPSM e la apre in PixInsight"/></Grid><Border Classes="card hero" Padding="18,16"><local:PipelineFlow x:Name="PipelineFlowView"/></Border><TextBlock Text="Righe da inserire in WeightedBatchPreprocessing." Classes="muted"/><Border Classes="note"><TextBlock Text="Grouping Keywords: una riga per keyword, Pre ON, Post OFF." TextWrapping="Wrap"/></Border><Grid ColumnDefinitions="150,80,80,*" Margin="14,5,14,0"><TextBlock Text="KEYWORD" Classes="eyebrow"/><TextBlock Grid.Column="1" Text="PRE" Classes="eyebrow"/><TextBlock Grid.Column="2" Text="POST" Classes="eyebrow"/><TextBlock Grid.Column="3" Text="FUNZIONE" Classes="eyebrow"/></Grid><ItemsControl ItemsSource="{Binding WbppKeywords}"><ItemsControl.ItemTemplate><DataTemplate><Border Classes="card" Margin="0,0,0,7"><Grid ColumnDefinitions="150,80,80,*"><TextBlock Text="{Binding Keyword}" Foreground="{StaticResource AccentBrush}" FontWeight="SemiBold"/><TextBlock Grid.Column="1" Text="{Binding Pre}"/><TextBlock Grid.Column="2" Text="{Binding Post}"/><TextBlock Grid.Column="3" Text="{Binding Reason}" TextWrapping="Wrap"/></Grid></Border></DataTemplate></ItemsControl.ItemTemplate></ItemsControl><ItemsControl ItemsSource="{Binding WbppNotes}"><ItemsControl.ItemTemplate><DataTemplate><Border Classes="note" Margin="0,0,0,6"><TextBlock Text="{Binding}" TextWrapping="Wrap"/></Border></DataTemplate></ItemsControl.ItemTemplate></ItemsControl><Border Classes="warningBanner"><TextBlock Text="Prima di avviare WBPP, verifica in Calibration Flat, Dark e Bias di ogni gruppo Light." TextWrapping="Wrap"/></Border></StackPanel></ScrollViewer></TabItem>
           <TabItem Header="Statistiche"><ScrollViewer><StackPanel Margin="0,4,0,0" Spacing="12">
             <Grid ColumnDefinitions="*,Auto"><StackPanel><TextBlock Text="Statistiche" Classes="title"/><TextBlock Text="{Binding StatisticsSummary}" Classes="muted" TextWrapping="Wrap"/></StackPanel><Button Grid.Column="1" VerticalAlignment="Center" Content="Esporta dati CSV + JSON" Click="ExportStatistics_Click"/></Grid>
               <Border x:Name="StatsNights" Classes="card" Padding="18"><StackPanel Spacing="10">
@@ -486,41 +674,57 @@
               <Border Classes="note" Margin="0,8,0,0"><StackPanel Orientation="Horizontal" Spacing="10"><TextBlock Text="Lingua selezionata" Classes="muted"/><TextBlock Text="{Binding UiLanguage}" Foreground="{StaticResource AccentBrush}" FontWeight="SemiBold"/></StackPanel></Border>
             </StackPanel>
             <StackPanel x:Name="OnboardingStep2" IsVisible="False" Spacing="14">
-              <TextBlock Text="Configurazione iniziale" Classes="eyebrow"/>
-              <TextBlock Text="Nuovo progetto" FontSize="34" FontWeight="SemiBold" TextWrapping="Wrap"/>
-              <TextBlock Text="Calibrazioni, immagini, prima analisi. Gli originali non vengono modificati." Classes="muted" FontSize="14" TextWrapping="Wrap"/>
-              <Grid ColumnDefinitions="*,*,*" ColumnSpacing="9" Margin="0,15,0,0"><Border Classes="note"><StackPanel Spacing="5"><TextBlock Text="01" Classes="eyebrow"/><TextBlock Text="Master Library" FontSize="17" FontWeight="SemiBold"/><TextBlock Text="facoltativa" Classes="muted"/></StackPanel></Border><Border Grid.Column="1" Classes="note"><StackPanel Spacing="5"><TextBlock Text="02" Classes="eyebrow"/><TextBlock Text="Immagini" FontSize="17" FontWeight="SemiBold"/><TextBlock Text="FITS e XISF" Classes="muted"/></StackPanel></Border><Border Grid.Column="2" Classes="note"><StackPanel Spacing="5"><TextBlock Text="03" Classes="eyebrow"/><TextBlock Text="Analisi" FontSize="17" FontWeight="SemiBold"/><TextBlock Text="sessioni e calibrazioni" Classes="muted"/></StackPanel></Border></Grid>
-              <Border Classes="note" Margin="0,6,0,0"><Grid ColumnDefinitions="*,Auto" ColumnSpacing="12"><StackPanel Spacing="3"><TextBlock Text="Progetto demo" FontWeight="SemiBold"/><TextBlock Text="Due notti di FITS sintetici (ASIAIR, N.I.N.A.) con Flat e Master, seguite dal tour guidato." Classes="muted" TextWrapping="Wrap"/></StackPanel><Button Grid.Column="1" Content="Apri demo" Classes="primary" VerticalAlignment="Center" Click="OpenDemo_Click"/></Grid></Border>
-            </StackPanel>
-            <StackPanel x:Name="OnboardingStep3" IsVisible="False" Spacing="13">
-              <TextBlock Text="Passo 1 · Calibrazioni" Classes="eyebrow"/>
-              <TextBlock Text="Master Library" FontSize="30" FontWeight="SemiBold" TextWrapping="Wrap"/>
-              <TextBlock Text="Dark e Bias riutilizzabili, abbinati per camera, gain, offset, temperatura ed esposizione." Classes="muted" FontSize="14" TextWrapping="Wrap"/>
-              <Border Classes="card hero" Margin="0,12,0,0"><Grid ColumnDefinitions="*,Auto"><StackPanel Spacing="4"><TextBlock Text="MASTER LIBRARY" Classes="eyebrow"/><TextBlock Text="{Binding MasterLibraryCountLabel}" FontSize="23" FontWeight="SemiBold"/><TextBlock Text="Anche più di una." Classes="muted"/></StackPanel><Button Grid.Column="1" Content="Aggiungi libreria" Classes="primary" Click="OnboardingAddLibrary_Click"/></Grid></Border>
-              <TextBlock Text="Facoltativa. Si può aggiungere in seguito." Classes="muted" TextWrapping="Wrap"/>
-            </StackPanel>
-            <StackPanel x:Name="OnboardingStep4" IsVisible="False" Spacing="13">
-              <TextBlock Text="Passo 2 · Immagini" Classes="eyebrow"/>
-              <TextBlock Text="Acquisizioni" FontSize="30" FontWeight="SemiBold"/>
-              <TextBlock Text="Cartelle o singoli file FITS/XISF da qualsiasi software di acquisizione." Classes="muted" FontSize="14" TextWrapping="Wrap"/>
-              <Border Classes="card hero" Margin="0,12,0,0"><Grid ColumnDefinitions="*,Auto,Auto" ColumnSpacing="8"><StackPanel Spacing="4"><TextBlock Text="IMMAGINI DEL PROGETTO" Classes="eyebrow"/><TextBlock Text="{Binding SourcePaths.Count, StringFormat={}{0} sorgenti importate}" FontSize="23" FontWeight="SemiBold"/><TextBlock Text="Gli originali restano in sola lettura." Classes="muted"/></StackPanel><Button Grid.Column="1" Content="+ Singoli file" Click="OnboardingAddFiles_Click"/><Button Grid.Column="2" Content="+ Cartelle" Classes="primary" Click="OnboardingAddSources_Click"/></Grid></Border>
-            </StackPanel>
-            <StackPanel x:Name="OnboardingStep5" IsVisible="False" Spacing="14" HorizontalAlignment="Center" MaxWidth="580">
-              <Border Width="70" Height="70" CornerRadius="22" Background="{StaticResource PrimaryBrush}" BoxShadow="{StaticResource PrimaryGlow}" HorizontalAlignment="Center"><TextBlock Text="✓" Foreground="#071411" FontSize="32" FontWeight="Bold" HorizontalAlignment="Center" VerticalAlignment="Center"/></Border>
-              <TextBlock Text="Pronto per l’analisi" FontSize="31" FontWeight="SemiBold" TextAlignment="Center"/>
-              <TextBlock Text="Lettura header, ricostruzione delle notti, abbinamento di Flat, Dark e Bias." Classes="muted" FontSize="14" TextWrapping="Wrap" TextAlignment="Center"/>
-              <Grid ColumnDefinitions="*,*" ColumnSpacing="9"><Border Classes="note"><StackPanel><TextBlock Text="MASTER LIBRARY" Classes="eyebrow"/><TextBlock Text="{Binding MasterLibraryCountLabel}" FontSize="18" FontWeight="SemiBold"/></StackPanel></Border><Border Grid.Column="1" Classes="note"><StackPanel><TextBlock Text="SORGENTI" Classes="eyebrow"/><TextBlock Text="{Binding ImportedSourceCountLabel}" FontSize="18" FontWeight="SemiBold"/></StackPanel></Border></Grid>
+              <TextBlock Text="COME FUNZIONA" Classes="eyebrow"/>
+              <TextBlock Text="Quattro passi, sempre in ordine" FontSize="34" FontWeight="SemiBold" TextWrapping="Wrap"/>
+              <TextBlock Text="Un solo pulsante in basso a destra ti porta al passo successivo. Gli originali non vengono mai modificati." Classes="muted" FontSize="14" TextWrapping="Wrap"/>
+              <Grid ColumnDefinitions="*,*,*,*" ColumnSpacing="9" Margin="0,12,0,0">
+                <Border Classes="note"><StackPanel Spacing="5"><TextBlock Text="01" Classes="eyebrow"/><TextBlock Text="Importa" FontSize="17" FontWeight="SemiBold"/><TextBlock Text="Master Library e acquisizioni" Classes="muted" TextWrapping="Wrap"/></StackPanel></Border>
+                <Border Grid.Column="1" Classes="note"><StackPanel Spacing="5"><TextBlock Text="02" Classes="eyebrow"/><TextBlock Text="Strumento" FontSize="17" FontWeight="SemiBold"/><TextBlock Text="Camera, ottica e filtri: correggi ciò che non è giusto" Classes="muted" TextWrapping="Wrap"/></StackPanel></Border>
+                <Border Grid.Column="2" Classes="note"><StackPanel Spacing="5"><TextBlock Text="03" Classes="eyebrow"/><TextBlock Text="Calibrazioni" FontSize="17" FontWeight="SemiBold"/><TextBlock Text="Flat, Dark e Bias per ogni posa" Classes="muted" TextWrapping="Wrap"/></StackPanel></Border>
+                <Border Grid.Column="3" Classes="note"><StackPanel Spacing="5"><TextBlock Text="04" Classes="eyebrow"/><TextBlock Text="Esporta" FontSize="17" FontWeight="SemiBold"/><TextBlock Text="Cartella pronta e istanza WBPP" Classes="muted" TextWrapping="Wrap"/></StackPanel></Border>
+              </Grid>
+              <Border Classes="note" Margin="0,6,0,0"><Grid ColumnDefinitions="*,Auto" ColumnSpacing="12"><StackPanel Spacing="3"><TextBlock Text="Progetto demo" FontWeight="SemiBold"/><TextBlock Text="Due notti di FITS sintetici (ASIAIR, N.I.N.A.) con Flat e Master, seguite dal tour guidato." Classes="muted" TextWrapping="Wrap"/></StackPanel><Button Grid.Column="1" Content="Apri demo" VerticalAlignment="Center" Click="OpenDemo_Click"/></Grid></Border>
             </StackPanel>
           </Grid>
-          <Border Grid.Row="2" Background="#660E162C" BorderBrush="{StaticResource LineBrush}" BorderThickness="0,1,0,0" CornerRadius="0,0,18,18"><Grid ColumnDefinitions="*,Auto,Auto" Margin="24,0"><StackPanel Orientation="Horizontal" Spacing="10" VerticalAlignment="Center"><TextBlock x:Name="OnboardingProgress" Text="1 / 5" Classes="eyebrow"/><Button Content="Salta" Click="OnboardingSkip_Click"/></StackPanel><Button x:Name="OnboardingBackButton" Grid.Column="1" Content="Indietro" IsVisible="False" Click="OnboardingBack_Click" Margin="0,0,8,0"/><Button x:Name="OnboardingNextButton" Grid.Column="2" Content="Continua" Classes="primary" Click="OnboardingNext_Click" MinWidth="140"/></Grid></Border>
+          <Border Grid.Row="2" Background="#660E162C" BorderBrush="{StaticResource LineBrush}" BorderThickness="0,1,0,0" CornerRadius="0,0,18,18"><Grid ColumnDefinitions="*,Auto,Auto" Margin="24,0"><StackPanel Orientation="Horizontal" Spacing="10" VerticalAlignment="Center"><TextBlock x:Name="OnboardingProgress" Text="1 / 2" Classes="eyebrow"/><Button Content="Salta" Click="OnboardingSkip_Click"/></StackPanel><Button x:Name="OnboardingBackButton" Grid.Column="1" Content="Indietro" IsVisible="False" Click="OnboardingBack_Click" Margin="0,0,8,0"/><Button x:Name="OnboardingNextButton" Grid.Column="2" Content="Continua" Classes="primary" Click="OnboardingNext_Click" MinWidth="140"/></Grid></Border>
         </Grid>
       </Border>
     </Border>
 
-  <Border x:Name="Toast" Classes="toast" IsVisible="False" HorizontalAlignment="Center" VerticalAlignment="Bottom" Margin="0,0,0,26">
+  <Border x:Name="Toast" Classes="toast" IsVisible="False" HorizontalAlignment="Center" VerticalAlignment="Bottom" Margin="0,0,0,96">
     <StackPanel Orientation="Horizontal" Spacing="10"><Ellipse Width="7" Height="7" Fill="{StaticResource OkBrush}" VerticalAlignment="Center"/><TextBlock x:Name="ToastText" MaxWidth="620" TextTrimming="CharacterEllipsis"/></StackPanel>
   </Border>
   <local:GuidedTour x:Name="Tour"/>
   <local:FirstLightOverlay x:Name="FirstLight" IsVisible="False"/>
+
+  <!-- Dragging folders or files over the window: left is the Master Library, right the captures. Pointer-transparent, so the window keeps receiving the drag. -->
+  <Grid x:Name="DropOverlay" IsVisible="False" IsHitTestVisible="False" Opacity="0" ZIndex="50" Background="{StaticResource ScrimBrush}">
+    <Grid.Transitions><Transitions><DoubleTransition Property="Opacity" Duration="0:0:0.18"/></Transitions></Grid.Transitions>
+    <Grid ColumnDefinitions="*,*" ColumnSpacing="26" Margin="44,56,44,76" MaxWidth="1560">
+      <Border x:Name="DropLibraryZone" Classes="dropZone" ClipToBounds="True">
+        <Grid>
+          <Rectangle Classes="dash" RadiusX="28" RadiusY="28" StrokeThickness="2" StrokeDashArray="5,5" Margin="1"/>
+          <StackPanel VerticalAlignment="Center" HorizontalAlignment="Center" Spacing="12" Margin="30">
+            <Path Data="M12 3 V15 M7 10 L12 15 L17 10 M4 19 H20" Stroke="{StaticResource AccentBrush}" StrokeThickness="1.8" Width="46" Height="46" Stretch="Uniform" StrokeLineCap="Round" StrokeJoin="Round" HorizontalAlignment="Center"/>
+            <TextBlock Text="LIBRERIA MASTER" Classes="eyebrow accent" HorizontalAlignment="Center"/>
+            <TextBlock Text="Dark e Bias" Classes="pageTitle" HorizontalAlignment="Center"/>
+            <TextBlock Text="Rilascia la cartella dei tuoi Master" Classes="serif note" HorizontalAlignment="Center" TextAlignment="Center" TextWrapping="Wrap"/>
+          </StackPanel>
+        </Grid>
+      </Border>
+      <Border x:Name="DropCapturesZone" Grid.Column="1" Classes="dropZone" ClipToBounds="True">
+        <Grid>
+          <Rectangle Classes="dash" RadiusX="28" RadiusY="28" StrokeThickness="2" StrokeDashArray="5,5" Margin="1"/>
+          <StackPanel VerticalAlignment="Center" HorizontalAlignment="Center" Spacing="12" Margin="30">
+            <Path Data="M3 7 H9 L11 9 H21 V19 H3 Z" Stroke="{StaticResource AccentBrush}" StrokeThickness="1.8" Width="46" Height="46" Stretch="Uniform" StrokeLineCap="Round" StrokeJoin="Round" HorizontalAlignment="Center"/>
+            <TextBlock Text="ACQUISIZIONI" Classes="eyebrow accent" HorizontalAlignment="Center"/>
+            <TextBlock Text="Light e Flat" Classes="pageTitle" HorizontalAlignment="Center"/>
+            <TextBlock Text="Rilascia cartelle o file FITS e XISF" Classes="serif note" HorizontalAlignment="Center" TextAlignment="Center" TextWrapping="Wrap"/>
+          </StackPanel>
+        </Grid>
+      </Border>
+    </Grid>
+    <TextBlock Text="Gli originali non vengono mai modificati" Classes="muted" HorizontalAlignment="Center" VerticalAlignment="Bottom" Margin="0,0,0,34"/>
+  </Grid>
   </Panel>
 </Window>

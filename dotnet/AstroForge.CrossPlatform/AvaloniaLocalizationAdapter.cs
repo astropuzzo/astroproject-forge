@@ -21,6 +21,16 @@ internal static class AvaloniaLocalizationAdapter
             var translated = UiLocalization.Translate(textValue, language);
             if (!string.Equals(textValue, translated, StringComparison.Ordinal)) text.SetCurrentValue(TextBlock.TextProperty, translated);
         }
+        if (value is TextBox { PlaceholderText: { Length: > 0 } placeholder } box)
+        {
+            var translatedPlaceholder = UiLocalization.Translate(placeholder, language);
+            if (!string.Equals(placeholder, translatedPlaceholder, StringComparison.Ordinal)) box.PlaceholderText = translatedPlaceholder;
+        }
+        if (value is ComboBox { PlaceholderText: { Length: > 0 } comboPlaceholder } combo)
+        {
+            var translatedPlaceholder = UiLocalization.Translate(comboPlaceholder, language);
+            if (!string.Equals(comboPlaceholder, translatedPlaceholder, StringComparison.Ordinal)) combo.PlaceholderText = translatedPlaceholder;
+        }
         if (value is ContentControl content && content.Content is string contentText)
             content.SetCurrentValue(ContentControl.ContentProperty, UiLocalization.Translate(contentText, language));
         if (value is HeaderedContentControl headered && headered.Header is string header)

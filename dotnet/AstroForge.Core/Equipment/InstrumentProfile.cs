@@ -37,6 +37,9 @@ public sealed record InstrumentProfile(
     public EquipmentSource PixelSource { get; init; }
     /// <summary>The user's equipment profile for this camera, when one was applied.</summary>
     public EquipmentOverride? Override { get; init; }
+    /// <summary>The camera as the headers name it; <see cref="Camera"/> is the one the user said it really was, when they did.</summary>
+    public CameraIdentity? DetectedCamera { get; init; }
+    public EquipmentSource CameraSource { get; init; }
     public double? FocalRatio => ApertureMm is > 0 && FocalMm is > 0 ? FocalMm / ApertureMm : null;
     public double? SensorWidthMm => PixelUm is { } pixel && WidthPx is { } width ? pixel * width * Binning / 1000 : null;
     public double? SensorHeightMm => PixelUm is { } pixel && HeightPx is { } height ? pixel * height * Binning / 1000 : null;
@@ -62,13 +65,15 @@ public sealed record InstrumentProfile(
         var lights = frames.Where(frame => !frame.IsMaster && frame.Kind is FrameKind.Light or FrameKind.Flat).ToList();
         if (lights.Count == 0) return null;
 
-        // The camera that shot most Lights defines the profile; mixed rigs show their main train.
-        var cameraName = Mode(lights.Where(frame => frame.Kind == FrameKind.Light).Select(frame => frame.Camera.Value)) ?? Mode(lights.Select(frame => frame.Camera.Value)) ?? "";
-        var ownFrames = lights.Where(frame => string.Equals(frame.Camera.Value ?? "", cameraName, StringComparison.OrdinalIgnoreCase)).ToList();
-        var camera = EquipmentRecognizer.Camera(cameraName, catalog);
-        var key = CameraKeyFor(camera);
+        // The camera that shot most Lights defines the profile; mixed rigs show their main train. The profile is keyed by the camera
+        // as the headers name it, so what the user said about it keeps applying; the camera the user named wins for everything shown.
+        var cameraName = Mode(lights.Where(frame => frame.Kind == FrameKind.Light).Select(CapturedCamera)) ?? Mode(lights.Select(CapturedCamera)) ?? "";
+        var ownFrames = lights.Where(frame => string.Equals(CapturedCamera(frame) ?? "", cameraName, StringComparison.OrdinalIgnoreCase)).ToList();
+        var detectedCamera = EquipmentRecognizer.Camera(cameraName, catalog);
+        var key = CameraKeyFor(detectedCamera);
         var profile = wheelProfiles?.Invoke(key);
         var user = equipmentProfiles?.Invoke(key) is { IsEmpty: false } found ? found : null;
+        var camera = user?.UserCamera(catalog) ?? detectedCamera;
 
         var telescopeName = Mode(ownFrames.Select(frame => Text(frame, "TELESCOP")));
         var focal = Mode(ownFrames.Select(frame => frame.FocalLengthMm.Value));
@@ -116,9 +121,14 @@ public sealed record InstrumentProfile(
             TelescopeSource = optics.TelescopeSource,
             FocalSource = optics.FocalSource,
             PixelSource = pixelSource,
-            Override = user
+            Override = user,
+            DetectedCamera = detectedCamera,
+            CameraSource = user?.HasCamera == true ? EquipmentSource.User : detectedCamera.Camera is null ? EquipmentSource.Header : EquipmentSource.Catalog
         };
     }
+
+    // INSTRUME as the capture software wrote it, before the user's profile renamed the camera.
+    private static string? CapturedCamera(FrameMetadata frame) => frame.RawCameraName ?? frame.Camera.Value;
 
     private sealed record Optics(TelescopeIdentity Telescope, double? NativeFocalMm, double? ReducerFactor, double? ApertureMm,
         EquipmentSource TelescopeSource, EquipmentSource FocalSource);

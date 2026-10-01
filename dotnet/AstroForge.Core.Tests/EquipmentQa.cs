@@ -1,4 +1,6 @@
 using AstroForge.Core.Equipment;
+using AstroForge.Core.Filters;
+using AstroForge.Core.Matching;
 using AstroForge.Core.Models;
 using AstroForge.Core.Parsing;
 using AstroForge.Core.Persistence;
@@ -117,6 +119,74 @@ internal static class EquipmentQa
         Assert(EquipmentOverride.Normalize(nulls.EquipmentProfiles) is { Count: 1 } kept && kept["C"].PixelUm == 4.63, "Profili vuoti o nulli vanno scartati.");
 
         Console.WriteLine("PASS: profilo attrezzatura dell'utente (telescopio, riduttore, pixel) applicato e persistito.");
+        RealCamera();
+    }
+
+    // The user says which camera it really was: the profile, the frames and the calibration match all follow.
+    private static void RealCamera()
+    {
+        FrameMetadata Light(int index, string camera) => FrameClassifier.Classify(Path.Combine(Path.GetTempPath(), $"real_{index:0000}.fits"),
+            new Dictionary<string, object?>(StringComparer.OrdinalIgnoreCase)
+            {
+                ["IMAGETYP"] = "Light", ["INSTRUME"] = camera, ["FILTER"] = "Ha", ["EXPTIME"] = 300.0, ["GAIN"] = 100.0, ["OFFSET"] = 50.0, ["SET-TEMP"] = -10.0,
+                ["XBINNING"] = 1, ["YBINNING"] = 1, ["NAXIS1"] = 6248, ["NAXIS2"] = 4176, ["DATE-OBS"] = $"2026-06-19T23:{index:00}:00"
+            }, new(TimeZoneInfo.Utc, new TimeOnly(12, 0)));
+        var lights = Enumerable.Range(1, 3).Select(index => Light(index, "QHYCCD-Cameras-Capture")).ToList();
+        var master = FrameClassifier.Classify(Path.Combine(Path.GetTempPath(), "masterDark_300s.fits"),
+            new Dictionary<string, object?>(StringComparer.OrdinalIgnoreCase)
+            {
+                ["IMAGETYP"] = "Master Dark", ["INSTRUME"] = "ZWO ASI2600MM Pro", ["EXPTIME"] = 300.0, ["GAIN"] = 100.0, ["OFFSET"] = 50.0, ["SET-TEMP"] = -10.0,
+                ["XBINNING"] = 1, ["YBINNING"] = 1, ["NAXIS1"] = 6248, ["NAXIS2"] = 4176, ["DATE-OBS"] = "2026-05-01T22:00:00"
+            }, new(TimeZoneInfo.Utc, new TimeOnly(12, 0)));
+        master.IsMaster = true;
+        var all = lights.Append(master).ToList();
+        var key = PhysicalFilterResolver.CameraKey(lights[0]);
+        Assert(key == "qhyccd cameras capture" && !InstrumentProfile.Build(lights)!.Camera.IsRecognized, $"Il nome del driver non identifica la camera ({key}).");
+
+        // Without a profile the Dark belongs to another camera and cannot be used.
+        var before = CalibrationMatcher.Find(lights[0], [master], FrameKind.Dark);
+        Assert(!before.IsAccepted, $"Senza profilo il Dark di un'altra camera non deve essere accettato ({before.Status}).");
+
+        EquipmentOverride? Profile(string requested) => requested == key ? new EquipmentOverride { CameraId = "asi2600mm" } : null;
+        PhysicalCameraResolver.Apply(all, Profile);
+        Assert(lights.All(light => light.Camera.Value == "ZWO ASI2600MM Pro" && light.Camera.Source == MetadataSource.EquipmentProfile && light.RawCameraName == "QHYCCD-Cameras-Capture"),
+            "Il nome scelto dall'utente deve sostituire quello degli header, conservando l'originale.");
+        Assert(master.Camera.Value == "ZWO ASI2600MM Pro" && master.Camera.Source == MetadataSource.Header, "Un frame di un'altra camera non deve essere toccato.");
+        Assert(PhysicalFilterResolver.CameraKey(lights[0]) == key, "La chiave del profilo resta quella della camera rilevata.");
+        var after = CalibrationMatcher.Find(lights[0], [master], FrameKind.Dark);
+        Assert(after.IsAccepted && after.Selected?.Frame == master, $"Con la camera reale il Dark deve abbinarsi ({after.Status}).");
+
+        var instrument = InstrumentProfile.Build(all, null, Profile)!;
+        Assert(instrument is { CameraKey: "qhyccd cameras capture", CameraSource: EquipmentSource.User } && instrument.Camera.Camera?.Id == "asi2600mm" && instrument.Camera.Type == CameraSensorType.Mono
+            && instrument.DetectedCamera?.RawName == "QHYCCD-Cameras-Capture" && instrument.PixelUm == 3.76 && instrument.WidthPx == 6248,
+            $"Il profilo deve mostrare la camera scelta: {instrument.Camera.DisplayName} ({instrument.CameraSource}).");
+
+        // Reapplying with another answer, then none, derives everything again from the captured name.
+        PhysicalCameraResolver.Apply(all, requested => requested == key ? new EquipmentOverride { CameraName = "Mia camera", CameraType = CameraSensorType.Color } : null);
+        Assert(lights.All(light => light.Camera.Value == "Mia camera") && InstrumentProfile.Build(all, null, requested => requested == key ? new EquipmentOverride { CameraName = "Mia camera", CameraType = CameraSensorType.Color } : null)!.Camera.IsColor,
+            "Una camera libera deve usare nome e tipo dati dall'utente.");
+        PhysicalCameraResolver.Apply(all, null);
+        Assert(lights.All(light => light.Camera.Value == "QHYCCD-Cameras-Capture" && light.Camera.Source == MetadataSource.Header), "Senza profilo le camere tornano quelle degli header.");
+
+        // A frame the capture software never named a camera for gets the real one too.
+        var nameless = Light(9, "");
+        nameless.Camera.SetOriginal(null, MetadataSource.Missing);
+        PhysicalCameraResolver.Apply([nameless], requested => requested == "unknown" ? new EquipmentOverride { CameraId = "asi2600mm" } : null);
+        Assert(nameless.Camera.Value == "ZWO ASI2600MM Pro", "Un frame senza INSTRUME deve poter ricevere la camera reale.");
+        PhysicalCameraResolver.Apply([nameless], null);
+        Assert(nameless.Camera.Value is null && nameless.Camera.Source == MetadataSource.Missing, "Tolta la scelta, il frame senza camera torna senza camera.");
+
+        // The state file keeps it.
+        var options = new JsonSerializerOptions { WriteIndented = true };
+        var state = new StateProbe { EquipmentProfiles = { ["qhyccd cameras capture"] = new() { CameraId = "asi2600mm" }, ["unknown"] = new() { CameraName = "Mia camera", CameraType = CameraSensorType.Color } } };
+        var json = JsonSerializer.Serialize(state, options);
+        Assert(!json.Contains("HasCamera"), "Le proprietà calcolate non vanno salvate.");
+        var loaded = EquipmentOverride.Normalize(JsonSerializer.Deserialize<StateProbe>(json, options)!.EquipmentProfiles);
+        Assert(loaded.Count == 2 && loaded["QHYCCD CAMERAS CAPTURE"].UserCamera()?.Camera?.Id == "asi2600mm" && loaded["unknown"].UserCamera() is { Type: CameraSensorType.Color, RawName: "Mia camera" },
+            "La camera scelta dall'utente va salvata e riletta.");
+        Assert(new EquipmentOverride { CameraName = "  " }.IsEmpty && !new EquipmentOverride { CameraId = "asi2600mm" }.IsEmpty, "Un nome vuoto non è una scelta.");
+
+        Console.WriteLine("PASS: camera reale scelta dall'utente applicata a profilo, frame e abbinamento Dark/Bias, e persistita.");
     }
 
     // The persisted shape of AppState's equipment and wheel profiles (AppState lives in the UI assembly).

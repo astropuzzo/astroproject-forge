@@ -41,6 +41,8 @@ public sealed class MainViewModel : BindableBase
     private IReadOnlyList<FrameMetadata> _frames = [];
     private IReadOnlyList<FrameMetadata> _masterLibraryFrames = [];
     private ProjectAnalysis? _analysis;
+    // What the project knew before data was added to it, so the new data can be told from the old; cleared once it is exported.
+    private HashSet<string>? _knownBeforeAdding;
     private ProjectStatistics? _statistics;
     private ProjectPlan? _plan;
     private ProjectTreeNode? _selectedNode;
@@ -242,6 +244,32 @@ public sealed class MainViewModel : BindableBase
     public bool CanAnalyzeProject => HasSources && CanRunProjectOperations;
     public bool HasSources => SourcePaths.Count > 0;
     public bool HasAnalysis => _analysis is not null;
+
+    /// <summary>What the project gained since it was last exported (or last read, when it never was); null when nothing is new.</summary>
+    public ProjectNovelty? Novelty { get; private set; }
+    public bool HasNovelty => Novelty is not null;
+
+    /// <summary>Closes the news: the new data stays in the project, it just stops being marked.</summary>
+    public void DismissNovelty()
+    {
+        _knownBeforeAdding = null;
+        SetNovelty(null);
+    }
+
+    private void SetNovelty(ProjectNovelty? novelty)
+    {
+        Novelty = novelty;
+        Raise(nameof(Novelty));
+        Raise(nameof(HasNovelty));
+    }
+
+    private void RefreshNovelty()
+    {
+        var known = new HashSet<string>(PathIdentity.Comparer);
+        known.UnionWith(ProjectExportPreflight.ExportedSources(DestinationPath, ProjectName));
+        if (_knownBeforeAdding is not null) known.UnionWith(_knownBeforeAdding);
+        SetNovelty(ProjectNovelty.Compute(_frames, known));
+    }
     /// <summary>The latest calibration analysis, for screens that draw the whole project at once.</summary>
     public ProjectAnalysis? Analysis => _analysis;
     public bool HasVisibleTree => TreeRoots.Count > 0;
@@ -297,12 +325,15 @@ public sealed class MainViewModel : BindableBase
         ExportRunState.Completed => "COMPLETATO",
         ExportRunState.Cancelled => "RIPRENDIBILE",
         ExportRunState.Failed => "ERRORE",
-        _ => "NON VERIFICATO"
+        _ => "PRONTO DA ESPORTARE"
     };
     public string ExportProgressDetail { get => _exportProgressDetail; private set => Set(ref _exportProgressDetail, value); }
-    public string ExportFileSummary => _exportPreflight is null ? "—" : $"{_exportPreflight.TotalFiles} file";
-    public string ExportBytesSummary => _exportPreflight is null ? "—" : $"{HumanSize(_exportPreflight.BytesToCopy)} da copiare";
-    public string ExportSpaceSummary => _exportPreflight?.AvailableFreeBytes is { } value ? $"{HumanSize(value)} liberi" : "Spazio non disponibile";
+    // Before the check runs, an update already knows what it will copy: the new data.
+    private ProjectNovelty? PendingUpdate => _exportPreflight is null && Novelty is { } news && ExportHistory.Count > 0 ? news : null;
+    public string ExportFileSummary => PendingUpdate is { } pending ? (UiLanguage == UiLocalization.English ? $"{pending.NewFiles} new" : $"{pending.NewFiles} nuovi")
+        : _exportPreflight is null ? "—" : UiLanguage == UiLocalization.English ? $"{_exportPreflight.TotalFiles} files" : $"{_exportPreflight.TotalFiles} file";
+    public string ExportBytesSummary => PendingUpdate is { } pending ? (UiLanguage == UiLocalization.English ? $"{HumanSize(pending.NewBytes)} to copy" : $"{HumanSize(pending.NewBytes)} da copiare") : _exportPreflight is null ? "—" : UiLanguage == UiLocalization.English ? $"{HumanSize(_exportPreflight.BytesToCopy)} to copy" : $"{HumanSize(_exportPreflight.BytesToCopy)} da copiare";
+    public string ExportSpaceSummary => _exportPreflight is null ? "—" : _exportPreflight.AvailableFreeBytes is { } value ? (UiLanguage == UiLocalization.English ? $"{HumanSize(value)} free" : $"{HumanSize(value)} liberi") : "Spazio non disponibile";
     public string ExportEtaSummary => _exportPreflight is null ? "—" : FormatDuration(_exportPreflight.EstimatedDuration);
     public string ExportResumeSummary => _exportPreflight is null
         ? (UiLanguage == UiLocalization.English ? "No comparison run" : "Nessun confronto eseguito")
@@ -420,7 +451,7 @@ public sealed class MainViewModel : BindableBase
     public bool IsProjectReady => _analysis?.Ready == true;
     public string ReadinessText { get => _readinessText; private set => Set(ref _readinessText, value); }
     public string CalibrationSummary { get => _calibrationSummary; private set => Set(ref _calibrationSummary, value); }
-    public string PlanSummary => _plan is null ? "Genera il piano dopo aver risolto le calibrazioni." : $"{_plan.Files.Count} file · {HumanSize(_plan.RequiredBytes)} · {_plan.ProjectRoot}";
+    public string PlanSummary => _plan is null ? "Genera il piano dopo aver risolto le calibrazioni." : UiLanguage == UiLocalization.English ? $"{_plan.Files.Count} files · {HumanSize(_plan.RequiredBytes)} · {_plan.ProjectRoot}" : $"{_plan.Files.Count} file · {HumanSize(_plan.RequiredBytes)} · {_plan.ProjectRoot}";
     public string TotalIntegrationText => _statistics is null ? "0 h" : FormatHours(_statistics.ExposureSeconds);
     public string StatisticsSummary => _statistics is null ? "Analizza il progetto per calcolare le statistiche." : $"{_statistics.LightCount} Light · {_statistics.FilterCount} filtri · {_statistics.ConfigurationSessionCount} sessioni · {_statistics.NightCount} notti";
     public string StatisticsDateRange => _statistics?.FirstCapture is null ? "Nessun intervallo temporale" : $"{_statistics.FirstCapture.Value.ToLocalTime():dd MMM yyyy} → {_statistics.LastCapture!.Value.ToLocalTime():dd MMM yyyy}";
@@ -555,6 +586,9 @@ public sealed class MainViewModel : BindableBase
 
     private void InvalidateProjectAnalysis(bool awaitingReanalysis)
     {
+        if (awaitingReanalysis && _frames.Count > 0)
+            _knownBeforeAdding ??= _frames.Where(frame => !frame.IsMaster).Select(frame => frame.Path).ToHashSet(PathIdentity.Comparer);
+        SetNovelty(null);
         _frames = [];
         _analysis = null;
         _statistics = null;
@@ -835,6 +869,7 @@ public sealed class MainViewModel : BindableBase
     {
         CurrentProjectFile = string.IsNullOrWhiteSpace(projectFile) ? "" : Path.GetFullPath(projectFile);
         _projectCreatedAt = document.CreatedAt;
+        _knownBeforeAdding = null;
         SourcePaths.Clear();
         foreach (var source in document.SourcePaths) SourcePaths.Add(source);
         Raise(nameof(ImportedSourceCountLabel));
@@ -911,6 +946,7 @@ public sealed class MainViewModel : BindableBase
                 DestinationPath = Directory.GetParent(SourcePaths[0])?.FullName ?? SourcePaths[0];
             RefreshIntelligence();
             RebuildTree();
+            RefreshNovelty();
             _awaitingReanalysis = false;
             RaiseProjectWorkflowProperties();
             Status = $"{TotalFiles} file analizzati · {_scanner.LastCacheHits} da cache · {_scanner.LastParsedFiles} letti · {TotalIssues} segnalazioni";
@@ -942,6 +978,8 @@ public sealed class MainViewModel : BindableBase
             CreatePixInsightOutputFolder ? PixInsightOutputFolderName : null);
         BuildPlannedTree();
         InvalidateExportPreflight();
+        // A folder that is already a project makes this an update: say so before anything is copied.
+        RefreshExportHistory(_plan.ProjectRoot);
         Raise(nameof(PlanSummary)); Raise(nameof(HasExportPlan)); Raise(nameof(CanRunExportPreflight));
         Status = $"Anteprima pronta: {_plan.Files.Count} file, {HumanSize(_plan.RequiredBytes)} · i controlli verranno eseguiti automaticamente";
     }
@@ -1217,8 +1255,8 @@ public sealed class MainViewModel : BindableBase
             ApplyExportPreflight(report);
             SetExportState(report.IsReady ? ExportRunState.Ready : ExportRunState.Blocked);
             ExportProgressDetail = report.IsReady
-                ? $"Verifica completata · {report.WarningCount} avvisi"
-                : $"Export bloccato · {report.ErrorCount} errori · {report.WarningCount} avvisi";
+                ? (UiLanguage == UiLocalization.English ? $"Check complete · {report.WarningCount} warnings" : $"Verifica completata · {report.WarningCount} avvisi")
+                : UiLanguage == UiLocalization.English ? $"Export blocked · {report.ErrorCount} errors · {report.WarningCount} warnings" : $"Export bloccato · {report.ErrorCount} errori · {report.WarningCount} avvisi";
             Status = ExportProgressDetail;
             if (report.IsReady) operation.Complete("AF-EXPORT-PREFLIGHT-OK", ExportProgressDetail);
             else operation.Fail("AF-EXPORT-PREFLIGHT-BLOCKED", ExportProgressDetail, new ExportPreflightException(report));
@@ -1451,6 +1489,7 @@ public sealed class MainViewModel : BindableBase
         _state.Overrides.Clear();
         _kindOverrides.Clear();
         _excludedQualityPaths.Clear();
+        _knownBeforeAdding = null;
         InvalidateProjectAnalysis(false);
         Raise(nameof(HasProjectContent));
         SaveState();
@@ -1527,10 +1566,13 @@ public sealed class MainViewModel : BindableBase
             });
             var output = await ProjectExporter.ExecuteAsync(plan, progress, _exportCancellation.Token, _exportControl, CurrentExportOptions());
             SetExportState(ExportRunState.Completed);
+            // Everything is in the project now: nothing is new any more.
+            _knownBeforeAdding = null;
+            SetNovelty(null);
             ExportProgress = 100;
             ExportProgressDetail = report.IsIncremental
-                ? $"Aggiornamento completato · {report.NewFileCount} nuovi · {report.ResumeFileCount} invariati"
-                : $"Copia e verifica completate · {plan.Files.Count} file";
+                ? (UiLanguage == UiLocalization.English ? $"Update complete · {report.NewFileCount} new · {report.ResumeFileCount} unchanged" : $"Aggiornamento completato · {report.NewFileCount} nuovi · {report.ResumeFileCount} invariati")
+                : UiLanguage == UiLocalization.English ? $"Copied and verified · {plan.Files.Count} files" : $"Copia e verifica completate · {plan.Files.Count} file";
             Status = $"Progetto verificato: {output}";
             RefreshExportHistory(output);
             tracked.Complete("AF-EXPORT-OK", $"Esportazione verificata completata: {plan.Files.Count} file");
@@ -1908,6 +1950,7 @@ public sealed class MainViewModel : BindableBase
         MetadataSource.ProjectDefault => "Default progetto",
         MetadataSource.UserOverride => "Override utente",
         MetadataSource.FilterProfile => "Profilo filtri",
+        MetadataSource.EquipmentProfile => "Profilo strumento",
         _ => "Mancante"
     };
 
@@ -1953,6 +1996,8 @@ public sealed class MainViewModel : BindableBase
         foreach (var frame in _frames)
             frame.Issues.RemoveAll(issue => issue.Code.StartsWith("calibration.", StringComparison.Ordinal));
 
+        // The camera the user named wins over INSTRUME, so Lights, Flats and Masters meet under one name.
+        PhysicalCameraResolver.Apply(_frames, EquipmentFor);
         // One physical filter, one name: confirmed wheel slots and labels from different programs are filed together.
         PhysicalFilterResolver.Apply(_frames, WheelProfileFor);
         _analysis = ProjectAnalyzer.Analyze(_frames);
@@ -2105,24 +2150,41 @@ public sealed class MainViewModel : BindableBase
     public EquipmentOverride? EquipmentFor(string cameraKey) =>
         _state.EquipmentProfiles.TryGetValue(cameraKey, out var equipment) ? equipment : null;
 
-    /// <summary>Remembers the real optics, reducer and pixel size of this camera's train, for this and every later project.</summary>
+    /// <summary>
+    /// Remembers what this camera's train really is (camera, optics, reducer, pixel size), for this and every later project.
+    /// Optics and pixel size only feed the instrument profile; a different camera changes what the frames are called, so
+    /// Dark and Bias are matched again.
+    /// </summary>
     public void SetEquipment(string cameraKey, EquipmentOverride equipment)
     {
         if (equipment.IsEmpty) { ClearEquipment(cameraKey); return; }
-        if (EquipmentFor(cameraKey) == equipment) return;
+        var previous = EquipmentFor(cameraKey);
+        if (previous == equipment) return;
         _state.EquipmentProfiles[cameraKey] = equipment;
         SaveState();
-        RefreshInstrument();
+        ApplyEquipmentChange(previous, equipment);
     }
 
     public void ClearEquipment(string cameraKey)
     {
-        if (!_state.EquipmentProfiles.Remove(cameraKey)) return;
+        if (!_state.EquipmentProfiles.Remove(cameraKey, out var previous)) return;
         SaveState();
-        RefreshInstrument();
+        ApplyEquipmentChange(previous, null);
     }
 
-    // Focal length and pixel size only feed the instrument profile (scale, field of view); calibration matching keeps using the headers.
+    private void ApplyEquipmentChange(EquipmentOverride? previous, EquipmentOverride? current)
+    {
+        var cameraChanged = previous?.CameraId != current?.CameraId || previous?.CameraName != current?.CameraName || previous?.CameraType != current?.CameraType;
+        if (!cameraChanged) { RefreshInstrument(); return; }
+        RefreshIntelligence();
+        RebuildTree();
+        var english = UiLanguage == UiLocalization.English;
+        Status = current?.HasCamera == true
+            ? english ? $"Camera set to {current.UserCamera()?.DisplayName} · matches recalculated" : $"Camera impostata su {current.UserCamera()?.DisplayName} · abbinamenti ricalcolati"
+            : english ? "Camera from the headers restored · matches recalculated" : "Camera rilevata dagli header ripristinata · abbinamenti ricalcolati";
+    }
+
+    // Focal length and pixel size only feed the instrument profile (scale, field of view).
     private void RefreshInstrument()
     {
         Instrument = InstrumentProfile.Build(_frames, WheelProfileFor, EquipmentFor);

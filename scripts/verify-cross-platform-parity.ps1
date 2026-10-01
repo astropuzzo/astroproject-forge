@@ -20,10 +20,13 @@ if ($projectText -match 'AstroForge\.App[\\/]') { throw 'The Avalonia project mu
 if (Test-Path (Join-Path $root 'dotnet/AstroForge.App')) { throw 'The retired WPF project must not come back: the Avalonia app is the only UI.' }
 if (Test-Path (Join-Path $root 'dotnet/AstroForge.CrossPlatform/ViewModels/CrossPlatformViewModel.cs')) { throw 'Reduced preview ViewModel must not exist.' }
 
-# Two screens (Panoramica, Strumento) and the panels that open over them.
-$requiredWorkspaces = @('Progetto','Risolvi','Esporta','WBPP','Panoramica','Strumento','Statistiche','Qualità','Libreria Master','Log')
+# Four step pages (Importa, Strumento, Calibrazioni, Esporta) and the tools that open over them.
+$requiredWorkspaces = @('Metadati','Statistiche','Qualità','Libreria Master','Log')
+$requiredPages = @('ImportPage','SetupPage','CalibrationPage','ExportPage')
 $missing = @($requiredWorkspaces | Where-Object { $windowText -notmatch [regex]::Escape(('Header="{0}"' -f $_)) })
 if ($missing.Count -gt 0) { throw "Missing workspaces: $($missing -join ', ')" }
+$missing = @($requiredPages | Where-Object { $windowText -notmatch [regex]::Escape(('x:Name="{0}"' -f $_)) })
+if ($missing.Count -gt 0) { throw "Missing step pages: $($missing -join ', ')" }
 
 $requiredModelCapabilities = @(
     'TreeRoots','PlannedTreeRoots','ApplyOverridesCommand','LinkFlatSetCommand','WbppKeywords',
@@ -37,4 +40,4 @@ $requiredUiContracts = @('TreeRoots','PlannedTreeRoots','ApplyOverridesCommand',
 $missing = @($requiredUiContracts | Where-Object { $windowText -notmatch [regex]::Escape($_) })
 if ($missing.Count -gt 0) { throw "Capabilities not exposed by the cross-platform UI: $($missing -join ', ')" }
 
-Write-Host "PASS: shared application model and $($requiredWorkspaces.Count) cross-platform workspaces verified."
+Write-Host "PASS: shared application model, $($requiredPages.Count) step pages and $($requiredWorkspaces.Count) tools verified."

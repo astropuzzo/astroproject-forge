@@ -24,6 +24,15 @@ public sealed partial class App : Application
             if (smokeTest)
                 window.Opened += async (_, _) => desktop.Shutdown(await window.RunSmokeTestAsync());
 
+            // Developer tool: `--capture folder` saves a picture of every step of the demo project and quits.
+            var args = desktop.Args ?? [];
+            var capture = Array.IndexOf(args, MainWindow.CaptureArgument);
+            if (capture >= 0 && capture + 1 < args.Length)
+            {
+                var folder = args[capture + 1];
+                window.Opened += async (_, _) => desktop.Shutdown(await window.RunCaptureAsync(folder));
+            }
+
             // Recovery for unexpected UI exceptions: log them and keep the session alive.
             // The smoke test lets them crash so CI still fails on startup regressions.
             Dispatcher.UIThread.UnhandledException += (_, args) =>

@@ -59,7 +59,11 @@ public sealed class FilterSlotRow : BindableBase
     public IReadOnlyList<Core.Filters.FilterBand> Bands { get; }
     public IBrush Glass { get; }
     public IReadOnlyList<FilterChoice> Choices { get; }
-    public FilterChoice? Choice { get => _choice; set => Set(ref _choice, value); }
+    public FilterChoice? Choice { get => _choice; set { if (Set(ref _choice, value)) Raise(nameof(IsChoiceNew)); } }
+    /// <summary>A recognised filter can be changed just like an unknown one: the picker is always there.</summary>
+    public bool IsChoiceNew => Choice is not null && Choice.Id != Filter.Identity.Product?.Id;
+    public string ChangeHint { get; init; } = "";
+    public string ApplyLabel { get; init; } = "";
 }
 
 /// <summary>A filter's card on the overview: its hours, its light and how much of it is calibrated.</summary>
@@ -71,6 +75,12 @@ public sealed record FilterCard(string Name, string Detail, string Integration, 
     public string CalibratedText { get; init; } = "";
     public string CalibratedDetail { get; init; } = "";
     public bool NeedsConfirmation { get; init; }
+}
+
+/// <summary>A camera in the picker: a catalogue entry the user can say the frames really came from.</summary>
+public sealed record CameraChoice(string? Id, string Name, CameraSensorType Type)
+{
+    public override string ToString() => Name;
 }
 
 /// <summary>A telescope in the profile picker: a catalogue entry, or the optics the headers name.</summary>
@@ -137,7 +147,23 @@ public sealed partial class ObservatoryViewModel : BindableBase
         CameraSensorType.Dslr or CameraSensorType.DslrModified => "DSLR",
         _ => "?"
     };
-    public string CameraSource => Instrument?.Camera.Camera is null ? (English ? "from the header" : "dall'header") : (English ? $"catalogue · {Instrument.Camera.Confidence:P0}" : $"catalogo · {Instrument.Camera.Confidence:P0}");
+    public string CameraSource => Instrument?.CameraSource switch
+    {
+        EquipmentSource.User => English ? "your choice" : "scelta tua",
+        EquipmentSource.Catalog => English ? $"catalogue · {Instrument.Camera.Confidence:P0}" : $"catalogo · {Instrument.Camera.Confidence:P0}",
+        _ => English ? "from the header" : "dall'header"
+    };
+    /// <summary>The camera without its maker, for the stepper: "ASI2600MM Pro".</summary>
+    public string CameraShortName
+    {
+        get
+        {
+            var name = CameraName;
+            foreach (var brand in new[] { "ZWO ", "QHY ", "QHYCCD ", "Player One ", "PlayerOne ", "ToupTek ", "SVBONY ", "Atik ", "Moravian ", "Altair " })
+                if (name.StartsWith(brand, StringComparison.OrdinalIgnoreCase)) { name = name[brand.Length..]; break; }
+            return name;
+        }
+    }
     public string TelescopeName => Instrument is null ? "—" : Instrument.Telescope.RawName.Length == 0 && Instrument.Telescope.Telescope is null ? (English ? "Optics not in the headers" : "Ottica non indicata negli header") : Instrument.Telescope.DisplayName;
     public string TelescopeDetail => Instrument?.Telescope.Telescope is { } scope
         ? $"Ø {scope.ApertureMm:0} mm · {scope.FocalMm:0} mm · f/{scope.FocalRatio:0.0}" + (Instrument.Telescope.Reducer is { } reducer ? $" → {Instrument.FocalMm:0} mm f/{Instrument.FocalMm / scope.ApertureMm:0.0}" : "")
@@ -185,13 +211,20 @@ public sealed partial class ObservatoryViewModel : BindableBase
     private void Rebuild()
     {
         Filters.Clear();
-        foreach (var filter in Instrument?.Filters ?? []) Filters.Add(new FilterSlotRow(filter, Choices, English));
+        foreach (var filter in Instrument?.Filters ?? [])
+            Filters.Add(new FilterSlotRow(filter, Choices, English)
+            {
+                ChangeHint = filter.NeedsConfirmation
+                    ? (English ? "Which filter is it?" : "Che filtro è?")
+                    : English ? "Not this one? Pick the right filter." : "Non è questo? Scegli il filtro giusto.",
+                ApplyLabel = filter.NeedsConfirmation ? (English ? "Confirm" : "Conferma") : English ? "Use this filter" : "Usa questo filtro"
+            });
         Slots = Filters.Select(row => new WheelSlot(row.NeedsConfirmation ? row.RawName : $"{row.RawName} → {row.DisplayName}", row.Glass, row.NeedsConfirmation)).ToList();
         var firstPending = Filters.ToList().FindIndex(row => row.NeedsConfirmation);
         SelectedSlot = firstPending >= 0 ? firstPending : Math.Clamp(SelectedSlot, 0, Math.Max(0, Filters.Count - 1));
         foreach (var name in new[]
                  {
-                     nameof(HasInstrument), nameof(HasNoInstrument), nameof(CameraName), nameof(CameraType), nameof(CameraSource), nameof(TelescopeName), nameof(TelescopeDetail),
+                     nameof(HasInstrument), nameof(HasNoInstrument), nameof(CameraName), nameof(CameraShortName), nameof(CameraType), nameof(CameraSource), nameof(TelescopeName), nameof(TelescopeDetail),
                      nameof(PixelText), nameof(ScaleText), nameof(FieldText), nameof(SensorText), nameof(FieldWidth), nameof(FieldHeight),
                      nameof(PendingCount), nameof(HasPending), nameof(PendingText), nameof(WheelCaption), nameof(SelectedFilter)
                  })

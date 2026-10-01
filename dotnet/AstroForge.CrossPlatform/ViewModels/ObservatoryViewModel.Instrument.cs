@@ -12,6 +12,9 @@ public sealed partial class ObservatoryViewModel
     private static readonly double[] CommonReducers = [0.63, 0.67, 0.7, 0.72, 0.75, 0.77, 0.79, 0.8, 0.85, 0.9];
     private bool _showReduced = true;
     private bool _isEditing;
+    private string _cameraText = "";
+    private CameraChoice? _selectedCamera;
+    private bool _customCameraColor;
     private string _telescopeText = "";
     private TelescopeChoice? _selectedTelescope;
     private ReducerChoice? _selectedReducer;
@@ -22,6 +25,10 @@ public sealed partial class ObservatoryViewModel
 
     public IReadOnlyList<TelescopeChoice> TelescopeChoices { get; } = EquipmentCatalog.Default.TelescopesByUse
         .Select(item => new TelescopeChoice(item.Id, item.Name, item.ApertureMm, item.FocalMm)).ToList();
+
+    public IReadOnlyList<CameraChoice> CameraChoices { get; } = EquipmentCatalog.Default.Cameras
+        .OrderByDescending(item => item.Uses).ThenBy(item => item.Name, StringComparer.OrdinalIgnoreCase)
+        .Select(item => new CameraChoice(item.Id, item.Name, item.Type)).ToList();
 
     private string Number(double value, string format) => value.ToString(format, English ? CultureInfo.InvariantCulture : CultureInfo.GetCultureInfo("it-IT"));
 
@@ -53,7 +60,7 @@ public sealed partial class ObservatoryViewModel
     public string FovSmall => PreviewField is { } fov ? $"× {Number(fov.Height, "0.00")}°" : "";
     public string FovEyebrow => FovEyebrowText.ToUpperInvariant();
     private string FovEyebrowText => SelectedFilter is { } filter
-        ? (English ? $"Field of view · filter {filter.DisplayName}" : $"Campo inquadrato · filtro {(filter.NeedsConfirmation ? filter.RawName : filter.DisplayName)}")
+        ? (English ? $"Field of view · filter {(filter.NeedsConfirmation ? filter.RawName : filter.DisplayName)}" : $"Campo inquadrato · filtro {(filter.NeedsConfirmation ? filter.RawName : filter.DisplayName)}")
         : (English ? "Field of view" : "Campo inquadrato");
     public string FovNote => !HasReducerOption || OtherField is not { } other || PreviewField is not { } fov ? ""
         : ShowReduced
@@ -102,7 +109,7 @@ public sealed partial class ObservatoryViewModel
     public TrainPart? TrainCamera => Instrument is not { } instrument ? null : new TrainPart(
         instrument.Camera.DisplayName,
         string.Join(" · ", new[] { CameraType.ToLowerInvariant(), instrument.Camera.Camera?.Sensor ?? "", instrument.PixelUm is { } pixel ? $"{Number(pixel, "0.##")} µm" : "" }.Where(part => part.Length > 0 && part != "?")),
-        SourceLabel(instrument.Camera.Camera is null ? EquipmentSource.Header : EquipmentSource.Catalog, "INSTRUME", instrument.Camera.Confidence),
+        SourceLabel(instrument.CameraSource, "INSTRUME", instrument.Camera.Confidence),
         instrument.Camera.IsRecognized);
 
     private string SourceLabel(EquipmentSource source, string keyword, double confidence) => source switch
@@ -127,7 +134,7 @@ public sealed partial class ObservatoryViewModel
         null => "",
         _ => "FOCALLEN"
     };
-    public string CameraChip => Instrument is { } instrument ? SourceLabel(instrument.Camera.Camera is null ? EquipmentSource.Header : EquipmentSource.Catalog, "INSTRUME", instrument.Camera.Confidence) : "";
+    public string CameraChip => Instrument is { } instrument ? SourceLabel(instrument.CameraSource, "INSTRUME", instrument.Camera.Confidence) : "";
     public string PixelRow => Instrument?.PixelUm is { } pixel ? $"{Number(pixel, "0.##")} µm" + (Instrument.Binning > 1 ? $" · bin {Instrument.Binning}" : "") : "—";
     public string PixelChip => Instrument?.PixelSource switch
     {
@@ -146,6 +153,31 @@ public sealed partial class ObservatoryViewModel
     // ---- Profile editor ----
     public bool IsEditing { get => _isEditing; set { if (Set(ref _isEditing, value)) Raise(nameof(IsViewing)); } }
     public bool IsViewing => !IsEditing;
+
+    /// <summary>What the headers say the camera is, shown next to the one the user chose when they differ.</summary>
+    public bool CameraWasChanged => Instrument is { CameraSource: EquipmentSource.User, DetectedCamera: { } detected }
+        && !string.Equals(detected.DisplayName, Instrument.Camera.DisplayName, StringComparison.OrdinalIgnoreCase);
+    public string DetectedCameraNote => Instrument?.DetectedCamera is { } detected
+        ? (detected.RawName.Length == 0 ? (English ? "headers: no camera named" : "negli header: nessuna camera") : English ? $"headers: “{detected.RawName}”" : $"negli header: «{detected.RawName}»")
+        : "";
+    public string CameraText
+    {
+        get => _cameraText;
+        set { if (Set(ref _cameraText, value ?? "")) Raise(nameof(IsCustomCamera)); }
+    }
+    public CameraChoice? SelectedCamera
+    {
+        get => _selectedCamera;
+        set
+        {
+            if (!Set(ref _selectedCamera, value)) return;
+            if (value is not null) CameraText = value.Name;
+            Raise(nameof(IsCustomCamera));
+        }
+    }
+    public bool IsCustomCamera => CameraText.Trim().Length > 0 && !string.Equals(SelectedCamera?.Name, CameraText.Trim(), StringComparison.OrdinalIgnoreCase);
+    public bool CustomCameraColor { get => _customCameraColor; set { if (Set(ref _customCameraColor, value)) Raise(nameof(CustomCameraMono)); } }
+    public bool CustomCameraMono { get => !_customCameraColor; set => CustomCameraColor = !value; }
     public string TelescopeText
     {
         get => _telescopeText;
@@ -172,6 +204,11 @@ public sealed partial class ObservatoryViewModel
     public void BeginEdit()
     {
         if (Instrument is not { } instrument) return;
+        var machine = instrument.Camera.Camera;
+        _selectedCamera = machine is null ? null : CameraChoices.FirstOrDefault(choice => choice.Id == machine.Id);
+        Raise(nameof(SelectedCamera));
+        CameraText = machine?.Name ?? (instrument.Camera.RawName.Length == 0 ? "" : instrument.Camera.RawName);
+        CustomCameraColor = instrument.Camera.IsColor;
         var scope = instrument.Telescope.Telescope;
         _selectedTelescope = scope is null ? null : TelescopeChoices.FirstOrDefault(choice => choice.Id == scope.Id);
         Raise(nameof(SelectedTelescope));
@@ -188,8 +225,12 @@ public sealed partial class ObservatoryViewModel
         if (Instrument is not { } instrument) return;
         var catalogPick = SelectedTelescope is not null && !IsCustomTelescope;
         var name = TelescopeText.Trim();
+        var (cameraId, cameraName, cameraType) = CameraEdit(instrument);
         _main.SetEquipment(instrument.CameraKey, new EquipmentOverride
         {
+            CameraId = cameraId,
+            CameraName = cameraName,
+            CameraType = cameraType,
             TelescopeId = catalogPick ? SelectedTelescope!.Id : null,
             TelescopeName = !catalogPick && name.Length > 0 ? name : null,
             FocalMm = !catalogPick && CustomFocal is > 0 ? (double)CustomFocal : null,
@@ -200,6 +241,16 @@ public sealed partial class ObservatoryViewModel
         IsEditing = false;
     }
 
+    // The camera the user means, or none when it is the one the headers already name (nothing to remember then).
+    private (string? Id, string? Name, CameraSensorType? Type) CameraEdit(InstrumentProfile instrument)
+    {
+        var detected = instrument.DetectedCamera ?? instrument.Camera;
+        var text = CameraText.Trim();
+        if (SelectedCamera is { } pick && !IsCustomCamera) return pick.Id == detected.Camera?.Id ? (null, null, null) : (pick.Id, null, null);
+        if (text.Length == 0 || string.Equals(text, detected.RawName, StringComparison.OrdinalIgnoreCase)) return (null, null, null);
+        return (null, text, CustomCameraColor ? CameraSensorType.Color : CameraSensorType.Mono);
+    }
+
     /// <summary>Stores what Forge detected as the user's profile, so the optics stop showing as unconfirmed.</summary>
     public void ConfirmProfile()
     {
@@ -207,6 +258,9 @@ public sealed partial class ObservatoryViewModel
         var scope = instrument.Telescope.Telescope;
         _main.SetEquipment(instrument.CameraKey, new EquipmentOverride
         {
+            CameraId = instrument.Override?.CameraId,
+            CameraName = instrument.Override?.CameraName,
+            CameraType = instrument.Override?.CameraType,
             TelescopeId = scope?.Id,
             TelescopeName = scope is null && instrument.Telescope.RawName.Length > 0 ? instrument.Telescope.RawName : null,
             FocalMm = scope is null ? instrument.NativeFocalMm : null,
@@ -264,6 +318,7 @@ public sealed partial class ObservatoryViewModel
                  {
                      nameof(HasReducerOption), nameof(ReducedLabel), nameof(NativeLabel), nameof(TrainTelescope), nameof(TrainCamera), nameof(IsProfileConfirmed),
                      nameof(ProfileBadge), nameof(OpticsRow), nameof(OpticsChip), nameof(ReducerRow), nameof(ReducerChip), nameof(CameraChip), nameof(PixelRow),
+                     nameof(CameraWasChanged), nameof(DetectedCameraNote),
                      nameof(PixelChip), nameof(WheelRow), nameof(WheelChip), nameof(WheelTitle), nameof(SeeingLabel)
                  })
             Raise(name);

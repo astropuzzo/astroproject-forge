@@ -4,20 +4,20 @@
 
 AstroProject Forge organizza acquisizioni FITS/XISF multisessione per PixInsight WeightedBatchPreprocessing. Ricostruisce le notti oltre la mezzanotte, separa filtri e sessioni ottiche, abbina Flat/Dark/Bias e genera la struttura e le Grouping Keywords richieste dal progetto.
 
-![Mappa del progetto](images/project-map.png)
+![Importa: prima la Master Library, poi le acquisizioni](images/step-1-import.png)
 
 ## Flusso essenziale
 
-1. Aggiungi cartelle o file Light/Flat.
-2. Collega una o più Master Library Dark/Bias.
-3. Premi **Analizza**.
-4. Risolvi soltanto gli elementi indicati come da rivedere.
-5. Controlla la pagina **WBPP**.
-6. Esporta il progetto.
+Quattro passi, sempre in ordine, con un solo pulsante in basso a destra che fa la prossima cosa che serve:
 
-Sono disponibili statistiche per filtro, sessione e notte, collegamenti manuali dei Flat Set, gestione indipendente della Master Library e analisi qualità opzionale con Blink.
+1. **Importa**: collega una volta sola la Master Library Dark/Bias, aggiungi le acquisizioni Light/Flat e premi **Analizza**.
+2. **Strumento**: controlla camera, ottica, riduttore, pixel e filtri letti dagli header; ognuno si può correggere.
+3. **Calibrazioni**: risolvi, una alla volta, soltanto le scelte che Forge non può fare da solo.
+4. **Esporta**: dai un nome al progetto, scegli la destinazione ed esporta, poi apri l’istanza WBPP in PixInsight.
 
-![Dati di acquisizione](images/acquisition-dashboard.png)
+Negli strumenti (in alto a destra) trovi statistiche per filtro, sessione e notte, metadati e collegamenti manuali dei Flat Set, gestione indipendente della Master Library e analisi qualità opzionale con Blink.
+
+![Strumento: camera, ottica e filtri, tutti correggibili](images/step-2-gear.png)
 
 I pacchetti Windows, Linux e macOS sono disponibili nella pagina [Releases](https://github.com/astropuzzo/astroproject-forge/releases/latest). Non è necessario installare .NET separatamente.
 

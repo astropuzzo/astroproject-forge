@@ -28,6 +28,7 @@ public sealed partial class MainWindow : Window
     private const string GuideUrl = RepositoryUrl + "/wiki";
     private const string IssueUrl = RepositoryUrl + "/issues/new?template=bug_report.yml";
     public const string SmokeTestArgument = "--smoke-test";
+    public const string CaptureArgument = "--capture";
     public const string UpdatedArgument = "--updated";
     public const string ProjectFileExtension = ".astroforge";
     private readonly MainViewModel _viewModel = new();
@@ -48,6 +49,7 @@ public sealed partial class MainWindow : Window
     private bool _localizationPending;
     private int _lastScreen;
     private bool _playingNights;
+    private bool _exportCelebrated;
 
     private static readonly FilePickerFileType AstroImages = new("Immagini astronomiche")
     {
@@ -61,14 +63,19 @@ public sealed partial class MainWindow : Window
         DataContext = _viewModel;
         _observatory = new ObservatoryViewModel(_viewModel);
         _shell = new ShellViewModel(_viewModel, _observatory);
-        TopBar.DataContext = _shell;
-        Constellation.DataContext = _shell;
-        OverviewScreen.DataContext = _shell;
-        OverviewFilters.DataContext = _observatory;
-        InstrumentPanel.DataContext = _observatory;
+        // The steps (header, pages, footer) read the shell; the tools, menu and overlays outside them keep the project model.
+        RootLayout.DataContext = _shell;
         StatsNights.DataContext = _observatory;
         PaletteHost.DataContext = _shell;
-        Constellation.StepInvoked += (_, step) => OpenStep(step);
+        // On a narrow window the header gives up the words, not the steps.
+        RootLayout.SizeChanged += (_, args) =>
+        {
+            BrandText.IsVisible = args.NewSize.Width >= 1240;
+            ProjectChip.IsVisible = args.NewSize.Width >= 1400;
+        };
+        Stepper.StepInvoked += (_, step) => GoToStep(step);
+        TrainView.PartInvoked += TrainView_PartInvoked;
+        _shell.StepChanged += Shell_StepChanged;
         NightSkyView.NightInvoked += (_, night) => _shell.NightIndex = night + 1;
         _toastTimer.Tick += (_, _) => { _toastTimer.Stop(); Toast.IsVisible = false; };
         _observatory.Filters.CollectionChanged += (_, _) => ScheduleLocalization();
@@ -79,14 +86,25 @@ public sealed partial class MainWindow : Window
             if (args.PropertyName == nameof(MainViewModel.HasSelection)) UpdateInspectorLayout();
             else if (args.PropertyName == nameof(MainViewModel.ReducedMotion)) Motion.SetReduced(_viewModel.ReducedMotion);
             else if (args.PropertyName == nameof(MainViewModel.Analysis)) { RefreshCalibrationVisuals(); PreparePlanPreview(); ScheduleExportVisuals(); ScheduleDarkCoverage(); }
-            else if (args.PropertyName is nameof(MainViewModel.ExportProgress) or nameof(MainViewModel.ExportState)) RefreshExportProgress();
+            else if (args.PropertyName == nameof(MainViewModel.Novelty)) ScheduleExportVisuals();
+            else if (args.PropertyName == nameof(MainViewModel.HasAnalysis)) AutoReanalyze();
+            else if (args.PropertyName is nameof(MainViewModel.ExportProgress) or nameof(MainViewModel.ExportState)) { RefreshExportProgress(); UpdateNextFill(); }
             else if (args.PropertyName == nameof(MainViewModel.Status)) ShowToast(_viewModel.Status);
             else if (args.PropertyName is nameof(MainViewModel.Progress) or nameof(MainViewModel.IsScanning)) UpdateNextFill();
         };
+        // The export page shows the real plan as soon as the name and the destination are settled.
+        ProjectNameBox.LostFocus += (_, _) => { PreparePlanPreview(); ScheduleExportVisuals(); };
+        DestinationBox.LostFocus += (_, _) => { PreparePlanPreview(); ScheduleExportVisuals(); };
         CalibrationMapView.CellActivated += CalibrationMap_CellActivated;
         _viewModel.PlannedTreeRoots.CollectionChanged += (_, _) => ScheduleExportVisuals();
         _viewModel.MasterOrganizerItems.CollectionChanged += (_, _) => ScheduleDarkCoverage();
         KeyDown += Window_KeyDown;
+        // Folders and files can be dropped anywhere on the window.
+        DragDrop.SetAllowDrop(this, true);
+        AddHandler(DragDrop.DragEnterEvent, Window_DragOver, handledEventsToo: true);
+        AddHandler(DragDrop.DragOverEvent, Window_DragOver, handledEventsToo: true);
+        AddHandler(DragDrop.DragLeaveEvent, Window_DragLeave, handledEventsToo: true);
+        AddHandler(DragDrop.DropEvent, Window_Drop, handledEventsToo: true);
         // Tunnel so the tour keys win over focus navigation in whatever control has focus.
         AddHandler(KeyDownEvent, Tour_KeyDown, Avalonia.Interactivity.RoutingStrategies.Tunnel);
         Opened += async (_, _) =>
@@ -96,7 +114,7 @@ public sealed partial class MainWindow : Window
             PlayFirstLight();
             if (_updatedOnLaunch) ShowUpdateCompletedNotification();
             if (_startupProjectPath is { } projectPath) await OpenStartupProjectAsync(projectPath);
-            if (!Environment.GetCommandLineArgs().Contains(SmokeTestArgument)) await CheckUpdatesAsync(false);
+            if (!Environment.GetCommandLineArgs().Contains(SmokeTestArgument) && !Environment.GetCommandLineArgs().Contains(CaptureArgument)) await CheckUpdatesAsync(false);
         };
         Closing += (_, _) =>
         {
@@ -110,16 +128,16 @@ public sealed partial class MainWindow : Window
     }
 
     /// <summary>
-    /// Opens every workspace once and lets layout, bindings and localization settle, so CI catches
+    /// Opens every step and tool once and lets layout, bindings and localization settle, so CI catches
     /// startup and template crashes that a build alone cannot. Returns the process exit code.
     /// </summary>
     public async Task<int> RunSmokeTestAsync()
     {
         try
         {
-            for (var index = 0; index < ScreenTabs.ItemCount; index++)
+            for (var step = 0; step < ShellViewModel.StepCount; step++)
             {
-                ScreenTabs.SelectedIndex = index;
+                _shell.CurrentStep = step;
                 await Task.Delay(250);
             }
             for (var index = 0; index < SheetTabs.ItemCount; index++)
@@ -134,9 +152,10 @@ public sealed partial class MainWindow : Window
             SettingsPanel.IsVisible = true;
             await Task.Delay(250);
             SettingsPanel.IsVisible = false;
-            ScreenTabs.SelectedIndex = 0;
+            _shell.CurrentStep = 0;
             await Dispatcher.UIThread.InvokeAsync(() => { }, DispatcherPriority.Background);
-            Console.WriteLine($"SMOKE TEST PASSED · {ScreenTabs.ItemCount} screens and {SheetTabs.ItemCount} panels opened");
+            await RunBehaviourChecksAsync();
+            Console.WriteLine($"SMOKE TEST PASSED · {ShellViewModel.StepCount} steps and {SheetTabs.ItemCount} tools opened, gear and flow checked");
             return 0;
         }
         catch (Exception exception)
@@ -146,26 +165,361 @@ public sealed partial class MainWindow : Window
         }
     }
 
-    // ---- Screens, panels and the command palette ----
-
-    private static readonly string[] SheetEyebrows =
-        ["Passo 1 di 4 · Progetto", "Passo 2 di 4 · Risolvi", "Passo 3 di 4 · Esporta", "Passo 4 di 4 · PixInsight WBPP", "Strumenti · Statistiche", "Strumenti · Qualità dei frame", "Strumenti · Libreria Master", "Diagnostica"];
-    private const int ProjectSheet = 0, ResolveSheet = 1, ExportSheet = 2, WbppSheet = 3, StatisticsSheet = 4, QualitySheet = 5, MastersSheet = 6, LogSheet = 7;
-
-    private void OpenStep(int step)
+    /// <summary>
+    /// What people asked of the steps, checked on the demo project: the analysis carries on to the gear by itself, a filter Forge
+    /// already recognised can still be changed, the camera can be said to be another one and Dark and Bias follow it.
+    /// </summary>
+    private async Task RunBehaviourChecksAsync()
     {
-        // With every calibration assigned, what is left to resolve is the filter wheel.
-        if (step == 1 && _viewModel.ReviewQueue.Count == 0 && _observatory.PendingCount > 0) { CloseSheet(); ScreenTabs.SelectedIndex = 1; return; }
-        OpenSheet(step switch { 0 => ProjectSheet, 1 => ResolveSheet, 2 => ExportSheet, _ => WbppSheet });
+        static void Check(bool condition, string message) { if (!condition) throw new InvalidOperationException(message); }
+        async Task Settle() { await Task.Delay(300); await Dispatcher.UIThread.InvokeAsync(() => { }, DispatcherPriority.Background); }
+
+        await LoadDemoAsync();
+        await Settle();
+        Check(_shell.CurrentStep == ShellViewModel.SetupStep, $"After the analysis the project must carry on to the gear, it is on step {_shell.CurrentStep}.");
+        Check(_viewModel.Analysis is not null && _viewModel.ReviewQueue.Count == 0, "The demo project must be fully calibrated.");
+        Check(_shell.NextKind == NextActionKind.Continue, "On the gear step the main button must be Continue.");
+
+        // The gear step: the unknown filter is identified, and a recognised one can be changed as well.
+        Check(_observatory.PendingCount == 1, $"The demo wheel has one filter to identify, found {_observatory.PendingCount}.");
+        var unknown = _observatory.Filters.Single(row => row.NeedsConfirmation);
+        unknown.Choice = unknown.Choices.Single(choice => choice.Id == DemoDatasetGenerator.CustomFilterCatalogId);
+        _observatory.Confirm(unknown);
+        await Settle();
+        Check(_observatory.PendingCount == 0, "Identifying the filter must clear the pending confirmation.");
+        var recognised = _observatory.Filters.First(row => !row.NeedsConfirmation && !row.IsConfirmed);
+        var other = recognised.Choices.First(choice => choice.Id != recognised.Filter.Identity.Product?.Id);
+        recognised.Choice = other;
+        Check(recognised.IsChoiceNew, "A recognised filter must offer its picker.");
+        _observatory.Confirm(recognised);
+        await Settle();
+        var changed = _observatory.Filters.Single(row => row.RawName == recognised.RawName);
+        Check(changed.IsConfirmed && changed.Filter.Identity.Product?.Id == other.Id, "A recognised filter must be changeable to another one.");
+        _observatory.Forget(changed);
+        await Settle();
+        Check(!_observatory.Filters.Single(row => row.RawName == recognised.RawName).IsConfirmed, "Forgetting a choice must bring the recognition back.");
+
+        // The camera: say it is another one. Lights, Flats and the Masters of the same camera all read under the new name, so the matches hold; undo restores the headers.
+        var detected = _observatory.CameraName;
+        _observatory.BeginEdit();
+        _observatory.CameraText = "Camera di prova";
+        _observatory.ApplyEdit();
+        await Settle();
+        Check(_observatory.CameraName == "Camera di prova" && _observatory.CameraWasChanged, $"The camera the user named must be shown ({_observatory.CameraName}).");
+        Check(_viewModel.ReviewQueue.Count == 0 && _viewModel.Analysis!.Lights.All(item => item.Light.Camera.Value == "Camera di prova" && item.Dark.IsAccepted), "The frames of that camera must read under the new name and stay matched.");
+        _observatory.ResetProfile();
+        await Settle();
+        Check(_observatory.CameraName == detected && !_observatory.CameraWasChanged && _viewModel.ReviewQueue.Count == 0, "Restoring the detected camera must restore the matches.");
+
+        // The Moon: the full Moon of 28 August 2026 seen from Rome is high around midnight and below the horizon at midday.
+        Check(SkyMath.MoonAltitude(new DateTime(2026, 8, 28, 23, 0, 0, DateTimeKind.Utc), 41.9, 12.5) > 15 && SkyMath.MoonAltitude(new DateTime(2026, 8, 28, 10, 0, 0, DateTimeKind.Utc), 41.9, 12.5) < -10,
+            "The Moon must be high at night and low by day at full Moon.");
+
+        // Data added to a project that was exported: read again in place, what came in is marked, the update copies only that.
+        await RunUpdateScenarioAsync(null);
+
+        // Folders and files dropped on the window: sorted, linked where they were dropped, and said.
+        await RunDropScenarioAsync(null);
+
+        // The tour walks the real controls of every step to its end.
+        StartTour(-1);
+        for (var index = 0; index < 30 && Tour.IsRunning; index++) { await Settle(); Tour.Next(); }
+        Check(!Tour.IsRunning, "The tour must reach its end.");
+
+        _viewModel.NewProject();
+        await Settle();
+        Check(!_shell.CanOpen(ShellViewModel.CalibrationStep) || _shell.CurrentStep <= ShellViewModel.CalibrationStep, "A new project must not keep later steps open.");
+    }
+
+    /// <summary>
+    /// Developer tool (<c>--capture folder</c>): loads the demo project and saves a picture of every step, so the interface
+    /// can be looked at without clicking through it. Returns the process exit code.
+    /// </summary>
+    public async Task<int> RunCaptureAsync(string folder)
+    {
+        try
+        {
+            Directory.CreateDirectory(folder);
+            // Pictures are taken in the language given with --language (default Italian), past the first-run welcome.
+            if (_viewModel.ShowOnboarding) _viewModel.CompleteOnboarding();
+            var args = Environment.GetCommandLineArgs();
+            var language = Array.IndexOf(args, "--language");
+            _viewModel.UiLanguage = language >= 0 && language + 1 < args.Length && args[language + 1].StartsWith("en", StringComparison.OrdinalIgnoreCase) ? UiLocalization.English : UiLocalization.Italian;
+            // --size 1100x700 shows the narrow layouts instead of the maximised window.
+            var size = Array.IndexOf(args, "--size");
+            if (size >= 0 && size + 1 < args.Length && args[size + 1].Split('x') is [var width, var height] && int.TryParse(width, out var w) && int.TryParse(height, out var h))
+            {
+                WindowState = WindowState.Normal;
+                Width = w;
+                Height = h;
+            }
+            await Task.Delay(1800);
+            await CaptureAsync(Path.Combine(folder, "1-import-empty.png"));
+            await LoadDemoAsync();
+            // With a Master Library linked, the import page shows its filled state.
+            _viewModel.AddMasterLibrary(Path.Combine(AppDataPaths.Combine("Demo"), "Libreria Master"));
+            await _viewModel.ScanAsync();
+            await Task.Delay(900);
+            var names = new[] { "import", "gear", "calibration", "export" };
+            for (var step = 0; step < ShellViewModel.StepCount; step++)
+            {
+                _shell.CurrentStep = step;
+                await Task.Delay(1600);
+                await CaptureAsync(Path.Combine(folder, $"{step + 1}-{names[step]}.png"));
+            }
+            OpenSheet(MetadataSheet);
+            await Task.Delay(900);
+            await CaptureAsync(Path.Combine(folder, "tool-metadata.png"));
+            OpenSheet(MastersSheet);
+            await Task.Delay(900);
+            await CaptureAsync(Path.Combine(folder, "tool-masters.png"));
+            CloseSheet();
+            _shell.CurrentStep = ShellViewModel.SetupStep;
+            _observatory.BeginEdit();
+            await Task.Delay(1200);
+            await CaptureAsync(Path.Combine(folder, "2-gear-editing.png"));
+            _observatory.IsEditing = false;
+            // A real export of the demo (into the capture data folder), then the finished page.
+            if (_viewModel.Analysis?.Ready == true)
+            {
+                _shell.CurrentStep = ShellViewModel.ExportStep;
+                await _viewModel.ExportAsync();
+                await Task.Delay(2200);
+                await CaptureAsync(Path.Combine(folder, "4-export-done.png"));
+            }
+            await RunUpdateScenarioAsync(folder);
+            await RunDropScenarioAsync(folder);
+            Console.WriteLine($"CAPTURE DONE · {folder}");
+            return 0;
+        }
+        catch (Exception exception)
+        {
+            Console.Error.WriteLine($"CAPTURE FAILED · {exception}");
+            return 1;
+        }
+    }
+
+    /// <summary>
+    /// A project that was exported with one night, then gets the second night added: what the steps show at each moment
+    /// (the capture saves a picture of each one).
+    /// </summary>
+    private async Task RunUpdateScenarioAsync(string? folder)
+    {
+        static void Check(bool condition, string message) { if (!condition) throw new InvalidOperationException(message); }
+        static async Task Settle() => await Task.Delay(400);
+        async Task Shot(string name) { if (folder is not null) await CaptureAsync(Path.Combine(folder, name)); }
+        var root = AppDataPaths.Combine("Demo");
+        _viewModel.NewProject();
+        _viewModel.ProjectName = "Cygnus Loop (aggiornamento)";
+        _viewModel.DestinationPath = Path.Combine(root, "ExportUpdate");
+        foreach (var source in new[] { "ASIAIR", "Libreria Master" }) _viewModel.AddSource(Path.Combine(root, source));
+        await _viewModel.ScanAsync();
+        await Task.Delay(900);
+        _shell.CurrentStep = ShellViewModel.ExportStep;
+        await Task.Delay(900);
+        await _viewModel.ExportAsync();
+        await Task.Delay(1500);
+        await Shot("u1-exported-one-night.png");
+        Check(_viewModel.ExportState == ExportRunState.Completed && _viewModel.Novelty is null, "A project that was just exported has nothing new.");
+
+        _shell.CurrentStep = ShellViewModel.ImportStep;
+        await Task.Delay(900);
+        HandleDrop([Path.Combine(root, "NINA")], DropTarget.Captures);
+        await Task.Delay(150);
+        await Shot("u2-new-source-added.png");
+
+        // The window reads the project again by itself; wait for it.
+        for (var wait = 0; wait < 100 && !(_viewModel.HasAnalysis && !_viewModel.IsScanning && !_viewModel.NeedsReanalysis); wait++) await Task.Delay(200);
+        await Task.Delay(1800);
+        await Shot("u3-rescanned.png");
+        Check(_shell.Analyzed && _shell.CurrentStep == ShellViewModel.ImportStep, $"Adding data must read the project again where the person is, not carry on (step {_shell.CurrentStep}).");
+        Check(_viewModel.Novelty is { WholeNights: 1, NewLights: 8 } && _shell.HasNovelty && _shell.NoveltyText.Length > 0, "The second night must be reported as new.");
+        Check(_shell.SkyNights.Count(night => night.IsNew) == 1 && _shell.SkyNights.All(night => night.MoonAltitudes is { Count: 73 }), "The new night must be marked on the timeline, every night with its Moon.");
+
+        _shell.CurrentStep = ShellViewModel.ExportStep;
+        await Task.Delay(1800);
+        await Shot("u4-export-update.png");
+        if (folder is not null)
+        {
+            // The card is translucent: give it the night's colour for the close-up.
+            var background = NightsCard.Background;
+            NightsCard.Background = new SolidColorBrush(Color.Parse("#0B1022"));
+            await CaptureControlAsync(NightsCard, Path.Combine(folder, "u5-nightsky.png"));
+            NightsCard.Background = background;
+        }
+        Check(_viewModel.HasExportHistory && _shell.NextKind == NextActionKind.Export && (_shell.NextLabel.StartsWith("Update") || _shell.NextLabel.StartsWith("Aggiorna")), $"An update must say it is one ({_shell.NextLabel}).");
+        await _viewModel.ExportAsync();
+        await Settle();
+        Check(_viewModel.Novelty is null && _viewModel.ExportState == ExportRunState.Completed, "Once exported, nothing is new any more.");
+    }
+
+    /// <summary>Dragging over the window and dropping: the two targets, what each one links, and what is left out.</summary>
+    private async Task RunDropScenarioAsync(string? folder)
+    {
+        static void Check(bool condition, string message) { if (!condition) throw new InvalidOperationException(message); }
+        static async Task Settle() => await Task.Delay(450);
+        async Task Shot(string name) { if (folder is not null) await CaptureAsync(Path.Combine(folder, name)); }
+        var root = AppDataPaths.Combine("Demo");
+        _viewModel.NewProject();
+        _shell.CurrentStep = ShellViewModel.ImportStep;
+        await Settle();
+
+        // The overlay: right half lights the captures, left half the library, and it goes away by itself.
+        ShowDropOverlay(DropTarget.Captures);
+        await Settle();
+        await Shot("d1-drag-captures.png");
+        Check(DropOverlay.IsVisible && DropCapturesZone.Classes.Contains("over") && !DropLibraryZone.Classes.Contains("over"), "Dragging over the right half must light the captures.");
+        ShowDropOverlay(DropTarget.MasterLibrary);
+        await Settle();
+        await Shot("d2-drag-library.png");
+        Check(DropLibraryZone.Classes.Contains("over") && !DropCapturesZone.Classes.Contains("over"), "Dragging over the left half must light the library.");
+        HideDropOverlay();
+        await Settle();
+        Check(!DropOverlay.IsVisible && !DropLibraryZone.Classes.Contains("over"), "The overlay must go away when the drag ends.");
+
+        // Captures: a folder is linked whole, a text file is left out and counted.
+        var notes = Path.Combine(root, "notes.txt");
+        File.WriteAllText(notes, "not an image");
+        var asiair = Path.Combine(root, "ASIAIR");
+        var plan = HandleDrop([asiair, notes], DropTarget.Captures);
+        await Settle();
+        Check(plan.Folders.Count == 1 && plan.Ignored.Count == 1 && _viewModel.SourcePaths.Contains(asiair, PathIdentity.Comparer), "The dropped folder must become a source and the text file must be left out.");
+        Check(ToastText.Text is { } toast && (toast.Contains("Aggiunto") || toast.Contains("Added")) && toast.Contains("ASIAIR") && (toast.Contains("non FITS") || toast.Contains("not FITS")), $"The drop must say what it did ({ToastText.Text}).");
+        await Shot("d3-dropped-captures.png");
+
+        // The same folder again: nothing doubles.
+        HandleDrop([asiair], DropTarget.Captures);
+        Check(_viewModel.SourcePaths.Count == 1 && ToastText.Text is { } again && (again.Contains("Già") || again.Contains("Already")), "A folder dropped twice must stay one.");
+
+        // A single Master dropped on the library stands for its folder; a single capture on the captures is a source of its own.
+        var masters = Path.Combine(root, "Libreria Master");
+        var master = Directory.EnumerateFiles(masters, "*.fits", SearchOption.AllDirectories).First();
+        HandleDrop([master], DropTarget.MasterLibrary);
+        Check(_viewModel.MasterLibraries.Any(item => PathIdentity.Equals(item.Path, Path.GetDirectoryName(master))), "A Master dropped on the library must link the folder it lives in.");
+        var light = Directory.EnumerateFiles(Path.Combine(root, "NINA"), "*.fits", SearchOption.AllDirectories).First();
+        HandleDrop([light], DropTarget.Captures);
+        Check(_viewModel.SourcePaths.Contains(light, PathIdentity.Comparer), "A single capture dropped must become a source.");
+        await Settle();
+        await Shot("d4-dropped-library.png");
+
+        // The window's own drag events, carrying a real folder: enter lights the overlay, drop links it and puts the overlay away.
+        var nina = Path.Combine(root, "NINA");
+        var item = await StorageProvider.TryGetFolderFromPathAsync(nina);
+        Check(item is not null, "The storage provider must find the folder to drop.");
+        var data = new DataTransfer();
+        data.Add(DataTransferItem.CreateFile(item!));
+        var position = new Point(Bounds.Width * 0.75, Bounds.Height / 2);
+        RaiseEvent(new DragEventArgs(DragDrop.DragOverEvent, data, this, position, KeyModifiers.None));
+        await Settle();
+        Check(DropOverlay.IsVisible && DropCapturesZone.Classes.Contains("over"), "A drag over the right half of the window must light the captures.");
+        RaiseEvent(new DragEventArgs(DragDrop.DropEvent, data, this, position, KeyModifiers.None) { RoutedEvent = DragDrop.DropEvent });
+        await Settle();
+        Check(_viewModel.SourcePaths.Contains(nina, PathIdentity.Comparer) && !DropOverlay.IsVisible, "Dropping a folder on the window must link it.");
+        Check(!_viewModel.ShowOnboarding, "Dropping data on the welcome must close it: the person is ready.");
+
+        // Nothing usable: nothing changes, and it is said.
+        var count = _viewModel.SourcePaths.Count;
+        HandleDrop([notes], DropTarget.Captures);
+        Check(_viewModel.SourcePaths.Count == count && ToastText.Text is { } nothing && (nothing.Contains("Niente") || nothing.Contains("Nothing")), "A drop without images must change nothing.");
+        _viewModel.NewProject();
+        await Settle();
+    }
+
+    // One control at double size, to look at its drawing closely.
+    private async Task CaptureControlAsync(Control control, string path)
+    {
+        await Dispatcher.UIThread.InvokeAsync(() => { }, DispatcherPriority.Background);
+        var size = new PixelSize(Math.Max(1, (int)control.Bounds.Width * 2), Math.Max(1, (int)control.Bounds.Height * 2));
+        using var bitmap = new Avalonia.Media.Imaging.RenderTargetBitmap(size, new Vector(192, 192));
+        bitmap.Render(control);
+        using var file = File.Create(path);
+        bitmap.Save(file, new Avalonia.Media.Imaging.PngBitmapEncoderOptions());
+    }
+
+    private async Task CaptureAsync(string path)
+    {
+        await Dispatcher.UIThread.InvokeAsync(() => { }, DispatcherPriority.Background);
+        var size = new PixelSize(Math.Max(1, (int)Bounds.Width), Math.Max(1, (int)Bounds.Height));
+        using var bitmap = new Avalonia.Media.Imaging.RenderTargetBitmap(size, new Vector(96, 96));
+        bitmap.Render((Visual)Content!);
+        using var file = File.Create(path);
+        bitmap.Save(file, new Avalonia.Media.Imaging.PngBitmapEncoderOptions());
+    }
+
+    // ---- Steps, tools and the command palette ----
+
+    // The tools open as a sheet over the steps: the steps themselves are pages, never hidden in a sheet.
+    private static readonly string[] SheetEyebrows =
+        ["Strumenti · Frame e metadati", "Strumenti · Statistiche", "Strumenti · Qualità dei frame", "Strumenti · Libreria Master", "Diagnostica"];
+    private const int MetadataSheet = 0, StatisticsSheet = 1, QualitySheet = 2, MastersSheet = 3, LogSheet = 4;
+
+    /// <summary>Opens a step: a step can be opened once there is something to show for it.</summary>
+    private void GoToStep(int step)
+    {
+        CloseSheet();
+        ClosePalette();
+        SettingsPanel.IsVisible = false;
+        if (!_shell.CanOpen(step)) return;
+        _shell.CurrentStep = step;
+    }
+
+    private void Shell_StepChanged(object? sender, int step)
+    {
+        // Page content is created on first visit, after the last translation pass.
+        if (IsLoaded) ScheduleLocalization();
+        if (Backdrop is not null && step != _lastScreen) Backdrop.Warp(step > _lastScreen ? 1 : -1);
+        _lastScreen = step;
+        ScrollPageHome(step);
+        if (step == ShellViewModel.ExportStep) { PreparePlanPreview(); ScheduleExportVisuals(); }
+        if (step == ShellViewModel.CalibrationStep) RefreshCalibrationVisuals();
+    }
+
+    private void Back_Click(object? sender, RoutedEventArgs e) => GoToStep(_shell.CurrentStep - 1);
+
+    private bool _reanalyzing;
+
+    /// <summary>
+    /// A source or library was added to (or taken out of) a project that was already read: read it again where the person is,
+    /// instead of leaving every step empty and sending them back to the start. What came in is marked afterwards.
+    /// </summary>
+    private void AutoReanalyze()
+    {
+        if (_reanalyzing || !_viewModel.NeedsReanalysis || !_viewModel.CanAnalyzeProject) return;
+        _reanalyzing = true;
+        _shell.StayOnStep();
+        Dispatcher.UIThread.Post(async () =>
+        {
+            try { await RunAsync("AF-SCAN-001", () => _viewModel.ScanAsync()); }
+            finally { _reanalyzing = false; }
+        }, DispatcherPriority.Background);
+    }
+
+    private void NoveltyGoToExport_Click(object? sender, RoutedEventArgs e) => GoToStep(ShellViewModel.ExportStep);
+    private void DismissNovelty_Click(object? sender, RoutedEventArgs e) => _viewModel.DismissNovelty();
+
+    // The catalogue lists are long: a button opens them whole, the box still filters as you type.
+    private void BrowseCameras_Click(object? sender, RoutedEventArgs e) { CameraBox.Focus(); CameraBox.IsDropDownOpen = true; }
+    private void BrowseTelescopes_Click(object? sender, RoutedEventArgs e) { TelescopeBox.Focus(); TelescopeBox.IsDropDownOpen = true; }
+
+    // A page opens at its top, whatever the person did on it the last time.
+    private void ScrollPageHome(int step)
+    {
+        switch (step)
+        {
+            case ShellViewModel.ImportStep: ImportPage.ScrollToHome(); break;
+            case ShellViewModel.SetupStep: SetupScroll.ScrollToHome(); break;
+            case ShellViewModel.CalibrationStep: CalibrationScroll.ScrollToHome(); break;
+            case ShellViewModel.ExportStep: ExportScroll.ScrollToHome(); break;
+        }
     }
 
     private void OpenSheet(int index)
     {
         SettingsPanel.IsVisible = false;
         ClosePalette();
+        ToolsButton.Flyout?.Hide();
         SheetTabs.SelectedIndex = index;
         SheetEyebrow.Text = CanvasText.T(SheetEyebrows[index]).ToUpperInvariant();
-        if (index == ExportSheet) PreparePlanPreview();
         if (index == LogSheet) _viewModel.RefreshDiagnostics();
         if (SheetHost.IsVisible) return;
         SheetHost.IsVisible = true;
@@ -206,18 +560,18 @@ public sealed partial class MainWindow : Window
         switch (command?.Id)
         {
             case "next": Next_Click(null, new RoutedEventArgs()); break;
-            case "overview": CloseSheet(); ScreenTabs.SelectedIndex = 0; break;
-            case "instrument": CloseSheet(); ScreenTabs.SelectedIndex = 1; break;
-            case "project": OpenSheet(ProjectSheet); break;
-            case "resolve": OpenSheet(ResolveSheet); break;
-            case "export": OpenSheet(ExportSheet); break;
-            case "wbpp": OpenSheet(WbppSheet); break;
+            case "import": GoToStep(ShellViewModel.ImportStep); break;
+            case "setup": GoToStep(ShellViewModel.SetupStep); break;
+            case "calibration": GoToStep(ShellViewModel.CalibrationStep); break;
+            case "export": GoToStep(ShellViewModel.ExportStep); break;
+            case "metadata": OpenSheet(MetadataSheet); break;
             case "stats": OpenSheet(StatisticsSheet); break;
             case "quality": OpenSheet(QualitySheet); break;
             case "masters": OpenSheet(MastersSheet); break;
             case "log": OpenSheet(LogSheet); break;
             case "analyze": if (_viewModel.CanAnalyzeProject) Analyze_Click(null, new RoutedEventArgs()); break;
             case "addFolder": AddSources_Click(null, new RoutedEventArgs()); break;
+            case "addLibrary": AddLibrary_Click(null, new RoutedEventArgs()); break;
             case "new": NewProject_Click(null, new RoutedEventArgs()); break;
             case "open": OpenProject_Click(null, new RoutedEventArgs()); break;
             case "save": SaveProject_Click(null, new RoutedEventArgs()); break;
@@ -245,10 +599,10 @@ public sealed partial class MainWindow : Window
     private void CloseSheet_Click(object? sender, RoutedEventArgs e) => CloseSheet();
     private void SheetScrim_PointerPressed(object? sender, PointerPressedEventArgs e) => CloseSheet();
     private void Drawer_PointerPressed(object? sender, PointerPressedEventArgs e) => e.Handled = true;
+    private void OpenMetadata_Click(object? sender, RoutedEventArgs e) => OpenSheet(MetadataSheet);
     private void OpenStatistics_Click(object? sender, RoutedEventArgs e) => OpenSheet(StatisticsSheet);
     private void OpenQuality_Click(object? sender, RoutedEventArgs e) => OpenSheet(QualitySheet);
     private void OpenMasters_Click(object? sender, RoutedEventArgs e) => OpenSheet(MastersSheet);
-    private void OpenResolve_Click(object? sender, RoutedEventArgs e) => OpenSheet(ResolveSheet);
 
     private void SheetTabs_SelectionChanged(object? sender, SelectionChangedEventArgs e)
     {
@@ -257,33 +611,35 @@ public sealed partial class MainWindow : Window
         if (IsLoaded) ScheduleLocalization();
     }
 
-    /// <summary>The one button that always does the next thing the project needs.</summary>
-    private void Next_Click(object? sender, RoutedEventArgs e)
+    /// <summary>The one button that always does the next thing the project needs, in the same place on every step.</summary>
+    private async void Next_Click(object? sender, RoutedEventArgs e)
     {
         switch (_shell.NextKind)
         {
             case NextActionKind.AddSources: AddSources_Click(sender, e); break;
             case NextActionKind.Analyze: Analyze_Click(sender, e); break;
-            case NextActionKind.ConfirmFilters: CloseSheet(); ScreenTabs.SelectedIndex = 1; break;
-            case NextActionKind.Resolve:
-                if (_viewModel.ReviewQueue.Count == 1 && _viewModel.ReviewQueue[0].CanAssignCandidate) { CloseSheet(); ScreenTabs.SelectedIndex = 0; PulseResolveCard(); }
-                else OpenSheet(ResolveSheet);
-                break;
-            case NextActionKind.Export or NextActionKind.Exporting: OpenSheet(ExportSheet); break;
+            case NextActionKind.Continue: GoToStep(_shell.CurrentStep + 1); break;
+            case NextActionKind.Resolve when _shell.CurrentStep != ShellViewModel.CalibrationStep: GoToStep(ShellViewModel.CalibrationStep); break;
+            case NextActionKind.Resolve: CalibrationScroll.ScrollToHome(); PulseCard(ResolveCard); break;
+            case NextActionKind.NameProject: ProjectNameBox.Focus(); PulseCard(ExportCard); break;
+            case NextActionKind.ChooseDestination: ChooseDestination_Click(sender, e); break;
+            case NextActionKind.Export: await RunAsync("AF-EXPORT-001", () => _viewModel.ExportAsync()); break;
             case NextActionKind.OpenPixInsight: OpenWbppInstance_Click(sender, e); break;
         }
     }
 
-    private void PulseResolveCard()
+    private void PulseCard(Control card)
     {
+        card.BringIntoView();
+        if (Motion.Reduced) return;
         var scale = new ScaleTransform(1, 1);
-        ResolveCard.RenderTransformOrigin = RelativePoint.Center;
-        ResolveCard.RenderTransform = scale;
+        card.RenderTransformOrigin = RelativePoint.Center;
+        card.RenderTransform = scale;
         _ = Motion.Tween(this, TimeSpan.FromMilliseconds(700), t => t, t =>
         {
-            var bump = Math.Sin(t * Math.PI) * 0.025;
+            var bump = Math.Sin(t * Math.PI) * 0.02;
             scale.ScaleX = scale.ScaleY = 1 + bump;
-        }).ContinueWith(_ => Dispatcher.UIThread.Post(() => ResolveCard.RenderTransform = null));
+        }).ContinueWith(_ => Dispatcher.UIThread.Post(() => card.RenderTransform = null));
     }
 
     private void UpdateNextFill()
@@ -308,8 +664,8 @@ public sealed partial class MainWindow : Window
         {
             case { CanImportFlat: true }: AddSources_Click(sender, e); break;
             case { CanAddMasterLibrary: true }: AddLibrary_Click(sender, e); break;
-            case { CanEditMetadata: true } item: _viewModel.SelectReviewItem(item); OpenSheet(ProjectSheet); break;
-            default: OpenSheet(ResolveSheet); break;
+            case { CanEditMetadata: true } item: _viewModel.SelectReviewItem(item); OpenSheet(MetadataSheet); break;
+            default: ReviewExpander.IsExpanded = true; break;
         }
     }
 
@@ -340,7 +696,6 @@ public sealed partial class MainWindow : Window
         _toastTimer.Start();
     }
 
-    private void EditProfile_Click(object? sender, RoutedEventArgs e) => _observatory.BeginEdit();
     private void ConfirmProfile_Click(object? sender, RoutedEventArgs e) => _observatory.ConfirmProfile();
     private void ResetProfile_Click(object? sender, RoutedEventArgs e) => _observatory.ResetProfile();
     private void CancelProfile_Click(object? sender, RoutedEventArgs e) => _observatory.IsEditing = false;
@@ -390,7 +745,7 @@ public sealed partial class MainWindow : Window
         if (e.Key == Key.F1)
         {
             if (e.KeyModifiers.HasFlag(KeyModifiers.Shift)) OpenUrl(GuideUrl);
-            else StartTour(SheetHost.IsVisible ? -1 : ScreenTabs.SelectedIndex);
+            else StartTour(SheetHost.IsVisible ? -1 : _shell.CurrentStep);
             e.Handled = true;
             return;
         }
@@ -428,37 +783,23 @@ public sealed partial class MainWindow : Window
             SettingsPanel.IsVisible = !SettingsPanel.IsVisible;
             e.Handled = true;
         }
-        else if (alt && e.Key is Key.D1 or Key.D2)
+        else if (alt && e.Key >= Key.D1 && e.Key <= Key.D4)
         {
-            CloseSheet();
-            ScreenTabs.SelectedIndex = e.Key == Key.D1 ? 0 : 1;
+            GoToStep((int)e.Key - (int)Key.D1);
             e.Handled = true;
         }
-        else if (alt && e.Key >= Key.D3 && e.Key <= Key.D9)
+        else if (alt && e.Key >= Key.D5 && e.Key <= Key.D8)
         {
-            OpenSheet((int)e.Key - (int)Key.D3);
+            OpenSheet((int)e.Key - (int)Key.D5);
             e.Handled = true;
         }
         else if (e.Key == Key.Space && e.KeyModifiers == KeyModifiers.None && !SheetHost.IsVisible && !PaletteHost.IsVisible
-                 && ScreenTabs.SelectedIndex == 0 && FocusManager?.GetFocusedElement() is not (TextBox or Slider or Button or ComboBox or ListBoxItem))
+                 && _shell.CurrentStep == ShellViewModel.ExportStep && FocusManager?.GetFocusedElement() is not (TextBox or Slider or Button or ComboBox or ListBoxItem or AutoCompleteBox))
         {
             PlayNights_Click(sender, e);
             e.Handled = true;
         }
     }
-
-    private void ScreenTabs_SelectionChanged(object? sender, SelectionChangedEventArgs e)
-    {
-        if (e.Source != ScreenTabs) return;
-        // Screen content is created on first visit, after the last translation pass.
-        if (IsLoaded) ScheduleLocalization();
-        if (Backdrop is null || ScreenTabs.SelectedIndex < 0) return;
-        var index = ScreenTabs.SelectedIndex;
-        if (index != _lastScreen) Backdrop.Warp(index > _lastScreen ? 1 : -1);
-        _lastScreen = index;
-    }
-
-    private void OpenInstrument_Click(object? sender, RoutedEventArgs e) { CloseSheet(); ScreenTabs.SelectedIndex = 1; }
 
     private void ConfirmFilter_Click(object? sender, RoutedEventArgs e)
     {
@@ -473,7 +814,7 @@ public sealed partial class MainWindow : Window
     private static void InvalidateCanvasText(Visual root)
     {
         foreach (var visual in root.GetVisualDescendants())
-            if (visual is SpectrumBar or FieldOfViewView or NightsTimeline or StepConstellation or NightSky or CalibrationRing or ResolvePaths or OpticalTrain or SamplingGauge or SensorFrame)
+            if (visual is SpectrumBar or FieldOfViewView or NightsTimeline or StepperBar or NightSky or CalibrationRing or ResolvePaths or OpticalTrain or SamplingGauge or SensorFrame)
                 visual.InvalidateVisual();
     }
 
@@ -554,9 +895,164 @@ public sealed partial class MainWindow : Window
         foreach (var file in files) if (file.TryGetLocalPath() is { } path) _viewModel.AddSource(path);
     }
 
-    private void RemoveSource_Click(object? sender, RoutedEventArgs e)
+    private void RemoveSourceItem_Click(object? sender, RoutedEventArgs e)
     {
-        if (SourcesList.SelectedItem is string path) _viewModel.RemoveSource(path);
+        if ((sender as Control)?.DataContext is string path) _viewModel.RemoveSource(path);
+    }
+
+    private void RemoveLibraryItem_Click(object? sender, RoutedEventArgs e)
+    {
+        if ((sender as Control)?.DataContext is not MasterLibraryItem item) return;
+        _viewModel.SelectedMasterLibrary = item;
+        _viewModel.RemoveSelectedMasterLibrary();
+    }
+
+    private void MoveLibraryItemUp_Click(object? sender, RoutedEventArgs e) => MoveLibraryItem(sender, -1);
+    private void MoveLibraryItemDown_Click(object? sender, RoutedEventArgs e) => MoveLibraryItem(sender, 1);
+
+    private void MoveLibraryItem(object? sender, int direction)
+    {
+        if ((sender as Control)?.DataContext is not MasterLibraryItem item) return;
+        _viewModel.SelectedMasterLibrary = item;
+        _viewModel.MoveSelectedMasterLibrary(direction);
+    }
+
+    // The empty cards are big targets: a tap anywhere on them does what their button does (the button itself handles its own tap).
+    private static bool TappedOnButton(PointerReleasedEventArgs e) => e.Source is Visual visual && visual.FindAncestorOfType<Button>(true) is not null;
+
+    private void LibraryDrop_PointerReleased(object? sender, PointerReleasedEventArgs e)
+    {
+        if (!TappedOnButton(e)) AddLibrary_Click(sender, e);
+    }
+
+    private void SourcesDrop_PointerReleased(object? sender, PointerReleasedEventArgs e)
+    {
+        if (!TappedOnButton(e)) AddSources_Click(sender, e);
+    }
+
+    // ---- Drag and drop: folders and files dropped anywhere on the window ----
+
+    private long _dragSeen;
+
+    // The welcome on a first launch does not get in the way: dropping a folder there is the person saying they are ready. The tour, which walks the real controls, does not take drops.
+    private bool CanTakeDrop(DragEventArgs e) => e.DataTransfer.Contains(DataFormat.File) && !Tour.IsRunning;
+
+    // Left half of the window is the Master Library, right half the captures: the same order as the Import page.
+    private DropTarget DropZoneAt(DragEventArgs e) => e.GetPosition(this).X < Bounds.Width / 2 ? DropTarget.MasterLibrary : DropTarget.Captures;
+
+    private void Window_DragOver(object? sender, DragEventArgs e)
+    {
+        if (!CanTakeDrop(e)) { e.DragEffects = DragDropEffects.None; return; }
+        e.DragEffects = DragDropEffects.Copy;
+        e.Handled = true;
+        _dragSeen = Stopwatch.GetTimestamp();
+        ShowDropOverlay(DropZoneAt(e));
+    }
+
+    // Leaving the window and moving between its children both raise a leave: only a silence of the drag really means "gone".
+    private void Window_DragLeave(object? sender, DragEventArgs e)
+    {
+        var seen = _dragSeen;
+        DispatcherTimer.RunOnce(() => { if (_dragSeen == seen) HideDropOverlay(); }, TimeSpan.FromMilliseconds(180));
+    }
+
+    private void Window_Drop(object? sender, DragEventArgs e)
+    {
+        var zone = DropZoneAt(e);
+        _dragSeen = Stopwatch.GetTimestamp();
+        HideDropOverlay();
+        if (!CanTakeDrop(e)) return;
+        e.Handled = true;
+        var paths = (e.DataTransfer.TryGetFiles() ?? []).Select(item => item.TryGetLocalPath()).OfType<string>().ToList();
+        HandleDrop(paths, zone);
+    }
+
+    private static void SetClass(Control control, string name, bool on)
+    {
+        if (on && !control.Classes.Contains(name)) control.Classes.Add(name);
+        else if (!on) control.Classes.Remove(name);
+    }
+
+    internal void ShowDropOverlay(DropTarget zone)
+    {
+        if (!DropOverlay.IsVisible)
+        {
+            DropOverlay.IsVisible = true;
+            Dispatcher.UIThread.Post(() => DropOverlay.Opacity = 1, DispatcherPriority.Render);
+        }
+        else DropOverlay.Opacity = 1;
+        foreach (var (control, mine) in new[] { (DropLibraryZone, DropTarget.MasterLibrary), (DropCapturesZone, DropTarget.Captures) })
+        {
+            SetClass(control, "over", zone == mine);
+            SetClass(control, "marching", zone == mine && !Motion.Reduced);
+        }
+    }
+
+    internal void HideDropOverlay()
+    {
+        DropOverlay.Opacity = 0;
+        foreach (var control in new[] { DropLibraryZone, DropCapturesZone }) { SetClass(control, "over", false); SetClass(control, "marching", false); }
+        DispatcherTimer.RunOnce(() => { if (DropOverlay.Opacity == 0) DropOverlay.IsVisible = false; }, TimeSpan.FromMilliseconds(220));
+    }
+
+    /// <summary>Links what was dropped where it was dropped, says what happened, and leaves the person on the step they were on.</summary>
+    internal DropPlan HandleDrop(IEnumerable<string> dropped, DropTarget target)
+    {
+        var english = _viewModel.UiLanguage == UiLocalization.English;
+        var plan = DroppedItems.Plan(dropped, target);
+        if (plan.Accepted == 0)
+        {
+            ShowToast(english ? "Nothing to add: drop folders or FITS and XISF files." : "Niente da aggiungere: trascina cartelle o file FITS e XISF.");
+            return plan;
+        }
+
+        if (_viewModel.ShowOnboarding) _viewModel.CompleteOnboarding();
+        int Count() => target == DropTarget.MasterLibrary ? _viewModel.MasterLibraries.Count : _viewModel.SourcePaths.Count;
+        var before = Count();
+        foreach (var folder in plan.Folders)
+        {
+            if (target == DropTarget.MasterLibrary) _viewModel.AddMasterLibrary(folder);
+            else _viewModel.AddSource(folder);
+        }
+        foreach (var file in plan.Files) _viewModel.AddSource(file);
+
+        var added = Count() - before;
+        var where = target == DropTarget.MasterLibrary ? (english ? "the Master Library" : "alla Libreria Master") : (english ? "the captures" : "alle acquisizioni");
+        // Gender-neutral on purpose: a folder and a file are both "elementi". One item is named, several are counted.
+        var what = plan.Accepted == 1 ? Path.GetFileName(Path.TrimEndingDirectorySeparator(plan.Paths.First())) : (english ? $"{plan.Accepted} items" : $"{plan.Accepted} elementi");
+        var message = added > 0
+            ? (english ? $"Added to {where}: {what}" : $"Aggiunto {where}: {what}")
+            : (english ? "Already linked" : "Già collegato");
+        if (plan.Ignored.Count > 0) message += english ? $" · {plan.Ignored.Count} {(plan.Ignored.Count == 1 ? "file" : "files")} ignored (not FITS/XISF)" : $" · {plan.Ignored.Count} file ignorat{(plan.Ignored.Count == 1 ? "o" : "i")} (non FITS/XISF)";
+        ShowToast(message);
+        if (_shell.CurrentStep == ShellViewModel.ImportStep && added > 0) PulseCard(target == DropTarget.MasterLibrary ? LibraryCard : SourcesCard);
+        return plan;
+    }
+
+    // ---- The gear: every part Forge detected can be corrected ----
+
+    private void EditProfile_Click(object? sender, RoutedEventArgs e) => OpenProfileEditor((sender as Control)?.Tag as string);
+
+    private void OpenProfileEditor(string? part)
+    {
+        if (!_observatory.IsEditing) _observatory.BeginEdit();
+        Dispatcher.UIThread.Post(() =>
+        {
+            Control? box = part switch { "camera" => CameraBox, "optics" => TelescopeBox, "reducer" => ReducerBox, "pixel" => PixelBox, _ => null };
+            box?.BringIntoView();
+            box?.Focus();
+        }, DispatcherPriority.Background);
+    }
+
+    private void TrainView_PartInvoked(object? sender, TrainPartKind part)
+    {
+        switch (part)
+        {
+            case TrainPartKind.Camera: OpenProfileEditor("camera"); break;
+            case TrainPartKind.Telescope: OpenProfileEditor("optics"); break;
+            case TrainPartKind.Reducer: OpenProfileEditor("reducer"); break;
+            default: PulseCard(WheelCard); break;
+        }
     }
 
     private async void AddLibrary_Click(object? sender, RoutedEventArgs e)
@@ -592,47 +1088,74 @@ public sealed partial class MainWindow : Window
 
     private void StartTour_Click(object? sender, RoutedEventArgs e) { SettingsPanel.IsVisible = false; StartTour(-1); }
 
-    /// <summary>The tour: the four steps, the next action, then each card of the two screens on the real control.</summary>
+    /// <summary>The tour: the steps, the one button, then each card of each step on the real control.</summary>
     private IReadOnlyList<TourStop> TourStops()
     {
-        var current = Math.Max(0, ScreenTabs.SelectedIndex);
-        return
+        var current = _shell.CurrentStep;
+        List<TourStop> stops =
         [
-            new(current, () => Constellation, "Quattro passi",
-                "Progetto, Risolvi, Esporta, PixInsight WBPP. Una stella si accende a passo completato. Clic per aprire il passo."),
-            new(current, () => NextButton, "Prossima azione",
-                "Il passo successivo del progetto, sempre nello stesso punto."),
-            new(0, () => StackCard, "Integrazione",
-                "Ore integrate notte per notte, SNR e rumore relativi alla prima notte. Spazio riproduce l’accumulo, HOO e SHO cambiano palette."),
-            new(0, () => OverviewFilters, "Filtri",
-                "Ore, Light, bande sullo spettro e quota calibrata per filtro."),
-            new(0, () => NightsCard, "Notti",
-                "Una riga per notte dalle 18 alle 6: un segno per posa, fase lunare, crepuscolo dal sito negli header."),
-            new(0, () => ResolveCard, "Da risolvere",
-                "La prima scelta aperta con il candidato consigliato. L’elenco completo è in Risolvi."),
-            new(1, () => FieldCard, "Campo inquadrato",
-                "Sensore in scala sul cielo, con e senza riduttore, e campionamento rispetto al seeing."),
-            new(1, () => WheelCard, "Ruota portafiltri",
-                "I filtri con nome non riconoscibile si confermano una volta per camera."),
-            new(1, () => ProfileCard, "Profilo strumento",
-                "Ottica, riduttore e pixel modificabili. Valgono per ogni progetto con questa camera."),
-            new(current, () => MenuButton, "Comandi",
-                "Ctrl K per tutti i comandi, F1 per il tour, il logo per il Menu. Il progetto demo è nel Menu."),
+            new(current, () => Stepper, "Quattro passi",
+                "Importa, Strumento, Calibrazioni, Esporta. Ogni passo ha la sua pagina e un segno di spunta quando non resta nulla da fare. Clic su un passo per tornarci."),
+            new(current, () => NextButton, "Un solo pulsante",
+                "In basso a destra, sempre nello stesso punto: fa la prossima cosa che serve al progetto. Sopra di lui una riga dice perché."),
+            new(ShellViewModel.ImportStep, () => LibraryCard, "Libreria Master",
+                "Collega una volta sola la cartella dei Dark e Bias. Resta salvata per ogni progetto; se non ce l’hai, salta."),
+            new(ShellViewModel.ImportStep, () => SourcesCard, "Acquisizioni",
+                "Cartelle o file FITS e XISF da qualsiasi software, anche trascinati ovunque sulla finestra. Forge legge solo gli header: gli originali restano intatti."),
         ];
+        if (_shell.Analyzed)
+        {
+            stops.AddRange(
+            [
+                new(ShellViewModel.SetupStep, () => TrainCard, "Treno ottico",
+                    "Telescopio, riduttore, ruota e camera come Forge li ha letti. Tocca una parte per dire cos’è davvero."),
+                new(ShellViewModel.SetupStep, () => ProfileCard, "Camera e ottica",
+                    "Camera, ottica, riduttore e pixel: ognuno si cambia con un tocco e vale per ogni progetto con questa camera."),
+                new(ShellViewModel.SetupStep, () => WheelCard, "Filtri",
+                    "Anche i filtri già riconosciuti si possono cambiare: scegli quello giusto dal catalogo e Forge archivia i frame sotto quello."),
+                new(ShellViewModel.CalibrationStep, () => CalibrationCard, "Calibrazione",
+                    "Quanti Light hanno Flat, Dark e Bias. Sotto, ogni filtro con le sue ore e la quota calibrata."),
+                new(ShellViewModel.CalibrationStep, () => ResolveCard, "Da risolvere",
+                    "Quando Forge non può scegliere da solo, ti mostra la scelta con il candidato consigliato, una alla volta."),
+                new(ShellViewModel.ExportStep, () => StackCard, "Integrazione",
+                    "Le ore integrate notte per notte, SNR e rumore rispetto alla prima notte. Spazio riproduce l’accumulo, HOO e SHO cambiano palette."),
+                new(ShellViewModel.ExportStep, () => ExportCard, "Esporta",
+                    "Nome, destinazione e un clic. Si copiano e verificano solo i file nuovi, con la cronologia del dataset."),
+                new(ShellViewModel.ExportStep, () => WbppCard, "PixInsight WBPP",
+                    "L’istanza WBPP con file, master e gruppi già compilati. WBPP parte solo quando premi Run."),
+            ]);
+        }
+        stops.Add(new(current, () => MenuButton, "Comandi",
+            "Ctrl K per tutti i comandi, F1 per il tour, il logo per il Menu. Gli strumenti (statistiche, qualità, Libreria Master) sono in alto a destra."));
+        return stops;
     }
 
-    /// <summary>Starts the tour: from the first stop on <paramref name="screen"/>, or from the beginning when it is -1.</summary>
-    private void StartTour(int screen)
+    /// <summary>Starts the tour: from the first stop on <paramref name="step"/>, or from the beginning when it is -1.</summary>
+    private void StartTour(int step)
     {
         SettingsPanel.IsVisible = false;
         CloseSheet();
         ClosePalette();
         var stops = TourStops();
-        var from = screen <= 0 ? 0 : Math.Max(0, stops.Select((stop, index) => (stop, index)).Skip(2).FirstOrDefault(pair => pair.stop.Tab == screen).index);
-        Tour.Start(stops, from, index => { if (index >= 0 && index < ScreenTabs.ItemCount) ScreenTabs.SelectedIndex = index; });
+        var from = step <= 0 ? 0 : Math.Max(0, stops.Select((stop, index) => (stop, index)).Skip(2).FirstOrDefault(pair => pair.stop.Tab == step).index);
+        Tour.Start(stops, from, index => { if (index >= 0 && index < ShellViewModel.StepCount) _shell.CurrentStep = index; });
     }
 
-    /// <summary>Builds the Cygnus Loop demo in the app data folder, opens it as the current project, analyses it and starts the tour.</summary>
+    /// <summary>Builds the Cygnus Loop demo in the app data folder, opens it as the current project and analyses it.</summary>
+    private async Task LoadDemoAsync()
+    {
+        var root = AppDataPaths.Combine("Demo");
+        // The demo folder is ours alone: rebuild it so a previous tour's edits never leak into the next one.
+        if (Directory.Exists(root)) Directory.Delete(root, true);
+        await Task.Run(() => DemoDatasetGenerator.GenerateAsync(root));
+        _viewModel.NewProject();
+        _viewModel.ProjectName = DemoDatasetGenerator.Target;
+        _viewModel.DestinationPath = Path.Combine(root, "Export");
+        foreach (var folder in new[] { "ASIAIR", "NINA", "Libreria Master" }) _viewModel.AddSource(Path.Combine(root, folder));
+        await _viewModel.ScanAsync();
+    }
+
+    /// <summary>Opens the demo project and starts the tour.</summary>
     private async void OpenDemo_Click(object? sender, RoutedEventArgs e)
     {
         SettingsPanel.IsVisible = false;
@@ -641,17 +1164,9 @@ public sealed partial class MainWindow : Window
         if (!await ConfirmProjectReplacementAsync(opening: true)) return;
         await RunAsync("AF-DEMO-001", async () =>
         {
-            var root = AppDataPaths.Combine("Demo");
-            // The demo folder is ours alone: rebuild it so a previous tour's edits never leak into the next one.
-            if (Directory.Exists(root)) Directory.Delete(root, true);
-            await Task.Run(() => DemoDatasetGenerator.GenerateAsync(root));
-            _viewModel.NewProject();
-            _viewModel.ProjectName = DemoDatasetGenerator.Target;
-            _viewModel.DestinationPath = Path.Combine(root, "Export");
-            foreach (var folder in new[] { "ASIAIR", "NINA", "Libreria Master" }) _viewModel.AddSource(Path.Combine(root, folder));
-            await _viewModel.ScanAsync();
+            await LoadDemoAsync();
             StartTour(-1);
-            // The series sky fills in while the tour walks the first screens.
+            // The series sky fills in while the tour walks the first steps.
             AnalyzeAllQuality_Click(null, new RoutedEventArgs());
         });
     }
@@ -751,9 +1266,6 @@ public sealed partial class MainWindow : Window
 
     private void OpenDiagnosticsTab_Click(object? sender, RoutedEventArgs e) => OpenSheet(LogSheet);
     private static void OpenUrl(string url) => Process.Start(new ProcessStartInfo(url) { UseShellExecute = true });
-    private void OnboardingAddLibrary_Click(object? sender, RoutedEventArgs e) => AddLibrary_Click(sender, e);
-    private void OnboardingAddSources_Click(object? sender, RoutedEventArgs e) => AddSources_Click(sender, e);
-    private void OnboardingAddFiles_Click(object? sender, RoutedEventArgs e) => AddFiles_Click(sender, e);
     private void OnboardingEnglish_Click(object? sender, RoutedEventArgs e) { _viewModel.UiLanguage = UiLocalization.English; UpdateOnboarding(); }
     private void OnboardingItalian_Click(object? sender, RoutedEventArgs e) { _viewModel.UiLanguage = UiLocalization.Italian; UpdateOnboarding(); }
     private void OnboardingSkip_Click(object? sender, RoutedEventArgs e) => _viewModel.CompleteOnboarding();
@@ -762,38 +1274,28 @@ public sealed partial class MainWindow : Window
         _onboardingStep = Math.Max(1, _onboardingStep - 1);
         UpdateOnboarding();
     }
-    private async void OnboardingNext_Click(object? sender, RoutedEventArgs e)
+    private void OnboardingNext_Click(object? sender, RoutedEventArgs e)
     {
-        if (_onboardingStep == 5)
+        if (_onboardingStep == OnboardingSteps)
         {
+            // The welcome ends where the work starts: on the import page, Master Library first.
             _viewModel.CompleteOnboarding();
-            if (_viewModel.CanAnalyzeProject)
-                await RunAsync("AF-SCAN-001", () => _viewModel.ScanAsync());
-            StartTour(-1);
+            _shell.CurrentStep = ShellViewModel.ImportStep;
             return;
         }
         _onboardingStep++;
         UpdateOnboarding();
     }
 
+    private const int OnboardingSteps = 2;
+
     private void UpdateOnboarding()
     {
         OnboardingStep1.IsVisible = _onboardingStep == 1;
         OnboardingStep2.IsVisible = _onboardingStep == 2;
-        OnboardingStep3.IsVisible = _onboardingStep == 3;
-        OnboardingStep4.IsVisible = _onboardingStep == 4;
-        OnboardingStep5.IsVisible = _onboardingStep == 5;
-        OnboardingProgress.Text = $"{_onboardingStep} / 5";
+        OnboardingProgress.Text = $"{_onboardingStep} / {OnboardingSteps}";
         OnboardingBackButton.IsVisible = _onboardingStep > 1;
-        OnboardingNextButton.Content = _onboardingStep switch
-        {
-            1 => "Continua",
-            2 => "Inizia",
-            3 when _viewModel.MasterLibraries.Count == 0 => "Continua senza libreria",
-            5 when _viewModel.CanAnalyzeProject => "Analizza ora",
-            5 => "Vai al progetto",
-            _ => "Continua"
-        };
+        OnboardingNextButton.Content = _onboardingStep == OnboardingSteps ? "Inizia" : "Continua";
         ScheduleLocalization();
     }
 
@@ -1119,13 +1621,16 @@ public sealed partial class MainWindow : Window
             return colours[filters[0]!] = SpectrumColors.Glass(SpectrumColors.BandsOf(identity), identity.Kind);
         }
 
+        var fresh = _viewModel.Novelty?.NewPaths;
+        int NewIn(IEnumerable<FrameMetadata> frames) => fresh is null ? 0 : frames.Count(frame => fresh.Contains(frame.Path));
         ExportNode FromPlan(ProjectTreeNode node, int depth) => new(node.Name, node.Count, depth >= 1 && node.Name.StartsWith("FILTER_", StringComparison.Ordinal) || depth >= 2 ? FilterColour(node.Frames) : null,
-            depth >= 3 ? [] : node.Children.Where(child => !child.IsLeaf || child.Icon != "·").Select(child => FromPlan(child, depth + 1)).ToList());
+            depth >= 3 ? [] : node.Children.Where(child => !child.IsLeaf || child.Icon != "·").Select(child => FromPlan(child, depth + 1)).ToList(), NewIn(node.Frames));
 
         if (_viewModel.PlannedTreeRoots.Count > 0)
         {
             ExportMapView.IsPreview = false;
-            ExportMapView.Root = new ExportNode(name, _viewModel.PlannedTreeRoots.Sum(node => node.Count), null, _viewModel.PlannedTreeRoots.Select(node => FromPlan(node, 1)).ToList());
+            ExportMapView.Root = new ExportNode(name, _viewModel.PlannedTreeRoots.Sum(node => node.Count), null, _viewModel.PlannedTreeRoots.Select(node => FromPlan(node, 1)).ToList(),
+                _viewModel.PlannedTreeRoots.Sum(node => NewIn(node.Frames)));
         }
         else if (_viewModel.Analysis is { Lights.Count: > 0 } analysis)
         {
@@ -1134,8 +1639,8 @@ public sealed partial class MainWindow : Window
                 .GroupBy(frame => frame.FilterName.Value ?? "—", StringComparer.OrdinalIgnoreCase)
                 .Select(filter => new ExportNode($"FILTER_{filter.Key}", filter.Count(), FilterColour(filter.ToList()), filter
                     .GroupBy(frame => frame.SessionId.Value ?? "—").OrderBy(night => night.Key, StringComparer.Ordinal)
-                    .Select(night => new ExportNode($"NIGHT_{night.Key}", night.Count(), null, [])).ToList()))
-                .ToList());
+                    .Select(night => new ExportNode($"NIGHT_{night.Key}", night.Count(), null, [], NewIn(night))).ToList(), NewIn(filter)))
+                .ToList(), NewIn(frames));
             var lights = analysis.Lights.Select(item => item.Light).ToList();
             var flats = analysis.Lights.SelectMany(item => item.FlatGroup?.Frames ?? []).Distinct().ToList();
             var roles = new List<ExportNode> { Branch("Light", lights) };
@@ -1145,7 +1650,7 @@ public sealed partial class MainWindow : Window
             if (darks > 0) roles.Add(new ExportNode("Dark", darks, null, []));
             if (biases > 0) roles.Add(new ExportNode("Bias", biases, null, []));
             ExportMapView.IsPreview = true;
-            ExportMapView.Root = new ExportNode(name, roles.Sum(role => role.Files), null, roles);
+            ExportMapView.Root = new ExportNode(name, roles.Sum(role => role.Files), null, roles, roles.Sum(role => role.New));
         }
         else ExportMapView.Root = null;
         RefreshExportProgress();
@@ -1157,6 +1662,10 @@ public sealed partial class MainWindow : Window
         ExportMapView.IsRunning = _viewModel.ExportState == ExportRunState.Running;
         ExportPercentText.Text = _viewModel.ExportState is ExportRunState.Running or ExportRunState.Paused or ExportRunState.Completed or ExportRunState.Cancelled
             ? $"{_viewModel.ExportProgress:0}%" : "";
+        // The finished export hands over to PixInsight: the WBPP card comes into view once.
+        var finished = _viewModel.ExportState == ExportRunState.Completed;
+        if (finished && !_exportCelebrated) Dispatcher.UIThread.Post(() => PulseCard(WbppCard));
+        _exportCelebrated = finished;
     }
 
     private void CalibrationMap_CellActivated(object? sender, (CalibrationRow Row, CalibrationCell Cell) activated)
@@ -1172,7 +1681,7 @@ public sealed partial class MainWindow : Window
     private void EditReviewMetadata_Click(object? sender, RoutedEventArgs e)
     {
         _viewModel.SelectReviewItem((sender as Control)?.DataContext as ReviewQueueItem);
-        OpenSheet(ProjectSheet);
+        OpenSheet(MetadataSheet);
     }
     private void AssignLight_Click(object? sender, RoutedEventArgs e) => _viewModel.AssignReviewCandidate((sender as Control)?.DataContext as ReviewQueueItem, ReviewAssignmentScope.Light);
     private void AssignNight_Click(object? sender, RoutedEventArgs e) => _viewModel.AssignReviewCandidate((sender as Control)?.DataContext as ReviewQueueItem, ReviewAssignmentScope.Night);
