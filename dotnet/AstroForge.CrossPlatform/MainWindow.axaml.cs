@@ -223,6 +223,26 @@ public sealed partial class MainWindow : Window
         await Settle();
         Check(SettingsPanel.IsVisible == menuWasOpen, "Selecting Menu again must close it.");
 
+        // The sky behind the field: with no network the frame is still where the data were taken, on an empty sky that says why;
+        // with a picture served the real sky is behind it, centred on the target; and it can be turned off from the Menu.
+        await _observatory.SkyLoading;
+        Check(_observatory.Sky is { Image: null, Panels.Count: 1 } && _observatory.SkyCaption.Contains("20h") && _observatory.SkyCaption.Contains("+31"),
+            $"The demo's Lights say where they pointed ({_observatory.SkyCaption}).");
+        Check(_observatory.SkyNote.Contains("non raggiungibile") || _observatory.SkyNote.Contains("not reachable"), $"Without the network the sky must say why it is missing ({_observatory.SkyNote}).");
+        var skyFolder = Path.Combine(Path.GetTempPath(), "AstroProjectForge-smoke-sky");
+        try
+        {
+            _observatory.UseSkyClient(new AstroForge.Core.Analysis.SkyImageClient(new HttpClient(new SkyStub(SkyPicture())), skyFolder, offline: false));
+            await _observatory.SkyLoading;
+            Check(_observatory.Sky is { Image: not null } served && served.Panels.Count == 1 && served.FovDeg >= 4.5 * Math.Max(_observatory.PreviewWidth, _observatory.PreviewHeight) && _observatory.SkyNote.Contains("DSS2"),
+                $"A served picture must become the sky behind the frame ({_observatory.SkyNote}).");
+            Check(SkyView.Bounds.Width > 100 && SkyView.Scene == _observatory.Sky, "The field card must show the scene.");
+            _viewModel.ShowRealSky = false;
+            await _observatory.SkyLoading;
+            Check(_observatory.Sky is { Image: null, Panels.Count: 1 } && (_observatory.SkyNote.Contains("spento") || _observatory.SkyNote.Contains("off")), "Turned off in the Menu, the sky must leave the frame on an empty sky.");
+        }
+        finally { _viewModel.ShowRealSky = true; try { if (Directory.Exists(skyFolder)) Directory.Delete(skyFolder, true); } catch (IOException) { } }
+
         // The catalogues: every filter of the catalogue has a colour you can see and bands you can read, and the lists of cameras and optics open whole, search and scroll.
         foreach (var product in FilterCatalog.Default.Filters)
         {
@@ -312,6 +332,8 @@ public sealed partial class MainWindow : Window
             for (var step = 0; step < ShellViewModel.StepCount; step++)
             {
                 _shell.CurrentStep = step;
+                // the real sky of the gear step comes from the network: wait for it, but not for ever
+                if (step == ShellViewModel.SetupStep) await Task.WhenAny(_observatory.SkyLoading, Task.Delay(25000));
                 await Task.Delay(1600);
                 await CaptureAsync(Path.Combine(folder, $"{step + 1}-{names[step]}.png"));
             }
@@ -345,6 +367,13 @@ public sealed partial class MainWindow : Window
             await CaptureAsync(Path.Combine(folder, "2-gear-dualband.png"));
             _observatory.Forget(_observatory.Filters.Single(row => row.RawName == wheelRow.RawName));
             await Task.Delay(500);
+            // A framing the demo does not have: two panels with the camera turned 30°, to see the footprints sit right on the sky.
+            if (_observatory.Sky is { Image: { } skyImage } skyScene)
+            {
+                SkyView.Scene = new SkyScene(skyImage, skyScene.FovDeg, [new(-1.1, 0.7, 30, "P1"), new(1.1, -0.7, 30, "P2")]);
+                await Task.Delay(1200);
+                await CaptureAsync(Path.Combine(folder, "2-gear-mosaic.png"));
+            }
             // A real export of the demo (into the capture data folder), then the finished page.
             if (_viewModel.Analysis?.Ready == true)
             {
@@ -493,6 +522,34 @@ public sealed partial class MainWindow : Window
     }
 
     // One control at double size, to look at its drawing closely.
+    /// <summary>A picture of "sky" for the stub: dots on black, as a PNG, big enough to pass for a real answer.</summary>
+    private static byte[] SkyPicture()
+    {
+        var random = new Random(7);
+        var canvas = new Canvas { Width = 256, Height = 256, Background = Brushes.Black };
+        for (var index = 0; index < 400; index++)
+        {
+            var size = 1 + random.NextDouble() * 3;
+            var star = new Avalonia.Controls.Shapes.Ellipse { Width = size, Height = size, Fill = new SolidColorBrush(Color.FromRgb((byte)(120 + random.Next(135)), (byte)(120 + random.Next(135)), (byte)(120 + random.Next(135)))) };
+            Canvas.SetLeft(star, random.NextDouble() * 256);
+            Canvas.SetTop(star, random.NextDouble() * 256);
+            canvas.Children.Add(star);
+        }
+        canvas.Measure(new Size(256, 256));
+        canvas.Arrange(new Rect(0, 0, 256, 256));
+        using var bitmap = new Avalonia.Media.Imaging.RenderTargetBitmap(new PixelSize(256, 256));
+        bitmap.Render(canvas);
+        using var stream = new MemoryStream();
+        bitmap.Save(stream, new Avalonia.Media.Imaging.PngBitmapEncoderOptions());
+        return stream.ToArray();
+    }
+
+    private sealed class SkyStub(byte[] picture) : HttpMessageHandler
+    {
+        protected override Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken cancellationToken) =>
+            Task.FromResult(new HttpResponseMessage(System.Net.HttpStatusCode.OK) { Content = new ByteArrayContent(picture) });
+    }
+
     private async Task CaptureControlAsync(Control control, string path)
     {
         await Dispatcher.UIThread.InvokeAsync(() => { }, DispatcherPriority.Background);

@@ -209,8 +209,7 @@
           <ScrollViewer Grid.Row="1" x:Name="SetupScroll" IsVisible="{Binding HasInstrument}" VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled"><Grid ColumnDefinitions="1.35*,*" RowDefinitions="*,Auto" ColumnSpacing="20" RowSpacing="20" Margin="0,0,6,0">
             <Border x:Name="FieldCard" MinHeight="360" Classes="card stack" Padding="0" ClipToBounds="True">
               <Grid RowDefinitions="*,Auto">
-                <local:StackPreview Grid.RowSpan="2" Snr="8" Palette="0" Seed="{Binding CameraName}"/>
-                <local:SensorFrame Grid.RowSpan="2" WidthDeg="{Binding PreviewWidth}" HeightDeg="{Binding PreviewHeight}" AltWidthDeg="{Binding OtherWidth}" AltHeightDeg="{Binding OtherHeight}" AltLabel="{Binding OtherLabel}" Warn="{Binding HasPending}"/>
+                <local:SensorFrame x:Name="SkyView" Grid.RowSpan="2" WidthDeg="{Binding PreviewWidth}" HeightDeg="{Binding PreviewHeight}" AltWidthDeg="{Binding OtherWidth}" AltHeightDeg="{Binding OtherHeight}" AltLabel="{Binding OtherLabel}" Warn="{Binding HasPending}" Scene="{Binding Sky}" Caption="{Binding SkyCaption}" Note="{Binding SkyNote}"/>
                 <Border Grid.RowSpan="2" Background="{StaticResource FieldShadeBrush}" IsHitTestVisible="False"/>
                 <StackPanel Margin="24,22,24,0" Spacing="6" MaxWidth="290" HorizontalAlignment="Left">
                   <TextBlock Text="{Binding FovEyebrow}" Classes="eyebrow" TextWrapping="Wrap"/>
@@ -652,6 +651,7 @@
         <TextBlock Text="Dimensione interfaccia"/>
         <ComboBox x:Name="DensitySelector" AutomationProperties.Name="Densità interfaccia" SelectionChanged="DensitySelector_SelectionChanged"><ComboBoxItem Tag="Comoda" Content="Comoda"/><ComboBoxItem Tag="Compatta" Content="Compatta"/><ComboBoxItem Tag="Ampia" Content="Ampia"/></ComboBox>
         <CheckBox Content="Riduci animazioni" ToolTip.Tip="Disattiva le animazioni non essenziali" IsChecked="{Binding ReducedMotion}" Click="UiPreferenceChanged_Click"/>
+        <CheckBox x:Name="RealSkyCheck" Content="Mostra il cielo reale nel campo inquadrato" ToolTip.Tip="Scarica dal CDS di Strasburgo la foto del cielo attorno al target. Partono solo la posizione e la dimensione del campo, mai file o dati del progetto." IsChecked="{Binding ShowRealSky}" Click="UiPreferenceChanged_Click"/>
         <Border Classes="rule" Margin="0,5"/>
         <TextBlock Text="Progetto" Classes="eyebrow"/>
         <Grid ColumnDefinitions="*,*" ColumnSpacing="7"><Button Content="Nuovo progetto" Click="NewProject_Click"/><Button Grid.Column="1" Content="Salva con nome" Click="SaveProjectAs_Click"/></Grid>

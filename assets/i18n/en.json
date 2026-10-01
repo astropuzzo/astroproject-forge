@@ -804,5 +804,7 @@
   "trasmissione": "transmission",
   "Lingua, aggiornamenti, aiuto e progetto · Ctrl+,": "Language, updates, help and project · Ctrl+,",
   "Menu e strumenti": "Menu and tools",
-  "Menu: lingua, aggiornamenti, aiuto e progetto. Strumenti: statistiche, qualità dei frame, metadati e Libreria Master. Ctrl K cerca qualsiasi comando.": "Menu: language, updates, help and project. Tools: statistics, frame quality, metadata and the Master Library. Ctrl K searches any command."
+  "Menu: lingua, aggiornamenti, aiuto e progetto. Strumenti: statistiche, qualità dei frame, metadati e Libreria Master. Ctrl K cerca qualsiasi comando.": "Menu: language, updates, help and project. Tools: statistics, frame quality, metadata and the Master Library. Ctrl K searches any command.",
+  "Mostra il cielo reale nel campo inquadrato": "Show the real sky in the field of view",
+  "Scarica dal CDS di Strasburgo la foto del cielo attorno al target. Partono solo la posizione e la dimensione del campo, mai file o dati del progetto.": "Downloads a photo of the sky around the target from the CDS in Strasbourg. Only the field's position and size are sent, never files or project data."
 }

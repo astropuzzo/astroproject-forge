@@ -86,6 +86,7 @@ public sealed class MainViewModel : BindableBase
     private string _uiDensity = "Comoda";
     private string _uiLanguage = UiLocalization.Italian;
     private bool _reducedMotion;
+    private bool _showRealSky;
     private bool _checkForUpdates = true;
     private string _updateChannel = ReleaseIdentity.Channel;
     private string _updateStatus = "Controllo aggiornamenti attivo";
@@ -136,6 +137,7 @@ public sealed class MainViewModel : BindableBase
         _currentProjectFile = _state.LastProjectFile;
         _uiDensity = new[] { "Compatta", "Comoda", "Ampia" }.Contains(_state.UiDensity) ? _state.UiDensity : "Comoda";
         _reducedMotion = _state.ReducedMotion;
+        _showRealSky = _state.ShowRealSky;
         _checkForUpdates = true;
         _updateChannel = ReleaseIdentity.Channel;
         _exportMarginPercent = Math.Clamp(_state.ExportMarginPercent, 0, 100);
@@ -232,6 +234,8 @@ public sealed class MainViewModel : BindableBase
         }
     }
     public bool ReducedMotion { get => _reducedMotion; set => Set(ref _reducedMotion, value); }
+    /// <summary>Whether the field of view fetches the real sky around the target from the CDS (only the field's position and size leave the computer).</summary>
+    public bool ShowRealSky { get => _showRealSky; set => Set(ref _showRealSky, value); }
     public bool CheckForUpdates { get => _checkForUpdates; set => Set(ref _checkForUpdates, value); }
     public string UpdateChannel { get => _updateChannel; set => Set(ref _updateChannel, value); }
     public string UpdateStatus { get => _updateStatus; set => Set(ref _updateStatus, value); }
@@ -826,6 +830,7 @@ public sealed class MainViewModel : BindableBase
         _state.UiDensity = UiDensity;
         _state.UiLanguage = UiLanguage;
         _state.ReducedMotion = ReducedMotion;
+        _state.ShowRealSky = ShowRealSky;
         _state.CheckForUpdates = CheckForUpdates;
         _state.UpdateChannel = UpdateChannel;
         _state.ExportMarginPercent = ExportMarginPercent;

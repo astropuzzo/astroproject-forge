@@ -25,6 +25,7 @@ public sealed class AppState
     public string UiDensity { get; set; } = "Comoda";
     public string UiLanguage { get; set; } = UiLocalization.English;
     public bool ReducedMotion { get; set; }
+    public bool ShowRealSky { get; set; } = true;
     public bool CheckForUpdates { get; set; } = true;
     public string UpdateChannel { get; set; } = "Stable";
     public double ExportMarginPercent { get; set; } = 10;
