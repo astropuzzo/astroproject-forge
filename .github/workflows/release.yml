@@ -108,3 +108,41 @@ jobs:
             esac
           done
           gh release create "$TAG" "${files[@]}" --verify-tag --title "AstroProject Forge $VERSION" --notes-file notes.md --latest
+      - name: Refresh the update feed
+        # The app reads this small manifest first: it needs no call to the GitHub API, so it still finds the update
+        # from a shared address (VPN, office) that has used up the anonymous API rate limit. Its hash and size are
+        # those of the installer that was just published.
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          VERSION="$(jq -r .version version.json)"
+          CHANNEL="$(jq -r .channel version.json)"
+          BUILD="$(jq -r .minimumWindowsBuild version.json)"
+          FEED="$(echo "$CHANNEL" | tr '[:upper:]' '[:lower:]')"
+          TAG="v$VERSION"
+          SETUP="$(ls dist/AstroProjectForge-*-win-x64-setup.exe | head -n 1)"
+          NAME="$(basename "$SETUP")"
+          SHA="$(sha256sum "$SETUP" | cut -d' ' -f1)"
+          SIZE="$(stat -c %s "$SETUP")"
+          PUBLISHED="$(gh release view "$TAG" --json publishedAt --jq .publishedAt)"
+          cat > "$FEED.json" <<EOF
+          {
+            "schema": 1,
+            "product": "AstroProject Forge",
+            "channel": "$CHANNEL",
+            "version": "$VERSION",
+            "publishedAtUtc": "$PUBLISHED",
+            "installer": {
+              "url": "https://github.com/$GITHUB_REPOSITORY/releases/download/$TAG/$NAME",
+              "sha256": "$SHA",
+              "sizeBytes": $SIZE,
+              "fileName": "$NAME"
+            },
+            "releaseNotesUrl": "https://github.com/$GITHUB_REPOSITORY/releases/tag/$TAG",
+            "minimumWindowsVersion": "10.0.$BUILD",
+            "signed": false
+          }
+          EOF
+          cat "$FEED.json"
+          gh release view "channel-$FEED" >/dev/null 2>&1 || gh release create "channel-$FEED" --title "Update channel: $FEED" --notes "Update feed read by the application. Do not delete." --latest=false
+          gh release upload "channel-$FEED" "$FEED.json" --clobber

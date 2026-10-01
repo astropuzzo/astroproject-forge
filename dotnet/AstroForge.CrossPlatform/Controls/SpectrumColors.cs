@@ -33,7 +33,7 @@ public static class SpectrumColors
         double r = 0, g = 0, b = 0, weight = 0;
         foreach (var band in bands)
         {
-            var colour = Wavelength(band.Peak > 0 ? band.Peak : (band.FromNm + band.ToNm) / 2);
+            var colour = Wavelength(band.CentreNm);
             var w = Math.Max(1, Math.Min(band.WidthNm, 120));
             r += colour.R * w; g += colour.G * w; b += colour.B * w; weight += w;
         }
@@ -47,10 +47,10 @@ public static class SpectrumColors
         {
             // Dual and quad band glass reads as split colour, one half per line.
             var brush = new LinearGradientBrush { StartPoint = new RelativePoint(0, 0, RelativeUnit.Relative), EndPoint = new RelativePoint(1, 1, RelativeUnit.Relative) };
-            var ordered = narrow.OrderBy(band => band.Peak).ToList();
+            var ordered = narrow.OrderBy(band => band.CentreNm).ToList();
             for (var index = 0; index < ordered.Count; index++)
             {
-                var colour = Wavelength(ordered[index].Peak > 0 ? ordered[index].Peak : (ordered[index].FromNm + ordered[index].ToNm) / 2);
+                var colour = Wavelength(ordered[index].CentreNm);
                 brush.GradientStops.Add(new GradientStop(colour, index / (double)ordered.Count));
                 brush.GradientStops.Add(new GradientStop(colour, (index + 1) / (double)ordered.Count));
             }
@@ -65,12 +65,12 @@ public static class SpectrumColors
         if (identity.Kind == FilterKind.Broadband)
             return identity.DisplayName switch
             {
-                "R" => [new FilterBand(590, 700, 640)],
-                "G" => [new FilterBand(490, 580, 535)],
-                "B" => [new FilterBand(400, 500, 450)],
+                "R" => [new FilterBand(590, 700, 0)],
+                "G" => [new FilterBand(490, 580, 0)],
+                "B" => [new FilterBand(400, 500, 0)],
                 _ => []
             };
         var width = identity.BandwidthNm ?? 7;
-        return identity.Lines.Select(line => new FilterBand(line.WavelengthNm - width / 2, line.WavelengthNm + width / 2, line.WavelengthNm)).ToList();
+        return identity.Lines.Select(line => new FilterBand(line.WavelengthNm - width / 2, line.WavelengthNm + width / 2, 0)).ToList();
     }
 }

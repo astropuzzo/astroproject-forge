@@ -799,5 +799,7 @@
   "Gli originali non vengono mai modificati": "Your originals are never modified",
   "o trascina qui la cartella": "or drop the folder here",
   "o trascina qui cartelle e file": "or drop folders and files here",
-  "Cartelle o file FITS e XISF da qualsiasi software, anche trascinati ovunque sulla finestra. Forge legge solo gli header: gli originali restano intatti.": "FITS and XISF folders or files from any software, also dropped anywhere on the window. Forge reads only the headers: your originals stay untouched."
+  "Cartelle o file FITS e XISF da qualsiasi software, anche trascinati ovunque sulla finestra. Forge legge solo gli header: gli originali restano intatti.": "FITS and XISF folders or files from any software, also dropped anywhere on the window. Forge reads only the headers: your originals stay untouched.",
+  "larghezza": "width",
+  "trasmissione": "transmission"
 }

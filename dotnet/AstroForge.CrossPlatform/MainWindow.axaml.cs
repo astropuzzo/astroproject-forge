@@ -211,6 +211,42 @@ public sealed partial class MainWindow : Window
         await Settle();
         Check(_observatory.CameraName == detected && !_observatory.CameraWasChanged && _viewModel.ReviewQueue.Count == 0, "Restoring the detected camera must restore the matches.");
 
+        // The catalogues: every filter of the catalogue has a colour you can see and bands you can read, and the lists of cameras and optics open whole, search and scroll.
+        foreach (var product in FilterCatalog.Default.Filters)
+        {
+            var glass = SpectrumColors.Glass(product.Bands, product.Kind);
+            // a mix of wide bands is a muted tint, but never the near-black (38, 38, 38) that reading a transmission as a wavelength gave
+            Check(Math.Max(glass.R, Math.Max(glass.G, glass.B)) >= 110, $"The glass of {product.Name} must not be dark ({glass}).");
+            Check(product.Bands.All(band => band.CentreNm > band.FromNm && band.CentreNm < band.ToNm), $"The bands of {product.Name} must be read from their centre.");
+        }
+        var antiHalo = FilterCatalog.Default.Find("poahpro")!;
+        Check(antiHalo.Bands.Count == 2 && SpectrumColors.GlassBrush(antiHalo.Bands, antiHalo.Kind) is Avalonia.Media.LinearGradientBrush { GradientStops.Count: 4 }, "A dual-band filter must show one colour per line.");
+        _shell.CurrentStep = ShellViewModel.SetupStep; await Settle();
+        _observatory.BeginEdit(); await Settle();
+        BrowseTelescopes(TelescopeBox);
+        await Settle();
+        var optics = LastCatalog!;
+        Check(optics.List.ItemCount == _observatory.TelescopeChoices.Count && _observatory.TelescopeChoices.Count > 500, $"The optics browser must list the whole catalogue ({optics.List.ItemCount}).");
+        optics.Search.Text = _observatory.TelescopeChoices[0].Name.Split(' ')[0] + " " + _observatory.TelescopeChoices[0].Name.Split(' ').Last();
+        await Settle();
+        Check(optics.List.ItemCount is > 0 && optics.List.ItemCount < _observatory.TelescopeChoices.Count, "Searching the optics must narrow the list.");
+        optics.Search.Text = "";
+        await Settle();
+        var scroller = optics.List.GetVisualDescendants().OfType<ScrollViewer>().First();
+        Check(scroller.Extent.Height > scroller.Viewport.Height * 3, $"The full list must be long enough to scroll ({scroller.Extent.Height} in {scroller.Viewport.Height}).");
+        scroller.Offset = new Vector(0, 400);
+        await Settle();
+        Check(scroller.Offset.Y > 0, "The list of optics must scroll.");
+        var pickedScope = _observatory.TelescopeChoices[5];
+        optics.List.SelectedItem = pickedScope;
+        await Settle();
+        Check(_observatory.SelectedTelescope == pickedScope && _observatory.TelescopeText == pickedScope.Name && !optics.Flyout.IsOpen, "Choosing from the browser must set the optics and close it.");
+        BrowseCameras(CameraBox);
+        await Settle();
+        Check(LastCatalog!.List.ItemCount == _observatory.CameraChoices.Count, "The cameras browser must list every camera.");
+        LastCatalog.Flyout.Hide();
+        _observatory.IsEditing = false; await Settle();
+
         // The Moon: the full Moon of 28 August 2026 seen from Rome is high around midnight and below the horizon at midday.
         Check(SkyMath.MoonAltitude(new DateTime(2026, 8, 28, 23, 0, 0, DateTimeKind.Utc), 41.9, 12.5) > 15 && SkyMath.MoonAltitude(new DateTime(2026, 8, 28, 10, 0, 0, DateTimeKind.Utc), 41.9, 12.5) < -10,
             "The Moon must be high at night and low by day at full Moon.");
@@ -278,7 +314,25 @@ public sealed partial class MainWindow : Window
             _observatory.BeginEdit();
             await Task.Delay(1200);
             await CaptureAsync(Path.Combine(folder, "2-gear-editing.png"));
+            // The browser of the whole catalogue, with a search inside, drawn on its own (a pop-up is not part of the window).
+            BrowseTelescopes(TelescopeBox);
+            await Task.Delay(900);
+            LastCatalog!.Search.Text = "newton";
+            await Task.Delay(500);
+            if (LastCatalog.Flyout.Content is Panel catalogue) { catalogue.Background = new SolidColorBrush(Color.Parse("#0B1122")); await CaptureControlAsync(catalogue, Path.Combine(folder, "2-catalog-browser.png")); }
+            LastCatalog.Flyout.Hide();
             _observatory.IsEditing = false;
+            // A dual-band filter from the catalogue: its colours, and its bands at their real width.
+            var wheelRow = _observatory.Filters.First();
+            var dualBand = wheelRow.Choices.First(choice => FilterCatalog.Default.Find(choice.Id ?? "")?.Kind == FilterKind.Multiband);
+            wheelRow.Choice = dualBand;
+            _observatory.Confirm(wheelRow);
+            await Task.Delay(600);
+            _observatory.SelectedSlot = _observatory.Filters.ToList().FindIndex(row => row.RawName == wheelRow.RawName);
+            await Task.Delay(1400);
+            await CaptureAsync(Path.Combine(folder, "2-gear-dualband.png"));
+            _observatory.Forget(_observatory.Filters.Single(row => row.RawName == wheelRow.RawName));
+            await Task.Delay(500);
             // A real export of the demo (into the capture data folder), then the finished page.
             if (_viewModel.Analysis?.Ready == true)
             {
@@ -498,9 +552,36 @@ public sealed partial class MainWindow : Window
     private void NoveltyGoToExport_Click(object? sender, RoutedEventArgs e) => GoToStep(ShellViewModel.ExportStep);
     private void DismissNovelty_Click(object? sender, RoutedEventArgs e) => _viewModel.DismissNovelty();
 
-    // The catalogue lists are long: a button opens them whole, the box still filters as you type.
-    private void BrowseCameras_Click(object? sender, RoutedEventArgs e) { CameraBox.Focus(); CameraBox.IsDropDownOpen = true; }
-    private void BrowseTelescopes_Click(object? sender, RoutedEventArgs e) { TelescopeBox.Focus(); TelescopeBox.IsDropDownOpen = true; }
+    // The catalogue lists are long: the box above filters as you type, the button opens the whole list to look around (search inside, scrolls).
+    internal CatalogBrowser.Handle? LastCatalog { get; private set; }
+
+    internal void BrowseCameras(Control anchor)
+    {
+        var english = _viewModel.UiLanguage == UiLocalization.English;
+        LastCatalog = CatalogBrowser.Show(anchor, _observatory.CameraChoices, camera => camera.Name,
+            camera => camera.Type switch { CameraSensorType.Mono => english ? "mono" : "mono", CameraSensorType.Color => english ? "colour" : "colore", CameraSensorType.Dslr => "DSLR", CameraSensorType.DslrModified => "DSLR mod", _ => "" },
+            _observatory.SelectedCamera, camera => _observatory.SelectedCamera = camera,
+            english ? "Search the cameras" : "Cerca tra le camere",
+            (shown, total) => english ? $"{shown} of {total} cameras" : $"{shown} di {total} camere");
+    }
+
+    internal void BrowseTelescopes(Control anchor)
+    {
+        var english = _viewModel.UiLanguage == UiLocalization.English;
+        LastCatalog = CatalogBrowser.Show(anchor, _observatory.TelescopeChoices, scope => scope.Name,
+            scope => (scope.ApertureMm, scope.FocalMm) switch
+            {
+                ({ } aperture, { } focal) => string.Create(System.Globalization.CultureInfo.InvariantCulture, $"Ø {aperture:0} · {focal:0} mm"),
+                (null, { } focal) => string.Create(System.Globalization.CultureInfo.InvariantCulture, $"{focal:0} mm"),
+                _ => ""
+            },
+            _observatory.SelectedTelescope, scope => _observatory.SelectedTelescope = scope,
+            english ? "Search the telescopes" : "Cerca tra le ottiche",
+            (shown, total) => english ? $"{shown} of {total} telescopes" : $"{shown} di {total} ottiche");
+    }
+
+    private void BrowseCameras_Click(object? sender, RoutedEventArgs e) => BrowseCameras(sender as Control ?? CameraBox);
+    private void BrowseTelescopes_Click(object? sender, RoutedEventArgs e) => BrowseTelescopes(sender as Control ?? TelescopeBox);
 
     // A page opens at its top, whatever the person did on it the last time.
     private void ScrollPageHome(int step)
@@ -815,7 +896,7 @@ public sealed partial class MainWindow : Window
     private static void InvalidateCanvasText(Visual root)
     {
         foreach (var visual in root.GetVisualDescendants())
-            if (visual is SpectrumBar or FieldOfViewView or NightsTimeline or StepperBar or NightSky or CalibrationRing or ResolvePaths or OpticalTrain or SamplingGauge or SensorFrame)
+            if (visual is SpectrumBar or PassbandView or FieldOfViewView or NightsTimeline or StepperBar or NightSky or CalibrationRing or ResolvePaths or OpticalTrain or SamplingGauge or SensorFrame)
                 visual.InvalidateVisual();
     }
 

@@ -320,6 +320,7 @@
                         <TextBlock Text="{Binding DisplayName}" FontSize="19" FontWeight="SemiBold" TextWrapping="Wrap"/>
                         <WrapPanel ItemSpacing="6" LineSpacing="6"><Border Classes="count" Margin="0"><TextBlock Text="{Binding Lines}"/></Border><Border Classes="count" Margin="0"><TextBlock Text="{Binding Source}"/></Border></WrapPanel>
                         <local:SpectrumBar Bands="{Binding Bands}"/>
+                        <local:PassbandView Bands="{Binding Bands}"/>
                         <TextBlock Text="{Binding Usage}" Classes="muted" FontSize="11"/>
                       </StackPanel>
                     </Grid>
