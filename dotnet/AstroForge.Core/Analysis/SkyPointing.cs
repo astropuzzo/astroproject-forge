@@ -6,18 +6,25 @@ namespace AstroForge.Core.Analysis;
 
 /// <summary>Where a frame was pointing: the centre of its field on the sky (ICRS/J2000, degrees) and, when the file says so, how the sensor was turned.</summary>
 /// <param name="PositionAngleDeg">Position angle of the sensor's "up" direction, degrees from north through east; null when the file does not say.</param>
-/// <param name="Source">Where the position came from: the solved WCS, the telescope's RA/DEC or the object's coordinates.</param>
-public sealed record SkyPointing(double RaDeg, double DecDeg, double? PositionAngleDeg, string Source);
+/// <param name="Source">Where the position came from: the solved WCS ("wcs"), the target the capture software centred on ("object") or the mount's RA/DEC ("mount").</param>
+/// <param name="AngleSource">Where the angle came from: the solved WCS ("wcs"), the rotator ("rotator") or a value the software declared ("declared").</param>
+/// <param name="MountDeviationDeg">How far the mount's own RA/DEC were from the position used, when both are in the file.</param>
+public sealed record SkyPointing(double RaDeg, double DecDeg, double? PositionAngleDeg, string Source, string? AngleSource = null, double? MountDeviationDeg = null);
 
 /// <summary>One panel of the framing: the Lights that point at the same place, where that is and what it holds.</summary>
-public sealed record SkyPanel(double RaDeg, double DecDeg, double? PositionAngleDeg, int Lights, double IntegrationSeconds, int Nights, string Label);
+/// <param name="PositionAngleDeg">How the sensor was turned, folded to (-90, 90]: a rectangle looks the same turned half a circle, so the pier side does not matter.</param>
+/// <param name="MountDeviationDeg">The largest distance between the mount's RA/DEC and the position used, over the panel's Lights.</param>
+public sealed record SkyPanel(double RaDeg, double DecDeg, double? PositionAngleDeg, int Lights, double IntegrationSeconds, int Nights, string Label,
+    string? AngleSource = null, double MountDeviationDeg = 0, string PositionSource = "");
 
 /// <summary>Reads where the frames pointed and lays the sky out flat around a point (gnomonic projection, the one astronomical images use).</summary>
 public static partial class SkyPointings
 {
     /// <summary>
-    /// The centre of the field, in order of trust: the solved WCS (CRVAL), the mount's RA/DEC, the target's OBJCTRA/OBJCTDEC.
-    /// Degrees or sexagesimal text both work; (0, 0) is how some software says "unknown" and is not taken as a place.
+    /// The centre of the field, in order of trust: the solved WCS (CRVAL), the target the capture software centred on (OBJCTRA/OBJCTDEC), the mount's RA/DEC.
+    /// The mount's RA/DEC come last because they are what the mount believes, not where the sensor looked: on a real project (N.I.N.A., a mount flipping the
+    /// meridian) they were up to half a degree away from stars that were plainly centred on the target. Degrees or sexagesimal text both work;
+    /// (0, 0) is how some software says "unknown" and is not taken as a place.
     /// </summary>
     public static SkyPointing? FromHeaders(IReadOnlyDictionary<string, object?> headers)
     {
@@ -25,30 +32,38 @@ public static partial class SkyPointings
         if (Text(headers, "CTYPE1") is { } ctype && ctype.Contains("RA", StringComparison.OrdinalIgnoreCase)
             && Degrees(headers, "CRVAL1", hours: false) is { } wcsRa && Degrees(headers, "CRVAL2", hours: false) is { } wcsDec)
             centre = (wcsRa, wcsDec, "wcs");
-        if (centre is null && Degrees(headers, "RA", hours: false) is { } ra && Degrees(headers, "DEC", hours: false) is { } dec)
-            centre = (ra, dec, "mount");
         if (centre is null && Degrees(headers, "OBJCTRA", hours: true) is { } objectRa && Degrees(headers, "OBJCTDEC", hours: false) is { } objectDec)
             centre = (objectRa, objectDec, "object");
+        (double Ra, double Dec)? mount = Degrees(headers, "RA", hours: false) is { } ra && Degrees(headers, "DEC", hours: false) is { } dec ? (ra, dec) : null;
+        if (centre is null && mount is { } own) centre = (own.Ra, own.Dec, "mount");
         if (centre is not { } found) return null;
 
         var rightAscension = ((found.Ra % 360) + 360) % 360;
         if (found.Dec is < -90 or > 90 || (Math.Abs(rightAscension) < 1e-9 && Math.Abs(found.Dec) < 1e-9)) return null;
-        return new SkyPointing(rightAscension, found.Dec, PositionAngle(headers), found.Source);
+        double? deviation = found.Source != "mount" && mount is { } reported && !(Math.Abs(reported.Ra) < 1e-9 && Math.Abs(reported.Dec) < 1e-9)
+            ? Separation(rightAscension, found.Dec, reported.Ra, reported.Dec) : null;
+        var angle = Angle(headers);
+        return new SkyPointing(rightAscension, found.Dec, angle?.Degrees, found.Source, angle?.Source, deviation);
     }
 
     /// <summary>
-    /// Position angle of the sensor's up direction (degrees east of north). From the WCS matrix when there is one:
-    /// the image's +y axis maps to (CD1_2, CD2_2) on (east, north). Otherwise the rotation the software declares.
+    /// Position angle of the sensor's up direction (degrees east of north) and where it comes from. From the WCS matrix when there is one:
+    /// the image's +y axis maps to (CD1_2, CD2_2) on (east, north). Then the rotator's sky angle (ROTATOR, ROTATANG). Last the rotation the software declares,
+    /// where exactly 0 is taken as "not set": it is what N.I.N.A. writes in OBJCTROT whatever the camera did.
     /// </summary>
-    public static double? PositionAngle(IReadOnlyDictionary<string, object?> headers)
+    public static (double Degrees, string Source)? Angle(IReadOnlyDictionary<string, object?> headers)
     {
         if (Number(headers, "CD1_2") is { } cd12 && Number(headers, "CD2_2") is { } cd22 && (cd12 != 0 || cd22 != 0))
-            return Normalise(Math.Atan2(cd12, cd22) * 180 / Math.PI);
-        if (Number(headers, "CROTA2") is { } crota) return Normalise(-crota);
+            return (Normalise(Math.Atan2(cd12, cd22) * 180 / Math.PI), "wcs");
+        if (Number(headers, "CROTA2") is { } crota) return (Normalise(-crota), "wcs");
+        foreach (var key in new[] { "ROTATOR", "ROTATANG" })
+            if (Number(headers, key) is { } angle) return (Normalise(angle), "rotator");
         foreach (var key in new[] { "OBJCTROT", "POSANGLE", "PA" })
-            if (Number(headers, key) is { } angle) return Normalise(angle);
+            if (Number(headers, key) is { } angle && angle != 0) return (Normalise(angle), "declared");
         return null;
     }
+
+    public static double? PositionAngle(IReadOnlyDictionary<string, object?> headers) => Angle(headers)?.Degrees;
 
     /// <summary>
     /// Groups Lights by where they point. Two Lights are the same panel when they are closer than <paramref name="toleranceDeg"/>
@@ -67,7 +82,7 @@ public static partial class SkyPointings
 
         var ordered = groups.OrderByDescending(group => Math.Round(group.Dec / Math.Max(toleranceDeg, 0.01))).ThenByDescending(group => group.Ra).ToList();
         return ordered.Select((group, index) => new SkyPanel(group.Ra, group.Dec, group.PositionAngle, group.Lights, group.Seconds, group.Nights.Count,
-            ordered.Count == 1 ? "" : $"P{index + 1}")).ToList();
+            ordered.Count == 1 ? "" : $"P{index + 1}", group.AngleSource, group.MountDeviation, group.PositionSource)).ToList();
     }
 
     /// <summary>
@@ -81,6 +96,11 @@ public static partial class SkyPointings
         var main = ordered[0];
         return ordered.Where(panel => Separation(main.RaDeg, main.DecDeg, panel.RaDeg, panel.DecDeg) <= reachDeg).Take(maxPanels).ToList();
     }
+
+    /// <summary>The target the capture software was told to centre on (OBJCTRA/OBJCTDEC), whatever the position used for the frame.</summary>
+    public static (double Ra, double Dec)? Target(IReadOnlyDictionary<string, object?> headers) =>
+        Degrees(headers, "OBJCTRA", hours: true) is { } ra && Degrees(headers, "OBJCTDEC", hours: false) is { } dec && dec is >= -90 and <= 90
+            && !(Math.Abs(ra) < 1e-9 && Math.Abs(dec) < 1e-9) ? (((ra % 360) + 360) % 360, dec) : null;
 
     /// <summary>Angular distance between two points of the sky, degrees (haversine).</summary>
     public static double Separation(double ra1, double dec1, double ra2, double dec2)
@@ -199,13 +219,17 @@ public static partial class SkyPointings
     private sealed class Group
     {
         private double _x, _y, _z, _sin, _cos;
+        private readonly Dictionary<string, int> _angleSources = [];
+        private readonly Dictionary<string, int> _positionSources = [];
         public int Lights { get; private set; }
+        public string PositionSource => _positionSources.Count == 0 ? "" : _positionSources.OrderByDescending(item => item.Value).First().Key;
+        public double MountDeviation { get; private set; }
+        public string? AngleSource => _angleSources.Count == 0 ? null : _angleSources.OrderByDescending(item => item.Value).First().Key;
         public double Seconds { get; private set; }
         public HashSet<string> Nights { get; } = [];
         public double Ra => ((Math.Atan2(_y, _x) * 180 / Math.PI) + 360) % 360;
         public double Dec => Math.Atan2(_z, Math.Sqrt(_x * _x + _y * _y)) * 180 / Math.PI;
         public double? PositionAngle { get; private set; }
-        private int _angles;
 
         public void Add(SkyPointing pointing, double seconds, string night)
         {
@@ -213,9 +237,13 @@ public static partial class SkyPointings
             _x += Math.Cos(d) * Math.Cos(a); _y += Math.Cos(d) * Math.Sin(a); _z += Math.Sin(d);
             if (pointing.PositionAngleDeg is { } angle)
             {
-                _sin += Math.Sin(angle * Math.PI / 180); _cos += Math.Cos(angle * Math.PI / 180); _angles++;
-                PositionAngle = Normalise(Math.Atan2(_sin, _cos) * 180 / Math.PI);
+                // a sensor turned half a circle covers the same sky: average the doubled angles, so 181.6° and 1.6° are one orientation
+                _sin += Math.Sin(2 * angle * Math.PI / 180); _cos += Math.Cos(2 * angle * Math.PI / 180);
+                PositionAngle = Math.Atan2(_sin, _cos) * 90 / Math.PI;
+                _angleSources[pointing.AngleSource ?? "declared"] = _angleSources.GetValueOrDefault(pointing.AngleSource ?? "declared") + 1;
             }
+            _positionSources[pointing.Source] = _positionSources.GetValueOrDefault(pointing.Source) + 1;
+            MountDeviation = Math.Max(MountDeviation, pointing.MountDeviationDeg ?? 0);
             Lights++;
             Seconds += seconds;
             Nights.Add(night);

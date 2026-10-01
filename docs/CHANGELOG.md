@@ -1,5 +1,13 @@
 # AstroProject Forge — note di rilascio
 
+## 1.12.1 — 1 ottobre 2026
+
+- Il riquadro del **Campo inquadrato** ora sta dove sono state riprese le stelle. Sui Light veri di una Nebulosa Mago (N.I.N.A., montatura con ribaltamento del meridiano) le coordinate RA/DEC della montatura sbagliavano fino a mezzo grado dopo il ribaltamento, mentre il Light inquadrava lo stesso campo: confrontando le stelle del Light con il DSS2 il bersaglio (OBJCTRA/OBJCTDEC) cadeva entro un primo. Ora la posizione si legge, in ordine: WCS risolto, **bersaglio**, RA/DEC della montatura; se la montatura si scostava di più di un decimo di grado la scheda lo dice.
+- La rotazione viene dal **rotatore** (ROTATOR, poi ROTATANG) quando c’è, non da OBJCTROT: N.I.N.A. ci scrive sempre 0, e un OBJCTROT esattamente 0 ora vuol dire “non impostato”. Il riquadro è lo stesso girato di mezzo giro, quindi il lato del meridiano non cambia l’inclinazione. La scheda dice da dove vengono posizione e angolo (WCS, rotatore, bersaglio, montatura).
+- Il segno del bersaglio (cerchio con croce) compare quando i frame non sono centrati su di esso.
+- La **Luna** (0,5°) è disegnata in scala accanto al riquadro, per capire a colpo d’occhio quanto cielo si sta riprendendo; con un campo stretto diventa un anello tratteggiato sopra il riquadro.
+- Controlli QA: il test del Core usa gli header veri del caso sopra (bersaglio contro montatura, rotatore a 181,57°) e verifica che un angolo e il suo opposto siano la stessa orientazione.
+
 ## 1.12.0 — 1 ottobre 2026
 
 - Il **Campo inquadrato** mostra il cielo vero. Dietro il riquadro del sensore c’è ora la foto DSS2 del tuo bersaglio (dal CDS di Strasburgo), centrata dove puntavano i Light, e il riquadro sta al suo posto, in scala, ruotato come la camera (angolo dal WCS risolto o dalla rotazione dichiarata; se non c’è, resta dritto e lo dice). Al posto della nebulosa finta di prima: con una scala in gradi, la bussola (nord in alto, est a sinistra), il nome del bersaglio e le coordinate del centro.
