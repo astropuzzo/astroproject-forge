@@ -14,9 +14,11 @@ public enum FilterKind
     Narrowband
 }
 
+/// <summary>A pass band from <c>FromNm</c> to <c>ToNm</c>; <c>Peak</c> is the share of light it lets through at its best (0–1, 0 when the maker does not say), never a wavelength.</summary>
 public sealed record FilterBand(double FromNm, double ToNm, double Peak)
 {
     public double WidthNm => ToNm - FromNm;
+    public double CentreNm => (FromNm + ToNm) / 2;
     public bool Contains(double wavelengthNm) => wavelengthNm >= FromNm - 0.5 && wavelengthNm <= ToNm + 0.5;
 }
 

@@ -55,9 +55,9 @@ public sealed class SpectrumBar : Control
 
         foreach (var band in Bands ?? [])
         {
-            var colour = SpectrumColors.Wavelength(band.Peak > 0 ? band.Peak : (band.FromNm + band.ToNm) / 2);
+            var colour = SpectrumColors.Wavelength(band.CentreNm);
             var left = X(band.FromNm);
-            var right = Math.Max(left + 2.5, X(band.ToNm));
+            var right = Math.Max(left + 4, X(band.ToNm));
             var glow = new Rect(left - 3, track.Y - 2, right - left + 6, track.Height + 4);
             context.DrawRectangle(new ImmutableSolidColorBrush(Color.FromArgb(70, colour.R, colour.G, colour.B)), null, glow, 5, 5);
             context.DrawRectangle(new ImmutableSolidColorBrush(colour), null, new Rect(left, track.Y, right - left, track.Height), 3, 3);
@@ -65,9 +65,9 @@ public sealed class SpectrumBar : Control
 
         if (!ShowLabels) return;
         var labelled = new List<double>();
-        foreach (var band in (Bands ?? []).Where(band => band.WidthNm < 60).OrderBy(band => band.Peak))
+        foreach (var band in (Bands ?? []).Where(band => band.WidthNm < 60).OrderBy(band => band.CentreNm))
         {
-            var peak = band.Peak > 0 ? band.Peak : (band.FromNm + band.ToNm) / 2;
+            var peak = band.CentreNm;
             var x = X(peak);
             if (labelled.Any(other => Math.Abs(other - x) < 44)) continue;
             labelled.Add(x);
@@ -104,22 +104,21 @@ public sealed class SpectrumBar : Control
             var bands = Bands ?? [];
             foreach (var band in bands)
             {
-                var colour = SpectrumColors.Wavelength(band.Peak > 0 ? band.Peak : (band.FromNm + band.ToNm) / 2);
+                var colour = SpectrumColors.Wavelength(band.CentreNm);
                 var left = X(band.FromNm);
-                var right = Math.Max(left + 3, X(band.ToNm));
+                var right = Math.Max(left + 4, X(band.ToNm));
                 if (band.WidthNm >= 60)
                 {
                     context.DrawRectangle(new ImmutableSolidColorBrush(Color.FromArgb(90, colour.R, colour.G, colour.B)), null, new Rect(left, 0, right - left, 26));
                     continue;
                 }
-                var centre = (left + right) / 2;
-                context.DrawRectangle(new ImmutableSolidColorBrush(Color.FromArgb(80, colour.R, colour.G, colour.B)), null, new Rect(centre - 6, 0, 12, 26));
-                context.DrawRectangle(new ImmutableSolidColorBrush(colour), null, new Rect(centre - 1.5, 0, 3, 26));
+                context.DrawRectangle(new ImmutableSolidColorBrush(Color.FromArgb(80, colour.R, colour.G, colour.B)), null, new Rect(left - 5, 0, right - left + 10, 26));
+                context.DrawRectangle(new ImmutableSolidColorBrush(colour), null, new Rect(left, 0, right - left, 26));
             }
             var labelled = new List<double>();
-            foreach (var band in bands.Where(band => band.WidthNm < 60).OrderBy(band => band.Peak))
+            foreach (var band in bands.Where(band => band.WidthNm < 60).OrderBy(band => band.CentreNm))
             {
-                var peak = band.Peak > 0 ? band.Peak : (band.FromNm + band.ToNm) / 2;
+                var peak = band.CentreNm;
                 var x = X(peak);
                 if (labelled.Any(other => Math.Abs(other - x) < 60)) continue;
                 labelled.Add(x);

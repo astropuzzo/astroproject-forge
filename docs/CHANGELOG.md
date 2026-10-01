@@ -1,5 +1,11 @@
 # AstroProject Forge — note di rilascio
 
+## 1.11.1 — 1 ottobre 2026
+
+- Filtri del catalogo: il colore non è più nero. Per ogni filtro scelto dal catalogo (per esempio l’Anti-Halo PRO Dual-Band) lo slot della ruota, la striscia dello spettro e le schede prendevano la trasmissione di picco (0,85) per una lunghezza d’onda e ne ricavavano un nero; ora il colore viene dal centro delle bande, e un dual-band mostra un colore per riga (OIII e Hα).
+- Le bande di un filtro si vedono per quanto sono larghe: nella striscia dello spettro hanno la larghezza vera e sotto ognuna delle bande strette compare un riquadro ingrandito di pochi nanometri, con la riga di emissione che contiene, la larghezza (per esempio 3,2 e 3,7 nm), la trasmissione e le tacche di un nanometro. Le etichette dicono la lunghezza d’onda giusta (500,7 e 656,3 nm) invece di 0,9.
+- Camera e ottica: il pulsante ▾ apriva un elenco di una sola riga, perché il campo filtrava per il nome già scritto e non c’era niente da scorrere. Ora apre il catalogo intero (792 ottiche, 299 camere) in un menu con ricerca (ogni parola scritta deve essere nel nome, in qualsiasi ordine), apertura, lunghezza focale e barra di scorrimento; scegliere una voce la applica e chiude il menu.
+
 ## 1.11.0 — 1 ottobre 2026
 
 - Un solo percorso, quattro pagine in ordine: Importa, Strumento, Calibrazioni, Esporta. Il passo corrente è sempre in vista nella barra in alto, ogni passo finito si segna con una spunta e uno che lascia qualcosa di aperto diventa ambra.

@@ -11,6 +11,11 @@ internal static class FilterQa
         Assert(catalog.Filters.Count >= 100, $"Catalogo filtri incompleto: {catalog.Filters.Count} voci.");
         Assert(catalog.Filters.Select(filter => filter.Id).Distinct(StringComparer.OrdinalIgnoreCase).Count() == catalog.Filters.Count, "Id duplicati nel catalogo filtri.");
         Assert(catalog.Filters.All(filter => filter.Bands.Count > 0 && filter.Bands.All(band => band.FromNm < band.ToNm)), "Bande del catalogo non valide.");
+        // Peak is a transmission, not a wavelength: reading it as one painted every catalogue filter black.
+        Assert(catalog.Filters.All(filter => filter.Bands.All(band => band.Peak is > 0 and <= 1 && band.CentreNm > band.FromNm && band.CentreNm < band.ToNm && band.CentreNm is > 300 and < 1100)),
+            "La trasmissione di picco di una banda deve stare tra 0 e 1, e il suo centro dentro la banda.");
+        Assert(catalog.Find("poahpro") is { } antiHalo && antiHalo.Bands.Count == 2 && Math.Abs(antiHalo.Bands[0].CentreNm - 500.7) < 0.05 && Math.Abs(antiHalo.Bands[1].CentreNm - 656.3) < 0.05
+            && Math.Abs(antiHalo.Bands[0].WidthNm - 3.2) < 0.05 && Math.Abs(antiHalo.Bands[1].WidthNm - 3.7) < 0.05, "L'Anti-Halo PRO Dual-Band ha bande centrate su 500,7 e 656,3 nm, larghe 3,2 e 3,7 nm.");
         Assert(catalog.Find("lextreme") is { } lextreme && lextreme.Lines.SequenceEqual([EmissionLines.Oiii, EmissionLines.Ha]), "Le righe dell'L-eXtreme devono essere OIII e Hα.");
 
         Product("L-eXtreme", "lextreme");
