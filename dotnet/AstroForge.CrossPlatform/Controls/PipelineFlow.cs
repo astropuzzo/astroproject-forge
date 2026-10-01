@@ -37,7 +37,7 @@ public sealed class PipelineFlow : AmbientControl
 
     private static readonly (string Title, string Detail)[] Stages =
     [
-        ("LIGHT", "dal progetto esportato"),
+        ("LIGHT", "dal progetto"),
         ("CALIBRAZIONE", "Flat · Dark · Bias"),
         ("REGISTRAZIONE", "StarAlignment"),
         ("INTEGRAZIONE", "un master per filtro")
@@ -60,7 +60,7 @@ public sealed class PipelineFlow : AmbientControl
         _ = Motion.Tween(TopLevel.GetTopLevel(this), TimeSpan.FromMilliseconds(1400), t => t, t => { _reveal = t; InvalidateVisual(); });
     }
 
-    protected override Size MeasureOverride(Size availableSize) => new(double.IsInfinity(availableSize.Width) ? 720 : availableSize.Width, 296);
+    protected override Size MeasureOverride(Size availableSize) => new(double.IsInfinity(availableSize.Width) ? 720 : availableSize.Width, 306);
 
     public override void Render(DrawingContext context)
     {
@@ -69,18 +69,24 @@ public sealed class PipelineFlow : AmbientControl
         var streams = Streams ?? [];
         var left = 16.0;
         var right = Bounds.Width - 190;
-        var top = 74.0;
+        var top = 84.0;
         var bottom = Bounds.Height - 44;
         var stageX = Enumerable.Range(0, Stages.Length).Select(index => left + (right - left) * index / (Stages.Length - 1)).ToArray();
 
         // Stage columns: glass panes the light passes through.
+        var titles = Stages.Select((stage, index) => new FormattedText(CanvasText.T(stage.Title), culture, FlowDirection.LeftToRight, MonoBold, 9.5, index == 0 ? Dim : AccentBrush)).ToArray();
+        var details = Stages.Select(stage => new FormattedText(CanvasText.T(stage.Detail), culture, FlowDirection.LeftToRight, Mono, 9.5, Muted) { MaxTextWidth = 150 }).ToArray();
+        // The first column's note wraps into the room the second one leaves it, instead of running under it.
+        var firstRoom = stageX[1] - Math.Max(titles[1].Width, details[1].Width) / 2 - 4 - (stageX[0] - 4);
+        details[0].MaxTextWidth = Math.Clamp(firstRoom, 46, 150);
+        details[0].MaxLineCount = 2;
         for (var index = 0; index < Stages.Length; index++)
         {
             var x = stageX[index];
             var pane = new Rect(x - 13, top - 8, 26, bottom - top + 16);
             if (index > 0) context.DrawRectangle(StageFill, StageRim, pane, 13, 13);
-            var title = new FormattedText(CanvasText.T(Stages[index].Title), culture, FlowDirection.LeftToRight, MonoBold, 9.5, index == 0 ? Dim : AccentBrush);
-            var detail = new FormattedText(CanvasText.T(Stages[index].Detail), culture, FlowDirection.LeftToRight, Mono, 9.5, Muted) { MaxTextWidth = 150 };
+            var title = titles[index];
+            var detail = details[index];
             var labelX = index == 0 ? x - 4 : Math.Clamp(x - title.Width / 2, 0, Bounds.Width - title.Width);
             context.DrawText(title, new Point(labelX, 4));
             context.DrawText(detail, new Point(index == 0 ? x - 4 : Math.Clamp(x - detail.Width / 2, 0, Bounds.Width - detail.Width), 20));
