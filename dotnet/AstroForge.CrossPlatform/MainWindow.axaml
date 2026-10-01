@@ -50,8 +50,14 @@
             </Flyout>
           </Button.Flyout>
           <StackPanel Orientation="Horizontal" Spacing="8" VerticalAlignment="Center">
+            <Path Data="M4 4 H10 V10 H4 Z M14 4 H20 V10 H14 Z M4 14 H10 V20 H4 Z M14 14 H20 V20 H14 Z" Stroke="{StaticResource MutedBrush}" StrokeThickness="2" Width="14" Height="14" Stretch="Uniform" StrokeJoin="Round"/>
+            <TextBlock x:Name="ToolsLabel" Text="Strumenti" FontSize="12.5"/>
+          </StackPanel>
+        </Button>
+        <Button x:Name="SettingsButton" Classes="cmdk" Click="ToggleSettings_Click" ToolTip.Tip="Lingua, aggiornamenti, aiuto e progetto · Ctrl+," AutomationProperties.Name="Menu">
+          <StackPanel Orientation="Horizontal" Spacing="8" VerticalAlignment="Center">
             <Path Data="M3 6 H21 M3 12 H21 M3 18 H21" Stroke="{StaticResource MutedBrush}" StrokeThickness="2" Width="14" Height="14" Stretch="Uniform" StrokeLineCap="Round"/>
-            <TextBlock Text="Strumenti" FontSize="12.5"/>
+            <TextBlock x:Name="MenuLabel" Text="Menu" FontSize="12.5"/>
           </StackPanel>
         </Button>
         <Button Classes="cmdk" Click="OpenPalette_Click" ToolTip.Tip="Comandi · Ctrl+K">
