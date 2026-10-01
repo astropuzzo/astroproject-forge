@@ -86,6 +86,8 @@ public sealed partial class MainWindow : Window
             if (args.PropertyName == nameof(MainViewModel.HasSelection)) UpdateInspectorLayout();
             else if (args.PropertyName == nameof(MainViewModel.ReducedMotion)) Motion.SetReduced(_viewModel.ReducedMotion);
             else if (args.PropertyName == nameof(MainViewModel.Analysis)) { RefreshCalibrationVisuals(); PreparePlanPreview(); ScheduleExportVisuals(); ScheduleDarkCoverage(); }
+            else if (args.PropertyName == nameof(MainViewModel.Novelty)) ScheduleExportVisuals();
+            else if (args.PropertyName == nameof(MainViewModel.HasAnalysis)) AutoReanalyze();
             else if (args.PropertyName is nameof(MainViewModel.ExportProgress) or nameof(MainViewModel.ExportState)) { RefreshExportProgress(); UpdateNextFill(); }
             else if (args.PropertyName == nameof(MainViewModel.Status)) ShowToast(_viewModel.Status);
             else if (args.PropertyName is nameof(MainViewModel.Progress) or nameof(MainViewModel.IsScanning)) UpdateNextFill();
@@ -203,6 +205,13 @@ public sealed partial class MainWindow : Window
         await Settle();
         Check(_observatory.CameraName == detected && !_observatory.CameraWasChanged && _viewModel.ReviewQueue.Count == 0, "Restoring the detected camera must restore the matches.");
 
+        // The Moon: the full Moon of 28 August 2026 seen from Rome is high around midnight and below the horizon at midday.
+        Check(SkyMath.MoonAltitude(new DateTime(2026, 8, 28, 23, 0, 0, DateTimeKind.Utc), 41.9, 12.5) > 15 && SkyMath.MoonAltitude(new DateTime(2026, 8, 28, 10, 0, 0, DateTimeKind.Utc), 41.9, 12.5) < -10,
+            "The Moon must be high at night and low by day at full Moon.");
+
+        // Data added to a project that was exported: read again in place, what came in is marked, the update copies only that.
+        await RunUpdateScenarioAsync(null);
+
         // The tour walks the real controls of every step to its end.
         StartTour(-1);
         for (var index = 0; index < 30 && Tour.IsRunning; index++) { await Settle(); Tour.Next(); }
@@ -269,6 +278,7 @@ public sealed partial class MainWindow : Window
                 await Task.Delay(2200);
                 await CaptureAsync(Path.Combine(folder, "4-export-done.png"));
             }
+            await RunUpdateScenarioAsync(folder);
             Console.WriteLine($"CAPTURE DONE · {folder}");
             return 0;
         }
@@ -277,6 +287,71 @@ public sealed partial class MainWindow : Window
             Console.Error.WriteLine($"CAPTURE FAILED · {exception}");
             return 1;
         }
+    }
+
+    /// <summary>
+    /// A project that was exported with one night, then gets the second night added: what the steps show at each moment
+    /// (the capture saves a picture of each one).
+    /// </summary>
+    private async Task RunUpdateScenarioAsync(string? folder)
+    {
+        static void Check(bool condition, string message) { if (!condition) throw new InvalidOperationException(message); }
+        static async Task Settle() => await Task.Delay(400);
+        async Task Shot(string name) { if (folder is not null) await CaptureAsync(Path.Combine(folder, name)); }
+        var root = AppDataPaths.Combine("Demo");
+        _viewModel.NewProject();
+        _viewModel.ProjectName = "Cygnus Loop (aggiornamento)";
+        _viewModel.DestinationPath = Path.Combine(root, "ExportUpdate");
+        foreach (var source in new[] { "ASIAIR", "Libreria Master" }) _viewModel.AddSource(Path.Combine(root, source));
+        await _viewModel.ScanAsync();
+        await Task.Delay(900);
+        _shell.CurrentStep = ShellViewModel.ExportStep;
+        await Task.Delay(900);
+        await _viewModel.ExportAsync();
+        await Task.Delay(1500);
+        await Shot("u1-exported-one-night.png");
+        Check(_viewModel.ExportState == ExportRunState.Completed && _viewModel.Novelty is null, "A project that was just exported has nothing new.");
+
+        _shell.CurrentStep = ShellViewModel.ImportStep;
+        await Task.Delay(900);
+        _viewModel.AddSource(Path.Combine(root, "NINA"));
+        await Task.Delay(150);
+        await Shot("u2-new-source-added.png");
+
+        // The window reads the project again by itself; wait for it.
+        for (var wait = 0; wait < 100 && !(_viewModel.HasAnalysis && !_viewModel.IsScanning && !_viewModel.NeedsReanalysis); wait++) await Task.Delay(200);
+        await Task.Delay(1800);
+        await Shot("u3-rescanned.png");
+        Check(_shell.Analyzed && _shell.CurrentStep == ShellViewModel.ImportStep, $"Adding data must read the project again where the person is, not carry on (step {_shell.CurrentStep}).");
+        Check(_viewModel.Novelty is { WholeNights: 1, NewLights: 8 } && _shell.HasNovelty && _shell.NoveltyText.Length > 0, "The second night must be reported as new.");
+        Check(_shell.SkyNights.Count(night => night.IsNew) == 1 && _shell.SkyNights.All(night => night.MoonAltitudes is { Count: 73 }), "The new night must be marked on the timeline, every night with its Moon.");
+
+        _shell.CurrentStep = ShellViewModel.ExportStep;
+        await Task.Delay(1800);
+        await Shot("u4-export-update.png");
+        if (folder is not null)
+        {
+            // The card is translucent: give it the night's colour for the close-up.
+            var background = NightsCard.Background;
+            NightsCard.Background = new SolidColorBrush(Color.Parse("#0B1022"));
+            await CaptureControlAsync(NightsCard, Path.Combine(folder, "u5-nightsky.png"));
+            NightsCard.Background = background;
+        }
+        Check(_viewModel.HasExportHistory && _shell.NextKind == NextActionKind.Export && (_shell.NextLabel.StartsWith("Update") || _shell.NextLabel.StartsWith("Aggiorna")), $"An update must say it is one ({_shell.NextLabel}).");
+        await _viewModel.ExportAsync();
+        await Settle();
+        Check(_viewModel.Novelty is null && _viewModel.ExportState == ExportRunState.Completed, "Once exported, nothing is new any more.");
+    }
+
+    // One control at double size, to look at its drawing closely.
+    private async Task CaptureControlAsync(Control control, string path)
+    {
+        await Dispatcher.UIThread.InvokeAsync(() => { }, DispatcherPriority.Background);
+        var size = new PixelSize(Math.Max(1, (int)control.Bounds.Width * 2), Math.Max(1, (int)control.Bounds.Height * 2));
+        using var bitmap = new Avalonia.Media.Imaging.RenderTargetBitmap(size, new Vector(192, 192));
+        bitmap.Render(control);
+        using var file = File.Create(path);
+        bitmap.Save(file, new Avalonia.Media.Imaging.PngBitmapEncoderOptions());
     }
 
     private async Task CaptureAsync(string path)
@@ -312,11 +387,49 @@ public sealed partial class MainWindow : Window
         if (IsLoaded) ScheduleLocalization();
         if (Backdrop is not null && step != _lastScreen) Backdrop.Warp(step > _lastScreen ? 1 : -1);
         _lastScreen = step;
+        ScrollPageHome(step);
         if (step == ShellViewModel.ExportStep) { PreparePlanPreview(); ScheduleExportVisuals(); }
         if (step == ShellViewModel.CalibrationStep) RefreshCalibrationVisuals();
     }
 
     private void Back_Click(object? sender, RoutedEventArgs e) => GoToStep(_shell.CurrentStep - 1);
+
+    private bool _reanalyzing;
+
+    /// <summary>
+    /// A source or library was added to (or taken out of) a project that was already read: read it again where the person is,
+    /// instead of leaving every step empty and sending them back to the start. What came in is marked afterwards.
+    /// </summary>
+    private void AutoReanalyze()
+    {
+        if (_reanalyzing || !_viewModel.NeedsReanalysis || !_viewModel.CanAnalyzeProject) return;
+        _reanalyzing = true;
+        _shell.StayOnStep();
+        Dispatcher.UIThread.Post(async () =>
+        {
+            try { await RunAsync("AF-SCAN-001", () => _viewModel.ScanAsync()); }
+            finally { _reanalyzing = false; }
+        }, DispatcherPriority.Background);
+    }
+
+    private void NoveltyGoToExport_Click(object? sender, RoutedEventArgs e) => GoToStep(ShellViewModel.ExportStep);
+    private void DismissNovelty_Click(object? sender, RoutedEventArgs e) => _viewModel.DismissNovelty();
+
+    // The catalogue lists are long: a button opens them whole, the box still filters as you type.
+    private void BrowseCameras_Click(object? sender, RoutedEventArgs e) { CameraBox.Focus(); CameraBox.IsDropDownOpen = true; }
+    private void BrowseTelescopes_Click(object? sender, RoutedEventArgs e) { TelescopeBox.Focus(); TelescopeBox.IsDropDownOpen = true; }
+
+    // A page opens at its top, whatever the person did on it the last time.
+    private void ScrollPageHome(int step)
+    {
+        switch (step)
+        {
+            case ShellViewModel.ImportStep: ImportPage.ScrollToHome(); break;
+            case ShellViewModel.SetupStep: SetupScroll.ScrollToHome(); break;
+            case ShellViewModel.CalibrationStep: CalibrationScroll.ScrollToHome(); break;
+            case ShellViewModel.ExportStep: ExportScroll.ScrollToHome(); break;
+        }
+    }
 
     private void OpenSheet(int index)
     {
@@ -1327,13 +1440,16 @@ public sealed partial class MainWindow : Window
             return colours[filters[0]!] = SpectrumColors.Glass(SpectrumColors.BandsOf(identity), identity.Kind);
         }
 
+        var fresh = _viewModel.Novelty?.NewPaths;
+        int NewIn(IEnumerable<FrameMetadata> frames) => fresh is null ? 0 : frames.Count(frame => fresh.Contains(frame.Path));
         ExportNode FromPlan(ProjectTreeNode node, int depth) => new(node.Name, node.Count, depth >= 1 && node.Name.StartsWith("FILTER_", StringComparison.Ordinal) || depth >= 2 ? FilterColour(node.Frames) : null,
-            depth >= 3 ? [] : node.Children.Where(child => !child.IsLeaf || child.Icon != "·").Select(child => FromPlan(child, depth + 1)).ToList());
+            depth >= 3 ? [] : node.Children.Where(child => !child.IsLeaf || child.Icon != "·").Select(child => FromPlan(child, depth + 1)).ToList(), NewIn(node.Frames));
 
         if (_viewModel.PlannedTreeRoots.Count > 0)
         {
             ExportMapView.IsPreview = false;
-            ExportMapView.Root = new ExportNode(name, _viewModel.PlannedTreeRoots.Sum(node => node.Count), null, _viewModel.PlannedTreeRoots.Select(node => FromPlan(node, 1)).ToList());
+            ExportMapView.Root = new ExportNode(name, _viewModel.PlannedTreeRoots.Sum(node => node.Count), null, _viewModel.PlannedTreeRoots.Select(node => FromPlan(node, 1)).ToList(),
+                _viewModel.PlannedTreeRoots.Sum(node => NewIn(node.Frames)));
         }
         else if (_viewModel.Analysis is { Lights.Count: > 0 } analysis)
         {
@@ -1342,8 +1458,8 @@ public sealed partial class MainWindow : Window
                 .GroupBy(frame => frame.FilterName.Value ?? "—", StringComparer.OrdinalIgnoreCase)
                 .Select(filter => new ExportNode($"FILTER_{filter.Key}", filter.Count(), FilterColour(filter.ToList()), filter
                     .GroupBy(frame => frame.SessionId.Value ?? "—").OrderBy(night => night.Key, StringComparer.Ordinal)
-                    .Select(night => new ExportNode($"NIGHT_{night.Key}", night.Count(), null, [])).ToList()))
-                .ToList());
+                    .Select(night => new ExportNode($"NIGHT_{night.Key}", night.Count(), null, [], NewIn(night))).ToList(), NewIn(filter)))
+                .ToList(), NewIn(frames));
             var lights = analysis.Lights.Select(item => item.Light).ToList();
             var flats = analysis.Lights.SelectMany(item => item.FlatGroup?.Frames ?? []).Distinct().ToList();
             var roles = new List<ExportNode> { Branch("Light", lights) };
@@ -1353,7 +1469,7 @@ public sealed partial class MainWindow : Window
             if (darks > 0) roles.Add(new ExportNode("Dark", darks, null, []));
             if (biases > 0) roles.Add(new ExportNode("Bias", biases, null, []));
             ExportMapView.IsPreview = true;
-            ExportMapView.Root = new ExportNode(name, roles.Sum(role => role.Files), null, roles);
+            ExportMapView.Root = new ExportNode(name, roles.Sum(role => role.Files), null, roles, roles.Sum(role => role.New));
         }
         else ExportMapView.Root = null;
         RefreshExportProgress();

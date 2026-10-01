@@ -642,6 +642,15 @@
   </Style>
   <Style Selector="Button.icon:pointerover"><Setter Property="RenderTransform" Value="none"/></Style>
 
+  <Style Selector="Border.novelty">
+    <Setter Property="Background"><LinearGradientBrush StartPoint="0%,0%" EndPoint="100%,0%"><GradientStop Color="#2B3FE0D0" Offset="0"/><GradientStop Color="#140E162C" Offset="0.7"/></LinearGradientBrush></Setter>
+    <Setter Property="BorderBrush" Value="#593FE0D0"/>
+    <Setter Property="BorderThickness" Value="1"/>
+    <Setter Property="CornerRadius" Value="14"/>
+    <Setter Property="Padding" Value="16,9"/>
+    <Setter Property="BoxShadow" Value="0 8 30 -12 #663FE0D0"/>
+  </Style>
+
   <Style Selector="Border.drawer">
     <Setter Property="Background" Value="{StaticResource DrawerBrush}"/>
     <Setter Property="BorderBrush" Value="{StaticResource LineHiBrush}"/>

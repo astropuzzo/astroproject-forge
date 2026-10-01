@@ -52,6 +52,26 @@ public sealed class ExportPreflightException(ExportPreflightReport report)
 
 public static class ProjectExportPreflight
 {
+    /// <summary>
+    /// The source files a project folder already carries, from its manifest: what an update would not copy again. Empty when
+    /// the folder does not exist, was not made by Forge or belongs to another project name.
+    /// </summary>
+    public static IReadOnlySet<string> ExportedSources(string? destinationRoot, string? projectName)
+    {
+        var sources = new HashSet<string>(PathIdentity.Comparer);
+        if (string.IsNullOrWhiteSpace(destinationRoot) || string.IsNullOrWhiteSpace(projectName)) return sources;
+        string manifest;
+        try { manifest = Path.Combine(Path.GetFullPath(destinationRoot), projectName, "_AstroForge", "manifest.json"); }
+        catch (Exception exception) when (exception is ArgumentException or NotSupportedException or PathTooLongException) { return sources; }
+        if (!IsManagedProject(manifest, projectName)) return sources;
+        foreach (var record in ReadManifestFiles(manifest))
+        {
+            try { sources.Add(Path.GetFullPath(record.Source)); }
+            catch (Exception exception) when (exception is ArgumentException or NotSupportedException or PathTooLongException) { /* a recorded path that is no path */ }
+        }
+        return sources;
+    }
+
     public static async Task<ExportPreflightReport> AnalyzeAsync(
         ProjectPlan plan,
         ExportPreflightOptions? options = null,

@@ -14,7 +14,11 @@ public sealed record SkyExposure(double Start, double Duration, Color Color, boo
 /// One observing night: its exposures, the Moon's phase and, when the headers carry the site, the Sun's altitude
 /// every ten minutes from 18:00 to 06:00 so twilight can be shaded where it really was.
 /// </summary>
-public sealed record SkyNight(string Label, string Detail, IReadOnlyList<SkyExposure> Exposures, double MoonAge, double MoonIllumination, IReadOnlyList<double>? SunAltitudes);
+/// <param name="MoonAltitudes">The Moon's altitude every ten minutes from 18:00 to 06:00 (parallax included), so the hours it was up can be drawn.</param>
+/// <param name="MoonEstimated">The altitudes assume a typical northern site because the headers carry no position.</param>
+/// <param name="IsNew">The night came with data the project did not have before (marked on the timeline).</param>
+public sealed record SkyNight(string Label, string Detail, IReadOnlyList<SkyExposure> Exposures, double MoonAge, double MoonIllumination, IReadOnlyList<double>? SunAltitudes,
+    IReadOnlyList<double>? MoonAltitudes = null, bool MoonEstimated = false, bool IsNew = false);
 
 /// <summary>
 /// Every night of the project as a row across the dark hours, 18:00 → 06:00, with a tick per sub in its filter's
@@ -28,7 +32,7 @@ public sealed class NightSky : Control
     public static readonly StyledProperty<int> ShownProperty = AvaloniaProperty.Register<NightSky, int>(nameof(Shown), int.MaxValue);
 
     public const double StartHour = 18, EndHour = 30;
-    private const double LabelWidth = 58, AxisHeight = 16;
+    private const double LabelWidth = 68, AxisHeight = 16;
     private static readonly Typeface Mono = new(new FontFamily("avares://AstroProjectForge/Assets/Fonts#JetBrains Mono"));
     private static readonly Typeface Body = new(FontFamily.Default);
     private static readonly IBrush Muted = new ImmutableSolidColorBrush(Color.Parse("#8E97BD"));
@@ -152,9 +156,16 @@ public sealed class NightSky : Control
                 }
             }
 
-            var label = new FormattedText(night.Label, CultureInfo.CurrentCulture, FlowDirection.LeftToRight, Mono, Math.Min(10, row * 0.78), index == _hover ? Fg : Muted);
-            context.DrawText(label, new Point(0, y + (row - label.Height) / 2));
-            DrawMoon(context, new Point(LabelWidth - 9, y + row / 2), Math.Clamp(row / 2 - 1.4, 2, 6), night.MoonAge);
+            DrawMoonUp(context, night, plot, y, row);
+            if (night.IsNew)
+            {
+                // A night that came with new data: a lit rail at the edge and the date in the accent.
+                context.DrawRectangle(new SolidColorBrush(Color.FromArgb(18, 157, 184, 255)), null, new Rect(0, y, plot.Right, row - 0.6), 4, 4);
+                context.DrawRectangle(Accent, null, new Rect(0, y + 2, 2.5, Math.Max(2, row - 4.6)), 1, 1);
+            }
+            var label = new FormattedText(night.Label, CultureInfo.CurrentCulture, FlowDirection.LeftToRight, Mono, Math.Min(10, row * 0.78), night.IsNew ? Accent : index == _hover ? Fg : Muted);
+            context.DrawText(label, new Point(night.IsNew ? 7 : 0, y + (row - label.Height) / 2));
+            DrawMoon(context, new Point(LabelWidth - 12, y + row / 2), Math.Clamp(row / 2 - 1.2, 2, 8), night.MoonAge);
 
             // Ticks appear night by night, left to right, like the sky filling in.
             var local = Math.Clamp((_growth * (nights.Count + 6) - index) / 6, 0, 1);
@@ -180,6 +191,27 @@ public sealed class NightSky : Control
         }
 
         if (_hover >= 0) DrawTip(context, nights[_hover], bounds);
+    }
+
+    /// <summary>
+    /// The hours the Moon is above the horizon: a silver wash across the night with a bright rail at the foot of the row, stronger the
+    /// fuller the Moon. A site assumed from the time zone (no position in the headers) is drawn fainter.
+    /// </summary>
+    private static void DrawMoonUp(DrawingContext context, SkyNight night, Rect plot, double y, double row)
+    {
+        if (night.MoonAltitudes is not { Count: > 1 } moon) return;
+        var slice = plot.Width / (moon.Count - 1);
+        var strength = 0.25 + 0.75 * night.MoonIllumination;
+        var certainty = night.MoonEstimated ? 0.55 : 1;
+        var wash = new SolidColorBrush(Color.FromArgb((byte)((14 + 40 * strength) * certainty), 226, 232, 255));
+        var rail = new SolidColorBrush(Color.FromArgb((byte)((90 + 150 * strength) * certainty), 232, 236, 255));
+        for (var s = 0; s < moon.Count - 1; s++)
+        {
+            if ((moon[s] + moon[s + 1]) / 2 <= SkyMath.MoonRiseAltitude) continue;
+            var x = plot.X + s * slice;
+            context.DrawRectangle(wash, null, new Rect(x, y, slice + 0.5, row - 0.6));
+            context.DrawRectangle(rail, null, new Rect(x, y + row - 3.2, slice + 0.5, 2.2));
+        }
     }
 
     private void DrawTip(DrawingContext context, SkyNight night, Rect bounds)

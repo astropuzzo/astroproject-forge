@@ -8,7 +8,7 @@
         WindowStartupLocation="CenterScreen">
   <Panel>
   <local:StarfieldBackdrop x:Name="Backdrop"/>
-  <Grid x:Name="RootLayout" RowDefinitions="Auto,*,Auto" Margin="30,20,30,20" MaxWidth="1680">
+  <Grid x:Name="RootLayout" RowDefinitions="Auto,Auto,*,Auto" Margin="30,20,30,20" MaxWidth="1680">
 
     <!-- Header: where the project is (the four steps), what it is, and the tools. -->
     <Grid x:Name="TopBar" ColumnDefinitions="Auto,*,Auto" ColumnSpacing="30" MinHeight="70">
@@ -64,8 +64,21 @@
     </Grid>
     <ProgressBar Grid.Row="0" VerticalAlignment="Bottom" Margin="0,0,0,-8" Height="2" MinHeight="2" Maximum="100" Value="{Binding Progress}" IsVisible="{Binding IsScanning}"/>
 
+    <!-- What is new: data added to a project that already had some. -->
+    <Border Grid.Row="1" x:Name="NoveltyBar" Classes="novelty" IsVisible="{Binding HasNovelty}" Margin="0,12,0,0">
+      <Grid ColumnDefinitions="Auto,*,Auto,Auto" ColumnSpacing="14">
+        <Path Data="M12 3 L13.8 10.2 L21 12 L13.8 13.8 L12 21 L10.2 13.8 L3 12 L10.2 10.2Z" Fill="{StaticResource OiiiBrush}" Width="16" Height="16" Stretch="Uniform" VerticalAlignment="Center"/>
+        <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="12" VerticalAlignment="Center">
+          <TextBlock Text="{Binding NoveltyTitle}" FontWeight="SemiBold"/>
+          <TextBlock Text="{Binding NoveltyText}" Classes="muted" TextTrimming="CharacterEllipsis"/>
+        </StackPanel>
+        <Button Grid.Column="2" Content="{Binding NoveltyAction}" Classes="primary" Padding="14,5" IsVisible="{Binding !IsExportStep}" Click="NoveltyGoToExport_Click"/>
+        <Button Grid.Column="3" Classes="icon" Content="✕" Click="DismissNovelty_Click" ToolTip.Tip="Chiudi le novità: i dati restano nel progetto"/>
+      </Grid>
+    </Border>
+
     <!-- One page per step. -->
-    <Grid Grid.Row="1" Margin="0,16,0,10">
+    <Grid Grid.Row="2" Margin="0,16,0,10">
       <Border x:Name="RecoveryBanner" Classes="warningBanner" IsVisible="{Binding Main.HasRecoverySnapshot}" VerticalAlignment="Top" ZIndex="5" Margin="0,0,0,8"><Grid ColumnDefinitions="*,Auto,Auto" ColumnSpacing="7"><StackPanel><TextBlock Text="RECUPERO DISPONIBILE" Classes="eyebrow"/><TextBlock Text="{Binding Main.RecoverySummary}" TextWrapping="Wrap"/></StackPanel><Button Grid.Column="1" Content="Ripristina" Click="RestoreRecovery_Click"/><Button Grid.Column="2" Content="Ignora" Click="DiscardRecovery_Click"/></Grid></Border>
       <Carousel x:Name="ScreenPages" SelectedIndex="{Binding CurrentStep, Mode=TwoWay}">
         <Carousel.PageTransition><local:SlewPageTransition/></Carousel.PageTransition>
@@ -261,7 +274,7 @@
                       <Grid ColumnDefinitions="82,*" RowDefinitions="Auto,Auto,Auto,Auto,Auto,Auto" RowSpacing="8" ColumnSpacing="8">
                         <TextBlock Text="Camera" Classes="muted" FontSize="12.5" VerticalAlignment="Center"/>
                         <StackPanel Grid.Column="1" Spacing="5">
-                          <AutoCompleteBox x:Name="CameraBox" ItemsSource="{Binding CameraChoices}" SelectedItem="{Binding SelectedCamera}" Text="{Binding CameraText}" FilterMode="Contains" MinimumPrefixLength="1" MaxDropDownHeight="260" AutomationProperties.Name="Camera reale"/>
+                          <Grid ColumnDefinitions="*,Auto" ColumnSpacing="6"><AutoCompleteBox x:Name="CameraBox" ItemsSource="{Binding CameraChoices}" SelectedItem="{Binding SelectedCamera}" Text="{Binding CameraText}" FilterMode="Contains" MinimumPrefixLength="0" MaxDropDownHeight="260" AutomationProperties.Name="Camera reale"/><Button Grid.Column="1" Classes="icon" Content="▾" Click="BrowseCameras_Click" ToolTip.Tip="Sfoglia il catalogo delle camere"/></Grid>
                           <Border Classes="seg" IsVisible="{Binding IsCustomCamera}" HorizontalAlignment="Left">
                             <StackPanel Orientation="Horizontal">
                               <RadioButton Classes="seg" GroupName="cameraType" IsChecked="{Binding CustomCameraMono}" Content="Mono"/>
@@ -271,7 +284,7 @@
                           <TextBlock Text="{Binding DetectedCameraNote}" Classes="muted" FontSize="10.5" TextTrimming="CharacterEllipsis"/>
                         </StackPanel>
                         <TextBlock Grid.Row="1" Text="Ottica" Classes="muted" FontSize="12.5" VerticalAlignment="Center"/>
-                        <AutoCompleteBox Grid.Row="1" Grid.Column="1" x:Name="TelescopeBox" ItemsSource="{Binding TelescopeChoices}" SelectedItem="{Binding SelectedTelescope}" Text="{Binding TelescopeText}" FilterMode="Contains" MinimumPrefixLength="1" MaxDropDownHeight="260" AutomationProperties.Name="Ottica"/>
+                        <Grid Grid.Row="1" Grid.Column="1" ColumnDefinitions="*,Auto" ColumnSpacing="6"><AutoCompleteBox x:Name="TelescopeBox" ItemsSource="{Binding TelescopeChoices}" SelectedItem="{Binding SelectedTelescope}" Text="{Binding TelescopeText}" FilterMode="Contains" MinimumPrefixLength="0" MaxDropDownHeight="260" AutomationProperties.Name="Ottica"/><Button Grid.Column="1" Classes="icon" Content="▾" Click="BrowseTelescopes_Click" ToolTip.Tip="Sfoglia il catalogo dei telescopi"/></Grid>
                         <TextBlock Grid.Row="2" Text="Focale" Classes="muted" FontSize="12.5" VerticalAlignment="Center" IsVisible="{Binding IsCustomTelescope}"/>
                         <Grid Grid.Row="2" Grid.Column="1" ColumnDefinitions="*,*" ColumnSpacing="8" IsVisible="{Binding IsCustomTelescope}">
                           <NumericUpDown Value="{Binding CustomFocal}" Minimum="50" Maximum="10000" Increment="1" FormatString="0 mm" AutomationProperties.Name="Focale nativa"/>
@@ -526,7 +539,7 @@
     </Grid>
 
     <!-- Footer: back, what this step asks, and the one button that moves on. -->
-    <Grid Grid.Row="2" x:Name="Footer" ColumnDefinitions="Auto,*,Auto" ColumnSpacing="18" MinHeight="56">
+    <Grid Grid.Row="3" x:Name="Footer" ColumnDefinitions="Auto,*,Auto" ColumnSpacing="18" MinHeight="56">
       <Button x:Name="BackButton" Classes="ghost" Content="← Indietro" Click="Back_Click" IsVisible="{Binding CanGoBack}" VerticalAlignment="Center" MinWidth="110"/>
       <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="12" VerticalAlignment="Center" Margin="4,0">
         <Ellipse Width="6" Height="6" Fill="{StaticResource AccentBrush}" VerticalAlignment="Center"/>

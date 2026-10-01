@@ -7,7 +7,8 @@ using Avalonia.Media.Immutable;
 namespace AstroForge.CrossPlatform.Controls;
 
 /// <summary>A folder of the exported project, with the files it will hold and the filter colour it carries.</summary>
-public sealed record ExportNode(string Name, int Files, Color? Colour, IReadOnlyList<ExportNode> Children);
+/// <param name="New">Files in this folder the project does not have yet; on an update the branches that carry them stand out.</param>
+public sealed record ExportNode(string Name, int Files, Color? Colour, IReadOnlyList<ExportNode> Children, int New = 0);
 
 /// <summary>
 /// The project as it will land on disk, drawn as a tree growing from the project folder to its filter and night
@@ -123,6 +124,7 @@ public sealed class ExportMap : AmbientControl
         }
 
         var placed = Place();
+        var hasNew = Root.New > 0;
         var maxFiles = Math.Max(1, placed.Max(item => item.Node.Files));
         var right = placed.Max(item => item.At.X);
         var threshold = 14 + (right - 14 + 12) * Math.Clamp(_shownProgress, 0, 1);
@@ -146,7 +148,7 @@ public sealed class ExportMap : AmbientControl
                 g.EndFigure(false);
             }
             var width = 1.2 + 3 * Math.Sqrt(item.Node.Files / (double)maxFiles);
-            using (context.PushOpacity(appear))
+            using (context.PushOpacity(appear * (hasNew && item.Node.New == 0 ? 0.42 : 1)))
             {
                 context.DrawGeometry(null, new Pen(new SolidColorBrush(Color.FromArgb(IsPreview ? (byte)40 : (byte)70, colour.R, colour.G, colour.B)), width, lineCap: PenLineCap.Round), geometry);
                 if (_shownProgress > 0)
@@ -181,8 +183,14 @@ public sealed class ExportMap : AmbientControl
             var colour = item.Node.Colour ?? item.Parent?.Node.Colour ?? Accent;
             var lit = _shownProgress > 0 && item.At.X <= threshold;
             var radius = item.Depth == 0 ? 7 : 3 + 4 * Math.Sqrt(item.Node.Files / (double)maxFiles);
-            using (context.PushOpacity(appear))
+            using (context.PushOpacity(appear * (hasNew && item.Node.New == 0 && item.Depth > 0 ? 0.5 : 1)))
             {
+                // An update: the branches that carry new files breathe a ring, the ones already in the project step back.
+                if (item.Node.New > 0 && item.Depth > 0)
+                {
+                    var breath = Motion.Reduced ? 0.5 : 0.5 + 0.5 * Math.Sin(Clock * 3);
+                    context.DrawEllipse(null, new Pen(new SolidColorBrush(Color.FromArgb((byte)(120 + 100 * breath), Oiii.R, Oiii.G, Oiii.B)), 1.4), item.At, radius + 4 + 2 * breath, radius + 4 + 2 * breath);
+                }
                 if (lit || item.Depth == 0)
                     context.DrawEllipse(new ImmutableSolidColorBrush(Color.FromArgb(50, colour.R, colour.G, colour.B)), null, item.At, radius + 6, radius + 6);
                 if (_flash > 0)
@@ -195,7 +203,9 @@ public sealed class ExportMap : AmbientControl
                 {
                     MaxTextWidth = leaf ? 236 : 170, MaxLineCount = 1, Trimming = TextTrimming.CharacterEllipsis
                 };
-                var count = new FormattedText(item.Node.Files == 1 ? "1 file" : $"{item.Node.Files} file", culture, FlowDirection.LeftToRight, Mono, 9, Muted);
+                var countText = item.Node.Files == 1 ? "1 file" : $"{item.Node.Files} file";
+                if (item.Node.New > 0) countText += $" · +{item.Node.New} {CanvasText.T("nuovi")}";
+                var count = new FormattedText(countText, culture, FlowDirection.LeftToRight, Mono, 9, item.Node.New > 0 ? new SolidColorBrush(Oiii) : Muted);
                 if (leaf)
                 {
                     context.DrawText(name, new Point(item.At.X + radius + 8, item.At.Y - name.Height + 2));

@@ -787,5 +787,9 @@
   "Preflight non completato": "Pre-check did not complete",
   "Verifica del progetto…": "Checking the project…",
   "Genera il piano dopo aver risolto le calibrazioni.": "Build the plan once the calibrations are resolved.",
-  "Spazio non disponibile": "Space not available"
+  "Spazio non disponibile": "Space not available",
+  "Chiudi le novità: i dati restano nel progetto": "Close the news: the data stays in the project",
+  "Sfoglia il catalogo dei telescopi": "Browse the telescope catalogue",
+  "Sfoglia il catalogo delle camere": "Browse the camera catalogue",
+  "nuovi": "new"
 }

@@ -36,6 +36,32 @@ public static class SkyMath
         return Math.Asin(Math.Sin(lat) * Math.Sin(dec) + Math.Cos(lat) * Math.Cos(dec) * Math.Cos(hourAngle)) * 180 / Math.PI;
     }
 
+    /// <summary>
+    /// Altitude of the Moon in degrees (longitude east positive). The classic short series for the Moon's longitude, latitude
+    /// and parallax: good to about a degree, so moonrise and moonset land within a few minutes.
+    /// </summary>
+    public static double MoonAltitude(DateTime utc, double latitude, double longitude)
+    {
+        var d = (utc - new DateTime(2000, 1, 1, 12, 0, 0, DateTimeKind.Utc)).TotalDays;
+        var meanLongitude = 218.316 + 13.176396 * d;
+        var anomaly = Radians(134.963 + 13.064993 * d);
+        var argument = Radians(93.272 + 13.229350 * d);
+        var longitudeEcliptic = Radians(meanLongitude + 6.289 * Math.Sin(anomaly));
+        var latitudeEcliptic = Radians(5.128 * Math.Sin(argument));
+        var e = Radians(23.439 - 0.0000004 * d);
+        var ra = Math.Atan2(Math.Sin(longitudeEcliptic) * Math.Cos(e) - Math.Tan(latitudeEcliptic) * Math.Sin(e), Math.Cos(longitudeEcliptic));
+        var dec = Math.Asin(Math.Sin(latitudeEcliptic) * Math.Cos(e) + Math.Cos(latitudeEcliptic) * Math.Sin(e) * Math.Sin(longitudeEcliptic));
+        var gmst = (18.697374558 + 24.06570982441908 * d) % 24;
+        var hourAngle = Radians(gmst * 15 + longitude) - ra;
+        var lat = Radians(latitude);
+        var altitude = Math.Asin(Math.Sin(lat) * Math.Sin(dec) + Math.Cos(lat) * Math.Cos(dec) * Math.Cos(hourAngle)) * 180 / Math.PI;
+        // Parallax (the Moon is close) lowers it by almost a degree: the Moon rises when this reads about +0.1°.
+        return altitude - 0.95 * Math.Cos(Radians(altitude));
+    }
+
+    /// <summary>The altitude at which the Moon's upper limb meets the horizon, refraction included.</summary>
+    public const double MoonRiseAltitude = -0.83;
+
     /// <summary>Observer site from SITELAT/SITELONG (decimal or sexagesimal), when the capture software wrote it.</summary>
     public static (double Latitude, double Longitude)? SiteOf(IEnumerable<FrameMetadata> frames)
     {

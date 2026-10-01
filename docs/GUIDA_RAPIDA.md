@@ -46,6 +46,10 @@ Apri **Calibrazioni**. Correggi solo gli elementi segnalati, una scelta alla vol
 
 Nella pagina **Esporta** dai un nome al progetto, scegli la destinazione e premi **Esporta**. Se la cartella contiene già un progetto gestito, vengono copiati soltanto i file nuovi. Gli invariati non vengono duplicati e i conflitti vengono bloccati.
 
+### Hai ripreso altre notti?
+
+Aggiungi la nuova cartella nella pagina **Importa** (o i file singoli): Forge rilegge il progetto da solo, dove sei, e mostra una barra con le novità: notti nuove, Light in più, filtri nuovi, ore in più. Nella pagina **Esporta** il pulsante diventa **Aggiorna progetto** e dice quanti dati nuovi verranno copiati; nell’albero i rami con file nuovi si illuminano. I file già nel progetto non vengono toccati.
+
 ## 6. Imposta WBPP
 
 Nella pagina **Esporta**, dopo l’esportazione, trovi **PixInsight WBPP**:

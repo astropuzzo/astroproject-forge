@@ -34,6 +34,7 @@ public sealed class ShellViewModel : BindableBase
     private int _step;
     private int _maxReached;
     private bool _wasAnalysed;
+    private bool _stayOnce;
     private int _nightIndex;
     private int _palette;
     private string _query = "";
@@ -72,6 +73,9 @@ public sealed class ShellViewModel : BindableBase
             StepChanged?.Invoke(this, next);
         }
     }
+
+    /// <summary>The next analysis re-reads a project the user was already working on (data added): it does not carry on to another step.</summary>
+    public void StayOnStep() => _stayOnce = true;
 
     public bool CanGoBack => _step > 0;
     public bool IsImportStep => _step == ImportStep;
@@ -139,6 +143,28 @@ public sealed class ShellViewModel : BindableBase
     public bool IsScanning => _main.IsScanning;
     public double Progress => _main.Progress;
 
+    // ---- What is new: data added to a project that already had some ----
+    public bool HasNovelty => _main.Novelty is not null;
+    public string NoveltyTitle => English ? "What is new in the project" : "Novità nel progetto";
+    public string NoveltyAction => English ? "Go to export" : "Vai a Esporta";
+    public string NoveltyText
+    {
+        get
+        {
+            if (_main.Novelty is not { } news) return "";
+            var parts = new List<string>();
+            if (news.WholeNights > 0) parts.Add(news.WholeNights == 1 ? (English ? "1 new night" : "1 notte nuova") : English ? $"{news.WholeNights} new nights" : $"{news.WholeNights} notti nuove");
+            var grown = news.Nights.Where(night => !night.WholeNight).Sum(night => night.Lights);
+            if (grown > 0) parts.Add(English ? $"{grown} more Lights on nights already in the project" : $"{grown} Light in più su notti già nel progetto");
+            else if (news.NewLights > 0) parts.Add(English ? $"{news.NewLights} Lights" : $"{news.NewLights} Light");
+            if (news.NewFilters.Count > 0) parts.Add((English ? "new filter " : "filtro nuovo ") + string.Join(", ", news.NewFilters.Select(DisplayFilter)));
+            if (news.NewFlats > 0) parts.Add(English ? $"{news.NewFlats} Flats" : $"{news.NewFlats} Flat");
+            parts.Add("+" + ObservatoryViewModel.HoursLabel(news.NewIntegrationSeconds / 3600));
+            return string.Join(" · ", parts);
+        }
+    }
+    private bool Updating => _main.HasExportHistory || _main.HasNovelty;
+
     // ---- The one button that moves the project forward ----
     private bool Exporting => _main.ExportState is ExportRunState.Running or ExportRunState.Paused or ExportRunState.Preflighting or ExportRunState.Cancelling;
     private bool Exported => _main.ExportState == ExportRunState.Completed;
@@ -182,7 +208,9 @@ public sealed class ShellViewModel : BindableBase
         _ => English ? "Open in PixInsight" : "Apri in PixInsight"
     };
     public bool NextEnabled => NextKind is not NextActionKind.Busy;
-    private string? ExportSize => (_main.BytesToCopy ?? _main.PlannedBytes) is { } bytes and > 0 ? HumanSize(bytes) : null;
+    // On an update it is the new data that gets copied, not the whole project again.
+    private string? ExportSize => _main.Novelty is { NewBytes: > 0 } news && Updating ? HumanSize(news.NewBytes)
+        : (_main.BytesToCopy ?? _main.PlannedBytes) is { } bytes and > 0 ? HumanSize(bytes) : null;
 
     /// <summary>One line under the stepper, in the footer: what this step asks, or what is in the way.</summary>
     public string StepHint
@@ -204,16 +232,25 @@ public sealed class ShellViewModel : BindableBase
                 CalibrationStep => English ? "Every Light has its Flat, Dark and Bias." : "Ogni Light ha il suo Flat, Dark e Bias.",
                 _ when Exported => English ? "Exported. Open PixInsight: WBPP is ready, press Run when you are." : "Esportato. Apri PixInsight: WBPP è pronto, premi Run quando vuoi.",
                 _ when OpenChoices > 0 => English ? "Resolve the open calibration choices first." : "Risolvi prima le scelte di calibrazione aperte.",
+                _ when Updating && ExportSize is { } size => English ? $"Update: only the {size} of new data are copied and verified; what is already in the project stays as it is." : $"Aggiornamento: si copiano e verificano solo i {size} di dati nuovi; ciò che è già nel progetto resta com'è.",
                 _ => English ? "Name the project, choose where it goes, then export. Only new files are copied." : "Dai un nome al progetto, scegli dove va, poi esporta. Si copiano solo i file nuovi."
             };
         }
     }
 
     // ---- The export page says where it is: before, during and after ----
-    public string ExportEyebrow => Exported ? (English ? "STEP 4 OF 4 · DONE" : "PASSO 4 DI 4 · FATTO") : English ? "STEP 4 OF 4 · EXPORT" : "PASSO 4 DI 4 · ESPORTA";
-    public string ExportTitle => Exported ? (English ? "Ready for PixInsight" : "Pronto per PixInsight") : Exporting ? (English ? "Copying and checking…" : "Copia e verifica in corso…") : English ? "Where do we put it?" : "Dove lo mettiamo?";
+    public string ExportEyebrow => Exported ? (English ? "STEP 4 OF 4 · DONE" : "PASSO 4 DI 4 · FATTO")
+        : Updating ? (English ? "STEP 4 OF 4 · UPDATE" : "PASSO 4 DI 4 · AGGIORNA")
+        : English ? "STEP 4 OF 4 · EXPORT" : "PASSO 4 DI 4 · ESPORTA";
+    public string ExportTitle => Exported ? (English ? "Ready for PixInsight" : "Pronto per PixInsight")
+        : Exporting ? (English ? "Copying and checking…" : "Copia e verifica in corso…")
+        : Updating ? (English ? "Add the new data to the project" : "Aggiungi le novità al progetto")
+        : English ? "Where do we put it?" : "Dove lo mettiamo?";
     public string ExportSubtitle => Exported
         ? (English ? "The project folder is ready and the WBPP instance carries files, masters and groups. Open it, check Calibration and press Run." : "La cartella di progetto è pronta e l’istanza WBPP porta file, master e gruppi. Aprila, controlla Calibration e premi Run.")
+        : Updating ? (_main.Novelty is null
+            ? (English ? "This folder already is a project: Forge copies and verifies only the files that are not in it yet." : "Questa cartella è già un progetto: Forge copia e verifica solo i file che non ci sono ancora.")
+            : (English ? $"This folder already is a project. New: {NoveltyText}. Forge copies and verifies only those files; the branches that carry them are lit below." : $"Questa cartella è già un progetto. Novità: {NoveltyText}. Forge copia e verifica solo quei file; i rami che li portano sono illuminati qui sotto."))
         : English ? "Forge copies and verifies every file, and next time only adds the new ones." : "Forge copia e verifica ogni file, e la prossima volta aggiunge solo i nuovi.";
 
     // ---- Stepper ----
@@ -230,7 +267,8 @@ public sealed class ShellViewModel : BindableBase
                 index == _step ? StepState.Now : complete ? StepState.Done : open && index <= _maxReached ? StepState.Attention : StepState.Pending,
                 complete, open && index <= _maxReached, CanOpen(index));
 
-            var importDetail = analysed ? (English ? $"{_main.AnalyzedFileCount} files · {Nights(_nightTotals.Count)}" : $"{_main.AnalyzedFileCount} file · {Nights(_nightTotals.Count)}")
+            var importDetail = analysed && _main.Novelty is { } news ? (English ? $"{_main.AnalyzedFileCount} files · +{news.NewFiles} new" : $"{_main.AnalyzedFileCount} file · +{news.NewFiles} nuovi")
+                : analysed ? (English ? $"{_main.AnalyzedFileCount} files · {Nights(_nightTotals.Count)}" : $"{_main.AnalyzedFileCount} file · {Nights(_nightTotals.Count)}")
                 : _main.HasSources ? (English ? $"{SourcesLabel} · to analyse" : $"{SourcesLabel} · da analizzare")
                 : (English ? "captures and masters" : "acquisizioni e master");
             var setupDetail = !analysed ? (English ? "after the analysis" : "dopo l'analisi")
@@ -241,7 +279,7 @@ public sealed class ShellViewModel : BindableBase
                 : OpenChoices == 1 ? (English ? "1 open choice" : "1 scelta aperta")
                 : English ? $"{OpenChoices} open choices" : $"{OpenChoices} scelte aperte";
             var exportDetail = Exported ? (English ? "exported" : "esportato")
-                : ExportSize is { } size ? (English ? $"{size} to copy" : $"{size} da copiare")
+                : ExportSize is { } size ? (Updating ? (English ? $"update · {size} new" : $"aggiorna · {size} nuovi") : English ? $"{size} to copy" : $"{size} da copiare")
                 : (English ? "project folder" : "cartella di progetto");
             return
             [
@@ -396,6 +434,8 @@ public sealed class ShellViewModel : BindableBase
         RebuildNights();
         _commands = BuildCommands();
         if (!CanSho && _palette == 1) _palette = 0;
+        // A project without any source has nothing to show on the later steps: it starts again from the import.
+        if (!Analyzed && !_main.IsScanning && !_main.HasSources && _step != ImportStep) { CurrentStep = ImportStep; return; }
         // A project without an analysis has been through nothing yet.
         if (!Analyzed && !_main.IsScanning) _maxReached = _step;
         foreach (var property in typeof(ShellViewModel).GetProperties())
@@ -404,7 +444,8 @@ public sealed class ShellViewModel : BindableBase
         // The analysis finishing is the end of the import: carry on to the gear on its own.
         var newlyAnalysed = Analyzed && !_wasAnalysed;
         _wasAnalysed = Analyzed;
-        if (newlyAnalysed && _step == ImportStep && _nightTotals.Count > 0) CurrentStep = SetupStep;
+        if (newlyAnalysed && _step == ImportStep && _nightTotals.Count > 0 && !_stayOnce) CurrentStep = SetupStep;
+        if (newlyAnalysed) _stayOnce = false;
     }
 
     private void RaiseStack()
@@ -416,7 +457,7 @@ public sealed class ShellViewModel : BindableBase
     private void RebuildNights()
     {
         // The timeline replays its entrance whenever it gets a new list: rebuild only when its inputs changed.
-        var key = (_main.Analysis, _main.UiLanguage, _observatory.PendingCount, _observatory.Filters.Count);
+        var key = (_main.Analysis, _main.UiLanguage, _observatory.PendingCount, _observatory.Filters.Count, _main.Novelty);
         if (Equals(key, _nightsKey)) return;
         _nightsKey = key;
         var previousCount = _nightTotals.Count;
@@ -445,13 +486,36 @@ public sealed class ShellViewModel : BindableBase
             IReadOnlyList<double>? sun = site is { } place
                 ? Enumerable.Range(0, 73).Select(step => SkyMath.SunAltitude(evening.AddMinutes(step * 10).ToUniversalTime(), place.Latitude, place.Longitude)).ToList()
                 : null;
+            // The Moon over the night: from the site in the headers, or a typical northern one with the time zone's longitude.
+            var estimated = site is null;
+            var (moonLatitude, moonLongitude) = site ?? (45, TimeZoneInfo.Local.GetUtcOffset(evening).TotalHours * 15);
+            IReadOnlyList<double> moon = Enumerable.Range(0, 73).Select(step => SkyMath.MoonAltitude(evening.AddMinutes(step * 10).ToUniversalTime(), moonLatitude, moonLongitude)).ToList();
             var parts = group.GroupBy(item => item.Light.FilterName.Value ?? "—", StringComparer.OrdinalIgnoreCase)
                 .Select(filter => $"{DisplayFilter(filter.Key)} {(filter.Sum(item => item.Light.ExposureSeconds.Value ?? 0) / 3600).ToString("0.0", Culture)} h");
             var open = group.Count(item => !(item.Flat.IsAccepted && item.Dark.IsAccepted && item.Bias.IsAccepted));
-            var detail = $"{date.ToString("d MMM", Culture)} · {string.Join(" · ", parts)} · {group.Count()} {(English ? "subs" : "pose")} · {(English ? "Moon" : "Luna")} {illumination * 100:0} %"
+            var fresh = _main.Novelty?.Nights.FirstOrDefault(night => night.Night == group.Key);
+            var detail = $"{date.ToString("d MMM", Culture)} · {string.Join(" · ", parts)} · {group.Count()} {(English ? "subs" : "pose")} · {MoonText(illumination, moon, evening, estimated)}"
+                         + (fresh is not null ? (fresh.WholeNight ? (English ? " · new night" : " · notte nuova") : English ? $" · +{fresh.Lights} new" : $" · +{fresh.Lights} nuovi") : "")
                          + (open > 0 ? (English ? $" · {open} to resolve" : $" · {open} da risolvere") : "");
-            return new SkyNight(date.ToString("d MMM", Culture), detail, exposures, age, illumination, sun);
+            return new SkyNight(date.ToString("d MMM", Culture), detail, exposures, age, illumination, sun, moon, estimated, fresh is not null);
         }).ToList();
+    }
+
+    /// <summary>"Moon 85 % · rises 21:40 · sets 05:10": how full it was and when it was up.</summary>
+    private string MoonText(double illumination, IReadOnlyList<double> altitudes, DateTime evening, bool estimated)
+    {
+        string At(int step) => evening.AddMinutes(step * 10).ToString("HH:mm", CultureInfo.InvariantCulture);
+        bool Up(int step) => altitudes[step] > SkyMath.MoonRiseAltitude;
+        var text = $"{(English ? "Moon" : "Luna")} {illumination * 100:0} %";
+        var rise = Enumerable.Range(1, altitudes.Count - 1).Where(step => Up(step) && !Up(step - 1)).Select(step => (int?)step).FirstOrDefault();
+        var set = Enumerable.Range(1, altitudes.Count - 1).Where(step => !Up(step) && Up(step - 1)).Select(step => (int?)step).FirstOrDefault();
+        if (rise is null && set is null) text += Up(0) ? (English ? " · up all night" : " · alta tutta la notte") : English ? " · below the horizon" : " · sotto l’orizzonte";
+        else
+        {
+            if (rise is { } r) text += English ? $" · rises {At(r)}" : $" · sorge {At(r)}";
+            if (set is { } s) text += English ? $" · sets {At(s)}" : $" · tramonta {At(s)}";
+        }
+        return estimated ? text + (English ? " (estimated)" : " (stima)") : text;
     }
 
     // ---- Helpers ----

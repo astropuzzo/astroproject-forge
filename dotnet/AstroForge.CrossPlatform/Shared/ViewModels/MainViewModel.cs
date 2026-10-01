@@ -41,6 +41,8 @@ public sealed class MainViewModel : BindableBase
     private IReadOnlyList<FrameMetadata> _frames = [];
     private IReadOnlyList<FrameMetadata> _masterLibraryFrames = [];
     private ProjectAnalysis? _analysis;
+    // What the project knew before data was added to it, so the new data can be told from the old; cleared once it is exported.
+    private HashSet<string>? _knownBeforeAdding;
     private ProjectStatistics? _statistics;
     private ProjectPlan? _plan;
     private ProjectTreeNode? _selectedNode;
@@ -242,6 +244,32 @@ public sealed class MainViewModel : BindableBase
     public bool CanAnalyzeProject => HasSources && CanRunProjectOperations;
     public bool HasSources => SourcePaths.Count > 0;
     public bool HasAnalysis => _analysis is not null;
+
+    /// <summary>What the project gained since it was last exported (or last read, when it never was); null when nothing is new.</summary>
+    public ProjectNovelty? Novelty { get; private set; }
+    public bool HasNovelty => Novelty is not null;
+
+    /// <summary>Closes the news: the new data stays in the project, it just stops being marked.</summary>
+    public void DismissNovelty()
+    {
+        _knownBeforeAdding = null;
+        SetNovelty(null);
+    }
+
+    private void SetNovelty(ProjectNovelty? novelty)
+    {
+        Novelty = novelty;
+        Raise(nameof(Novelty));
+        Raise(nameof(HasNovelty));
+    }
+
+    private void RefreshNovelty()
+    {
+        var known = new HashSet<string>(PathIdentity.Comparer);
+        known.UnionWith(ProjectExportPreflight.ExportedSources(DestinationPath, ProjectName));
+        if (_knownBeforeAdding is not null) known.UnionWith(_knownBeforeAdding);
+        SetNovelty(ProjectNovelty.Compute(_frames, known));
+    }
     /// <summary>The latest calibration analysis, for screens that draw the whole project at once.</summary>
     public ProjectAnalysis? Analysis => _analysis;
     public bool HasVisibleTree => TreeRoots.Count > 0;
@@ -300,8 +328,11 @@ public sealed class MainViewModel : BindableBase
         _ => "PRONTO DA ESPORTARE"
     };
     public string ExportProgressDetail { get => _exportProgressDetail; private set => Set(ref _exportProgressDetail, value); }
-    public string ExportFileSummary => _exportPreflight is null ? "—" : UiLanguage == UiLocalization.English ? $"{_exportPreflight.TotalFiles} files" : $"{_exportPreflight.TotalFiles} file";
-    public string ExportBytesSummary => _exportPreflight is null ? "—" : UiLanguage == UiLocalization.English ? $"{HumanSize(_exportPreflight.BytesToCopy)} to copy" : $"{HumanSize(_exportPreflight.BytesToCopy)} da copiare";
+    // Before the check runs, an update already knows what it will copy: the new data.
+    private ProjectNovelty? PendingUpdate => _exportPreflight is null && Novelty is { } news && ExportHistory.Count > 0 ? news : null;
+    public string ExportFileSummary => PendingUpdate is { } pending ? (UiLanguage == UiLocalization.English ? $"{pending.NewFiles} new" : $"{pending.NewFiles} nuovi")
+        : _exportPreflight is null ? "—" : UiLanguage == UiLocalization.English ? $"{_exportPreflight.TotalFiles} files" : $"{_exportPreflight.TotalFiles} file";
+    public string ExportBytesSummary => PendingUpdate is { } pending ? (UiLanguage == UiLocalization.English ? $"{HumanSize(pending.NewBytes)} to copy" : $"{HumanSize(pending.NewBytes)} da copiare") : _exportPreflight is null ? "—" : UiLanguage == UiLocalization.English ? $"{HumanSize(_exportPreflight.BytesToCopy)} to copy" : $"{HumanSize(_exportPreflight.BytesToCopy)} da copiare";
     public string ExportSpaceSummary => _exportPreflight is null ? "—" : _exportPreflight.AvailableFreeBytes is { } value ? (UiLanguage == UiLocalization.English ? $"{HumanSize(value)} free" : $"{HumanSize(value)} liberi") : "Spazio non disponibile";
     public string ExportEtaSummary => _exportPreflight is null ? "—" : FormatDuration(_exportPreflight.EstimatedDuration);
     public string ExportResumeSummary => _exportPreflight is null
@@ -555,6 +586,9 @@ public sealed class MainViewModel : BindableBase
 
     private void InvalidateProjectAnalysis(bool awaitingReanalysis)
     {
+        if (awaitingReanalysis && _frames.Count > 0)
+            _knownBeforeAdding ??= _frames.Where(frame => !frame.IsMaster).Select(frame => frame.Path).ToHashSet(PathIdentity.Comparer);
+        SetNovelty(null);
         _frames = [];
         _analysis = null;
         _statistics = null;
@@ -835,6 +869,7 @@ public sealed class MainViewModel : BindableBase
     {
         CurrentProjectFile = string.IsNullOrWhiteSpace(projectFile) ? "" : Path.GetFullPath(projectFile);
         _projectCreatedAt = document.CreatedAt;
+        _knownBeforeAdding = null;
         SourcePaths.Clear();
         foreach (var source in document.SourcePaths) SourcePaths.Add(source);
         Raise(nameof(ImportedSourceCountLabel));
@@ -911,6 +946,7 @@ public sealed class MainViewModel : BindableBase
                 DestinationPath = Directory.GetParent(SourcePaths[0])?.FullName ?? SourcePaths[0];
             RefreshIntelligence();
             RebuildTree();
+            RefreshNovelty();
             _awaitingReanalysis = false;
             RaiseProjectWorkflowProperties();
             Status = $"{TotalFiles} file analizzati · {_scanner.LastCacheHits} da cache · {_scanner.LastParsedFiles} letti · {TotalIssues} segnalazioni";
@@ -942,6 +978,8 @@ public sealed class MainViewModel : BindableBase
             CreatePixInsightOutputFolder ? PixInsightOutputFolderName : null);
         BuildPlannedTree();
         InvalidateExportPreflight();
+        // A folder that is already a project makes this an update: say so before anything is copied.
+        RefreshExportHistory(_plan.ProjectRoot);
         Raise(nameof(PlanSummary)); Raise(nameof(HasExportPlan)); Raise(nameof(CanRunExportPreflight));
         Status = $"Anteprima pronta: {_plan.Files.Count} file, {HumanSize(_plan.RequiredBytes)} · i controlli verranno eseguiti automaticamente";
     }
@@ -1451,6 +1489,7 @@ public sealed class MainViewModel : BindableBase
         _state.Overrides.Clear();
         _kindOverrides.Clear();
         _excludedQualityPaths.Clear();
+        _knownBeforeAdding = null;
         InvalidateProjectAnalysis(false);
         Raise(nameof(HasProjectContent));
         SaveState();
@@ -1527,6 +1566,9 @@ public sealed class MainViewModel : BindableBase
             });
             var output = await ProjectExporter.ExecuteAsync(plan, progress, _exportCancellation.Token, _exportControl, CurrentExportOptions());
             SetExportState(ExportRunState.Completed);
+            // Everything is in the project now: nothing is new any more.
+            _knownBeforeAdding = null;
+            SetNovelty(null);
             ExportProgress = 100;
             ExportProgressDetail = report.IsIncremental
                 ? (UiLanguage == UiLocalization.English ? $"Update complete · {report.NewFileCount} new · {report.ResumeFileCount} unchanged" : $"Aggiornamento completato · {report.NewFileCount} nuovi · {report.ResumeFileCount} invariati")

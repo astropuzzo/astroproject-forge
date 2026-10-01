@@ -215,6 +215,7 @@ finally
 await RegressionQa.RunAsync();
 FilterQa.Run();
 EquipmentQa.Run();
+NoveltyQa.Run();
 AppDataQa.Run();
 await DemoProjectE2e.RunAsync();
 await ScanBenchmark.RunAsync(ScanBenchmark.Smoke, print: true);

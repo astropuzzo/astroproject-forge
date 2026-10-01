@@ -10,6 +10,10 @@
 - Anche i filtri già riconosciuti si possono cambiare scegliendo quello giusto dal catalogo; la scelta resta salvata per la camera e si può annullare.
 - Calibrazioni: anello e quota per filtro, scelte aperte una alla volta con il candidato consigliato, mappa completa e dettagli su richiesta.
 - Esporta: l’integrazione simulata notte per notte, nome, destinazione e un clic; a esportazione finita la scheda PixInsight WBPP viene in primo piano con il pulsante per aprire l’istanza.
+- Nuovi dati in un progetto già letto o esportato: aggiungere o togliere una cartella, un file o una libreria rilegge il progetto sul posto, senza svuotare i passi né riportarti all’inizio. Una barra segnala le novità (notti nuove, Light in più su notti già presenti, filtri nuovi, Flat, ore in più) rispetto all’ultima esportazione, anche tra una sessione e l’altra; la riconosce dal manifest del progetto.
+- Aggiornamento del progetto: la pagina Esporta diventa “Aggiungi le novità al progetto”, il pulsante dice quanti dati nuovi si copiano (non l’intero progetto), i rami dell’albero che portano file nuovi si illuminano con “+N nuovi” e gli altri restano in secondo piano; nella timeline la notte nuova è evidenziata.
+- Timeline delle notti: la luna è segnata sulla notte, con una banda dove sta sopra l’orizzonte (più marcata quanto più è piena), glifo di fase più grande e orari di levata e tramonto nel tooltip. Usa SITELAT/SITELONG degli header; senza posizione stima un sito tipico dal fuso orario e lo dice.
+- Catalogo: camere (299) e telescopi (792) del catalogo si sfogliano con il pulsante ▾ oltre che scrivendo; i filtri (105) restano nel menu a tendina.
 - Benvenuto ridotto a due schermate (lingua e come funziona). Finestre strette: ogni pagina scorre come un blocco e l’intestazione rinuncia alle parole, non ai passi.
 - Controlli QA: lo smoke test verifica avanzamento automatico, cambio di un filtro riconosciuto e della camera; test del Core per la camera reale; `ASTROFORGE_DATA_DIR` sposta la cartella dati (test e schermate non toccano più i dati dell’utente).
 
