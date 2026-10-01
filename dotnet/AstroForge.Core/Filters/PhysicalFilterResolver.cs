@@ -77,7 +77,8 @@ public static class PhysicalFilterResolver
         return null;
     }
 
-    public static string CameraKey(FrameMetadata frame) => InstrumentProfile.CameraKeyFor(EquipmentRecognizer.Camera(frame.Camera.Value));
+    /// <summary>Key of the wheel and equipment profiles: the camera as the headers name it, whatever the user later said it really was.</summary>
+    public static string CameraKey(FrameMetadata frame) => InstrumentProfile.CameraKeyFor(EquipmentRecognizer.Camera(frame.RawCameraName ?? frame.Camera.Value));
 
     /// <summary>Labels only merge when nothing says they are different glasses: two products, or bandwidths more than 1 nm apart.</summary>
     private static bool SameGlass(IReadOnlyList<FilterIdentity> identities)

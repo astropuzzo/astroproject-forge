@@ -17,6 +17,12 @@ public enum EquipmentSource
 /// </summary>
 public sealed record EquipmentOverride
 {
+    /// <summary>Catalogue camera id (<see cref="CatalogCamera.Id"/>): the camera that really shot the frames.</summary>
+    public string? CameraId { get; init; }
+    /// <summary>Free name for a camera the catalogue does not list.</summary>
+    public string? CameraName { get; init; }
+    /// <summary>Sensor type of a camera named freely; a catalogue pick carries its own.</summary>
+    public CameraSensorType? CameraType { get; init; }
     /// <summary>Catalogue telescope id (<see cref="CatalogTelescope.Id"/>).</summary>
     public string? TelescopeId { get; init; }
     /// <summary>Free name for optics the catalogue does not list.</summary>
@@ -33,8 +39,24 @@ public sealed record EquipmentOverride
     [JsonIgnore]
     public bool HasTelescope => !string.IsNullOrWhiteSpace(TelescopeId) || !string.IsNullOrWhiteSpace(TelescopeName) || ApertureMm is > 0 || FocalMm is > 0;
 
+    /// <summary>True when the user said which camera it really was, instead of what INSTRUME says.</summary>
     [JsonIgnore]
-    public bool IsEmpty => !HasTelescope && ReducerFactor is not > 0 && PixelUm is not > 0;
+    public bool HasCamera => !string.IsNullOrWhiteSpace(CameraId) || !string.IsNullOrWhiteSpace(CameraName);
+
+    [JsonIgnore]
+    public bool IsEmpty => !HasCamera && !HasTelescope && ReducerFactor is not > 0 && PixelUm is not > 0;
+
+    /// <summary>The camera the user chose: the catalogue entry, or a free name with the sensor type they gave.</summary>
+    public CameraIdentity? UserCamera(EquipmentCatalog? catalog = null)
+    {
+        if (!HasCamera) return null;
+        catalog ??= EquipmentCatalog.Default;
+        if (catalog.FindCamera(CameraId) is { } known) return new(known.Name, known, known.Type, 1);
+        var name = (CameraName ?? "").Trim();
+        if (name.Length == 0) return null;
+        var type = CameraType is { } given and not CameraSensorType.Unknown ? given : EquipmentRecognizer.Camera(name, catalog).Type;
+        return new(name, null, type, 1);
+    }
 
     /// <summary>A case-insensitive copy of a deserialized profile map, dropping empty entries; null (an older state file) gives an empty map.</summary>
     public static Dictionary<string, EquipmentOverride> Normalize(IEnumerable<KeyValuePair<string, EquipmentOverride>>? profiles)

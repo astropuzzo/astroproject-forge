@@ -19,7 +19,8 @@ public enum MetadataSource
     Inferred,
     ProjectDefault,
     UserOverride,
-    FilterProfile
+    FilterProfile,
+    EquipmentProfile
 }
 
 public enum IssueSeverity
@@ -83,6 +84,9 @@ public sealed class FrameMetadata
     public MetadataField<int?> Width { get; } = new();
     public MetadataField<int?> Height { get; } = new();
     public MetadataField<string?> Camera { get; } = new();
+    /// <summary>The camera as the capture software wrote it (empty when missing), kept once the user's equipment profile has named the real one.</summary>
+    public string? RawCameraName { get; set; }
+    public MetadataSource RawCameraSource { get; set; }
     public MetadataField<string?> ReadoutMode { get; } = new();
     public MetadataField<string?> BayerPattern { get; } = new();
     public MetadataField<double?> FocalLengthMm { get; } = new();

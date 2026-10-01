@@ -1908,6 +1908,7 @@ public sealed class MainViewModel : BindableBase
         MetadataSource.ProjectDefault => "Default progetto",
         MetadataSource.UserOverride => "Override utente",
         MetadataSource.FilterProfile => "Profilo filtri",
+        MetadataSource.EquipmentProfile => "Profilo strumento",
         _ => "Mancante"
     };
 
@@ -1953,6 +1954,8 @@ public sealed class MainViewModel : BindableBase
         foreach (var frame in _frames)
             frame.Issues.RemoveAll(issue => issue.Code.StartsWith("calibration.", StringComparison.Ordinal));
 
+        // The camera the user named wins over INSTRUME, so Lights, Flats and Masters meet under one name.
+        PhysicalCameraResolver.Apply(_frames, EquipmentFor);
         // One physical filter, one name: confirmed wheel slots and labels from different programs are filed together.
         PhysicalFilterResolver.Apply(_frames, WheelProfileFor);
         _analysis = ProjectAnalyzer.Analyze(_frames);
@@ -2105,24 +2108,40 @@ public sealed class MainViewModel : BindableBase
     public EquipmentOverride? EquipmentFor(string cameraKey) =>
         _state.EquipmentProfiles.TryGetValue(cameraKey, out var equipment) ? equipment : null;
 
-    /// <summary>Remembers the real optics, reducer and pixel size of this camera's train, for this and every later project.</summary>
+    /// <summary>
+    /// Remembers what this camera's train really is (camera, optics, reducer, pixel size), for this and every later project.
+    /// Optics and pixel size only feed the instrument profile; a different camera changes what the frames are called, so
+    /// Dark and Bias are matched again.
+    /// </summary>
     public void SetEquipment(string cameraKey, EquipmentOverride equipment)
     {
         if (equipment.IsEmpty) { ClearEquipment(cameraKey); return; }
-        if (EquipmentFor(cameraKey) == equipment) return;
+        var previous = EquipmentFor(cameraKey);
+        if (previous == equipment) return;
         _state.EquipmentProfiles[cameraKey] = equipment;
         SaveState();
-        RefreshInstrument();
+        ApplyEquipmentChange(previous, equipment);
     }
 
     public void ClearEquipment(string cameraKey)
     {
-        if (!_state.EquipmentProfiles.Remove(cameraKey)) return;
+        if (!_state.EquipmentProfiles.Remove(cameraKey, out var previous)) return;
         SaveState();
-        RefreshInstrument();
+        ApplyEquipmentChange(previous, null);
     }
 
-    // Focal length and pixel size only feed the instrument profile (scale, field of view); calibration matching keeps using the headers.
+    private void ApplyEquipmentChange(EquipmentOverride? previous, EquipmentOverride? current)
+    {
+        var cameraChanged = previous?.CameraId != current?.CameraId || previous?.CameraName != current?.CameraName || previous?.CameraType != current?.CameraType;
+        if (!cameraChanged) { RefreshInstrument(); return; }
+        RefreshIntelligence();
+        RebuildTree();
+        Status = current?.HasCamera == true
+            ? $"Camera impostata su {current.UserCamera()?.DisplayName} · abbinamenti ricalcolati"
+            : "Camera rilevata dagli header ripristinata · abbinamenti ricalcolati";
+    }
+
+    // Focal length and pixel size only feed the instrument profile (scale, field of view).
     private void RefreshInstrument()
     {
         Instrument = InstrumentProfile.Build(_frames, WheelProfileFor, EquipmentFor);
