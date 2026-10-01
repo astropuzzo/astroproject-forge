@@ -1,5 +1,7 @@
 using Avalonia.Media.Imaging;
 using AstroForge.Core.Analysis;
+using AstroForge.Core.Equipment;
+using AstroForge.Core.Models;
 using AstroForge.CrossPlatform.Controls;
 
 namespace AstroForge.CrossPlatform.ViewModels;
@@ -36,7 +38,10 @@ public sealed partial class ObservatoryViewModel
     {
         try
         {
-            var lights = (_main.Analysis?.Lights ?? []).Select(item => item.Light).ToList();
+            var everyLight = (_main.Analysis?.Lights ?? []).Select(item => item.Light).ToList();
+            // A project that mixes rigs: the one being described, and the others laid on the same sky.
+            var groups = InstrumentProfile.GroupSetups(everyLight);
+            var lights = groups.FirstOrDefault(group => group.Setup.Key == Instrument?.Setup?.Key)?.Frames.Where(frame => frame.Kind == FrameKind.Light).ToList() ?? everyLight;
             var fields = new[] { PreviewField, OtherField }.Where(field => field is not null).Select(field => field!.Value).ToList();
             if (Instrument is null || lights.Count == 0) { Show(null, "", ""); return; }
             if (fields.Count == 0)
@@ -63,28 +68,30 @@ public sealed partial class ObservatoryViewModel
             var targets = lights.Select(light => SkyPointings.Target(light.Headers)).Where(point => point is not null).Select(point => point!.Value).ToList();
             (double Ra, double Dec)? target = targets.Count == 0 ? null : SkyPointings.Centre(targets);
             var details = SkyDetails(panels);
+            var rigs = OtherRigs(groups, centre, 3 * largest, MaxPanels);
+            largest = Math.Max(largest, rigs.Select(rig => Math.Max(rig.Width, rig.Height)).DefaultIfEmpty(0).Max());
 
             if (!_main.ShowRealSky)
             {
-                Show(Scene(null, centre, largest, panels, target), caption, (English ? "The real sky is off (Menu)." : "Il cielo reale è spento (Menu).") + details);
+                Show(Scene(null, centre, largest, panels, target, rigs: rigs), caption, (English ? "The real sky is off (Menu)." : "Il cielo reale è spento (Menu).") + details);
                 return;
             }
 
             // The panels first, on an empty sky, so the frame is where it belongs while the picture is on its way.
-            Show(Scene(null, centre, largest, panels, target), caption, (English ? "Loading the sky…" : "Carico il cielo…") + details);
-            var extent = Extent(centre, largest, panels);
+            Show(Scene(null, centre, largest, panels, target, rigs: rigs), caption, (English ? "Loading the sky…" : "Carico il cielo…") + details);
+            var extent = Extent(centre, largest, panels, rigs);
             var image = await _skyClient.GetAsync(centre.Ra, centre.Dec, Math.Max(4.5 * largest, 2.5 * extent), SkyPicturePixels, cancel);
             cancel.ThrowIfCancellationRequested();
             if (image is null)
             {
-                Show(Scene(null, centre, largest, panels, target), caption,
+                Show(Scene(null, centre, largest, panels, target, rigs: rigs), caption,
                     (English ? "The sky is not reachable (offline?): the frame is still where the data were taken." : "Cielo non raggiungibile (offline?): il riquadro è comunque dove sono stati presi i dati.") + details);
                 return;
             }
 
             Bitmap bitmap;
             using (var stream = new MemoryStream(image.Bytes)) bitmap = new Bitmap(stream);
-            Show(Scene(bitmap, (image.RaDeg, image.DecDeg), largest, panels, target, image.FovDeg), caption,
+            Show(Scene(bitmap, (image.RaDeg, image.DecDeg), largest, panels, target, image.FovDeg, rigs), caption,
                 (English ? $"{SkyImageClient.Credit} · north up, east left" : $"{SkyImageClient.Credit} · nord in alto, est a sinistra") + details);
         }
         catch (OperationCanceledException) { /* a newer sky is being built */ }
@@ -102,7 +109,8 @@ public sealed partial class ObservatoryViewModel
     }
 
     /// <summary>The panels placed around a centre; the picture, when there is one, spans <paramref name="fovDeg"/> there (else a size that holds them).</summary>
-    private static SkyScene Scene(Bitmap? image, (double Ra, double Dec) centre, double largest, IReadOnlyList<SkyPanel> panels, (double Ra, double Dec)? target, double? fovDeg = null)
+    private static SkyScene Scene(Bitmap? image, (double Ra, double Dec) centre, double largest, IReadOnlyList<SkyPanel> panels, (double Ra, double Dec)? target, double? fovDeg = null,
+        IReadOnlyList<RigData>? rigs = null)
     {
         var views = panels.Select(panel =>
         {
@@ -115,8 +123,47 @@ public sealed partial class ObservatoryViewModel
             var (xi, eta) = SkyPointings.Gnomonic(point.Ra, point.Dec, centre.Ra, centre.Dec);
             mark = new SkyMark(xi, eta);
         }
-        return new SkyScene(image, fovDeg ?? 4.5 * largest, views, mark);
+        var others = rigs?.Select(rig => new SkyRig(rig.Label, rig.Colour, rig.Width, rig.Height, rig.Panels.Select(panel =>
+        {
+            var (xi, eta) = SkyPointings.Gnomonic(panel.RaDeg, panel.DecDeg, centre.Ra, centre.Dec);
+            return new SkyPanelView(xi, eta, panel.PositionAngleDeg ?? 0, "");
+        }).ToList())).ToList();
+        return new SkyScene(image, fovDeg ?? 4.5 * largest, views, mark, others);
     }
+
+    /// <summary>Another rig of the project: its field, and its panels as they sit on the sky.</summary>
+    private sealed record RigData(string Label, string Colour, double Width, double Height, IReadOnlyList<SkyPanel> Panels);
+
+    /// <summary>
+    /// The project's other rigs as they sit on this sky: their field (what their own train gives) and their panels around the same centre.
+    /// A rig that points more than <paramref name="reach"/> away shot another target and is left out.
+    /// </summary>
+    private IReadOnlyList<RigData> OtherRigs(IReadOnlyList<SetupGroup> groups, (double Ra, double Dec) centre, double reach, int maxPanels)
+    {
+        var rigs = new List<RigData>();
+        var number = 0;
+        var others = 0;
+        foreach (var group in groups)
+        {
+            number++;
+            if (group.Setup.Key == Instrument?.Setup?.Key) continue;
+            var colour = RigColour(others++);   // the same colour as the rig's card, whether or not it is drawn
+            if (_main.InstrumentFor(group.Setup) is not { } profile || profile.FieldOfView is not { } field) continue;
+            var own = group.Frames.Where(frame => frame.Kind == FrameKind.Light).ToList();
+            var panels = SkyPointings.Mosaic(SkyPointings.Panels(own, Math.Max(0.05, 0.35 * Math.Min(field.Width, field.Height))), 3 * Math.Max(field.Width, field.Height), maxPanels);
+            if (panels.Count == 0) continue;
+            var middle = SkyPointings.Centre(panels.Select(panel => (panel.RaDeg, panel.DecDeg)));
+            if (SkyPointings.Separation(middle.Ra, middle.Dec, centre.Ra, centre.Dec) > reach) continue;
+            rigs.Add(new RigData(RigLabel(number, profile), colour, field.Width, field.Height, panels));
+        }
+        return rigs;
+    }
+
+    internal static string RigColour(int order) => new[] { "#FFC27A", "#8FE3B0", "#C79BFF", "#7FD3FF", "#FF9DB8" }[order % 5];
+
+    private string RigLabel(int number, InstrumentProfile profile) => English
+        ? $"Setup {number} · {profile.FocalMm:0} mm · {profile.FieldOfView!.Value.Width:0.0}°"
+        : $"Setup {number} · {profile.FocalMm:0} mm · {profile.FieldOfView!.Value.Width:0.0}°";
 
     /// <summary>Where the position and the angle of the frames come from, and the mount's own coordinates when they were far off.</summary>
     private string SkyDetails(IReadOnlyList<SkyPanel> panels)
@@ -143,10 +190,19 @@ public sealed partial class ObservatoryViewModel
     }
 
     /// <summary>The distance across of everything the frames can cover, turned any way (a square as long as the diagonal), from the centre: the picture is made to hold it with room to spare.</summary>
-    private static double Extent((double Ra, double Dec) centre, double largest, IReadOnlyList<SkyPanel> panels) =>
-        2 * panels.Max(panel =>
+    private static double Extent((double Ra, double Dec) centre, double largest, IReadOnlyList<SkyPanel> panels, IReadOnlyList<RigData>? rigs = null)
+    {
+        double Reach(double xi, double eta, double size) => SkyPointings.Corners(xi, eta, size * Math.Sqrt(2), size * Math.Sqrt(2), 0).Max(corner => Math.Max(Math.Abs(corner.Xi), Math.Abs(corner.Eta)));
+        var own = panels.Max(panel =>
         {
             var (xi, eta) = SkyPointings.Gnomonic(panel.RaDeg, panel.DecDeg, centre.Ra, centre.Dec);
-            return SkyPointings.Corners(xi, eta, largest * Math.Sqrt(2), largest * Math.Sqrt(2), 0).Max(corner => Math.Max(Math.Abs(corner.Xi), Math.Abs(corner.Eta)));
+            return Reach(xi, eta, largest);
         });
+        var others = (rigs ?? []).SelectMany(rig => rig.Panels.Select(panel =>
+        {
+            var (xi, eta) = SkyPointings.Gnomonic(panel.RaDeg, panel.DecDeg, centre.Ra, centre.Dec);
+            return Reach(xi, eta, Math.Max(rig.Width, rig.Height));
+        })).DefaultIfEmpty(0).Max();
+        return 2 * Math.Max(own, others);
+    }
 }

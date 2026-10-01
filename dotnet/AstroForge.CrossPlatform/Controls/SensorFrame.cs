@@ -113,6 +113,11 @@ public sealed class SensorFrame : Control
         foreach (var panel in panels)
             foreach (var (xi, eta) in SkyPointings.Corners(panel.Xi, panel.Eta, widest, tallest, panel.AngleDeg))
             { minX = Math.Min(minX, xi); maxX = Math.Max(maxX, xi); minY = Math.Min(minY, eta); maxY = Math.Max(maxY, eta); }
+        // the project's other rigs are on the same sky, and the frame that holds them all is the one that has to fit
+        foreach (var rig in scene?.Rigs ?? [])
+            foreach (var panel in rig.Panels)
+                foreach (var (xi, eta) in SkyPointings.Corners(panel.Xi, panel.Eta, rig.WidthDeg, rig.HeightDeg, panel.AngleDeg))
+                { minX = Math.Min(minX, xi); maxX = Math.Max(maxX, xi); minY = Math.Min(minY, eta); maxY = Math.Max(maxY, eta); }
         var pxPerDeg = Math.Min(area.Width / Math.Max(0.05, maxX - minX), area.Height / Math.Max(0.05, maxY - minY));
         var (viewX, viewY) = ((minX + maxX) / 2, (minY + maxY) / 2);
         // East is left, north is up: the picture and everything on it share this one mapping.
@@ -137,6 +142,7 @@ public sealed class SensorFrame : Control
         if (_w > 0 && _h > 0)
         {
             var frame = DrawFrames(context, bounds, panels, At, pxPerDeg);
+            foreach (var rig in scene?.Rigs ?? []) DrawRig(context, bounds, rig, At);
             if (scene?.Target is { } mark) DrawTarget(context, mark, At(mark.Xi, mark.Eta), panels);
             DrawMoon(context, bounds, frame, pxPerDeg);
         }
@@ -147,6 +153,24 @@ public sealed class SensorFrame : Control
         var rulerBaseline = note is null ? floor : floor - note.Height - 12;
         if (rulerBaseline - 46 >= 196) DrawCompassAndRuler(context, rulerBaseline, pxPerDeg);
         DrawTexts(context, bounds, note, floor);
+    }
+
+    /// <summary>Another rig of the project, dashed in the colour of its card, with its name at its corner.</summary>
+    private static void DrawRig(DrawingContext context, Rect bounds, SkyRig rig, Func<double, double, Point> at)
+    {
+        var colour = Color.Parse(rig.Colour);
+        var pen = new Pen(new SolidColorBrush(colour), 1.6, new DashStyle([5, 4], 0));
+        var brush = new ImmutableSolidColorBrush(colour);
+        for (var index = 0; index < rig.Panels.Count; index++)
+        {
+            var panel = rig.Panels[index];
+            var points = SkyPointings.Corners(panel.Xi, panel.Eta, rig.WidthDeg, rig.HeightDeg, panel.AngleDeg).Select(corner => at(corner.Xi, corner.Eta)).ToArray();
+            context.DrawGeometry(null, pen, Polygon(points));
+            if (index > 0) continue;
+            var anchor = points.OrderBy(point => point.Y).ThenBy(point => point.X).First();
+            var width = new FormattedText(rig.Label, CultureInfo.CurrentCulture, FlowDirection.LeftToRight, Mono, 10.5, brush).Width;
+            DrawText(context, rig.Label, brush, new Point(Math.Clamp(anchor.X + 8, 8, Math.Max(8, bounds.Width - width - 14)), Math.Clamp(anchor.Y + 6, 32, Math.Max(32, bounds.Height - 118 - 24))), 10.5, pill: true);
+        }
     }
 
     /// <summary>Draws the footprints and returns the screen rectangle that holds them.</summary>

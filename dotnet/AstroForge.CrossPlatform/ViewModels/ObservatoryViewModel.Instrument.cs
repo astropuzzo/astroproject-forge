@@ -226,7 +226,7 @@ public sealed partial class ObservatoryViewModel
         var catalogPick = SelectedTelescope is not null && !IsCustomTelescope;
         var name = TelescopeText.Trim();
         var (cameraId, cameraName, cameraType) = CameraEdit(instrument);
-        _main.SetEquipment(instrument.CameraKey, new EquipmentOverride
+        _main.SetEquipment(instrument, new EquipmentOverride
         {
             CameraId = cameraId,
             CameraName = cameraName,
@@ -256,7 +256,7 @@ public sealed partial class ObservatoryViewModel
     {
         if (Instrument is not { } instrument) return;
         var scope = instrument.Telescope.Telescope;
-        _main.SetEquipment(instrument.CameraKey, new EquipmentOverride
+        _main.SetEquipment(instrument, new EquipmentOverride
         {
             CameraId = instrument.Override?.CameraId,
             CameraName = instrument.Override?.CameraName,
@@ -272,7 +272,7 @@ public sealed partial class ObservatoryViewModel
 
     public void ResetProfile()
     {
-        if (Instrument is { } instrument) _main.ClearEquipment(instrument.CameraKey);
+        if (Instrument is { } instrument) _main.ClearEquipment(instrument);
         IsEditing = false;
     }
 

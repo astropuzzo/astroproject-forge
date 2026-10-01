@@ -40,6 +40,8 @@ La pagina **Strumento** mostra camera, ottica, riduttore, pixel e filtri letti d
 
 Il **Campo inquadrato** non è un disegno: è il cielo vero attorno al tuo bersaglio (foto DSS2 del CDS di Strasburgo), con il riquadro del sensore al suo posto, in scala e ruotato come la camera (posizione dal WCS risolto o dal bersaglio dichiarato nei Light, angolo dal WCS o dal rotatore), e la Luna in scala per capire le dimensioni del campo. Se il progetto è un mosaico vedi un riquadro per pannello; il pulsante **Riduttore / Nativo** mostra come cambia il campo. Per scaricare la foto partono solo la posizione e la dimensione del campo, mai file o dati del progetto; una foto già vista si riapre anche senza rete, e dal **Menu** si può spegnere (**Mostra il cielo reale nel campo inquadrato**). Senza coordinate negli header o senza rete il riquadro resta sul posto, su un cielo vuoto, e lo dice.
 
+Se il progetto mescola più setup (due camere, o la stessa camera con e senza riduttore) la pagina offre una scheda per ciascuno: scegli quello da controllare e vedrai la sua camera, la sua ottica e la sua ruota portafiltri; gli altri compaiono tratteggiati sul cielo, nel campo che avevano. Ciò che dici di un setup resta suo.
+
 Se indichi una camera diversa da quella degli header, tutti i frame di quella camera (Light, Flat e Master) vengono letti con il nome scelto: così Dark e Bias si abbinano anche quando il software di acquisizione ha scritto un nome inutile.
 
 ## 4. Controlla le calibrazioni

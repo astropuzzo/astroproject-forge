@@ -230,6 +230,7 @@ public sealed partial class ObservatoryViewModel : BindableBase
                      nameof(PendingCount), nameof(HasPending), nameof(PendingText), nameof(WheelCaption), nameof(SelectedFilter)
                  })
             Raise(name);
+        RebuildSetups();
         RebuildInstrumentScreen();
         RebuildOverview();
         RefreshSky();

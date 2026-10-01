@@ -218,6 +218,7 @@ EquipmentQa.Run();
 NoveltyQa.Run();
 DropQa.Run();
 SkyPointingQa.Run();
+SetupQa.Run();
 AppDataQa.Run();
 await DemoProjectE2e.RunAsync();
 await ScanBenchmark.RunAsync(ScanBenchmark.Smoke, print: true);

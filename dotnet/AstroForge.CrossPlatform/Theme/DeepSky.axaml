@@ -642,6 +642,16 @@
       </Animation>
     </Style.Animations>
   </Style>
+  <Style Selector="Button.setupChip">
+    <Setter Property="Background" Value="#B30A0E1E"/>
+    <Setter Property="BorderBrush" Value="{StaticResource LineBrush}"/>
+    <Setter Property="BorderThickness" Value="1"/>
+    <Setter Property="CornerRadius" Value="12"/>
+    <Setter Property="Padding" Value="13,9"/>
+    <Setter Property="HorizontalContentAlignment" Value="Left"/>
+  </Style>
+  <Style Selector="Button.setupChip:pointerover /template/ ContentPresenter#PART_ContentPresenter"><Setter Property="Background" Value="#169DB8FF"/></Style>
+  <Style Selector="Button.setupChip.selected /template/ ContentPresenter#PART_ContentPresenter"><Setter Property="Background" Value="#339DB8FF"/><Setter Property="BorderBrush" Value="#999DB8FF"/></Style>
   <Style Selector="Button.link">
     <Setter Property="Background" Value="Transparent"/>
     <Setter Property="BorderThickness" Value="0"/>
