@@ -22,9 +22,10 @@ internal static class DropQa
                 $"Il drop di cartelle e file non è stato smistato: {string.Join(" | ", plan.Paths)}.");
             Assert(!plan.Paths.Contains(light), "Un file dentro una cartella già trascinata non va collegato due volte.");
 
-            // The same folder dragged twice, with a trailing separator or another case, is one folder.
+            // The same folder dragged twice, with a trailing separator or another case, is one folder: on Windows and macOS the other case is the same folder,
+            // on Linux it is a path that does not exist and is left out.
             var twice = DroppedItems.Plan([cygnus, cygnus + Path.DirectorySeparatorChar, cygnus.ToUpperInvariant()], DropTarget.Captures);
-            Assert(twice.Folders.Count == (OperatingSystem.IsWindows() || OperatingSystem.IsMacOS() ? 1 : 2), "La stessa cartella trascinata due volte deve contare una volta.");
+            Assert(twice.Folders.SequenceEqual([cygnus]), "La stessa cartella trascinata due volte deve contare una volta.");
 
             // A folder and one of its subfolders: the parent already brings the other.
             var nested = DroppedItems.Plan([night, cygnus], DropTarget.Captures);
