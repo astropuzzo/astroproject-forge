@@ -35,6 +35,16 @@ public sealed class SensorFrame : Control
     private static readonly IPen Other = new ImmutablePen(new ImmutableSolidColorBrush(Color.Parse("#99BECDFF")), 1, new ImmutableDashStyle([4, 5], 0));
     private static readonly IPen Ruler = new ImmutablePen(new ImmutableSolidColorBrush(Color.Parse("#E6EEF2FF")), 1.5);
     private static readonly SkyPanelView[] Alone = [new(0, 0, 0, "")];
+    private const double MoonDegrees = 0.52;
+    // the readout column (24 px margin, at most 290 px wide, mostly narrower) ends here
+    private const double ReadoutRight = 290;
+    private static readonly IBrush MoonFill = new ImmutableRadialGradientBrush([new ImmutableGradientStop(0, Color.Parse("#F0EDE4")), new ImmutableGradientStop(0.75, Color.Parse("#C4C0B5")), new ImmutableGradientStop(1, Color.Parse("#8F8B82"))],
+        gradientOrigin: new RelativePoint(0.38, 0.34, RelativeUnit.Relative), center: new RelativePoint(0.5, 0.5, RelativeUnit.Relative), radius: 0.62);
+    private static readonly IBrush MoonSea = new ImmutableSolidColorBrush(Color.Parse("#2A5A6070"));
+    private static readonly IPen MoonEdge = new ImmutablePen(new ImmutableSolidColorBrush(Color.Parse("#66EEF2FF")), 1);
+    private static readonly IPen MoonRing = new ImmutablePen(new ImmutableSolidColorBrush(Color.Parse("#E6F0EDE4")), 1.5, new ImmutableDashStyle([2, 3], 0));
+    private static readonly IPen TargetPen = new ImmutablePen(new ImmutableSolidColorBrush(Color.Parse("#E6FFC27A")), 1.5);
+    private static readonly (double Dx, double Dy, double Rx, double Ry)[] Maria = [(-0.3, -0.25, 0.24, 0.18), (0.18, -0.34, 0.16, 0.12), (0.1, 0.18, 0.26, 0.16), (-0.38, 0.22, 0.12, 0.1), (0.42, 0.0, 0.1, 0.16), (-0.05, -0.5, 0.1, 0.07)];
     private static readonly (double X, double Y, double Size, IBrush Brush)[] Stars = EmptySkyStars();
 
     private double _w, _h, _aw, _ah;
@@ -126,7 +136,9 @@ public sealed class SensorFrame : Control
 
         if (_w > 0 && _h > 0)
         {
-            DrawFrames(context, bounds, panels, At, pxPerDeg);
+            var frame = DrawFrames(context, bounds, panels, At, pxPerDeg);
+            if (scene?.Target is { } mark) DrawTarget(context, mark, At(mark.Xi, mark.Eta), panels);
+            DrawMoon(context, bounds, frame, pxPerDeg);
         }
         var note = string.IsNullOrWhiteSpace(Note) ? null : new FormattedText(Note, CultureInfo.CurrentCulture, FlowDirection.LeftToRight, Mono, 10.5, Soft)
         { MaxTextWidth = Math.Max(120, Math.Min(300, bounds.Width * 0.5 - 56)), MaxLineCount = 3, Trimming = TextTrimming.CharacterEllipsis };
@@ -137,7 +149,8 @@ public sealed class SensorFrame : Control
         DrawTexts(context, bounds, note, floor);
     }
 
-    private void DrawFrames(DrawingContext context, Rect bounds, IReadOnlyList<SkyPanelView> panels, Func<double, double, Point> at, double pxPerDeg)
+    /// <summary>Draws the footprints and returns the screen rectangle that holds them.</summary>
+    private Rect DrawFrames(DrawingContext context, Rect bounds, IReadOnlyList<SkyPanelView> panels, Func<double, double, Point> at, double pxPerDeg)
     {
         Point[] Footprint(SkyPanelView panel, double width, double height) =>
             SkyPointings.Corners(panel.Xi, panel.Eta, width, height, panel.AngleDeg).Select(corner => at(corner.Xi, corner.Eta)).ToArray();
@@ -182,6 +195,47 @@ public sealed class SensorFrame : Control
         var lowest = footprints[0].OrderByDescending(point => Math.Round(point.Y)).ThenBy(point => point.X).First();
         var size = $"{_w.ToString("0.00", CultureInfo.CurrentCulture)}° × {_h.ToString("0.00", CultureInfo.CurrentCulture)}°";
         DrawText(context, size, Fg, new Point(lowest.X + 8, lowest.Y - 22), 11);
+
+        var all = footprints.SelectMany(points => points).ToList();
+        return new Rect(new Point(all.Min(point => point.X), all.Min(point => point.Y)), new Point(all.Max(point => point.X), all.Max(point => point.Y)));
+    }
+
+    /// <summary>
+    /// The Moon, 0.52° across, at the scale of the picture: how much sky the sensor takes in, in the one size everybody knows. It sits between the readout and the frame
+    /// when there is room; when the field is narrower than that (a long focal length) it is a ring over the frame, so the frame can be read against it.
+    /// </summary>
+    private static void DrawMoon(DrawingContext context, Rect bounds, Rect frame, double pxPerDeg)
+    {
+        var diameter = MoonDegrees * pxPerDeg;
+        if (diameter < 6) return;
+        var radius = diameter / 2;
+        var room = frame.Left - 10 - ReadoutRight;
+        var label = CanvasText.T("Luna · 0,5°");
+        if (diameter <= room && diameter <= bounds.Height - 30 - 118 - 30)
+        {
+            var centre = new Point(frame.Left - 10 - radius, Math.Min(frame.Bottom - radius - 6, bounds.Height - 118 - 28 - radius));
+            context.DrawEllipse(MoonFill, MoonEdge, centre, radius, radius);
+            foreach (var (dx, dy, rx, ry) in Maria)
+                context.DrawEllipse(MoonSea, null, new Point(centre.X + dx * radius, centre.Y + dy * radius), rx * radius, ry * radius);
+            DrawText(context, label, Soft, new Point(centre.X - TextWidth(label, 10) / 2, centre.Y + radius + 6), 10);
+        }
+        else
+        {
+            var centre = frame.Center;
+            context.DrawEllipse(null, MoonRing, centre, radius, radius);
+            DrawText(context, label, Soft, new Point(centre.X - TextWidth(label, 10) / 2, Math.Max(32, centre.Y - radius - 18)), 10, pill: true);
+        }
+    }
+
+    /// <summary>Where the capture software was told to centre, when the frames are not on it.</summary>
+    private void DrawTarget(DrawingContext context, SkyMark mark, Point at, IReadOnlyList<SkyPanelView> panels)
+    {
+        // on a frame's centre it would only sit on top of the object: draw it when it says something
+        var nearest = panels.Min(panel => Math.Sqrt(Math.Pow(panel.Xi - mark.Xi, 2) + Math.Pow(panel.Eta - mark.Eta, 2)));
+        if (nearest < 0.04 * Math.Min(_w, _h)) return;
+        context.DrawEllipse(null, TargetPen, at, 7, 7);
+        context.DrawLine(TargetPen, new Point(at.X - 12, at.Y), new Point(at.X + 12, at.Y));
+        context.DrawLine(TargetPen, new Point(at.X, at.Y - 12), new Point(at.X, at.Y + 12));
     }
 
     /// <summary>A compass (the picture is north up, east left) and a scale bar, bottom left above the dock.</summary>
@@ -227,6 +281,9 @@ public sealed class SensorFrame : Control
             context.DrawText(note, new Point(24, y));
         }
     }
+
+    private static double TextWidth(string text, double size) =>
+        new FormattedText(text, CultureInfo.CurrentCulture, FlowDirection.LeftToRight, Mono, size, Soft).Width;
 
     private static void DrawText(DrawingContext context, string text, IBrush brush, Point origin, double size, bool pill = false)
     {

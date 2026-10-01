@@ -25,6 +25,18 @@ internal static class SkyPointingQa
         Assert(SkyPointings.FromHeaders(new Dictionary<string, object?> { ["OBJECT"] = "M31" }) is null && SkyPointings.FromHeaders(new Dictionary<string, object?> { ["RA"] = 10.0, ["DEC"] = 95.0 }) is null,
             "Senza coordinate valide non si deve inventare un puntamento.");
 
+        // A real N.I.N.A. Light after a meridian flip: the frame was centred on the target (checked against the stars), the mount's own RA/DEC were 0.3° off,
+        // the rotator read 181.57° and OBJCTROT is the 0 N.I.N.A. always writes. The target and the rotator win.
+        var flipped = SkyPointings.FromHeaders(new Dictionary<string, object?>
+        {
+            ["RA"] = 342.2923, ["DEC"] = 57.7880, ["OBJCTRA"] = "22 47 14", ["OBJCTDEC"] = "+58 02 19", ["OBJCTROT"] = 0.0, ["ROTATANG"] = 181.57, ["ROTATOR"] = 181.57
+        });
+        Assert(flipped is { Source: "object", AngleSource: "rotator" } && Near(flipped.RaDeg, 341.8083) && Near(flipped.DecDeg, 58.0386) && flipped.MountDeviationDeg is > 0.25 and < 0.4,
+            $"Il bersaglio deve battere le coordinate della montatura, e il rotatore OBJCTROT = 0: {flipped}.");
+        Assert(Near(flipped!.PositionAngleDeg ?? double.NaN, -178.43), "L'angolo del rotatore va riportato tra -180 e 180.");
+        Assert(SkyPointings.Angle(new Dictionary<string, object?> { ["OBJCTROT"] = 0.0 }) is null, "OBJCTROT esattamente 0 vuol dire 'non impostato'.");
+        Assert(SkyPointings.Angle(new Dictionary<string, object?> { ["ROTATANG"] = 12.0, ["OBJCTROT"] = 40.0 }) is { Source: "rotator" } rotator && Near(rotator.Degrees, 12), "Il rotatore vale più dell'angolo dichiarato.");
+
         // Position angle: from the WCS matrix, or from the rotation the capture software declares.
         Assert(Near(SkyPointings.PositionAngle(new Dictionary<string, object?> { ["CD1_1"] = -0.001, ["CD1_2"] = 0.0, ["CD2_1"] = 0.0, ["CD2_2"] = 0.001 }) ?? double.NaN, 0),
             "Un WCS a nord in alto ha angolo di posizione 0.");
@@ -63,7 +75,12 @@ internal static class SkyPointingQa
         Assert(one.Count == 1 && one[0].Lights == 3 && one[0].Nights == 2 && Near(one[0].IntegrationSeconds, 540) && one[0].Label == "", "Il dithering deve restare in un solo pannello.");
         var mosaic = SkyPointings.Panels([Light(314.28, 31.72, "a"), Light(314.28, 33.2, "a"), Light(314.29, 33.19, "b"), Light(314.27, 31.73, "b")], 0.3);
         Assert(mosaic.Count == 2 && mosaic[0].DecDeg > mosaic[1].DecDeg && mosaic[0].Lights == 2 && mosaic[0].Label == "P1" && mosaic[1].Label == "P2", "Un mosaico a due pannelli deve restare diviso in due, il più a nord per primo.");
-        var elsewhere = SkyPointings.Mosaic(SkyPointings.Panels([Light(314.28, 31.72, "a"), Light(314.29, 31.71, "a"), Light(314.27, 31.73, "b"), Light(83.8, -5.4, "c"), Light(314.28, 33.2, "a")], 0.3), 3);
+        // Either side of the meridian the camera is turned half a circle, and a rectangle does not care: the panel keeps one orientation.
+        var pierWest = Light(314.28, 31.72, "a"); pierWest.Headers["ROTATOR"] = 181.6;
+        var pierEast = Light(314.28, 31.72, "b"); pierEast.Headers["ROTATOR"] = 1.57;
+        var folded = SkyPointings.Panels([pierWest, pierEast], 0.3);
+        Assert(folded.Count == 1 && folded[0].AngleSource == "rotator" && Near(folded[0].PositionAngleDeg ?? double.NaN, 1.585), $"Un angolo e il suo opposto sono la stessa orientazione: {folded[0].PositionAngleDeg}.");
+        var elsewhere =SkyPointings.Mosaic(SkyPointings.Panels([Light(314.28, 31.72, "a"), Light(314.29, 31.71, "a"), Light(314.27, 31.73, "b"), Light(83.8, -5.4, "c"), Light(314.28, 33.2, "a")], 0.3), 3);
         Assert(elsewhere.Count == 2 && elsewhere[0].Lights == 3 && elsewhere.All(panel => panel.RaDeg > 300), "Un altro bersaglio nello stesso progetto non deve entrare nel mosaico mostrato.");
         Assert(SkyPointings.Panels([new FrameMetadata { Path = "x.fits", Kind = FrameKind.Light }], 0.3).Count == 0, "Un Light senza coordinate non fa un pannello.");
 
