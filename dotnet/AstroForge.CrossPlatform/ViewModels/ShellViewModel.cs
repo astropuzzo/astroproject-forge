@@ -12,22 +12,28 @@ using AstroForge.CrossPlatform.Controls;
 
 namespace AstroForge.CrossPlatform.ViewModels;
 
-public enum NextActionKind { AddSources, Analyze, Busy, ConfirmFilters, Resolve, Export, Exporting, OpenPixInsight }
+public enum NextActionKind { AddSources, Analyze, Busy, Continue, Resolve, NameProject, ChooseDestination, Export, Exporting, OpenPixInsight }
 
 public sealed record CalibrationLine(string Label, string Count, IBrush Dot);
 
 public sealed record CommandItem(string Id, string Title, string Hint);
 
 /// <summary>
-/// State of the window around the two screens: the four-step constellation, the one next action, the project
-/// title, and the overview's stack, calibration ring, nights and open choice. Derived from the shared view model
-/// and refreshed once per dispatcher pass whatever changed.
+/// State of the window around its four steps: which step the project is on, the one button that moves it forward,
+/// the project title, and the stack, calibration ring, nights and open choice the steps draw. Derived from the shared view
+/// model and refreshed once per dispatcher pass whatever changed.
 /// </summary>
 public sealed class ShellViewModel : BindableBase
 {
+    public const int StepCount = 4;
+    public const int ImportStep = 0, SetupStep = 1, CalibrationStep = 2, ExportStep = 3;
+
     private readonly MainViewModel _main;
     private readonly ObservatoryViewModel _observatory;
     private bool _queued;
+    private int _step;
+    private int _maxReached;
+    private bool _wasAnalysed;
     private int _nightIndex;
     private int _palette;
     private string _query = "";
@@ -42,15 +48,49 @@ public sealed class ShellViewModel : BindableBase
         _observatory = observatory;
         main.PropertyChanged += (_, e) => { if (e.PropertyName is not (nameof(MainViewModel.SearchText))) Schedule(); };
         observatory.PropertyChanged += (_, e) => { if (e.PropertyName is nameof(ObservatoryViewModel.PendingCount) or nameof(ObservatoryViewModel.HasInstrument)) Schedule(); };
-        foreach (var collection in new INotifyCollectionChanged[] { main.FilterStatistics, main.NightStatistics, main.ReviewQueue, main.SourcePaths, main.ExportHistory, observatory.FilterCards })
+        foreach (var collection in new INotifyCollectionChanged[] { main.FilterStatistics, main.NightStatistics, main.ReviewQueue, main.SourcePaths, main.MasterLibraries, main.ExportHistory, observatory.FilterCards })
             collection.CollectionChanged += (_, _) => Schedule();
         Refresh();
     }
 
+    public MainViewModel Main => _main;
+    public ObservatoryViewModel Observatory => _observatory;
+
+    /// <summary>Raised when the project moves to another step, by the button, the stepper or the analysis finishing.</summary>
+    public event EventHandler<int>? StepChanged;
+
+    /// <summary>The step on screen: 0 Import, 1 Setup, 2 Calibration, 3 Export.</summary>
+    public int CurrentStep
+    {
+        get => _step;
+        set
+        {
+            var next = Math.Clamp(value, 0, StepCount - 1);
+            if (!Set(ref _step, next)) return;
+            _maxReached = Math.Max(_maxReached, next);
+            Refresh();
+            StepChanged?.Invoke(this, next);
+        }
+    }
+
+    public bool CanGoBack => _step > 0;
+    public bool IsImportStep => _step == ImportStep;
+    public bool IsSetupStep => _step == SetupStep;
+    public bool IsCalibrationStep => _step == CalibrationStep;
+    public bool IsExportStep => _step == ExportStep;
+
+    /// <summary>A step can be opened once there is something to show for it: the import always, the rest after the analysis.</summary>
+    public bool CanOpen(int step) => step <= ImportStep || Analyzed || step <= _step;
+
     private bool English => _main.UiLanguage == UiLocalization.English;
     private CultureInfo Culture => English ? CultureInfo.GetCultureInfo("en-GB") : CultureInfo.GetCultureInfo("it-IT");
     private IReadOnlyList<LightCalibrationAnalysis> Lights => _main.Analysis?.Lights ?? [];
-    private bool Analyzed => _main.HasAnalysis && !_main.NeedsReanalysis;
+    public bool Analyzed => _main.HasAnalysis && !_main.NeedsReanalysis;
+    public bool NeedsAnalysis => !Analyzed;
+    public bool HasSources => _main.HasSources;
+    public bool NoSources => !_main.HasSources;
+    public bool HasLibraries => _main.MasterLibraries.Count > 0;
+    public bool NoLibraries => _main.MasterLibraries.Count == 0;
 
     private void Schedule()
     {
@@ -99,72 +139,122 @@ public sealed class ShellViewModel : BindableBase
     public bool IsScanning => _main.IsScanning;
     public double Progress => _main.Progress;
 
-    // ---- Next action ----
+    // ---- The one button that moves the project forward ----
+    private bool Exporting => _main.ExportState is ExportRunState.Running or ExportRunState.Paused or ExportRunState.Preflighting or ExportRunState.Cancelling;
+    private bool Exported => _main.ExportState == ExportRunState.Completed;
+    private int OpenChoices => _main.ReviewQueue.Count;
+
+    /// <summary>What the main button does on the step on screen. The same button, in the same place, on every step.</summary>
     public NextActionKind NextKind
     {
         get
         {
             if (_main.IsScanning) return NextActionKind.Busy;
-            if (_main.ExportState is ExportRunState.Running or ExportRunState.Paused or ExportRunState.Preflighting or ExportRunState.Cancelling) return NextActionKind.Exporting;
+            if (Exporting) return NextActionKind.Exporting;
             if (!_main.HasSources) return NextActionKind.AddSources;
             if (!Analyzed) return NextActionKind.Analyze;
-            if (_observatory.PendingCount > 0) return NextActionKind.ConfirmFilters;
-            if (_main.ReviewQueue.Count > 0) return NextActionKind.Resolve;
-            if (_main.ExportState != ExportRunState.Completed) return NextActionKind.Export;
-            return NextActionKind.OpenPixInsight;
+            return _step switch
+            {
+                ImportStep or SetupStep => NextActionKind.Continue,
+                CalibrationStep => OpenChoices > 0 ? NextActionKind.Resolve : NextActionKind.Continue,
+                _ when OpenChoices > 0 => NextActionKind.Resolve,
+                _ when Exported => NextActionKind.OpenPixInsight,
+                _ when string.IsNullOrWhiteSpace(_main.ProjectName) => NextActionKind.NameProject,
+                _ when string.IsNullOrWhiteSpace(_main.DestinationPath) => NextActionKind.ChooseDestination,
+                _ => NextActionKind.Export
+            };
         }
     }
 
     public string NextLabel => NextKind switch
     {
         NextActionKind.Busy => English ? $"Analysing · {_main.Progress:0} %" : $"Analisi · {_main.Progress:0} %",
-        NextActionKind.Exporting => English ? "Export in progress" : "Esportazione in corso",
+        NextActionKind.Exporting => English ? $"Exporting · {_main.ExportProgress:0} %" : $"Esportazione · {_main.ExportProgress:0} %",
         NextActionKind.AddSources => English ? "Add captures" : "Aggiungi acquisizioni",
         NextActionKind.Analyze => _main.HasAnalysis ? (English ? "Analyse again" : "Rianalizza") : (English ? "Analyse" : "Analizza"),
-        NextActionKind.ConfirmFilters => _observatory.PendingCount == 1 ? (English ? "Confirm the filter" : "Conferma il filtro") : English ? $"Confirm {_observatory.PendingCount} filters" : $"Conferma {_observatory.PendingCount} filtri",
-        NextActionKind.Resolve => _main.ReviewQueue[0] is { Calibration: "Flat", CanAssignCandidate: true } && _main.ReviewQueue.Count == 1
-            ? (English ? "Choose the missing Flat" : "Scegli il Flat mancante")
-            : English ? $"Resolve {_main.ReviewQueue.Count}" : $"Risolvi {_main.ReviewQueue.Count}",
-        NextActionKind.Export => ExportSize is { } size ? (English ? $"Export {size}" : $"Esporta {size}") : (English ? "Export" : "Esporta"),
+        NextActionKind.Continue => English ? "Continue" : "Continua",
+        NextActionKind.Resolve => OpenChoices == 1 ? (English ? "Resolve 1 choice" : "Risolvi 1 scelta") : English ? $"Resolve {OpenChoices} choices" : $"Risolvi {OpenChoices} scelte",
+        NextActionKind.NameProject => English ? "Name the project" : "Dai un nome al progetto",
+        NextActionKind.ChooseDestination => English ? "Choose the destination" : "Scegli la destinazione",
+        NextActionKind.Export => _main.HasExportHistory
+            ? (ExportSize is { } update ? (English ? $"Update project · {update}" : $"Aggiorna progetto · {update}") : (English ? "Update project" : "Aggiorna progetto"))
+            : ExportSize is { } size ? (English ? $"Export {size}" : $"Esporta {size}") : (English ? "Export" : "Esporta"),
         _ => English ? "Open in PixInsight" : "Apri in PixInsight"
     };
     public bool NextEnabled => NextKind is not NextActionKind.Busy;
     private string? ExportSize => (_main.BytesToCopy ?? _main.PlannedBytes) is { } bytes and > 0 ? HumanSize(bytes) : null;
 
-    // ---- Constellation ----
+    /// <summary>One line under the stepper, in the footer: what this step asks, or what is in the way.</summary>
+    public string StepHint
+    {
+        get
+        {
+            if (_main.IsScanning) return English ? "Reading the headers…" : "Lettura degli header…";
+            var pending = _observatory.PendingCount;
+            return _step switch
+            {
+                ImportStep when !_main.HasSources => English ? "Add the captures to start. The Master Library is optional and remembered for every project." : "Aggiungi le acquisizioni per iniziare. La Master Library è facoltativa e resta salvata per ogni progetto.",
+                ImportStep when !Analyzed => English ? "Ready: Forge reads the headers only, your files are never changed." : "Pronto: Forge legge solo gli header, i tuoi file non vengono mai modificati.",
+                ImportStep => English ? "Analysed. Next: check that this is your gear." : "Analizzato. Prossimo passo: controlla che sia la tua attrezzatura.",
+                SetupStep when !Analyzed => English ? "Analyse the project to see the gear Forge found." : "Analizza il progetto per vedere l'attrezzatura trovata.",
+                SetupStep when pending > 0 => English ? $"{pending} filter(s) to identify. Pick them from the catalogue, or continue: the name is kept as written." : $"{pending} filtro/i da riconoscere. Sceglili dal catalogo, oppure continua: il nome resta quello scritto.",
+                SetupStep => English ? "Everything recognised. Tap any part to change it if it is not right." : "Tutto riconosciuto. Tocca una voce per cambiarla se non è giusta.",
+                CalibrationStep when !Analyzed => English ? "Analyse the project to match Flat, Dark and Bias." : "Analizza il progetto per abbinare Flat, Dark e Bias.",
+                CalibrationStep when OpenChoices > 0 => English ? "Some Lights need a choice before the export." : "Alcuni Light richiedono una scelta prima dell'esportazione.",
+                CalibrationStep => English ? "Every Light has its Flat, Dark and Bias." : "Ogni Light ha il suo Flat, Dark e Bias.",
+                _ when Exported => English ? "Exported. Open PixInsight: WBPP is ready, press Run when you are." : "Esportato. Apri PixInsight: WBPP è pronto, premi Run quando vuoi.",
+                _ when OpenChoices > 0 => English ? "Resolve the open calibration choices first." : "Risolvi prima le scelte di calibrazione aperte.",
+                _ => English ? "Name the project, choose where it goes, then export. Only new files are copied." : "Dai un nome al progetto, scegli dove va, poi esporta. Si copiano solo i file nuovi."
+            };
+        }
+    }
+
+    // ---- The export page says where it is: before, during and after ----
+    public string ExportEyebrow => Exported ? (English ? "STEP 4 OF 4 · DONE" : "PASSO 4 DI 4 · FATTO") : English ? "STEP 4 OF 4 · EXPORT" : "PASSO 4 DI 4 · ESPORTA";
+    public string ExportTitle => Exported ? (English ? "Ready for PixInsight" : "Pronto per PixInsight") : Exporting ? (English ? "Copying and checking…" : "Copia e verifica in corso…") : English ? "Where do we put it?" : "Dove lo mettiamo?";
+    public string ExportSubtitle => Exported
+        ? (English ? "The project folder is ready and the WBPP instance carries files, masters and groups. Open it, check Calibration and press Run." : "La cartella di progetto è pronta e l’istanza WBPP porta file, master e gruppi. Aprila, controlla Calibration e premi Run.")
+        : English ? "Forge copies and verifies every file, and next time only adds the new ones." : "Forge copia e verifica ogni file, e la prossima volta aggiunge solo i nuovi.";
+
+    // ---- Stepper ----
     public IReadOnlyList<ShellStep> Steps
     {
         get
         {
-            var projectDone = Analyzed;
-            var resolveDone = projectDone && _main.Analysis?.Ready == true && _observatory.PendingCount == 0 && _main.ReviewQueue.Count == 0;
-            var exportDone = resolveDone && _main.ExportState == ExportRunState.Completed;
-            var states = new[] { projectDone, resolveDone, exportDone, false };
-            var now = Array.IndexOf(states, false);
-            StepState State(int index) => states[index] ? StepState.Done : index == now ? StepState.Now : StepState.Pending;
+            var analysed = Analyzed;
+            var calibrated = analysed && _main.Analysis?.Ready == true && OpenChoices == 0;
+            var pending = _observatory.PendingCount;
+            // Now is the step on screen. Done is a step with nothing left to do that the project has moved past; a step the project
+            // has been through and left something open on is Attention. Everything else waits.
+            ShellStep Step(int index, string title, string detail, bool complete, bool open) => new(title, detail,
+                index == _step ? StepState.Now : complete ? StepState.Done : open && index <= _maxReached ? StepState.Attention : StepState.Pending,
+                complete, open && index <= _maxReached, CanOpen(index));
 
-            var projectDetail = projectDone ? (English ? $"{_main.AnalyzedFileCount} files analysed" : $"{_main.AnalyzedFileCount} file analizzati")
+            var importDetail = analysed ? (English ? $"{_main.AnalyzedFileCount} files · {Nights(_nightTotals.Count)}" : $"{_main.AnalyzedFileCount} file · {Nights(_nightTotals.Count)}")
                 : _main.HasSources ? (English ? $"{SourcesLabel} · to analyse" : $"{SourcesLabel} · da analizzare")
-                : (English ? "Add captures" : "Aggiungi acquisizioni");
-            var choices = _main.ReviewQueue.Count + _observatory.PendingCount;
-            var resolveDetail = !projectDone ? (English ? "after the analysis" : "dopo l'analisi")
-                : choices == 0 ? (English ? "all calibrated" : "tutto calibrato")
-                : _main.ReviewQueue.Count == 0 ? (_observatory.PendingCount == 1 ? (English ? "1 filter to confirm" : "1 filtro da confermare") : English ? $"{choices} filters to confirm" : $"{choices} filtri da confermare")
-                : choices == 1 ? (English ? "1 open choice" : "1 scelta in sospeso")
-                : English ? $"{choices} open choices" : $"{choices} scelte in sospeso";
-            var exportDetail = exportDone ? (English ? "exported" : "esportato")
+                : (English ? "captures and masters" : "acquisizioni e master");
+            var setupDetail = !analysed ? (English ? "after the analysis" : "dopo l'analisi")
+                : _observatory.PendingCount > 0 ? (_observatory.PendingCount == 1 ? (English ? "1 filter to identify" : "1 filtro da riconoscere") : English ? $"{_observatory.PendingCount} filters to identify" : $"{_observatory.PendingCount} filtri da riconoscere")
+                : (English ? $"{_observatory.CameraShortName} · {Filters(_observatory.Filters.Count)}" : $"{_observatory.CameraShortName} · {Filters(_observatory.Filters.Count)}");
+            var calibrationDetail = !analysed ? (English ? "after the analysis" : "dopo l'analisi")
+                : OpenChoices == 0 ? (English ? "all calibrated" : "tutto calibrato")
+                : OpenChoices == 1 ? (English ? "1 open choice" : "1 scelta aperta")
+                : English ? $"{OpenChoices} open choices" : $"{OpenChoices} scelte aperte";
+            var exportDetail = Exported ? (English ? "exported" : "esportato")
                 : ExportSize is { } size ? (English ? $"{size} to copy" : $"{size} da copiare")
                 : (English ? "project folder" : "cartella di progetto");
-            var wbppDetail = exportDone ? (English ? "instance ready" : "istanza pronta") : (English ? "after the export" : "dopo l'export");
             return
             [
-                new(English ? "Project" : "Progetto", projectDetail, State(0)),
-                new(English ? "Resolve" : "Risolvi", resolveDetail, State(1)),
-                new(English ? "Export" : "Esporta", exportDetail, State(2)),
-                new("PixInsight WBPP", wbppDetail, State(3))
+                Step(ImportStep, English ? "Import" : "Importa", importDetail, analysed, false),
+                Step(SetupStep, English ? "Gear" : "Strumento", setupDetail, analysed && pending == 0 && _maxReached > SetupStep, analysed && pending > 0),
+                Step(CalibrationStep, English ? "Calibration" : "Calibrazioni", calibrationDetail, calibrated && _maxReached > CalibrationStep, analysed && !calibrated),
+                Step(ExportStep, English ? "Export" : "Esporta", exportDetail, Exported, false)
             ];
         }
     }
+
+    private string Nights(int count) => count == 1 ? (English ? "1 night" : "1 notte") : English ? $"{count} nights" : $"{count} notti";
+    private string Filters(int count) => count == 1 ? (English ? "1 filter" : "1 filtro") : English ? $"{count} filters" : $"{count} filtri";
 
     // ---- Stack preview ----
     public int NightCount => Math.Max(1, _nightTotals.Count);
@@ -236,6 +326,7 @@ public sealed class ShellViewModel : BindableBase
     public ReviewQueueItem? Choice => _main.ReviewQueue.FirstOrDefault();
     public bool HasChoice => Choice is not null;
     public bool NoChoice => Choice is null && _main.HasAnalysis;
+    public bool AllCalibrated => Analyzed && Choice is null;
     public string ChoiceBadge => _main.ReviewQueue.Count == 1 ? (English ? "1 choice" : "1 scelta") : English ? $"{_main.ReviewQueue.Count} choices" : $"{_main.ReviewQueue.Count} scelte";
     public string ChoiceTitle => Choice is { } item ? $"{item.Calibration} · {item.Filter}" : "";
     public string ChoiceSubtitle => Choice is { } item ? (English ? $"night of {NightLong(item.Night)} · {item.FrameCount} subs" : $"notte del {NightLong(item.Night)} · {item.FrameCount} pose") : "";
@@ -277,17 +368,17 @@ public sealed class ShellViewModel : BindableBase
     private IReadOnlyList<CommandItem> BuildCommands() =>
     [
         new("next", NextLabel, "↵"),
-        new("overview", English ? "Overview" : "Panoramica", "Alt 1"),
-        new("instrument", English ? "Instrument" : "Strumento", "Alt 2"),
-        new("project", English ? "Project · sources and files" : "Progetto · sorgenti e file", "Alt 3"),
-        new("resolve", English ? "Resolve calibrations" : "Risolvi calibrazioni", "Alt 4"),
-        new("export", English ? "Export" : "Esporta", "Alt 5"),
-        new("wbpp", "PixInsight WBPP", "Alt 6"),
-        new("stats", English ? "Statistics" : "Statistiche", "Alt 7"),
-        new("quality", English ? "Frame quality" : "Qualità dei frame", "Alt 8"),
-        new("masters", "Libreria Master", "Alt 9"),
+        new("import", English ? "1 · Import" : "1 · Importa", "Alt 1"),
+        new("setup", English ? "2 · Gear" : "2 · Strumento", "Alt 2"),
+        new("calibration", English ? "3 · Calibration" : "3 · Calibrazioni", "Alt 3"),
+        new("export", English ? "4 · Export and PixInsight" : "4 · Esporta e PixInsight", "Alt 4"),
+        new("metadata", English ? "Frames and metadata" : "Frame e metadati", "Alt 5"),
+        new("stats", English ? "Statistics" : "Statistiche", "Alt 6"),
+        new("quality", English ? "Frame quality" : "Qualità dei frame", "Alt 7"),
+        new("masters", "Libreria Master", "Alt 8"),
         new("analyze", English ? "Analyse project" : "Analizza progetto", "Ctrl ↵"),
         new("addFolder", English ? "Import folder" : "Importa cartella", ""),
+        new("addLibrary", English ? "Add Master Library" : "Aggiungi Master Library", ""),
         new("new", English ? "New project" : "Nuovo progetto", "Ctrl N"),
         new("open", English ? "Open project" : "Apri progetto", "Ctrl O"),
         new("save", English ? "Save" : "Salva", "Ctrl S"),
@@ -305,8 +396,15 @@ public sealed class ShellViewModel : BindableBase
         RebuildNights();
         _commands = BuildCommands();
         if (!CanSho && _palette == 1) _palette = 0;
+        // A project without an analysis has been through nothing yet.
+        if (!Analyzed && !_main.IsScanning) _maxReached = _step;
         foreach (var property in typeof(ShellViewModel).GetProperties())
-            if (property.Name is not (nameof(Query) or nameof(CommandIndex))) Raise(property.Name);
+            if (property.Name is not (nameof(Query) or nameof(CommandIndex) or nameof(Main) or nameof(Observatory) or nameof(CurrentStep))) Raise(property.Name);
+
+        // The analysis finishing is the end of the import: carry on to the gear on its own.
+        var newlyAnalysed = Analyzed && !_wasAnalysed;
+        _wasAnalysed = Analyzed;
+        if (newlyAnalysed && _step == ImportStep && _nightTotals.Count > 0) CurrentStep = SetupStep;
     }
 
     private void RaiseStack()

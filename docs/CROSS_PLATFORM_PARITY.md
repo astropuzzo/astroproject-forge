@@ -38,6 +38,8 @@ still requires an interaction test on the named OS; `blocked` prevents publicati
 | Transactional organization, hash verification, rollback | shared Core | automated | automated | automated | P0 |
 | Settings persistence, diagnostics and support bundle | implemented | native QA | native QA | native QA | P0 |
 | First-run onboarding linked to real source/library state | implemented | native QA | native QA | native QA | P0 |
+| Four-step guided flow (Import, Gear, Calibration, Export) with one forward button | implemented | native QA | native QA | native QA | P0 |
+| Camera, optics, reducer and filters read from headers and always correctable by the user | shared Core | automated | automated | automated | P0 |
 | Signed platform-aware application updates | implemented | native QA | blocked | blocked | commercial |
 | Responsive panels at 980–2560 px and HiDPI | implemented | native QA | native QA | native QA | P0 |
 | Keyboard navigation and screen-reader names | implemented | native QA | native QA | native QA | P0 |

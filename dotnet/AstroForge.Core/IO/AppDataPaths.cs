@@ -8,9 +8,21 @@ public static class AppDataPaths
 {
     public const string AppFolderName = "AstroProjectForge";
 
-    private static readonly Lazy<string> LazyRoot = new(() => ResolveRoot(DefaultCandidates()));
+    /// <summary>Environment variable that points the app at another data folder (portable installs, tests, screenshots).</summary>
+    public const string DataFolderVariable = "ASTROFORGE_DATA_DIR";
+
+    private static readonly Lazy<string> LazyRoot = new(DefaultRoot);
 
     public static string Root => LazyRoot.Value;
+
+    // The override names the data folder itself, not a base the app folder goes under.
+    private static string DefaultRoot()
+    {
+        var folder = Environment.GetEnvironmentVariable(DataFolderVariable);
+        return !string.IsNullOrWhiteSpace(folder) && Path.IsPathFullyQualified(folder) && IsWritableDirectory(folder)
+            ? Path.TrimEndingDirectorySeparator(folder)
+            : ResolveRoot(DefaultCandidates());
+    }
 
     public static string Combine(params string[] parts) => Path.Combine([Root, .. parts]);
 

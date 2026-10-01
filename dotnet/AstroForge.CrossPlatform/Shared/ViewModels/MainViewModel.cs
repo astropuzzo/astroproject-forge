@@ -297,12 +297,12 @@ public sealed class MainViewModel : BindableBase
         ExportRunState.Completed => "COMPLETATO",
         ExportRunState.Cancelled => "RIPRENDIBILE",
         ExportRunState.Failed => "ERRORE",
-        _ => "NON VERIFICATO"
+        _ => "PRONTO DA ESPORTARE"
     };
     public string ExportProgressDetail { get => _exportProgressDetail; private set => Set(ref _exportProgressDetail, value); }
-    public string ExportFileSummary => _exportPreflight is null ? "—" : $"{_exportPreflight.TotalFiles} file";
-    public string ExportBytesSummary => _exportPreflight is null ? "—" : $"{HumanSize(_exportPreflight.BytesToCopy)} da copiare";
-    public string ExportSpaceSummary => _exportPreflight?.AvailableFreeBytes is { } value ? $"{HumanSize(value)} liberi" : "Spazio non disponibile";
+    public string ExportFileSummary => _exportPreflight is null ? "—" : UiLanguage == UiLocalization.English ? $"{_exportPreflight.TotalFiles} files" : $"{_exportPreflight.TotalFiles} file";
+    public string ExportBytesSummary => _exportPreflight is null ? "—" : UiLanguage == UiLocalization.English ? $"{HumanSize(_exportPreflight.BytesToCopy)} to copy" : $"{HumanSize(_exportPreflight.BytesToCopy)} da copiare";
+    public string ExportSpaceSummary => _exportPreflight is null ? "—" : _exportPreflight.AvailableFreeBytes is { } value ? (UiLanguage == UiLocalization.English ? $"{HumanSize(value)} free" : $"{HumanSize(value)} liberi") : "Spazio non disponibile";
     public string ExportEtaSummary => _exportPreflight is null ? "—" : FormatDuration(_exportPreflight.EstimatedDuration);
     public string ExportResumeSummary => _exportPreflight is null
         ? (UiLanguage == UiLocalization.English ? "No comparison run" : "Nessun confronto eseguito")
@@ -420,7 +420,7 @@ public sealed class MainViewModel : BindableBase
     public bool IsProjectReady => _analysis?.Ready == true;
     public string ReadinessText { get => _readinessText; private set => Set(ref _readinessText, value); }
     public string CalibrationSummary { get => _calibrationSummary; private set => Set(ref _calibrationSummary, value); }
-    public string PlanSummary => _plan is null ? "Genera il piano dopo aver risolto le calibrazioni." : $"{_plan.Files.Count} file · {HumanSize(_plan.RequiredBytes)} · {_plan.ProjectRoot}";
+    public string PlanSummary => _plan is null ? "Genera il piano dopo aver risolto le calibrazioni." : UiLanguage == UiLocalization.English ? $"{_plan.Files.Count} files · {HumanSize(_plan.RequiredBytes)} · {_plan.ProjectRoot}" : $"{_plan.Files.Count} file · {HumanSize(_plan.RequiredBytes)} · {_plan.ProjectRoot}";
     public string TotalIntegrationText => _statistics is null ? "0 h" : FormatHours(_statistics.ExposureSeconds);
     public string StatisticsSummary => _statistics is null ? "Analizza il progetto per calcolare le statistiche." : $"{_statistics.LightCount} Light · {_statistics.FilterCount} filtri · {_statistics.ConfigurationSessionCount} sessioni · {_statistics.NightCount} notti";
     public string StatisticsDateRange => _statistics?.FirstCapture is null ? "Nessun intervallo temporale" : $"{_statistics.FirstCapture.Value.ToLocalTime():dd MMM yyyy} → {_statistics.LastCapture!.Value.ToLocalTime():dd MMM yyyy}";
@@ -1217,8 +1217,8 @@ public sealed class MainViewModel : BindableBase
             ApplyExportPreflight(report);
             SetExportState(report.IsReady ? ExportRunState.Ready : ExportRunState.Blocked);
             ExportProgressDetail = report.IsReady
-                ? $"Verifica completata · {report.WarningCount} avvisi"
-                : $"Export bloccato · {report.ErrorCount} errori · {report.WarningCount} avvisi";
+                ? (UiLanguage == UiLocalization.English ? $"Check complete · {report.WarningCount} warnings" : $"Verifica completata · {report.WarningCount} avvisi")
+                : UiLanguage == UiLocalization.English ? $"Export blocked · {report.ErrorCount} errors · {report.WarningCount} warnings" : $"Export bloccato · {report.ErrorCount} errori · {report.WarningCount} avvisi";
             Status = ExportProgressDetail;
             if (report.IsReady) operation.Complete("AF-EXPORT-PREFLIGHT-OK", ExportProgressDetail);
             else operation.Fail("AF-EXPORT-PREFLIGHT-BLOCKED", ExportProgressDetail, new ExportPreflightException(report));
@@ -1529,8 +1529,8 @@ public sealed class MainViewModel : BindableBase
             SetExportState(ExportRunState.Completed);
             ExportProgress = 100;
             ExportProgressDetail = report.IsIncremental
-                ? $"Aggiornamento completato · {report.NewFileCount} nuovi · {report.ResumeFileCount} invariati"
-                : $"Copia e verifica completate · {plan.Files.Count} file";
+                ? (UiLanguage == UiLocalization.English ? $"Update complete · {report.NewFileCount} new · {report.ResumeFileCount} unchanged" : $"Aggiornamento completato · {report.NewFileCount} nuovi · {report.ResumeFileCount} invariati")
+                : UiLanguage == UiLocalization.English ? $"Copied and verified · {plan.Files.Count} files" : $"Copia e verifica completate · {plan.Files.Count} file";
             Status = $"Progetto verificato: {output}";
             RefreshExportHistory(output);
             tracked.Complete("AF-EXPORT-OK", $"Esportazione verificata completata: {plan.Files.Count} file");
@@ -2136,9 +2136,10 @@ public sealed class MainViewModel : BindableBase
         if (!cameraChanged) { RefreshInstrument(); return; }
         RefreshIntelligence();
         RebuildTree();
+        var english = UiLanguage == UiLocalization.English;
         Status = current?.HasCamera == true
-            ? $"Camera impostata su {current.UserCamera()?.DisplayName} · abbinamenti ricalcolati"
-            : "Camera rilevata dagli header ripristinata · abbinamenti ricalcolati";
+            ? english ? $"Camera set to {current.UserCamera()?.DisplayName} · matches recalculated" : $"Camera impostata su {current.UserCamera()?.DisplayName} · abbinamenti ricalcolati"
+            : english ? "Camera from the headers restored · matches recalculated" : "Camera rilevata dagli header ripristinata · abbinamenti ricalcolati";
     }
 
     // Focal length and pixel size only feed the instrument profile (scale, field of view).

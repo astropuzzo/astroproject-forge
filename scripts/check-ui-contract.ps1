@@ -63,7 +63,10 @@ $contracts = @{
     'Windows update relaunch' = $installer.Contains('Parameters: "--updated"') -and $avaloniaCode.Contains('UpdatedArgument = "--updated"')
     'Project file association' = $installer.Contains('""%1""') -and $avaloniaCode.Contains('ProjectFileExtension = ".astroforge"')
     'Installer ships the Avalonia executable' = $installer.Contains('#define MyAppExeName "AstroProjectForge.exe"') -and $installer.Contains('[InstallDelete]') -and $installer.Contains('Type: files; Name: "{app}\{#LegacyAppExeName}"')
-    'Operational onboarding' = $avaloniaXaml.Contains('x:Name="OnboardingStep5"') -and $avaloniaCode.Contains('if (_viewModel.CanAnalyzeProject)')
+    'Operational onboarding' = $avaloniaXaml.Contains('x:Name="OnboardingStep2"') -and $avaloniaCode.Contains('ShellViewModel.ImportStep')
+    'One step per page with a single forward button' = $avaloniaXaml.Contains('x:Name="Stepper"') -and $avaloniaXaml.Contains('x:Name="NextButton"') -and $avaloniaXaml.Contains('Click="Back_Click"') -and $avaloniaCode.Contains('private async void Next_Click')
+    'Master Library on the import page' = $avaloniaXaml.IndexOf('x:Name="LibraryCard"') -ge 0 -and $avaloniaXaml.IndexOf('x:Name="LibraryCard"') -lt $avaloniaXaml.IndexOf('x:Name="SetupPage"')
+    'Detected camera, optics and filters can be corrected' = $avaloniaXaml.Contains('x:Name="CameraBox"') -and $avaloniaXaml.Contains('Click="ConfirmFilter_Click"') -and $avaloniaCode.Contains('TrainView_PartInvoked') -and $viewModel.Contains('PhysicalCameraResolver.Apply')
     'First-run language choice' = $avaloniaXaml.Contains('OnboardingEnglish_Click') -and $avaloniaXaml.Contains('OnboardingItalian_Click')
     'English default language' = (Read-Raw $appStatePath).Contains('UiLanguage { get; set; } = UiLocalization.English')
 }

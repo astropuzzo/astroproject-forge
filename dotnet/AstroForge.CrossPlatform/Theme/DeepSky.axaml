@@ -580,6 +580,68 @@
 
   <Style Selector="ListBox.slots ListBoxItem"><Setter Property="Padding" Value="4,7"/><Setter Property="CornerRadius" Value="12"/><Setter Property="BorderBrush" Value="{StaticResource LineBrush}"/><Setter Property="BorderThickness" Value="1"/></Style>
 
+  <!-- Steps: one page per step, one calm vocabulary -->
+  <Style Selector="TextBlock.pageTitle">
+    <Setter Property="FontSize" Value="40"/>
+    <Setter Property="FontWeight" Value="Light"/>
+    <Setter Property="LetterSpacing" Value="-1.2"/>
+  </Style>
+  <Style Selector="TextBlock.stepTitle">
+    <Setter Property="FontSize" Value="22"/>
+    <Setter Property="FontWeight" Value="Light"/>
+    <Setter Property="LetterSpacing" Value="-0.3"/>
+  </Style>
+  <Style Selector="Border.card.step"><Setter Property="Padding" Value="26"/><Setter Property="CornerRadius" Value="22"/></Style>
+  <Style Selector="Border.badge">
+    <Setter Property="Width" Value="34"/>
+    <Setter Property="Height" Value="34"/>
+    <Setter Property="CornerRadius" Value="17"/>
+    <Setter Property="Background" Value="{StaticResource IconTileBrush}"/>
+    <Setter Property="BorderBrush" Value="{StaticResource LineHiBrush}"/>
+    <Setter Property="BorderThickness" Value="1"/>
+  </Style>
+  <Style Selector="Border.badge > TextBlock">
+    <Setter Property="FontFamily" Value="{StaticResource MonoFont}"/>
+    <Setter Property="FontSize" Value="14"/>
+    <Setter Property="FontWeight" Value="SemiBold"/>
+    <Setter Property="Foreground" Value="{StaticResource AccentBrush}"/>
+    <Setter Property="HorizontalAlignment" Value="Center"/>
+    <Setter Property="VerticalAlignment" Value="Center"/>
+  </Style>
+  <Style Selector="Border.drop">
+    <Setter Property="Background" Value="#0F9DB8FF"/>
+    <Setter Property="BorderBrush" Value="{StaticResource LineHiBrush}"/>
+    <Setter Property="BorderThickness" Value="1"/>
+    <Setter Property="CornerRadius" Value="18"/>
+    <Setter Property="Padding" Value="20"/>
+    <Setter Property="Cursor" Value="Hand"/>
+    <Setter Property="Transitions"><Transitions><BrushTransition Property="Background" Duration="0:0:0.3"/><BrushTransition Property="BorderBrush" Duration="0:0:0.3"/></Transitions></Setter>
+  </Style>
+  <Style Selector="Border.drop:pointerover"><Setter Property="Background" Value="#1C9DB8FF"/><Setter Property="BorderBrush" Value="{StaticResource AccentBrush}"/></Style>
+  <Style Selector="Button.link">
+    <Setter Property="Background" Value="Transparent"/>
+    <Setter Property="BorderThickness" Value="0"/>
+    <Setter Property="Padding" Value="9,4"/>
+    <Setter Property="FontWeight" Value="Medium"/>
+    <Setter Property="Foreground" Value="{StaticResource AccentBrush}"/>
+  </Style>
+  <Style Selector="Button.link:pointerover /template/ ContentPresenter#PART_ContentPresenter"><Setter Property="Background" Value="#169DB8FF"/><Setter Property="Foreground" Value="{StaticResource FgBrush}"/></Style>
+  <Style Selector="Button.link:pointerover"><Setter Property="RenderTransform" Value="none"/></Style>
+  <Style Selector="Button.icon">
+    <Setter Property="Width" Value="30"/>
+    <Setter Property="Height" Value="30"/>
+    <Setter Property="MinHeight" Value="0"/>
+    <Setter Property="Padding" Value="0"/>
+    <Setter Property="CornerRadius" Value="9"/>
+    <Setter Property="FontSize" Value="12"/>
+    <Setter Property="Background" Value="Transparent"/>
+    <Setter Property="BorderThickness" Value="0"/>
+    <Setter Property="Foreground" Value="{StaticResource MutedBrush}"/>
+    <Setter Property="HorizontalContentAlignment" Value="Center"/>
+    <Setter Property="VerticalContentAlignment" Value="Center"/>
+  </Style>
+  <Style Selector="Button.icon:pointerover"><Setter Property="RenderTransform" Value="none"/></Style>
+
   <Style Selector="Border.drawer">
     <Setter Property="Background" Value="{StaticResource DrawerBrush}"/>
     <Setter Property="BorderBrush" Value="{StaticResource LineHiBrush}"/>

@@ -1,5 +1,18 @@
 # AstroProject Forge — note di rilascio
 
+## 1.11.0 — 1 ottobre 2026
+
+- Un solo percorso, quattro pagine in ordine: Importa, Strumento, Calibrazioni, Esporta. Il passo corrente è sempre in vista nella barra in alto, ogni passo finito si segna con una spunta e uno che lascia qualcosa di aperto diventa ambra.
+- Un solo pulsante in basso a destra, sempre nello stesso punto, fa la prossima cosa che serve (Analizza, Continua, Risolvi, Esporta, Apri in PixInsight); la riga accanto spiega perché. Indietro è sempre disponibile.
+- Dopo l’analisi il progetto prosegue da solo allo Strumento; i pannelli che nascondevano i passi sono spariti. Statistiche, Qualità, Frame e metadati e verifica della Libreria Master sono strumenti in alto a destra.
+- La Libreria Master è la prima scheda della pagina Importa, grande quanto le acquisizioni, con elenco, priorità e stato; resta salvata per ogni progetto. Anche le acquisizioni si rimuovono con un clic.
+- Strumento: camera, ottica, riduttore e pixel si possono sempre correggere (**Cambia** o un tocco sul treno ottico), anche quando Forge li ha riconosciuti. Nuovo: puoi dire quale **camera** ha scattato davvero; tutti i frame di quella camera (Light, Flat e Master) usano il nome scelto, così Dark e Bias si abbinano anche con un nome di driver inutile negli header.
+- Anche i filtri già riconosciuti si possono cambiare scegliendo quello giusto dal catalogo; la scelta resta salvata per la camera e si può annullare.
+- Calibrazioni: anello e quota per filtro, scelte aperte una alla volta con il candidato consigliato, mappa completa e dettagli su richiesta.
+- Esporta: l’integrazione simulata notte per notte, nome, destinazione e un clic; a esportazione finita la scheda PixInsight WBPP viene in primo piano con il pulsante per aprire l’istanza.
+- Benvenuto ridotto a due schermate (lingua e come funziona). Finestre strette: ogni pagina scorre come un blocco e l’intestazione rinuncia alle parole, non ai passi.
+- Controlli QA: lo smoke test verifica avanzamento automatico, cambio di un filtro riconosciuto e della camera; test del Core per la camera reale; `ASTROFORGE_DATA_DIR` sposta la cartella dati (test e schermate non toccano più i dati dell’utente).
+
 ## 1.10.0 — 1 ottobre 2026
 
 - Finestra ridisegnata: a sinistra i quattro passi (Progetto, Risolvi, Esporta, PixInsight WBPP), in alto un solo pulsante con la prossima azione.

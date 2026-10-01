@@ -4,13 +4,14 @@ AstroProject Forge prepares an organized PixInsight WeightedBatchPreprocessing p
 
 **First time?** Choose **Try the demo project** in the welcome wizard (or **Menu → Open the demo project**). Forge builds two synthetic nights of the Cygnus Loop (ASIAIR and N.I.N.A.) with flats and a master library, analyses them and walks you through every screen on the real controls. Press **F1** on any screen to replay its part of the tour, **Shift+F1** for the online guide.
 
-1. Add FITS/XISF folders or files under **Sources**.
-2. Add one or more Master Dark/Bias folders under **Calibration libraries**.
-3. Select **Analyze**.
-4. Open **Issues** and resolve only the reported ambiguities.
-5. Open **WBPP** and select **Create and open in PixInsight**. The generated `.xpsm` already contains the files, masters, grouping keywords and output directory.
-6. Optionally inspect each filter/configuration session under **Quality**.
-7. Open **Export**, choose a destination and export the verified structure.
+The window has four steps, always in order, and one button at the bottom right that does the next thing the project needs.
+
+1. **Import.** Link your Master Dark/Bias folder under **Master Library** (once: it is remembered for every project), add FITS/XISF folders or files under **Captures**, then select **Analyze**. The analysis carries on to step 2 by itself.
+2. **Gear.** Check the camera, optics, reducer, pixel size and filters Forge read from the headers. Anything that is not right can be changed: select **Change**, or tap a part of the optical train. Filters can be changed too, even the ones Forge recognised. What you choose is remembered for that camera.
+3. **Calibration.** See how many Lights have Flat, Dark and Bias. When Forge cannot choose by itself it asks one thing at a time.
+4. **Export.** Name the project, choose a destination and export the verified structure. Then select **Open in PixInsight**: the generated `.xpsm` already contains the files, masters, grouping keywords and output directory.
+
+Statistics, frame quality and metadata are tools under **Tools** (top right), not steps.
 
 An observing night may cross midnight. The configurable night boundary keeps post-midnight frames with the preceding evening.
 
