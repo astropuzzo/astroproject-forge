@@ -1,5 +1,13 @@
 # AstroProject Forge — note di rilascio
 
+## 1.10.0 — 1 ottobre 2026
+
+- Finestra ridisegnata: a sinistra i quattro passi (Progetto, Risolvi, Esporta, PixInsight WBPP), in alto un solo pulsante con la prossima azione.
+- Panoramica: anteprima d’integrazione con palette HOO/SHO e riproduzione notte per notte, ore per filtro, anello delle calibrazioni, notti con luna e crepuscolo, prima scelta da risolvere.
+- Strumento: campo inquadrato in scala con e senza riduttore, ruota portafiltri, treno ottico e profilo strumento modificabile (ottica, riduttore, pixel), salvato per camera.
+- Progetto, Risolvi, Esporta, WBPP, Statistiche, Qualità, Libreria Master e Log si aprono come pannelli; Ctrl K apre tutti i comandi.
+- Frame ricampionati letti con il passo pixel nativo della camera.
+
 ## 1.9.0 — 30 settembre 2026
 
 - Nuova interfaccia “Cielo profondo”, identica su Windows, macOS e Linux.
