@@ -801,5 +801,8 @@
   "o trascina qui cartelle e file": "or drop folders and files here",
   "Cartelle o file FITS e XISF da qualsiasi software, anche trascinati ovunque sulla finestra. Forge legge solo gli header: gli originali restano intatti.": "FITS and XISF folders or files from any software, also dropped anywhere on the window. Forge reads only the headers: your originals stay untouched.",
   "larghezza": "width",
-  "trasmissione": "transmission"
+  "trasmissione": "transmission",
+  "Lingua, aggiornamenti, aiuto e progetto · Ctrl+,": "Language, updates, help and project · Ctrl+,",
+  "Menu e strumenti": "Menu and tools",
+  "Menu: lingua, aggiornamenti, aiuto e progetto. Strumenti: statistiche, qualità dei frame, metadati e Libreria Master. Ctrl K cerca qualsiasi comando.": "Menu: language, updates, help and project. Tools: statistics, frame quality, metadata and the Master Library. Ctrl K searches any command."
 }

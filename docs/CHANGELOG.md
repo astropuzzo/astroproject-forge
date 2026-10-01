@@ -1,5 +1,9 @@
 # AstroProject Forge — note di rilascio
 
+## 1.11.2 — 1 ottobre 2026
+
+- Il Menu torna ben visibile: un pulsante con il suo nome nell’intestazione, accanto a Strumenti e alla ricerca (Ctrl K), con lingua, aggiornamenti, aiuto e progetto. Nella 1.11.0 e nella 1.11.1 si apriva solo cliccando sul logo, che non sembra un pulsante, e Strumenti usava proprio l’icona a tre righe del menu. Ora Strumenti ha la sua icona; a finestra stretta Menu e Strumenti restano come icone e il tour li presenta.
+
 ## 1.11.1 — 1 ottobre 2026
 
 - Filtri del catalogo: il colore non è più nero. Per ogni filtro scelto dal catalogo (per esempio l’Anti-Halo PRO Dual-Band) lo slot della ruota, la striscia dello spettro e le schede prendevano la trasmissione di picco (0,85) per una lunghezza d’onda e ne ricavavano un nero; ora il colore viene dal centro delle bande, e un dual-band mostra un colore per riga (OIII e Hα).

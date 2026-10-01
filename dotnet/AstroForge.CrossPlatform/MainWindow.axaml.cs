@@ -72,6 +72,8 @@ public sealed partial class MainWindow : Window
         {
             BrandText.IsVisible = args.NewSize.Width >= 1240;
             ProjectChip.IsVisible = args.NewSize.Width >= 1400;
+            // Narrow: Tools and Menu keep their icons and give up their words (their tooltips say what they are).
+            ToolsLabel.IsVisible = MenuLabel.IsVisible = args.NewSize.Width >= 1240;
         };
         Stepper.StepInvoked += (_, step) => GoToStep(step);
         TrainView.PartInvoked += TrainView_PartInvoked;
@@ -210,6 +212,16 @@ public sealed partial class MainWindow : Window
         _observatory.ResetProfile();
         await Settle();
         Check(_observatory.CameraName == detected && !_observatory.CameraWasChanged && _viewModel.ReviewQueue.Count == 0, "Restoring the detected camera must restore the matches.");
+
+        // The menu is a button with a name in the header, and it opens the preferences and the updates.
+        Check(SettingsButton.IsVisible && SettingsButton.Bounds.Width > 40 && MenuLabel.IsVisible && ToolsButton.IsVisible, "The Menu button must be in the header, with its name.");
+        var menuWasOpen = SettingsPanel.IsVisible;
+        SettingsButton.RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
+        await Settle();
+        Check(SettingsPanel.IsVisible != menuWasOpen, "Selecting Menu must open the preferences.");
+        SettingsButton.RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
+        await Settle();
+        Check(SettingsPanel.IsVisible == menuWasOpen, "Selecting Menu again must close it.");
 
         // The catalogues: every filter of the catalogue has a colour you can see and bands you can read, and the lists of cameras and optics open whole, search and scroll.
         foreach (var product in FilterCatalog.Default.Filters)
@@ -1185,6 +1197,8 @@ public sealed partial class MainWindow : Window
                 "Importa, Strumento, Calibrazioni, Esporta. Ogni passo ha la sua pagina e un segno di spunta quando non resta nulla da fare. Clic su un passo per tornarci."),
             new(current, () => NextButton, "Un solo pulsante",
                 "In basso a destra, sempre nello stesso punto: fa la prossima cosa che serve al progetto. Sopra di lui una riga dice perché."),
+            new(current, () => SettingsButton, "Menu e strumenti",
+                "Menu: lingua, aggiornamenti, aiuto e progetto. Strumenti: statistiche, qualità dei frame, metadati e Libreria Master. Ctrl K cerca qualsiasi comando."),
             new(ShellViewModel.ImportStep, () => LibraryCard, "Libreria Master",
                 "Collega una volta sola la cartella dei Dark e Bias. Resta salvata per ogni progetto; se non ce l’hai, salta."),
             new(ShellViewModel.ImportStep, () => SourcesCard, "Acquisizioni",
