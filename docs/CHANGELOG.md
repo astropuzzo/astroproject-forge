@@ -1,5 +1,12 @@
 # AstroProject Forge — note di rilascio
 
+## 1.12.0 — 1 ottobre 2026
+
+- Il **Campo inquadrato** mostra il cielo vero. Dietro il riquadro del sensore c’è ora la foto DSS2 del tuo bersaglio (dal CDS di Strasburgo), centrata dove puntavano i Light, e il riquadro sta al suo posto, in scala, ruotato come la camera (angolo dal WCS risolto o dalla rotazione dichiarata; se non c’è, resta dritto e lo dice). Al posto della nebulosa finta di prima: con una scala in gradi, la bussola (nord in alto, est a sinistra), il nome del bersaglio e le coordinate del centro.
+- Le coordinate si leggono dagli header, in ordine di fiducia: WCS risolto (CRVAL), RA/DEC della montatura, OBJCTRA/OBJCTDEC; gradi o sessagesimali. I Light che puntano allo stesso posto sono un pannello; un mosaico mostra un riquadro per pannello (P1, P2…); un altro bersaglio nello stesso progetto non entra.
+- Privacy e rete: per scaricare la foto partono solo la posizione e la dimensione del campo, mai file, nomi o dati del progetto. Le foto restano in una cache su disco (le ultime 60), quindi un campo già visto si apre subito e senza rete. Dal Menu si spegne (**Mostra il cielo reale nel campo inquadrato**). Senza coordinate, senza rete o con il cielo spento il riquadro resta sul posto su un cielo vuoto e una riga dice perché.
+- Controlli QA: test del Core per coordinate, angolo di posizione, proiezione, pannelli del mosaico, richiesta, cache e modalità offline (`ASTROFORGE_OFFLINE=1`); lo smoke test non usa mai la rete e serve un’immagine finta.
+
 ## 1.11.2 — 1 ottobre 2026
 
 - Il Menu torna ben visibile: un pulsante con il suo nome nell’intestazione, accanto a Strumenti e alla ricerca (Ctrl K), con lingua, aggiornamenti, aiuto e progetto. Nella 1.11.0 e nella 1.11.1 si apriva solo cliccando sul logo, che non sembra un pulsante, e Strumenti usava proprio l’icona a tre righe del menu. Ora Strumenti ha la sua icona; a finestra stretta Menu e Strumenti restano come icone e il tour li presenta.

@@ -205,7 +205,8 @@ public sealed partial class ObservatoryViewModel : BindableBase
     private void Main_PropertyChanged(object? sender, PropertyChangedEventArgs e)
     {
         if (e.PropertyName is nameof(MainViewModel.Instrument) or nameof(MainViewModel.UiLanguage)) Rebuild();
-        else if (e.PropertyName is nameof(MainViewModel.Analysis)) RebuildOverview();
+        else if (e.PropertyName is nameof(MainViewModel.Analysis)) { RebuildOverview(); RefreshSky(); }
+        else if (e.PropertyName is nameof(MainViewModel.ShowRealSky)) RefreshSky();
     }
 
     private void Rebuild()
@@ -231,6 +232,7 @@ public sealed partial class ObservatoryViewModel : BindableBase
             Raise(name);
         RebuildInstrumentScreen();
         RebuildOverview();
+        RefreshSky();
     }
 
     private void RebuildOverview()

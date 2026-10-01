@@ -36,7 +36,7 @@ The window follows four steps, always in order. One button at the bottom right d
 | Step | Page | Action |
 | --- | --- | --- |
 | 1 | Import | Link your **Master Library** once (Dark and Bias, remembered for every project), add the captures (or drop folders and files anywhere on the window), then **Analyze**. The analysis carries on to step 2 by itself. |
-| 2 | Gear | Check camera, optics, reducer, pixel size and filters read from the headers. Every one can be changed (**Change**, or tap a part of the optical train), including the ones Forge recognised; what you choose is remembered for that camera. |
+| 2 | Gear | Check camera, optics, reducer, pixel size and filters read from the headers. Every one can be changed (**Change**, or tap a part of the optical train), including the ones Forge recognised; what you choose is remembered for that camera. The field of view is drawn on the real sky of your target (DSS2, from the CDS), the sensor frame where your Lights actually pointed and turned as the camera was. |
 | 3 | Calibration | See how many Lights have Flat, Dark and Bias. When Forge cannot choose by itself it asks one thing at a time. |
 | 4 | Export | Name the project, choose the destination and export. Repeating the export adds only new files. Then **Open in PixInsight**. |
 
@@ -95,7 +95,7 @@ La finestra segue quattro passi, sempre in ordine. Un solo pulsante in basso a d
 | Passo | Pagina | Azione |
 | --- | --- | --- |
 | 1 | Importa | Collega una volta sola la **Master Library** (Dark e Bias, resta salvata per ogni progetto), aggiungi le acquisizioni (o trascina cartelle e file ovunque sulla finestra), poi **Analizza**. L’analisi prosegue da sola al passo 2. |
-| 2 | Strumento | Controlla camera, ottica, riduttore, pixel e filtri letti dagli header. Ognuno si può cambiare (**Cambia**, oppure tocca una parte del treno ottico), anche quelli già riconosciuti; ciò che scegli resta salvato per quella camera. |
+| 2 | Strumento | Controlla camera, ottica, riduttore, pixel e filtri letti dagli header. Ognuno si può cambiare (**Cambia**, oppure tocca una parte del treno ottico), anche quelli già riconosciuti; ciò che scegli resta salvato per quella camera. Il campo inquadrato si vede sul cielo reale del tuo bersaglio (DSS2, dal CDS), con il riquadro del sensore dove puntavano davvero i Light e ruotato come la camera. |
 | 3 | Calibrazioni | Vedi quanti Light hanno Flat, Dark e Bias. Quando Forge non può scegliere da solo, ti chiede una cosa alla volta. |
 | 4 | Esporta | Dai un nome al progetto, scegli la destinazione ed esporta. Le esportazioni successive aggiungono solo i file nuovi. Poi **Apri in PixInsight**. |
 
