@@ -358,6 +358,7 @@ public sealed partial class MainWindow : Window
     {
         static void Check(bool condition, string message) { if (!condition) throw new InvalidOperationException(message); }
         static async Task Settle() => await Task.Delay(450);
+        static async Task<bool> Until(Func<bool> condition) { for (var wait = 0; wait < 40 && !condition(); wait++) await Task.Delay(100); return condition(); }
         async Task Shot(string name) { if (folder is not null) await CaptureAsync(Path.Combine(folder, name)); }
         var root = AppDataPaths.Combine("Demo");
         _viewModel.NewProject();
@@ -374,8 +375,7 @@ public sealed partial class MainWindow : Window
         await Shot("d2-drag-library.png");
         Check(DropLibraryZone.Classes.Contains("over") && !DropCapturesZone.Classes.Contains("over"), "Dragging over the left half must light the library.");
         HideDropOverlay();
-        await Settle();
-        Check(!DropOverlay.IsVisible && !DropLibraryZone.Classes.Contains("over"), "The overlay must go away when the drag ends.");
+        Check(await Until(() => !DropOverlay.IsVisible) && !DropLibraryZone.Classes.Contains("over"), "The overlay must go away when the drag ends.");
 
         // Captures: a folder is linked whole, a text file is left out and counted.
         var notes = Path.Combine(root, "notes.txt");
@@ -414,7 +414,8 @@ public sealed partial class MainWindow : Window
         Check(DropOverlay.IsVisible && DropCapturesZone.Classes.Contains("over"), "A drag over the right half of the window must light the captures.");
         RaiseEvent(new DragEventArgs(DragDrop.DropEvent, data, this, position, KeyModifiers.None) { RoutedEvent = DragDrop.DropEvent });
         await Settle();
-        Check(_viewModel.SourcePaths.Contains(nina, PathIdentity.Comparer) && !DropOverlay.IsVisible, "Dropping a folder on the window must link it.");
+        Check(_viewModel.SourcePaths.Contains(nina, PathIdentity.Comparer), "Dropping a folder on the window must link it.");
+        Check(await Until(() => !DropOverlay.IsVisible), "The overlay must go away once the folder is dropped.");
         Check(!_viewModel.ShowOnboarding, "Dropping data on the welcome must close it: the person is ready.");
 
         // Nothing usable: nothing changes, and it is said.
@@ -973,8 +974,12 @@ public sealed partial class MainWindow : Window
         else if (!on) control.Classes.Remove(name);
     }
 
+    // Showing and hiding race with the fade: a hide only takes effect if nothing showed the overlay again since, whatever the speed of the animation.
+    private int _dropOverlayVersion;
+
     internal void ShowDropOverlay(DropTarget zone)
     {
+        _dropOverlayVersion++;
         if (!DropOverlay.IsVisible)
         {
             DropOverlay.IsVisible = true;
@@ -990,9 +995,10 @@ public sealed partial class MainWindow : Window
 
     internal void HideDropOverlay()
     {
+        var version = ++_dropOverlayVersion;
         DropOverlay.Opacity = 0;
         foreach (var control in new[] { DropLibraryZone, DropCapturesZone }) { SetClass(control, "over", false); SetClass(control, "marching", false); }
-        DispatcherTimer.RunOnce(() => { if (DropOverlay.Opacity == 0) DropOverlay.IsVisible = false; }, TimeSpan.FromMilliseconds(220));
+        DispatcherTimer.RunOnce(() => { if (version == _dropOverlayVersion) DropOverlay.IsVisible = false; }, TimeSpan.FromMilliseconds(260));
     }
 
     /// <summary>Links what was dropped where it was dropped, says what happened, and leaves the person on the step they were on.</summary>
