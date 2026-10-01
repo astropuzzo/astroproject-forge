@@ -1,5 +1,13 @@
 # AstroProject Forge — note di rilascio
 
+## 1.13.1 — 1 ottobre 2026
+
+- **Passo Esporta: la colonna di sinistra non si stira più.** Con l’esportazione finita la colonna di destra (mappa dell’export e WBPP) diventa molto più alta, e aprendo “Grouping Keywords da inserire a mano” cresceva ancora: la colonna di sinistra si allungava insieme, così si muoveva e si ingrandiva soltanto l’immagine dell’integrazione, e sotto restava un riquadro delle notti quasi vuoto. Ora le due colonne hanno ciascuna la propria altezza: l’anteprima dell’integrazione e le notti restano com’erano, qualunque cosa succeda a destra.
+- Aprendo la tabella delle Grouping Keywords la pagina scorre fino a mostrarla per intero, e le sue righe si leggono anche in inglese (prima restavano in italiano finché non si cambiava passo).
+- Il diagramma di WBPP non sovrappone più le etichette dei passaggi: “LIGHT / dal progetto” non finisce sotto “CALIBRAZIONE”.
+- Sotto 1320 px di larghezza il passo Esporta mette le due colonne una sopra l’altra, con l’esportazione per prima, così il diagramma e la tabella hanno lo spazio per essere letti.
+- Controlli QA: lo smoke test misura che, aprendo la tabella delle keyword, l’anteprima dell’integrazione e la card delle notti mantengano la propria altezza; la cattura delle schermate salva anche la pagina con la tabella aperta.
+
 ## 1.13.0 — 1 ottobre 2026
 
 - **Più setup in un progetto.** Prima la pagina Strumento descriveva solo il treno principale (la camera con più Light) e nascondeva il resto in silenzio. Ora un progetto che mescola camere o focali (due camere, o la stessa camera con e senza riduttore) offre una scheda per ogni setup: camera, ottica, focale, Light, ore e notti. Scegliendone una la pagina descrive quel setup, con la sua camera, la sua ottica, il suo riduttore e la sua ruota portafiltri (anche con otto filtri e più).

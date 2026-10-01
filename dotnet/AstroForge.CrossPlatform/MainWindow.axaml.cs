@@ -74,6 +74,7 @@ public sealed partial class MainWindow : Window
             ProjectChip.IsVisible = args.NewSize.Width >= 1400;
             // Narrow: Tools and Menu keep their icons and give up their words (their tooltips say what they are).
             ToolsLabel.IsVisible = MenuLabel.IsVisible = args.NewSize.Width >= 1240;
+            ArrangeExportColumns(args.NewSize.Width < 1320);
         };
         Stepper.StepInvoked += (_, step) => GoToStep(step);
         TrainView.PartInvoked += TrainView_PartInvoked;
@@ -283,6 +284,15 @@ public sealed partial class MainWindow : Window
         Check(SkyMath.MoonAltitude(new DateTime(2026, 8, 28, 23, 0, 0, DateTimeKind.Utc), 41.9, 12.5) > 15 && SkyMath.MoonAltitude(new DateTime(2026, 8, 28, 10, 0, 0, DateTimeKind.Utc), 41.9, 12.5) < -10,
             "The Moon must be high at night and low by day at full Moon.");
 
+        // The export page: the keyword table opening in the right column must leave the left one as it was (the stack picture and the nights keep their height).
+        _shell.CurrentStep = ShellViewModel.ExportStep; await Settle(); await Settle();
+        var stackHeight = StackCard.Bounds.Height;
+        Check(stackHeight >= 430 && Math.Abs(NightsCard.Bounds.Height - 210) < 1, $"The nights card keeps its own height ({NightsCard.Bounds.Height}) and the stack card its minimum ({stackHeight}).");
+        KeywordsExpander.IsExpanded = true; await Settle(); await Settle();
+        Check(Math.Abs(StackCard.Bounds.Height - stackHeight) < 1 && Math.Abs(NightsCard.Bounds.Height - 210) < 1,
+            $"Opening the keywords must not stretch the left column ({stackHeight} → {StackCard.Bounds.Height}, nights {NightsCard.Bounds.Height}).");
+        KeywordsExpander.IsExpanded = false; await Settle();
+
         // A project that mixes rigs: each one is a card to pick, with its own camera, optics and filters, and they share the sky.
         await RunSetupScenarioAsync(null);
 
@@ -384,6 +394,16 @@ public sealed partial class MainWindow : Window
                 await _viewModel.ExportAsync();
                 await Task.Delay(2200);
                 await CaptureAsync(Path.Combine(folder, "4-export-done.png"));
+                // The keyword table opened: the right column grows, and the left one has to stay as it was.
+                KeywordsExpander.IsExpanded = true;
+                await Task.Delay(900);
+                ExportScroll.ScrollToHome();
+                await Task.Delay(500);
+                await CaptureAsync(Path.Combine(folder, "4-export-keywords-top.png"));
+                ExportScroll.ScrollToEnd();
+                await Task.Delay(500);
+                await CaptureAsync(Path.Combine(folder, "4-export-keywords-end.png"));
+                KeywordsExpander.IsExpanded = false;
             }
             await RunSetupScenarioAsync(folder);
             await RunUpdateScenarioAsync(folder);
@@ -956,6 +976,33 @@ public sealed partial class MainWindow : Window
         }
     }
     private void UiPreferenceChanged_Click(object? sender, RoutedEventArgs e) => _viewModel.SaveState();
+
+    private bool _exportStacked;
+
+    /// <summary>
+    /// Wide: the picture of the stack and the nights on the left, the export and WBPP on the right. Narrow: one column, with the export first
+    /// (it is what the step is for), so the pipeline and the keyword table keep the room they need to be read.
+    /// </summary>
+    private void ArrangeExportColumns(bool stacked)
+    {
+        if (stacked == _exportStacked) return;
+        _exportStacked = stacked;
+        ExportGrid.ColumnDefinitions = stacked ? new ColumnDefinitions("*") : new ColumnDefinitions("1.3*,*");
+        ExportGrid.RowDefinitions = stacked ? new RowDefinitions("Auto,Auto") : new RowDefinitions("Auto");
+        ExportGrid.RowSpacing = stacked ? 20 : 0;
+        Grid.SetColumn(ExportRight, stacked ? 0 : 1);
+        Grid.SetRow(ExportRight, 0);
+        Grid.SetColumn(ExportLeft, 0);
+        Grid.SetRow(ExportLeft, stacked ? 1 : 0);
+    }
+
+    /// <summary>The keyword table opens at the foot of the page: bring it into view instead of leaving it below the fold.</summary>
+    private void KeywordsExpander_Expanded(object? sender, RoutedEventArgs e)
+    {
+        // its rows are created now, after the last translation pass
+        ScheduleLocalization();
+        Dispatcher.UIThread.Post(() => KeywordsExpander.BringIntoView(), DispatcherPriority.Background);
+    }
 
     private void SetupChip_Click(object? sender, RoutedEventArgs e)
     {
