@@ -51,7 +51,7 @@ public sealed partial class UpdateService
             if (_platform == ReleasePlatform.WindowsX64)
                 feedDecision = await CheckAsync(FeedUri(channel), currentVersion, channel, cancellationToken);
         }
-        catch (HttpRequestException) { }
+        catch (Exception exception) when (IsSourceFailure(exception, cancellationToken)) { }
 
         try
         {
@@ -60,11 +60,16 @@ public sealed partial class UpdateService
             var comparison = CompareVersions(githubDecision.Manifest.Version, feedDecision.Manifest.Version);
             return comparison > 0 ? githubDecision : feedDecision;
         }
-        catch (HttpRequestException) when (feedDecision is not null)
+        catch (Exception exception) when (feedDecision is not null && IsSourceFailure(exception, cancellationToken))
         {
             return feedDecision;
         }
     }
+
+    // A source that times out or answers with something that is not a release must not hide the other one.
+    private static bool IsSourceFailure(Exception exception, CancellationToken cancellationToken) =>
+        exception is HttpRequestException or JsonException or InvalidDataException
+        || exception is OperationCanceledException && !cancellationToken.IsCancellationRequested;
 
     public async Task<UpdateDecision> CheckAsync(Uri feed, string currentVersion, ReleaseChannel expectedChannel, CancellationToken cancellationToken = default)
     {

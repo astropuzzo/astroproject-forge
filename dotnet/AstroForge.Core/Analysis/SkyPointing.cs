@@ -28,19 +28,21 @@ public static partial class SkyPointings
     /// </summary>
     public static SkyPointing? FromHeaders(IReadOnlyDictionary<string, object?> headers)
     {
+        // Each source is checked before it is chosen: an "unknown" target (0, 0) must fall back to the mount, not drop the frame.
+        static bool IsPlace(double ra, double dec) => dec is >= -90 and <= 90 && !(Math.Abs(((ra % 360) + 360) % 360) < 1e-9 && Math.Abs(dec) < 1e-9);
         (double Ra, double Dec, string Source)? centre = null;
         if (Text(headers, "CTYPE1") is { } ctype && ctype.Contains("RA", StringComparison.OrdinalIgnoreCase)
-            && Degrees(headers, "CRVAL1", hours: false) is { } wcsRa && Degrees(headers, "CRVAL2", hours: false) is { } wcsDec)
+            && Degrees(headers, "CRVAL1", hours: false) is { } wcsRa && Degrees(headers, "CRVAL2", hours: false) is { } wcsDec && IsPlace(wcsRa, wcsDec))
             centre = (wcsRa, wcsDec, "wcs");
-        if (centre is null && Degrees(headers, "OBJCTRA", hours: true) is { } objectRa && Degrees(headers, "OBJCTDEC", hours: false) is { } objectDec)
+        if (centre is null && Degrees(headers, "OBJCTRA", hours: true) is { } objectRa && Degrees(headers, "OBJCTDEC", hours: false) is { } objectDec && IsPlace(objectRa, objectDec))
             centre = (objectRa, objectDec, "object");
-        (double Ra, double Dec)? mount = Degrees(headers, "RA", hours: false) is { } ra && Degrees(headers, "DEC", hours: false) is { } dec ? (ra, dec) : null;
+        // RA written as text ("22 47 14") is in hours, like OBJCTRA; as a number it is already in degrees.
+        (double Ra, double Dec)? mount = Degrees(headers, "RA", hours: true) is { } ra && Degrees(headers, "DEC", hours: false) is { } dec && IsPlace(ra, dec) ? (ra, dec) : null;
         if (centre is null && mount is { } own) centre = (own.Ra, own.Dec, "mount");
         if (centre is not { } found) return null;
 
         var rightAscension = ((found.Ra % 360) + 360) % 360;
-        if (found.Dec is < -90 or > 90 || (Math.Abs(rightAscension) < 1e-9 && Math.Abs(found.Dec) < 1e-9)) return null;
-        double? deviation = found.Source != "mount" && mount is { } reported && !(Math.Abs(reported.Ra) < 1e-9 && Math.Abs(reported.Dec) < 1e-9)
+        double? deviation = found.Source != "mount" && mount is { } reported
             ? Separation(rightAscension, found.Dec, reported.Ra, reported.Dec) : null;
         var angle = Angle(headers);
         return new SkyPointing(rightAscension, found.Dec, angle?.Degrees, found.Source, angle?.Source, deviation);
@@ -162,18 +164,16 @@ public static partial class SkyPointings
 
     public static string FormatRa(double raDeg)
     {
-        var hours = raDeg / 15;
-        var h = (int)Math.Floor(hours);
-        var minutes = (hours - h) * 60;
-        return string.Create(CultureInfo.InvariantCulture, $"{h}h {minutes:00.0}m");
+        // Round first, then split: 20h 59.97m must read 21h 00.0m, not 20h 60.0m.
+        var tenths = (long)Math.Round((raDeg % 360 + 360) % 360 / 15 * 600);
+        return string.Create(CultureInfo.InvariantCulture, $"{tenths / 600 % 24}h {tenths % 600 / 10.0:00.0}m");
     }
 
     public static string FormatDec(double decDeg)
     {
         var sign = decDeg < 0 ? "−" : "+";
-        var absolute = Math.Abs(decDeg);
-        var d = (int)Math.Floor(absolute);
-        return string.Create(CultureInfo.InvariantCulture, $"{sign}{d}° {(absolute - d) * 60:00}′");
+        var arcminutes = (long)Math.Round(Math.Abs(decDeg) * 60);
+        return string.Create(CultureInfo.InvariantCulture, $"{sign}{arcminutes / 60}° {arcminutes % 60:00}′");
     }
 
     // ---- header values ----

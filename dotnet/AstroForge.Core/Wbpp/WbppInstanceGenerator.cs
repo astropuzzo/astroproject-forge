@@ -146,7 +146,9 @@ public static class WbppInstanceGenerator
         foreach (var recommendation in plan.Recipe.Keywords)
         {
             var key = recommendation.Keyword;
-            var value = key switch
+            // The value planned with the export wins over the folder name: an update keeps files where they already
+            // were, so a Light exported before DARKSET was needed has no DARKSET folder to read it from.
+            var value = file.Keywords is { } planned && planned.TryGetValue(key, out var fromPlan) ? fromPlan : key switch
             {
                 "FLATSET" => file.Role is "light" or "flat" ? Segment(file.RelativePath, "FLATSET_") ?? file.GroupId : null,
                 "DARKSET" => Segment(file.RelativePath, "DARKSET_") ?? (file.Role == "dark" ? file.GroupId : null),
@@ -159,7 +161,12 @@ public static class WbppInstanceGenerator
         return result;
     }
 
-    private static string GroupKey(PlannedFile file) => $"{ImageType(file.Role)}|{file.Frame.IsMaster}|{file.Frame.XBin.Value}|{file.Frame.ExposureSeconds.Value}|{file.Frame.FilterName.Value}|{file.Frame.Width.Value}x{file.Frame.Height.Value}|{file.GroupId}|{file.RelativePath.Split(Path.DirectorySeparatorChar).FirstOrDefault(part => part.StartsWith("DARKSET_", StringComparison.OrdinalIgnoreCase))}|{file.RelativePath.Split(Path.DirectorySeparatorChar).FirstOrDefault(part => part.StartsWith("BIASSET_", StringComparison.OrdinalIgnoreCase))}";
+    // Exposure separates Lights and Darks only: the Flats of one set may differ in exposure (sky flats, two panel
+    // batches) and must still become one master Flat.
+    private static string GroupKey(PlannedFile file) => FormattableString.Invariant(
+        $"{ImageType(file.Role)}|{file.Frame.IsMaster}|{file.Frame.XBin.Value}|{(file.Role is "light" or "dark" ? Math.Round(file.Frame.ExposureSeconds.Value ?? 0, 1) : 0)}|{file.Frame.FilterName.Value}|{file.Frame.Width.Value}x{file.Frame.Height.Value}|{file.GroupId}|{Planned(file, "DARKSET")}|{Planned(file, "BIASSET")}");
+    private static string? Planned(PlannedFile file, string keyword) =>
+        file.Keywords is { } planned && planned.TryGetValue(keyword, out var value) ? value : Segment(file.RelativePath, keyword + "_");
     private static int ImageType(string role) => role switch { "bias" => 1, "dark" => 2, "flat" => 3, _ => 4 };
     private static string? Segment(string relativePath, string prefix) => relativePath.Split(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar).FirstOrDefault(part => part.StartsWith(prefix, StringComparison.OrdinalIgnoreCase))?[prefix.Length..];
     private static string Encode(string value) => Convert.ToBase64String(Encoding.UTF8.GetBytes(value));

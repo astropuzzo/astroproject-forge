@@ -100,7 +100,9 @@ public static class CalibrationMatcher
 
         if (requestedKind == FrameKind.Flat)
         {
-            SameText(result, "filtro", target.FilterName.Value, candidate.FilterName.Value, 20, true);
+            // A colour camera without a wheel writes no FILTER on Lights or Flats: that is the same train, not missing data.
+            if (target.FilterName.Value is null && candidate.FilterName.Value is null) Pass(result, "filtro", 20);
+            else SameText(result, "filtro", target.FilterName.Value, candidate.FilterName.Value, 20, true);
             AngularWithin180(result, "rotatore", target.RotatorAngleDeg.Value, candidate.RotatorAngleDeg.Value, policy.RotatorToleranceDegrees, 6);
             Relative(result, "focale", target.FocalLengthMm.Value, candidate.FocalLengthMm.Value, policy.FocalLengthRelativeTolerance, 6);
             if (target.SessionId.Value is not null && target.SessionId.Value == candidate.SessionId.Value) { result.Score += 2; result.Reasons.Add("stessa sessione"); }
@@ -111,7 +113,7 @@ public static class CalibrationMatcher
             Within(result, "temperatura", target.EffectiveTemperatureC, candidate.EffectiveTemperatureC, policy.TemperatureToleranceC, 14, true);
         }
         else if (requestedKind == FrameKind.Bias)
-            Within(result, "temperatura", target.EffectiveTemperatureC, candidate.EffectiveTemperatureC, policy.TemperatureToleranceC, 8, false);
+            Preferred(result, "temperatura", target.EffectiveTemperatureC, candidate.EffectiveTemperatureC, policy.TemperatureToleranceC, 8);
 
         if (candidate.IsMaster) { result.Score++; result.Reasons.Add("Master riconosciuto"); }
         if (FromConfiguredLibrary(candidate))
@@ -145,6 +147,16 @@ public static class CalibrationMatcher
         var difference = Math.Abs(left.Value - right.Value);
         if (difference <= tolerance) Pass(result, label, points); else Fail(result, label, left.Value, right.Value);
         if (difference > 1e-9 && result.Compatible) result.Exact = false;
+        if (tolerance > 0) result.Deviation += difference / tolerance;
+    }
+    /// <summary>A preference, not a requirement: a Bias hardly changes with temperature, so a colder or warmer one still calibrates.</summary>
+    private static void Preferred(MatchCandidate result, string label, double? left, double? right, double tolerance, int points)
+    {
+        if (!left.HasValue || !right.HasValue) { Missing(result, label, false); return; }
+        var difference = Math.Abs(left.Value - right.Value);
+        if (difference <= tolerance) Pass(result, label, points);
+        else result.Reasons.Add($"{label}: {right.Value:0.#} °C per un Light a {left.Value:0.#} °C, accettata");
+        if (difference > 1e-9) result.Exact = false;
         if (tolerance > 0) result.Deviation += difference / tolerance;
     }
     private static void Relative(MatchCandidate result, string label, double? left, double? right, double tolerance, int points)

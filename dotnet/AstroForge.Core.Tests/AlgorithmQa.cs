@@ -1,5 +1,6 @@
 using AstroForge.Core.Analysis;
 using AstroForge.Core.Equipment;
+using AstroForge.Core.Export;
 using AstroForge.Core.Filters;
 using AstroForge.Core.IO;
 using AstroForge.Core.Scanning;
@@ -8,6 +9,8 @@ using AstroForge.Core.Models;
 using AstroForge.Core.Parsing;
 using AstroForge.Core.Quality;
 using AstroForge.Core.Sessions;
+using AstroForge.Core.Wbpp;
+using System.Text.Json;
 using System.Buffers.Binary;
 using System.Text;
 
@@ -22,7 +25,10 @@ internal static class AlgorithmQa
         NightsAreCountedOncePerProject();
         ClosestDarkWinsATie();
         await NamesFoldersAndHeadersAsync();
-        Console.WriteLine("PASS: FWHM su stelle sintetiche, ora di scatto, notti di un sito remoto, conteggio notti, spareggio dei Dark, nomi file, cartelle libreria e card FITS/XISF verificati.");
+        MatchingRules();
+        SkyCoordinates();
+        await RawSetsExportAndWbppAsync();
+        Console.WriteLine("PASS: FWHM su stelle sintetiche, ora di scatto, notti di un sito remoto, conteggio notti, spareggio dei Dark, nomi file, cartelle libreria, card FITS/XISF, regole di abbinamento, coordinate e set di Dark/Bias grezzi fino all'istanza WBPP verificati.");
     }
 
     private static async Task FwhmFollowsTheStarAsync()
@@ -168,6 +174,144 @@ internal static class AlgorithmQa
         foreach (var (key, value) in extra)
             if (value is null) headers.Remove(key); else headers[key] = value;
         return FrameClassifier.Classify(Path.Combine(Path.GetTempPath(), fileName), headers, settings);
+    }
+
+    private static void MatchingRules()
+    {
+        var settings = new SessionSettings(TimeZoneInfo.Utc, new TimeOnly(12, 0));
+
+        // A colour camera without a wheel: no FILTER on Lights or Flats is still a matching pair.
+        var colourLight = ClassifyAt("osc-light.fits", settings, ("FILTER", null), ("BAYERPAT", "RGGB"), ("DATE-OBS", "2026-08-14T22:00:00Z"));
+        var colourFlat = ClassifyAt("osc-flat.fits", settings, ("IMAGETYP", "Flat"), ("FILTER", null), ("BAYERPAT", "RGGB"), ("EXPTIME", 2), ("DATE-OBS", "2026-08-15T04:00:00Z"));
+        var noFilter = CalibrationMatcher.Find(colourLight, [colourFlat], FrameKind.Flat);
+        Assert(noFilter.IsAccepted, $"Light e Flat a colori senza FILTER devono abbinarsi: {noFilter.Status}.");
+        var filtered = ClassifyAt("ha-flat.fits", settings, ("IMAGETYP", "Flat"), ("BAYERPAT", "RGGB"), ("EXPTIME", 2));
+        Assert(CalibrationMatcher.Find(colourLight, [filtered], FrameKind.Flat).Status == MatchStatus.InsufficientMetadata, "Un filtro su un solo lato resta un dato mancante.");
+
+        // A Bias hardly changes with temperature: 5 °C away is accepted, and the closer one is preferred.
+        var cold = ClassifyAt("light-15.fits", settings, ("SET-TEMP", -15));
+        var biasTen = ClassifyAt("masterBias-10.fits", settings, ("IMAGETYP", "Master Bias"), ("EXPTIME", 0), ("SET-TEMP", -10));
+        var biasFifteen = ClassifyAt("masterBias-15.fits", settings, ("IMAGETYP", "Master Bias"), ("EXPTIME", 0), ("SET-TEMP", -15));
+        var warmBias = CalibrationMatcher.Find(cold, [biasTen], FrameKind.Bias);
+        Assert(warmBias.Status == MatchStatus.WithinTolerance && warmBias.Selected?.Frame == biasTen, $"Un Bias a -10 °C per un Light a -15 °C deve essere accettato: {warmBias.Status}.");
+        Assert(CalibrationMatcher.Find(cold, [biasTen, biasFifteen], FrameKind.Bias).Selected?.Frame == biasFifteen, "Tra due Bias vince quello alla temperatura del Light.");
+
+        // A Flat Set given to part of a night stays with that part, whatever the order of the files.
+        FrameMetadata NightLight(string name, string? set)
+        {
+            var frame = ClassifyAt(name, settings, ("DATE-OBS", "2026-08-14T22:00:00Z"));
+            if (set is not null) frame.FlatSetId.SetOverride(set);
+            return frame;
+        }
+        FrameMetadata SetFlat(string name, string set, string date)
+        {
+            var frame = ClassifyAt(name, settings, ("IMAGETYP", "Flat"), ("EXPTIME", 2), ("DATE-OBS", date));
+            frame.FlatSetId.SetOverride(set);
+            return frame;
+        }
+        var flatA = SetFlat("flat-a.fits", "A", "2026-08-15T04:00:00Z");
+        var flatB = SetFlat("flat-b.fits", "B", "2026-08-16T04:00:00Z");
+        foreach (var order in new[] { new[] { "A", "B", "A" }, ["B", "A", "A"] })
+        {
+            var lights = order.Select((set, index) => NightLight($"night-{index}-{set}.fits", set)).ToArray();
+            var analysis = ProjectAnalyzer.Analyze([.. lights, flatA, flatB]);
+            Assert(analysis.Lights.All(item => item.Flat.Selected?.Frame == (item.Light.FlatSetId.Value == "A" ? flatA : flatB)),
+                $"Flat Set A e B nella stessa notte non rispettati con ordine {string.Join(",", order)}.");
+        }
+
+        // An old stack in a scanned folder is not a sub to calibrate again.
+        var stack = ClassifyAt("masterLight_Ha.fits", settings, ("IMAGETYP", "Master Light"));
+        var withStack = ProjectAnalyzer.Analyze([colourLight, stack]);
+        Assert(withStack.Lights.Count == 1 && withStack.Lights[0].Light == colourLight, "Un master Light non deve entrare tra i Light da calibrare.");
+
+        // "Ha" and "HA" are one filter in the statistics.
+        var mixed = ProjectStatisticsCalculator.Calculate(ProjectAnalyzer.Analyze([ClassifyAt("a.fits", settings, ("FILTER", "Ha")), ClassifyAt("b.fits", settings, ("FILTER", "HA"))]));
+        Assert(mixed.FilterCount == 1 && mixed.Filters[0].LightCount == 2, $"Ha e HA contati come {mixed.FilterCount} filtri.");
+    }
+
+    private static void SkyCoordinates()
+    {
+        var text = SkyPointings.FromHeaders(new Dictionary<string, object?> { ["RA"] = "22 47 14", ["DEC"] = "+58 02 19" });
+        Assert(text is { Source: "mount" } && Math.Abs(text.RaDeg - 341.8083) < 0.01 && Math.Abs(text.DecDeg - 58.0386) < 0.01, $"RA in ore come testo letta male: {text?.RaDeg}.");
+        var number = SkyPointings.FromHeaders(new Dictionary<string, object?> { ["RA"] = 314.28, ["DEC"] = 31.72 });
+        Assert(number is not null && Math.Abs(number.RaDeg - 314.28) < 1e-9, "RA numerica deve restare in gradi.");
+        var unknownTarget = SkyPointings.FromHeaders(new Dictionary<string, object?> { ["OBJCTRA"] = "00 00 00", ["OBJCTDEC"] = "+00 00 00", ["RA"] = 314.28, ["DEC"] = 31.72 });
+        Assert(unknownTarget is { Source: "mount" } && Math.Abs(unknownTarget.RaDeg - 314.28) < 1e-9, "Un bersaglio (0, 0) deve lasciare il posto alla montatura.");
+        Assert(SkyPointings.FormatRa(314.9999) == "21h 00.0m" && SkyPointings.FormatDec(31.9999) == "+32° 00′", $"Arrotondamento coordinate: {SkyPointings.FormatRa(314.9999)} {SkyPointings.FormatDec(31.9999)}.");
+        Assert(SkyPointings.FormatRa(359.9999) == "0h 00.0m", $"RA a fine giro: {SkyPointings.FormatRa(359.9999)}.");
+    }
+
+    /// <summary>
+    /// The way an ASIAIR folder really looks: raw Darks and Bias, no Masters, a colour camera without FILTER, a target
+    /// name with a colon and a space, and Flats at two exposures. Exported for real and turned into a WBPP instance.
+    /// </summary>
+    private static async Task RawSetsExportAndWbppAsync()
+    {
+        var settings = new SessionSettings(TimeZoneInfo.Utc, new TimeOnly(12, 0));
+        var root = Path.Combine(Path.GetTempPath(), $"AstroForge-QA-RawSets-{Guid.NewGuid():N}");
+        var source = Path.Combine(root, "source");
+        Directory.CreateDirectory(source);
+        try
+        {
+            FrameMetadata File_(string name, params (string Key, object? Value)[] headers)
+            {
+                var all = new List<(string, object?)> { ("FILTER", null), ("BAYERPAT", "RGGB"), ("SET-TEMP", null), ("OBJECT", "NGC 6960: Veil") };
+                all.AddRange(headers);
+                var frame = ClassifyAt(name, settings, [.. all]);
+                var onDisk = new FrameMetadata { Path = Path.Combine(source, name), Kind = frame.Kind, IsMaster = frame.IsMaster }.CopyFrom(frame);
+                onDisk.ObjectName.SetOriginal(frame.ObjectName.Value, MetadataSource.Header);
+                onDisk.BayerPattern.SetOriginal(frame.BayerPattern.Value, MetadataSource.Header);
+                onDisk.SensorTemperatureC.SetOriginal(frame.SensorTemperatureC.Value, MetadataSource.Header);
+                onDisk.CapturedAt.SetOriginal(frame.CapturedAt.Value, MetadataSource.Header);
+                onDisk.SessionId.SetOriginal(frame.SessionId.Value, MetadataSource.Inferred);
+                File.WriteAllText(onDisk.Path, name);
+                return onDisk;
+            }
+            var frames = new List<FrameMetadata>();
+            for (var index = 0; index < 3; index++) frames.Add(File_($"Light_{index}.fit", ("CCD-TEMP", -10 + 0.1 * index), ("DATE-OBS", $"2026-08-14T22:0{index}:00Z")));
+            frames.Add(File_("Flat_0.fit", ("IMAGETYP", "Flat"), ("EXPTIME", 2.0), ("CCD-TEMP", -10.0), ("DATE-OBS", "2026-08-15T04:00:00Z")));
+            frames.Add(File_("Flat_1.fit", ("IMAGETYP", "Flat"), ("EXPTIME", 2.5), ("CCD-TEMP", -10.0), ("DATE-OBS", "2026-08-15T04:01:00Z")));
+            // The sensor has no set point here: the reading wanders around -10 °C, crossing the half degree.
+            var darkReadings = new[] { -9.4, -9.6, -10.1, -9.8, -10.3 };
+            for (var index = 0; index < darkReadings.Length; index++) frames.Add(File_($"Dark_{index}.fit", ("IMAGETYP", "Dark"), ("CCD-TEMP", darkReadings[index])));
+            for (var index = 0; index < 4; index++) frames.Add(File_($"Bias_{index}.fit", ("IMAGETYP", "Bias"), ("EXPTIME", 0.0001), ("CCD-TEMP", -9.9)));
+            // Darks of another night at another temperature are a different set and must stay out.
+            for (var index = 0; index < 3; index++) frames.Add(File_($"DarkWarm_{index}.fit", ("IMAGETYP", "Dark"), ("CCD-TEMP", 0.2 * index)));
+
+            var analysis = ProjectAnalyzer.Analyze(frames);
+            Assert(analysis.Ready, $"Dark e Bias grezzi devono bastare a un progetto: {string.Join(", ", analysis.Lights.Select(item => $"{item.Flat.Status}/{item.Dark.Status}/{item.Bias.Status}"))}.");
+            Assert(analysis.Lights.All(item => item.DarkSet is { Frames.Count: 5 } && item.BiasSet is { Frames.Count: 4 }), "Il set di Dark o di Bias non raccoglie tutti i suoi sub.");
+
+            // A Light set aside with no Dark at all must not hold the export back, nor count as integration.
+            var orphan = File_("Light_orphan.fit", ("EXPTIME", 900), ("CCD-TEMP", -10.0), ("DATE-OBS", "2026-08-14T23:00:00Z"));
+            var withOrphan = ProjectAnalyzer.Analyze([.. frames, orphan]);
+            Assert(!withOrphan.Ready, "Un Light senza Dark deve risultare da risolvere.");
+            var excluded = new HashSet<string>(StringComparer.OrdinalIgnoreCase) { orphan.Path };
+            var plan = ProjectExporter.BuildPlan("NGC 6960: Veil", root, withOrphan, excluded);
+            Assert(plan.Statistics is { LightCount: 3 } && Math.Abs(plan.Statistics.ExposureSeconds - 900) < 1e-6, "Il Light escluso conta ancora nelle statistiche esportate.");
+            Assert(plan.ProjectName == "NGC_6960_Veil", $"Nome cartella: {plan.ProjectName}.");
+            Assert(plan.Files.All(file => !file.RelativePath.Contains(':')), "Un percorso del piano contiene i due punti.");
+            var darks = plan.Files.Where(file => file.Role == "dark").ToArray();
+            var biases = plan.Files.Where(file => file.Role == "bias").ToArray();
+            Assert(darks.Length == 5 && biases.Length == 4, $"Attesi 5 Dark e 4 Bias nel piano, trovati {darks.Length} e {biases.Length}.");
+            Assert(darks.All(file => !file.RelativePath.Contains("Master", StringComparison.OrdinalIgnoreCase) && file.RelativePath.Contains("DARKSET_G100-T-10-O50")),
+                $"I Dark grezzi non devono chiamarsi Master: {darks[0].RelativePath}.");
+
+            var exported = await ProjectExporter.ExecuteAsync(plan, preflightOptions: new(MinimumReserveBytes: 0));
+            Assert(ProjectExportPreflight.ExportedSources(root, "NGC 6960: Veil").Count == plan.Files.Count, "Il progetto esportato non viene ritrovato dal suo nome con spazi e due punti.");
+
+            var instance = WbppInstanceGenerator.Generate(plan);
+            var text = await File.ReadAllTextAsync(instance);
+            var marker = "<td id=\"id\">groups</td>";
+            var start = text.IndexOf("<td id=\"value\">", text.IndexOf(marker, StringComparison.Ordinal), StringComparison.Ordinal) + "<td id=\"value\">".Length;
+            using var groups = JsonDocument.Parse(Encoding.UTF8.GetString(Convert.FromBase64String(text[start..text.IndexOf("</td>", start, StringComparison.Ordinal)])));
+            var byType = groups.RootElement.EnumerateArray().ToLookup(group => group.GetProperty("imageType").GetInt32());
+            Assert(byType[3].Count() == 1 && byType[3].Single().GetProperty("fileItems").GetArrayLength() == 2, $"I Flat a 2,0 s e 2,5 s dello stesso set devono essere un gruppo WBPP, non {byType[3].Count()}.");
+            Assert(byType[2].Count() == 1 && byType[2].Single().GetProperty("fileItems").GetArrayLength() == 5 && !byType[2].Single().GetProperty("hasMaster").GetBoolean(), "I Dark grezzi devono arrivare a WBPP come un gruppo da integrare.");
+            Assert(byType[1].Single().GetProperty("fileItems").GetArrayLength() == 4 && byType[4].Single().GetProperty("fileItems").GetArrayLength() == 3, "Bias o Light dell'istanza WBPP non coincidono con il piano.");
+            Assert(Directory.Exists(exported) && !Directory.EnumerateFiles(exported, "Light_orphan.fit", SearchOption.AllDirectories).Any(file => !file.Contains("Excluded")), "Il Light escluso è finito tra i Light da elaborare.");
+        }
+        finally { Directory.Delete(root, true); }
     }
 
     private static void ClosestDarkWinsATie()

@@ -60,10 +60,15 @@ public static class ProjectExportPreflight
     {
         var sources = new HashSet<string>(PathIdentity.Comparer);
         if (string.IsNullOrWhiteSpace(destinationRoot) || string.IsNullOrWhiteSpace(projectName)) return sources;
-        string manifest;
-        try { manifest = Path.Combine(Path.GetFullPath(destinationRoot), projectName, "_AstroForge", "manifest.json"); }
+        string manifest, folder;
+        try
+        {
+            // The export writes to the folder name, not to the name as typed: "NGC 6960" lives in "NGC_6960".
+            folder = ProjectExporter.FolderName(projectName);
+            manifest = Path.Combine(Path.GetFullPath(destinationRoot), folder, "_AstroForge", "manifest.json");
+        }
         catch (Exception exception) when (exception is ArgumentException or NotSupportedException or PathTooLongException) { return sources; }
-        if (!IsManagedProject(manifest, projectName)) return sources;
+        if (!IsManagedProject(manifest, folder)) return sources;
         foreach (var record in ReadManifestFiles(manifest))
         {
             try { sources.Add(Path.GetFullPath(record.Source)); }
