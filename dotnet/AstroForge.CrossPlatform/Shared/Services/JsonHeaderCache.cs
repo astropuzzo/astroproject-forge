@@ -16,7 +16,13 @@ public sealed class JsonHeaderCache : IHeaderCache
 
     public JsonHeaderCache(string? path = null)
     {
-        _path = path ?? AppDataPaths.Combine("header-cache-v1.json");
+        // v2: the readers now join CONTINUE cards and read the XISF exposure property, so headers cached by v1 are stale.
+        _path = path ?? AppDataPaths.Combine("header-cache-v2.json");
+        if (path is null)
+        {
+            try { File.Delete(AppDataPaths.Combine("header-cache-v1.json")); }
+            catch (Exception exception) when (exception is IOException or UnauthorizedAccessException) { /* the old cache is only wasted space */ }
+        }
         _entries = new(Load(_path), PathIdentity.Comparer);
     }
 

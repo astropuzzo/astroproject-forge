@@ -20,9 +20,10 @@ public sealed class CalibrationRing : Control
     private static readonly Typeface Display = new(new FontFamily("avares://AstroProjectForge/Assets/Fonts#Unbounded"), FontStyle.Normal, FontWeight.Light);
     private static readonly Typeface Body = new(FontFamily.Default);
     private static readonly IBrush Fg = new ImmutableSolidColorBrush(Color.Parse("#EEF1FF"));
-    private static readonly IBrush Muted = new ImmutableSolidColorBrush(Color.Parse("#8E97BD"));
+    private static readonly IBrush Muted = new ImmutableSolidColorBrush(Color.Parse("#A3ABCD"));
     private static readonly IPen Track = new ImmutablePen(new ImmutableSolidColorBrush(Color.Parse("#1A9DB8FF")), 9);
-    private static readonly Color[] Colours = [Color.Parse("#3FE0D0"), Color.Parse("#9DB8FF"), Color.Parse("#C59BFF")];
+    // One colour per part, the same as the dots of the legend beside the ring.
+    private static readonly Color[] Colours = [Color.Parse("#3FE0D0"), Color.Parse("#9DB8FF"), Color.Parse("#C9D3F5")];
     private double _sweep = 1;
 
     static CalibrationRing() => AffectsRender<CalibrationRing>(FlatProperty, DarkProperty, BiasProperty, CentreProperty);

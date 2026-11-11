@@ -305,9 +305,10 @@ public static partial class FilterRecognizer
 
     private static double? Bandwidth(string normalized)
     {
-        var match = BandwidthRegex().Match(normalized);
-        // Values above 40 nm are a cut-on wavelength ("IR 742nm"), not a bandwidth.
-        return match.Success && double.TryParse(match.Groups[1].Value.Replace(',', '.'), NumberStyles.Float, CultureInfo.InvariantCulture, out var value) && value < 40 ? value : null;
+        // Values above 40 nm are a wavelength ("IR 742nm", "Ha 656nm 7nm"), not a bandwidth: take the first that is one.
+        foreach (Match match in BandwidthRegex().Matches(normalized))
+            if (double.TryParse(match.Groups[1].Value.Replace(',', '.'), NumberStyles.Float, CultureInfo.InvariantCulture, out var value) && value < 40) return value;
+        return null;
     }
 
     private static FilterIdentity FromProduct(string raw, CatalogFilter filter, double confidence, FilterMatchSource source) =>

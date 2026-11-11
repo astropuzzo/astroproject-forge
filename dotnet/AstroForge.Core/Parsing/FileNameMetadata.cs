@@ -47,7 +47,8 @@ public sealed partial record FileNameMetadata(
             if (BinRegex().Match(token) is { Success: true } binMatch) { binning ??= int.Parse(binMatch.Groups[1].Value, CultureInfo.InvariantCulture); continue; }
             if (GainRegex().Match(token) is { Success: true } gainMatch) { gain ??= Number(gainMatch.Groups[1].Value); continue; }
             if (TemperatureRegex().Match(token) is { Success: true } temperatureMatch) { temperature ??= Number(temperatureMatch.Groups[1].Value); continue; }
-            if (ninaLayout && index > 2 && SignedDecimalRegex().IsMatch(token)) { temperature ??= Number(token); continue; }
+            // With no filter wheel N.I.N.A. leaves the filter slot empty, so the temperature can sit right after date and time.
+            if (ninaLayout && index >= 2 && SignedDecimalRegex().IsMatch(token)) { temperature ??= Number(token); continue; }
             if (DateRegex().IsMatch(token) || TimeRegex().IsMatch(token) || StampRegex().IsMatch(token) || FrameNumberRegex().IsMatch(token)) continue;
             candidates.Add((index, token));
         }

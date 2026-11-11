@@ -57,7 +57,7 @@ public static partial class EquipmentRecognizer
         var telescope = Match(raw, catalog.Telescopes, item => item.Name, item => item.Aliases, item => item.Uses, TelescopeBrands, out var confidence,
             (left, right) => left.ApertureMm == right.ApertureMm && left.FocalMm == right.FocalMm);
         if (telescope is null) return new(raw, null, focalMm, null, 0);
-        if (focalMm is not { } focal || focal <= 0 || Near(focal, telescope.FocalMm)) return new(raw, telescope, focalMm ?? telescope.FocalMm, null, confidence);
+        if (focalMm is not { } focal || focal <= 0 || Near(focal, telescope.FocalMm)) return new(raw, telescope, focalMm is > 0 ? focalMm : telescope.FocalMm, null, confidence);
         // FOCALLEN that matches a known reducer or flattener confirms the match; one far from every option weakens it.
         // The same optics may be listed twice (an AstroBin spelling without reducers): borrow the reducers of its twin.
         var reducer = catalog.Telescopes.Where(item => item.ApertureMm == telescope.ApertureMm && item.FocalMm == telescope.FocalMm)

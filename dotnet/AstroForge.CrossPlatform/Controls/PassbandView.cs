@@ -23,7 +23,7 @@ public sealed class PassbandView : Control
     private static readonly IPen GridLine = new ImmutablePen(new ImmutableSolidColorBrush(Color.Parse("#285B6490")), 1);
     private static readonly IPen LinePen = new ImmutablePen(new ImmutableSolidColorBrush(Color.Parse("#99C9D3F5")), 1, new ImmutableDashStyle([2, 2], 0));
     private static readonly IBrush Bright = new ImmutableSolidColorBrush(Color.Parse("#E6EEF1FF"));
-    private static readonly IBrush Muted = new ImmutableSolidColorBrush(Color.Parse("#8E97BD"));
+    private static readonly IBrush Muted = new ImmutableSolidColorBrush(Color.Parse("#A3ABCD"));
     private static readonly Typeface Mono = new(new FontFamily("avares://AstroProjectForge/Assets/Fonts#JetBrains Mono"));
 
     static PassbandView()
@@ -73,7 +73,7 @@ public sealed class PassbandView : Control
                 {
                     var x = X(line.WavelengthNm);
                     context.DrawLine(LinePen, new Point(x, 4), new Point(x, PlotHeight - 5));
-                    var name = new FormattedText(line.Name, CultureInfo.CurrentCulture, FlowDirection.LeftToRight, Mono, 9, Muted);
+                    var name = new FormattedText(line.Name, CultureInfo.CurrentCulture, FlowDirection.LeftToRight, Mono, 11, Muted);
                     context.DrawText(name, new Point(Math.Min(x + 3, left + panel - name.Width - 3), 3));
                 }
 
@@ -102,5 +102,5 @@ public sealed class PassbandView : Control
     }
 
     private static void Draw(DrawingContext context, string text, double x, double y, IBrush brush) =>
-        context.DrawText(new FormattedText(text, CultureInfo.CurrentCulture, FlowDirection.LeftToRight, Mono, 10, brush), new Point(x + 2, y));
+        context.DrawText(new FormattedText(text, CultureInfo.CurrentCulture, FlowDirection.LeftToRight, Mono, 11, brush), new Point(x + 2, y));
 }

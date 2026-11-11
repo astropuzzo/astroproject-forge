@@ -12,7 +12,7 @@ namespace AstroForge.CrossPlatform.Controls;
 
 /// <summary>
 /// The living sky behind every screen: a procedural Hα/OIII nebula, twinkling stars in three depth
-/// layers with pointer parallax, occasional meteors and a GoTo-slew warp used on navigation.
+/// layers with pointer parallax and a GoTo-slew warp used on navigation.
 /// Draws a still frame when motion is reduced or the window is in the background.
 /// </summary>
 public sealed class StarfieldBackdrop : Control
@@ -32,8 +32,6 @@ public sealed class StarfieldBackdrop : Control
     private Point _pointer = new(0.5, 0.5), _pointerTarget = new(0.5, 0.5);
     private double _warp, _warpDirection = 1;
     private TimeSpan? _warpStart;
-    private Meteor? _meteor;
-    private TimeSpan _nextMeteor = TimeSpan.FromSeconds(6);
 
     public StarfieldBackdrop()
     {
@@ -98,7 +96,6 @@ public sealed class StarfieldBackdrop : Control
     private void Motion_ReducedChanged(object? sender, EventArgs e)
     {
         _warp = 0;
-        _meteor = null;
         InvalidateVisual();
         EnsureRunning();
     }
@@ -148,10 +145,8 @@ public sealed class StarfieldBackdrop : Control
             }
         }
 
-        if (!Motion.Reduced) UpdateMeteor(dt);
-
-        // 30 fps is plenty for twinkle and parallax; the slew and meteors get every frame.
-        var urgent = _warp > 0 || _meteor is not null;
+        // 30 fps is plenty for twinkle and parallax; the slew gets every frame.
+        var urgent = _warp > 0;
         if (urgent || (now - _lastDraw).TotalMilliseconds >= 33)
         {
             _lastDraw = now;
@@ -165,22 +160,6 @@ public sealed class StarfieldBackdrop : Control
             return;
         }
         _host.RequestAnimationFrame(OnFrame);
-    }
-
-    private void UpdateMeteor(double dt)
-    {
-        if (_meteor is { } meteor)
-        {
-            meteor.Age += dt;
-            if (meteor.Age >= meteor.Life) _meteor = null;
-            return;
-        }
-        if (_clock < _nextMeteor || Bounds.Width <= 0) return;
-        _nextMeteor = _clock + TimeSpan.FromSeconds(9 + _random.NextDouble() * 14);
-        var angle = (150 + _random.NextDouble() * 22) * Math.PI / 180;
-        _meteor = new Meteor(
-            new Point(Bounds.Width * (0.35 + _random.NextDouble() * 0.55), Bounds.Height * (0.02 + _random.NextDouble() * 0.25)),
-            new Vector(Math.Cos(angle), Math.Sin(angle)), 260 + _random.NextDouble() * 220, 1.1);
     }
 
     public override void Render(DrawingContext context)
@@ -226,21 +205,6 @@ public sealed class StarfieldBackdrop : Control
                 context.FillRectangle(spike, new Rect(x - 5, y - 0.35, 10, 0.7));
                 context.FillRectangle(spike, new Rect(x - 0.35, y - 5, 0.7, 10));
             }
-        }
-
-        if (_meteor is { } meteor)
-        {
-            var k = meteor.Age / meteor.Life;
-            var head = meteor.Start + meteor.Direction * (meteor.Length * Motion.EaseOutExpo(k));
-            var tail = head - meteor.Direction * (meteor.Length * 0.35 * (1 - k * 0.6));
-            var opacity = k < 0.2 ? k / 0.2 : 1 - (k - 0.2) / 0.8;
-            var gradient = new LinearGradientBrush
-            {
-                StartPoint = new RelativePoint(tail, RelativeUnit.Absolute),
-                EndPoint = new RelativePoint(head, RelativeUnit.Absolute),
-                GradientStops = { new GradientStop(Color.FromArgb(0, 255, 255, 255), 0), new GradientStop(Color.FromArgb((byte)(230 * opacity), 235, 242, 255), 1) }
-            };
-            context.DrawLine(new Pen(gradient, 1.4, lineCap: PenLineCap.Round), tail, head);
         }
 
         var vignette = new RadialGradientBrush
@@ -342,14 +306,5 @@ public sealed class StarfieldBackdrop : Control
         public double X = x, Y = y;
         public readonly double Depth = depth, Radius = radius, Phase = phase, Speed = speed;
         public readonly int Color = color;
-    }
-
-    private sealed class Meteor(Point start, Vector direction, double length, double life)
-    {
-        public Point Start { get; } = start;
-        public Vector Direction { get; } = direction;
-        public double Length { get; } = length;
-        public double Life { get; } = life;
-        public double Age { get; set; }
     }
 }

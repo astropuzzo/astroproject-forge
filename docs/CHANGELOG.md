@@ -1,5 +1,92 @@
 # AstroProject Forge — note di rilascio
 
+## 1.14.0 — 11 novembre 2026
+
+Revisione dell’algoritmo e dell’interfaccia: tutto il codice è stato riletto, ogni difetto trovato è stato corretto e, dove possibile, fissato con un test.
+
+**Calibrazioni**
+
+- **Dark e Bias grezzi.** Una cartella con trenta Dark da 300 s e nessun Master (il caso tipico di un ASIAIR) chiedeva una scelta per ogni Light, e il sub scelto veniva esportato da solo con il nome MasterDark. Ora i sub con la stessa camera, gain, offset, esposizione e temperatura formano un set: l’abbinamento avviene sul set e il set viene esportato intero, perché sia WBPP a integrarlo.
+- **Dark Flat.** Venivano riconosciuti e poi ignorati, e senza Bias il progetto non era mai pronto. Ora si abbinano al set di Flat per camera, gain ed esposizione, arrivano a WBPP come Dark dei Flat, e un progetto con Dark, Flat e Dark Flat è completo anche senza Bias. Se c’è anche il Bias vengono esportati entrambi.
+- Tra due Dark o due Bias che andrebbero bene vince il più vicino per esposizione e temperatura: un Light a −10 °C con Master a −10 e a −8 °C non chiede più di scegliere. Un Master completo passa davanti a uno senza offset che aveva solo più punti per la libreria.
+- Camere a colori senza ruota: Light e Flat senza FILTER ora si abbinano (prima il filtro risultava un dato mancante e i Flat non si assegnavano mai).
+- Un Bias a qualche grado dal Light viene accettato, e tra due si preferisce il più vicino: prima era “incompatibile” e bloccava il progetto.
+- Un Flat Set assegnato a una parte della notte resta a quella parte: prima, secondo l’ordine dei file, veniva ignorato o esteso a tutta la notte.
+- Un vecchio stack rimasto in una cartella (un master Light) non viene più calibrato e integrato di nuovo, e i master Flat non si mescolano ai Flat grezzi.
+- Assegnare a mano un Master senza gain o offset chiede di completare i metadati, invece di far fallire l’esportazione.
+
+**Date, notti e statistiche**
+
+- **DATE-OBS è UTC.** Lo standard FITS lo vuole in tempo universale, ma veniva letto come ora locale: i frame con il solo DATE-OBS (ASIAIR) finivano una o due ore prima sulla linea delle notti, come si vedeva anche nel progetto demo.
+- **Siti remoti.** Quando il file porta sia DATE-LOC sia DATE-OBS (N.I.N.A., SGP, APT) la differenza dà il fuso del sito, e la notte si taglia sul mezzogiorno del sito: un osservatorio in un altro fuso non viene più spezzato in due notti.
+- Le notti del progetto si contano una volta: due notti con tre filtri risultavano sei notti. “Ha” e “HA” sono lo stesso filtro.
+- DATE-OBS con la sola data e l’ora in TIME-OBS (software più vecchi) vengono uniti.
+
+**Lettura dei file**
+
+- N.I.N.A. senza ruota portafiltri: nei nomi file la temperatura, il bersaglio o “FlatWizard” venivano presi per il filtro, e Light e Flat non si incontravano più.
+- “Dark_Flat”, “Flat-Dark”, “FlatDark” e IMAGETYP “FLATDARK” sono Dark Flat (prima diventavano Flat).
+- I Master con nome attaccato (“masterDark_300s”, “MasterFlat”) vengono riconosciuti anche senza IMAGETYP.
+- Libreria Master: la cartella “Temp-10” vale −10 °C (veniva letta +10), “Temp-10C” viene letta, e una cartella con la temperatura sotto “GAIN_100” non richiede più una cartella chiamata “dark”.
+- Una sottocartella illeggibile (per esempio “System Volume Information” sulla radice di un disco) non interrompe più l’intera analisi; i file “._” lasciati da macOS vengono saltati.
+- FITS: le stringhe lunghe spezzate in card CONTINUE vengono ricomposte. XISF: l’esposizione si legge anche dalla proprietà standard. Un FOCALLEN a zero lascia la focale del catalogo.
+
+**Quality Lab**
+
+- **FWHM.** La misura usava una finestra fissa di 11 pixel e una soglia: oltre circa 4 pixel smetteva di crescere, e una stella più debole risultava più stretta, quindi un frame velato poteva sembrare più nitido. Ora ogni stella fissa la propria scala e la larghezza viene da un fit gaussiano ellittico. Su stelle sintetiche da 2,4 a 11,8 pixel, con rapporto segnale/rumore 10, 30 e 300, l’errore resta entro il 10% e non dipende dalla luminosità.
+- I Light esclusi nel Quality Lab non bloccano più l’esportazione e non entrano nelle statistiche esportate.
+
+**Esportazione e WBPP**
+
+- Un progetto con uno spazio nel nome (“NGC 6960”) viene esportato in “NGC_6960”, ma le novità venivano cercate in “NGC 6960”: dopo un’esportazione ogni notte aggiunta risultava un progetto intero da copiare.
+- I nomi delle cartelle usano gli stessi caratteri sicuri su Windows, macOS e Linux, e i due punti non restano più nelle cartelle TARGET (un progetto fatto su macOS doveva aprirsi anche su Windows e su dischi exFAT).
+- Aggiornare un progetto su un disco exFAT, FAT o HFS+ segnalava ogni file come modificato, perché quei dischi arrotondano l’ora di modifica. Ora il manifest registra l’ora che la copia ha davvero ricevuto.
+- Istanza WBPP: FLATSET, DARKSET e BIASSET vengono dal piano e non dal nome della cartella in cui un file era rimasto da un’esportazione precedente. I Flat di uno stesso set con esposizioni diverse (sky flat, due serie di pannello) restano un solo gruppo.
+- Riprendere una prima esportazione interrotta dopo aver cambiato il piano non porta più nel progetto le copie del piano vecchio.
+- La radice di un disco contiene le proprie cartelle: con le acquisizioni su “E:\” il controllo di sovrapposizione veniva saltato e si poteva esportare dentro le sorgenti.
+
+**Cielo**
+
+- RA scritta come testo (“22 47 14”) è in ore, non in gradi. Un bersaglio (0, 0), cioè “sconosciuto”, lascia il posto alla posizione della montatura invece di far sparire il frame. Le coordinate non mostrano più “20h 60.0m”.
+
+**Aggiornamenti**
+
+- Se una delle due fonti (feed del canale o GitHub) va in timeout o risponde con dati non validi, l’altra viene comunque usata.
+
+**Uso quotidiano**
+
+- Una sorgente su un disco non collegato all’avvio (un NAS, un disco USB) spariva dal progetto e dal file salvato al primo salvataggio. Ora resta elencata.
+- Un’analisi alla volta: si poteva avviarne una seconda mentre la prima era in corso, e un’analisi letta per sorgenti cambiate nel frattempo veniva mostrata come il progetto. Ora le richieste aspettano quella in corso, e un risultato superato viene riletto.
+- I Light messi da parte nel Quality Lab escono subito da ciò che è pronto, dalle scelte da fare e dai totali. “Ripristina tutti” riprende anche le esclusioni fatte prima dell’ultima analisi.
+- “Annulla” dopo una nuova analisi agiva sui frame vecchi e diceva di aver funzionato: ora la cronologia delle modifiche riparte con l’analisi.
+- “Tutta la notte” per un Dark o un Bias raggiungeva anche Light con un’altra esposizione o un altro gain, che diventavano incompatibili.
+- Svuotare un campo toglie la correzione e torna al valore del file, invece di registrare “nessun valore”.
+- La linea delle notti segue l’orologio del sito, come le notti: i Light di un osservatorio remoto non cadono più fuori dal riquadro.
+- Un file di progetto che non si riesce a scrivere non resta più quello su cui ogni azione successiva prova a salvare. Un’azione che fallisce mostra un avviso con il motivo, invece di finire solo nel registro.
+- Nelle viste delle calibrazioni i Dark Flat e i set di Bias grezzi sono chiamati con il loro nome, e una calibrazione senza differenze è segnata come identica (prima bastava un campo facoltativo assente, come il rotatore, per farla risultare “entro la tolleranza”).
+
+**Interfaccia**
+
+- Via la riga “PASSO N DI 4” sopra ogni titolo, che ripeteva la barra dei passi, e via le etichette tutte in maiuscolo: titoli di scheda, intestazioni e stati sono scritti normalmente, in italiano e in inglese.
+- Un solo formato per numeri, percentuali, durate e dimensioni, nella lingua dell’interfaccia. Prima convivevano “0.3 h” e “0,3 h”, “6.14 MB” e “6 MB”, “20 min” e “40m”, “100 %” e “100%”.
+- Una parola per ogni cosa: i filtri sono “da riconoscere”, la libreria è “Libreria Master”, il passo è “Strumento”, i file sono “acquisizioni”, il filtro è Hα. I conteggi hanno singolare e plurale veri (“1 filtro/i” non c’è più). Su un computer si “clicca”, non si “tocca”.
+- Testi che venivano tagliati: la nota sotto il cielo, la scritta del trascinamento, le intestazioni della Libreria Master. “Campo inquadrato · Filtro Filtro 3” ripeteva la parola.
+- Il pulsante del catalogo accanto a Camera e Ottica era un puntino quasi invisibile: ora è un pulsante “Catalogo”. Il nome del riduttore non ripete più il fattore.
+- Passo Importa: le due schede non hanno più un’altezza minima che spingeva “Opzioni avanzate” fuori dallo schermo.
+- Passo Calibrazioni: un solo anello (il secondo ripeteva il primo), una legenda per i segni delle celle, e il titolo “Da risolvere” compare solo quando c’è qualcosa da risolvere.
+- Passo Esporta: la scheda di WBPP sta sotto le notti, così le due colonne hanno altezze simili; nome del progetto e destinazione hanno un’etichetta; i riquadri del riepilogo compaiono quando hanno un dato e “Controlla prima” sparisce a esportazione finita.
+- Aspetto: il pulsante principale è in tinta unita (via il gradiente azzurro-lilla), via bagliori e ombre da schede e pulsanti, tre soli raggi per gli angoli. Il diagramma di WBPP è fatto di corsie dritte, senza nastri ondulati che non dicevano nulla. Via la stellina dalla barra delle novità e i puntini decorativi. Nessuna animazione gira in continuo tranne le stelle dello sfondo, che “Riduci animazioni” ferma.
+- Caratteri: ciascuno ha un compito solo. Il testo e i titoli in Inter, Unbounded per il nome e i numeri grandi, il corsivo con grazie per il sottotitolo della pagina, il monospazio per keyword e valori misurati.
+- Leggibilità: nessun testo sotto gli 11 pixel, e il contrasto dei testi secondari supera 4,5:1 anche sul punto più chiaro dello sfondo.
+- La mappa delle calibrazioni si usa anche da tastiera, con le frecce e Invio.
+- “Dimensione interfaccia” veniva salvata e mai applicata: ora ridimensiona l’interfaccia.
+- I messaggi che comparivano solo in italiano anche con l’interfaccia in inglese (avvisi, riepiloghi, albero dei metadati, errori) hanno la loro versione inglese. Dal dizionario sono uscite 447 voci che nessuna schermata usava più.
+
+**Controlli QA**
+
+- Nuovo gruppo di test del Core per ogni correzione: stelle sintetiche per la FWHM, ora di scatto e siti remoti, spareggi tra Dark, nomi file, cartelle della libreria, card FITS e XISF, regole di abbinamento, coordinate, e un’esportazione vera con Dark e Bias grezzi fino all’istanza WBPP.
+- Le immagini dei quattro passi nella documentazione sono state rifatte sull’interfaccia nuova.
+
 ## 1.13.1 — 1 ottobre 2026
 
 - **Passo Esporta: la colonna di sinistra non si stira più.** Con l’esportazione finita la colonna di destra (mappa dell’export e WBPP) diventa molto più alta, e aprendo “Grouping Keywords da inserire a mano” cresceva ancora: la colonna di sinistra si allungava insieme, così si muoveva e si ingrandiva soltanto l’immagine dell’integrazione, e sotto restava un riquadro delle notti quasi vuoto. Ora le due colonne hanno ciascuna la propria altezza: l’anteprima dell’integrazione e le notti restano com’erano, qualunque cosa succeda a destra.

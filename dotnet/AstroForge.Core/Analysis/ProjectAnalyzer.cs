@@ -15,12 +15,20 @@ public sealed record LightCalibrationAnalysis(
     MatchResult Dark,
     MatchResult Bias,
     CalibrationGroup? FlatGroup,
-    string? FlatDecision = null);
+    string? FlatDecision = null,
+    CalibrationGroup? DarkSet = null,
+    CalibrationGroup? BiasSet = null,
+    MatchResult? DarkFlat = null,
+    CalibrationGroup? DarkFlatSet = null);
 
 public sealed record ProjectAnalysis(IReadOnlyList<CalibrationGroup> FlatGroups, IReadOnlyList<LightCalibrationAnalysis> Lights)
 {
     public bool Ready => Lights.Count > 0 && Lights.All(item => item.Flat.IsAccepted && item.Dark.IsAccepted && item.Bias.IsAccepted);
     public int UnresolvedCount => Lights.Sum(item => new[] { item.Flat, item.Dark, item.Bias }.Count(result => !result.IsAccepted));
+
+    /// <summary>The same analysis without the Lights the user set aside: they need no calibration and are not integration time.</summary>
+    public ProjectAnalysis Without(IReadOnlySet<string>? excludedPaths) =>
+        excludedPaths is not { Count: > 0 } ? this : this with { Lights = Lights.Where(item => !excludedPaths.Contains(item.Light.Path)).ToArray() };
 }
 
 public static class ProjectAnalyzer
@@ -31,29 +39,112 @@ public static class ProjectAnalyzer
         var flatGroups = GroupFlats(frames.Where(frame => frame.Kind == FrameKind.Flat));
         var representatives = flatGroups.Select(group => group.Representative).ToArray();
         var groupByPath = flatGroups.ToDictionary(group => group.Representative.Path, PathIdentity.Comparer);
-        var darks = new CalibrationMatchCache(frames, FrameKind.Dark, policy);
-        var biases = new CalibrationMatchCache(frames, FrameKind.Bias, policy);
-        var lightFrames = frames.Where(frame => frame.Kind == FrameKind.Light).ToArray();
+        var darkSets = SetsByMember(GroupRawSets(frames, FrameKind.Dark));
+        var biasSets = SetsByMember(GroupRawSets(frames, FrameKind.Bias));
+        var darks = new CalibrationMatchCache(Candidates(frames, FrameKind.Dark, darkSets), FrameKind.Dark, policy);
+        var biases = new CalibrationMatchCache(Candidates(frames, FrameKind.Bias, biasSets), FrameKind.Bias, policy);
+        // An old stack left in a scanned folder (a master Light) is not a sub to calibrate and integrate again.
+        var lightFrames = frames.Where(frame => frame.Kind == FrameKind.Light && !frame.IsMaster).ToArray();
+        var darkFlatSets = SetsByMember(GroupRawSets(frames, FrameKind.DarkFlat));
+        var darkFlatCandidates = Candidates(frames, FrameKind.DarkFlat, darkFlatSets).ToArray();
+        var darkFlatByFlats = new Dictionary<CalibrationGroup, MatchResult>(ReferenceEqualityComparer.Instance);
         var flatMatches = ResolveFlatEpochs(lightFrames, flatGroups, representatives, policy);
         var lights = new List<LightCalibrationAnalysis>();
         foreach (var light in lightFrames)
         {
             var flatResolution = flatMatches[light.Path];
             var flat = flatResolution.Result;
-            var dark = ResolveManual(darks.Find(light), light.ManualDarkPath.Value);
-            var bias = ResolveManual(biases.Find(light), light.ManualBiasPath.Value);
+            var dark = ResolveManual(darks.Find(light), light.ManualDarkPath.Value, darkSets);
+            var bias = ResolveManual(biases.Find(light), light.ManualBiasPath.Value, biasSets);
             var group = flat.Selected is not null ? groupByPath.GetValueOrDefault(flat.Selected.Frame.Path) : null;
-            lights.Add(new(light, flat, dark, bias, group, flatResolution.Decision));
+            var biasSet = SetOf(bias, biasSets);
+            // Dark Flats belong to the Flats: they are matched to the Flat set's exposure and gain, not to the Light.
+            MatchResult? darkFlat = null;
+            if (group is not null && darkFlatCandidates.Length > 0)
+            {
+                if (!darkFlatByFlats.TryGetValue(group, out var matched))
+                    darkFlatByFlats[group] = matched = CalibrationMatcher.Find(group.Representative, darkFlatCandidates, FrameKind.DarkFlat, policy);
+                if (matched.IsAccepted) darkFlat = matched;
+            }
+            var darkFlatSet = darkFlat is null ? null : SetOf(darkFlat, darkFlatSets);
+            // Flats calibrated with their own Dark Flats need no Bias, and the Light's Dark already carries the bias
+            // signal: the usual CMOS set of Darks, Flats and Dark Flats is complete without a Bias.
+            if (!bias.IsAccepted && darkFlat is not null) { bias = darkFlat; biasSet = darkFlatSet; }
+            lights.Add(new(light, flat, dark, bias, group, flatResolution.Decision, SetOf(dark, darkSets), biasSet, darkFlat, darkFlatSet));
         }
         return new(flatGroups, lights);
     }
 
-    private static MatchResult ResolveManual(MatchResult automatic, string? requestedPath)
+    /// <summary>
+    /// Raw Dark or Bias subs that share camera, geometry, gain, offset, exposure and temperature are one set: the match is
+    /// made against the set and the whole set is exported for WBPP to integrate, the way Flats already work. Without this
+    /// every sub of a night of Darks tied with the others and one of them ended up exported as "the" Master.
+    /// </summary>
+    public static IReadOnlyList<CalibrationGroup> GroupRawSets(IEnumerable<FrameMetadata> source, FrameKind kind)
+    {
+        var sets = new List<CalibrationGroup>();
+        var families = source.Where(frame => frame.Kind == kind && !frame.IsMaster)
+            .GroupBy(frame => string.Join('|', Normalize(frame.Camera.Value), frame.Width.Value, frame.Height.Value, frame.XBin.Value, frame.YBin.Value,
+                frame.Gain.Value, frame.Offset.Value, Normalize(frame.ReadoutMode.Value), Normalize(frame.BayerPattern.Value),
+                kind == FrameKind.Bias ? null : Bucket(frame.ExposureSeconds.Value, 0.1)))
+            .OrderBy(family => family.Key, StringComparer.OrdinalIgnoreCase);
+        foreach (var family in families)
+        {
+            // A sensor without a set point drifts by tenths of a degree: frames belong together until the temperature jumps by more than 1 °C.
+            var current = new List<FrameMetadata>();
+            double? last = null;
+            foreach (var frame in family.OrderBy(frame => frame.EffectiveTemperatureC ?? double.MinValue).ThenBy(frame => frame.Path, StringComparer.OrdinalIgnoreCase))
+            {
+                var temperature = frame.EffectiveTemperatureC;
+                if (current.Count > 0 && (temperature.HasValue != last.HasValue || temperature is { } now && last is { } before && now - before > 1))
+                {
+                    sets.Add(new($"RAW-{sets.Count + 1:00}", kind, MedianFirst(current)));
+                    current = [];
+                }
+                current.Add(frame);
+                last = temperature;
+            }
+            if (current.Count > 0) sets.Add(new($"RAW-{sets.Count + 1:00}", kind, MedianFirst(current)));
+        }
+        return sets;
+    }
+
+    /// <summary>
+    /// The set's frames by path, with the one at the median temperature first: it stands for the set when matching and
+    /// naming, so a set read between -9.4 and -10.3 °C is a -10 °C set and not whatever its first file happened to read.
+    /// </summary>
+    private static FrameMetadata[] MedianFirst(List<FrameMetadata> byTemperature)
+    {
+        var median = byTemperature[byTemperature.Count / 2];
+        return [median, .. byTemperature.Where(frame => !ReferenceEquals(frame, median)).OrderBy(frame => frame.Path, StringComparer.OrdinalIgnoreCase)];
+    }
+
+    private static Dictionary<string, CalibrationGroup> SetsByMember(IReadOnlyList<CalibrationGroup> sets)
+    {
+        var map = new Dictionary<string, CalibrationGroup>(PathIdentity.Comparer);
+        foreach (var set in sets)
+            foreach (var frame in set.Frames) map[frame.Path] = set;
+        return map;
+    }
+
+    /// <summary>What a Light can be matched against: every Master, and one representative per set of raw subs.</summary>
+    private static IEnumerable<FrameMetadata> Candidates(IEnumerable<FrameMetadata> frames, FrameKind kind, Dictionary<string, CalibrationGroup> sets) =>
+        frames.Where(frame => frame.Kind == kind && (!sets.TryGetValue(frame.Path, out var set) || ReferenceEquals(set.Representative, frame)));
+
+    private static CalibrationGroup? SetOf(MatchResult result, Dictionary<string, CalibrationGroup> sets) =>
+        result.Selected is { } selected ? sets.GetValueOrDefault(selected.Frame.Path) : null;
+
+    private static MatchResult ResolveManual(MatchResult automatic, string? requestedPath, Dictionary<string, CalibrationGroup> sets)
     {
         if (string.IsNullOrWhiteSpace(requestedPath)) return automatic;
+        // A choice saved on one sub of a set stands for its set.
+        if (sets.TryGetValue(requestedPath, out var requestedSet)) requestedPath = requestedSet.Representative.Path;
         var match = automatic.Candidates.FirstOrDefault(candidate => PathIdentity.Equals(candidate.Frame.Path, requestedPath));
         if (match is null || !match.Compatible)
             return new(automatic.RequestedKind, MatchStatus.Incompatible, null, automatic.Candidates);
+        // The export names folders after gain, offset and temperature: a pick that lacks them is not ready yet.
+        if (match.MissingRequired.Count > 0)
+            return new(automatic.RequestedKind, MatchStatus.InsufficientMetadata, null, automatic.Candidates);
         // The automatic result is shared by every light with the same signature: annotate a copy.
         var selected = match.Clone();
         selected.Reasons.Add("Master assegnato manualmente dall'utente");
@@ -68,7 +159,7 @@ public static class ProjectAnalyzer
             Normalize(frame.FilterName.Value), Normalize(frame.Camera.Value),
             frame.Width.Value, frame.Height.Value, frame.XBin.Value, frame.YBin.Value,
             frame.Gain.Value, frame.Offset.Value, Normalize(frame.ReadoutMode.Value), Normalize(frame.BayerPattern.Value),
-            Bucket(frame.FocalLengthMm.Value, 1), Bucket(frame.RotatorAngleDeg.Value, 0.5)))
+            Bucket(frame.FocalLengthMm.Value, 1), Bucket(frame.RotatorAngleDeg.Value, 0.5), frame.IsMaster))
             .OrderBy(group => group.Key, StringComparer.OrdinalIgnoreCase).ToArray();
         return groups.Select((group, index) =>
         {
@@ -145,8 +236,10 @@ public static class ProjectAnalyzer
         return new(result, $"Flat Epoch automatica {first.Group.Id} · distanza {first.Distance.TotalHours:0.#} h · margine {margin.TotalHours:0.#} h");
     }
 
+    // The Flat Set the user asked for is part of the key: a choice made for some Lights of a night must neither be
+    // ignored nor spread to the rest of the night, whichever file happens to come first.
     private static string LightEpochKey(FrameMetadata frame) => string.Join('|',
-        frame.SessionId.Value ?? "unknown", Normalize(frame.FilterName.Value), Normalize(frame.Camera.Value),
+        frame.SessionId.Value ?? "unknown", Normalize(frame.FlatSetId.Value), Normalize(frame.FilterName.Value), Normalize(frame.Camera.Value),
         frame.Width.Value, frame.Height.Value, frame.XBin.Value, frame.YBin.Value,
         frame.Gain.Value, frame.Offset.Value, Normalize(frame.ReadoutMode.Value), Normalize(frame.BayerPattern.Value),
         Bucket(frame.FocalLengthMm.Value, 1), Bucket(frame.RotatorAngleDeg.Value, 0.5));

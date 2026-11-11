@@ -17,6 +17,8 @@ public static class PathIdentity
     {
         candidate = Path.TrimEndingDirectorySeparator(Path.GetFullPath(candidate));
         parent = Path.TrimEndingDirectorySeparator(Path.GetFullPath(parent));
-        return Equals(candidate, parent) || candidate.StartsWith(parent + Path.DirectorySeparatorChar, Comparison);
+        // A drive root keeps its separator ("E:\"): adding another one would make it contain nothing.
+        var prefix = Path.EndsInDirectorySeparator(parent) ? parent : parent + Path.DirectorySeparatorChar;
+        return Equals(candidate, parent) || candidate.StartsWith(prefix, Comparison);
     }
 }

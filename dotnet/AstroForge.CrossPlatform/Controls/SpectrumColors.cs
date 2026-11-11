@@ -9,6 +9,9 @@ public static class SpectrumColors
 {
     public const double MinNm = 380, MaxNm = 720;
 
+    /// <summary>An emission line the way it is written everywhere in the interface: "Hα", not the header's "Ha".</summary>
+    public static string LineName(string name) => name is "Ha" or "H-alpha" or "Halpha" ? "Hα" : name;
+
     /// <summary>Approximate sRGB of a monochromatic wavelength (Bruton), brightened for a dark UI.</summary>
     public static Color Wavelength(double nm, byte alpha = 255)
     {

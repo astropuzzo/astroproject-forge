@@ -19,10 +19,11 @@ public static partial class LibraryMetadataResolver
             var changes = new List<string>();
             var gain = Labeled(parts, GainRegex());
             var temperature = Labeled(parts, TemperatureRegex());
-            var darkTree = parts.Take(parts.Length - 1).Any(part => part.Contains("dark", StringComparison.OrdinalIgnoreCase));
-            var biasTree = parts.Take(parts.Length - 1).Any(part => part.Contains("bias", StringComparison.OrdinalIgnoreCase));
-            if (temperature is null && darkTree && gain is not null && parts.Length >= 2)
-                temperature = Plain(parts[^2]);
+            // The frame type is known from its header or name: the folders need not say "dark" again (GAIN_100\-10\MasterDark.xisf).
+            var darkTree = frame.Kind == FrameKind.Dark || parts.Take(parts.Length - 1).Any(part => part.Contains("dark", StringComparison.OrdinalIgnoreCase));
+            var biasTree = frame.Kind == FrameKind.Bias || parts.Take(parts.Length - 1).Any(part => part.Contains("bias", StringComparison.OrdinalIgnoreCase));
+            if (temperature is null && darkTree && gain is not null && parts.Length >= 2 && Plain(parts[^2]) is >= -60 and <= 45 and var folderTemperature)
+                temperature = folderTemperature;
             if (gain is null && biasTree)
                 gain = BiasGain(System.IO.Path.GetFileNameWithoutExtension(frame.Path));
             Apply(frame.Gain, gain, "gain", changes);
@@ -59,7 +60,8 @@ public static partial class LibraryMetadataResolver
 
     [GeneratedRegex(@"^gain[_ -]?(-?\d+(?:[.,]\d+)?)$", RegexOptions.IgnoreCase)]
     private static partial Regex GainRegex();
-    [GeneratedRegex(@"^(?:temp|temperature)[_ -]?(-?\d+(?:[.,]\d+)?)$", RegexOptions.IgnoreCase)]
+    // The separator is lazy so that "Temp-10" reads as -10 °C, the way people name cooled Darks.
+    [GeneratedRegex(@"^(?:temp|temperature)[_ -]??(-?\d+(?:[.,]\d+)?)\s*(?:°?c)?$", RegexOptions.IgnoreCase)]
     private static partial Regex TemperatureRegex();
     [GeneratedRegex(@"(?:gain|bias)[_ -]?(-?\d+(?:[.,]\d+)?)$", RegexOptions.IgnoreCase)]
     private static partial Regex BiasGainRegex();

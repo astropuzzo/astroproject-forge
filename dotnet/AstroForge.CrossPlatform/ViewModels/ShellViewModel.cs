@@ -8,6 +8,7 @@ using AstroForge.App.ViewModels;
 using AstroForge.Core.Analysis;
 using AstroForge.Core.Filters;
 using AstroForge.Core.Models;
+using AstroForge.Core.Sessions;
 using AstroForge.CrossPlatform.Controls;
 
 namespace AstroForge.CrossPlatform.ViewModels;
@@ -119,27 +120,24 @@ public sealed class ShellViewModel : BindableBase
     /// <summary>The channels on hand, in the italic accent next to the target: "Hα · OIII · SII".</summary>
     public string TargetAccent => string.Join(" · ", _observatory.FilterCards.Where(card => !card.NeedsConfirmation).Select(card => ChannelOf(card.Name)).Distinct().Take(4));
 
-    public string StateLabel => StateText.ToUpper(Culture);
-    private string StateText => _main.IsScanning ? (English ? "Analysing" : "Analisi in corso")
+    public string StateLabel => _main.IsScanning ? (English ? "Analysing" : "Analisi in corso")
         : Analyzed ? (English ? "Analysed" : "Analizzato")
         : _main.HasSources ? (English ? "To analyse" : "Da analizzare")
         : (English ? "No data" : "Nessun dato");
     public bool StateLive => Analyzed || _main.IsScanning;
-    public string RangeLabel => RangeText.ToUpper(Culture);
-    private string RangeText
+    public string RangeLabel
     {
         get
         {
-            if (_main.IsScanning) return $"{_main.Progress:0} %";
-            if (_nightTotals.Count == 0) return _main.HasSources ? SourcesLabel : "";
+            if (_main.IsScanning) return UiFormat.Percent(_main.Progress);
+            if (_nightTotals.Count == 0) return "";
             var dates = _nightTotals.Select(night => ParseNight(night.Night)).Where(date => date is not null).Select(date => date!.Value).ToList();
             var nights = _nightTotals.Count == 1 ? (English ? "1 night" : "1 notte") : English ? $"{_nightTotals.Count} nights" : $"{_nightTotals.Count} notti";
             return dates.Count == 0 ? nights : $"{nights} · {dates.Min().ToString("d MMM", Culture)} – {dates.Max().ToString("d MMM", Culture)}";
         }
     }
-    private string SourcesLabel => _main.SourcePaths.Count == 1 ? (English ? "1 source" : "1 sorgente") : English ? $"{_main.SourcePaths.Count} sources" : $"{_main.SourcePaths.Count} sorgenti";
     public bool HasPendingFilters => _observatory.PendingCount > 0;
-    public string FilterChip => English ? $"Filters · {_observatory.PendingCount} to confirm" : $"Filtri · {_observatory.PendingCount} da confermare";
+    public string FilterChip => English ? $"Filters · {_observatory.PendingCount} to identify" : $"Filtri · {_observatory.PendingCount} da riconoscere";
     public bool IsScanning => _main.IsScanning;
     public double Progress => _main.Progress;
 
@@ -194,8 +192,8 @@ public sealed class ShellViewModel : BindableBase
 
     public string NextLabel => NextKind switch
     {
-        NextActionKind.Busy => English ? $"Analysing · {_main.Progress:0} %" : $"Analisi · {_main.Progress:0} %",
-        NextActionKind.Exporting => English ? $"Exporting · {_main.ExportProgress:0} %" : $"Esportazione · {_main.ExportProgress:0} %",
+        NextActionKind.Busy => English ? $"Analysing · {UiFormat.Percent(_main.Progress)}" : $"Analisi · {UiFormat.Percent(_main.Progress)}",
+        NextActionKind.Exporting => English ? $"Exporting · {UiFormat.Percent(_main.ExportProgress)}" : $"Esportazione · {UiFormat.Percent(_main.ExportProgress)}",
         NextActionKind.AddSources => English ? "Add captures" : "Aggiungi acquisizioni",
         NextActionKind.Analyze => _main.HasAnalysis ? (English ? "Analyse again" : "Rianalizza") : (English ? "Analyse" : "Analizza"),
         NextActionKind.Continue => English ? "Continue" : "Continua",
@@ -221,16 +219,17 @@ public sealed class ShellViewModel : BindableBase
             var pending = _observatory.PendingCount;
             return _step switch
             {
-                ImportStep when !_main.HasSources => English ? "Add the captures to start. The Master Library is optional and remembered for every project." : "Aggiungi le acquisizioni per iniziare. La Master Library è facoltativa e resta salvata per ogni progetto.",
-                ImportStep when !Analyzed => English ? "Ready: Forge reads the headers only, your files are never changed." : "Pronto: Forge legge solo gli header, i tuoi file non vengono mai modificati.",
-                ImportStep => English ? "Analysed. Next: check that this is your gear." : "Analizzato. Prossimo passo: controlla che sia la tua attrezzatura.",
-                SetupStep when !Analyzed => English ? "Analyse the project to see the gear Forge found." : "Analizza il progetto per vedere l'attrezzatura trovata.",
-                SetupStep when pending > 0 => English ? $"{pending} filter(s) to identify. Pick them from the catalogue, or continue: the name is kept as written." : $"{pending} filtro/i da riconoscere. Sceglili dal catalogo, oppure continua: il nome resta quello scritto.",
-                SetupStep => English ? "Everything recognised. Tap any part to change it if it is not right." : "Tutto riconosciuto. Tocca una voce per cambiarla se non è giusta.",
+                ImportStep when !_main.HasSources => English ? "Add the captures to start. The Master Library is optional and remembered for every project." : "Aggiungi le acquisizioni per iniziare. La Libreria Master è facoltativa e resta salvata per ogni progetto.",
+                ImportStep when !Analyzed => English ? "Ready to analyse. Forge reads only the headers and never changes your files." : "Pronto per l'analisi. Forge legge solo gli header e non modifica mai i tuoi file.",
+                ImportStep => English ? "Analysed. Next: check that this is your gear." : "Analizzato. Prossimo passo: controlla che lo strumento sia il tuo.",
+                SetupStep when !Analyzed => English ? "Analyse the project to see the gear Forge found." : "Analizza il progetto per vedere lo strumento trovato.",
+                SetupStep when pending == 1 => English ? "1 filter to identify. Pick it from the catalogue, or continue and keep the name as written." : "1 filtro da riconoscere. Sceglilo dal catalogo, oppure continua e tieni il nome com'è scritto.",
+                SetupStep when pending > 1 => English ? $"{pending} filters to identify. Pick them from the catalogue, or continue and keep the names as written." : $"{pending} filtri da riconoscere. Sceglili dal catalogo, oppure continua e tieni i nomi come sono scritti.",
+                SetupStep => English ? "Everything recognised. Click any part that is not right to change it." : "Tutto riconosciuto. Clicca una voce che non è giusta per cambiarla.",
                 CalibrationStep when !Analyzed => English ? "Analyse the project to match Flat, Dark and Bias." : "Analizza il progetto per abbinare Flat, Dark e Bias.",
                 CalibrationStep when OpenChoices > 0 => English ? "Some Lights need a choice before the export." : "Alcuni Light richiedono una scelta prima dell'esportazione.",
                 CalibrationStep => English ? "Every Light has its Flat, Dark and Bias." : "Ogni Light ha il suo Flat, Dark e Bias.",
-                _ when Exported => English ? "Exported. Open PixInsight: WBPP is ready, press Run when you are." : "Esportato. Apri PixInsight: WBPP è pronto, premi Run quando vuoi.",
+                _ when Exported => English ? "Exported. Open PixInsight: WBPP is filled in and waits for you to press Run." : "Esportato. Apri PixInsight: WBPP è già compilato e aspetta che tu prema Run.",
                 _ when OpenChoices > 0 => English ? "Resolve the open calibration choices first." : "Risolvi prima le scelte di calibrazione aperte.",
                 _ when Updating && ExportSize is { } size => English ? $"Update: only the {size} of new data are copied and verified; what is already in the project stays as it is." : $"Aggiornamento: si copiano e verificano solo i {size} di dati nuovi; ciò che è già nel progetto resta com'è.",
                 _ => English ? "Name the project, choose where it goes, then export. Only new files are copied." : "Dai un nome al progetto, scegli dove va, poi esporta. Si copiano solo i file nuovi."
@@ -239,9 +238,6 @@ public sealed class ShellViewModel : BindableBase
     }
 
     // ---- The export page says where it is: before, during and after ----
-    public string ExportEyebrow => Exported ? (English ? "STEP 4 OF 4 · DONE" : "PASSO 4 DI 4 · FATTO")
-        : Updating ? (English ? "STEP 4 OF 4 · UPDATE" : "PASSO 4 DI 4 · AGGIORNA")
-        : English ? "STEP 4 OF 4 · EXPORT" : "PASSO 4 DI 4 · ESPORTA";
     public string ExportTitle => Exported ? (English ? "Ready for PixInsight" : "Pronto per PixInsight")
         : Exporting ? (English ? "Copying and checking…" : "Copia e verifica in corso…")
         : Updating ? (English ? "Add the new data to the project" : "Aggiungi le novità al progetto")
@@ -269,8 +265,8 @@ public sealed class ShellViewModel : BindableBase
 
             var importDetail = analysed && _main.Novelty is { } news ? (English ? $"{_main.AnalyzedFileCount} files · +{news.NewFiles} new" : $"{_main.AnalyzedFileCount} file · +{news.NewFiles} nuovi")
                 : analysed ? (English ? $"{_main.AnalyzedFileCount} files · {Nights(_nightTotals.Count)}" : $"{_main.AnalyzedFileCount} file · {Nights(_nightTotals.Count)}")
-                : _main.HasSources ? (English ? $"{SourcesLabel} · to analyse" : $"{SourcesLabel} · da analizzare")
-                : (English ? "captures and masters" : "acquisizioni e master");
+                : _main.HasSources ? (English ? "to analyse" : "da analizzare")
+                : (English ? "captures and masters" : "acquisizioni e Master");
             var setupDetail = !analysed ? (English ? "after the analysis" : "dopo l'analisi")
                 : _observatory.PendingCount > 0 ? (_observatory.PendingCount == 1 ? (English ? "1 filter to identify" : "1 filtro da riconoscere") : English ? $"{_observatory.PendingCount} filters to identify" : $"{_observatory.PendingCount} filtri da riconoscere")
                 : (English ? $"{_observatory.CameraShortName} · {Filters(_observatory.Filters.Count)}" : $"{_observatory.CameraShortName} · {Filters(_observatory.Filters.Count)}");
@@ -304,27 +300,28 @@ public sealed class ShellViewModel : BindableBase
     }
     private double CumulativeHours(int nights) => _nightTotals.Take(nights).Sum(night => night.Hours);
     public double Snr => HasNights && _nightTotals[0].Hours > 0 ? Math.Sqrt(CumulativeHours(NightIndex) / _nightTotals[0].Hours) : 1;
-    public string HoursBig => HasNights ? ((int)Math.Floor(CumulativeHours(NightIndex) + 1e-6)).ToString(CultureInfo.InvariantCulture) : "0";
+    // Hours and minutes come from one rounded total: 1 h 59,5 min is 2 h, not "1 h".
+    private int CumulativeMinutes => (int)Math.Round(CumulativeHours(NightIndex) * 60);
+    public string HoursBig => HasNights ? (CumulativeMinutes / 60).ToString(CultureInfo.InvariantCulture) : "0";
     public string HoursSmall
     {
         get
         {
-            var minutes = (int)Math.Round(CumulativeHours(NightIndex) * 60) % 60;
-            return minutes == 0 ? " h" : $" h {minutes:00}";
+            var minutes = CumulativeMinutes % 60;
+            return minutes == 0 ? " h" : $" h {minutes:00} min";
         }
     }
     public string SnrText => $"×{Snr.ToString("0.0", Culture)}";
-    public string NoiseText => Snr <= 1.0001 ? "—" : $"−{(1 - 1 / Snr) * 100:0} %";
+    public string NoiseText => Snr <= 1.0001 ? "0%" : $"−{UiFormat.Percent((1 - 1 / Snr) * 100)}";
     public string LightsText => _nightTotals.Take(NightIndex).Sum(night => night.Lights).ToString("N0", Culture);
-    public string NightLabel => !HasNights ? "—"
+    public string NightLabel => !HasNights ? "-"
         : English ? $"{NightIndex} of {NightCount} · {NightShort(_nightTotals[NightIndex - 1].Night)}" : $"{NightIndex} di {NightCount} · {NightShort(_nightTotals[NightIndex - 1].Night)}";
     public int Palette { get => _palette; set { if (Set(ref _palette, Math.Clamp(value, 0, 1))) { Raise(nameof(IsHoo)); Raise(nameof(IsSho)); Raise(nameof(StackEyebrow)); Raise(nameof(StackNote)); } } }
     public bool IsHoo { get => Palette == 0; set { if (value) Palette = 0; } }
     public bool IsSho { get => Palette == 1; set { if (value) Palette = 1; } }
     private IReadOnlyList<string> Channels => _observatory.FilterCards.Where(card => !card.NeedsConfirmation).Select(card => ChannelOf(card.Name)).ToList();
     public bool CanSho => Channels.Contains("SII") && Channels.Contains("Hα");
-    public string StackEyebrow => StackEyebrowText.ToUpper(Culture);
-    private string StackEyebrowText => English
+    public string StackEyebrow => English
         ? $"Simulated integration · {(Palette == 1 ? "SHO palette (Hubble)" : "HOO palette")}"
         : $"Integrazione simulata · {(Palette == 1 ? "palette SHO (Hubble)" : "palette HOO")}";
     public string StackNote => Palette == 1
@@ -339,7 +336,7 @@ public sealed class ShellViewModel : BindableBase
     public double DarkShare => Share(item => item.Dark.IsAccepted);
     public double BiasShare => Share(item => item.Bias.IsAccepted);
     private int FullyCalibrated => Lights.Count(item => item.Flat.IsAccepted && item.Dark.IsAccepted && item.Bias.IsAccepted);
-    public string CalibratedPercent => Total == 0 ? "—" : $"{FullyCalibrated * 100.0 / Total:0}%";
+    public string CalibratedPercent => Total == 0 ? "" : UiFormat.Percent(Math.Floor(FullyCalibrated * 100.0 / Total));
     public int OpenLights => Total - FullyCalibrated;
     public bool HasOpenLights => OpenLights > 0;
     public IReadOnlyList<CalibrationLine> CalibrationLines
@@ -350,11 +347,13 @@ public sealed class ShellViewModel : BindableBase
             var flats = _main.Analysis?.FlatGroups.Count ?? 0;
             var dark = Distinct(Lights.Select(item => item.Dark.Selected?.Frame).Where(frame => frame is not null).Select(frame => $"{frame!.ExposureSeconds.Value:0.#} s {Temperature(frame.EffectiveTemperatureC)}"));
             var bias = Distinct(Lights.Select(item => item.Bias.Selected?.Frame).Where(frame => frame is not null).Select(frame => $"gain {frame!.Gain.Value:0.#}"));
+            // Dark Flats stand in for the Bias when the Flats are calibrated with them.
+            var biasName = Lights.Any(item => item.Bias.RequestedKind == FrameKind.DarkFlat) ? (Lights.All(item => item.Bias.RequestedKind == FrameKind.DarkFlat) ? "Dark Flat" : "Bias / Dark Flat") : "Bias";
             return
             [
                 new(flats == 1 ? "Flat · 1 set" : $"Flat · {flats} set", $"{Lights.Count(item => item.Flat.IsAccepted)}/{Total}", Brush("#3FE0D0")),
-                new($"Dark · {dark}", $"{Lights.Count(item => item.Dark.IsAccepted)}/{Total}", Brush("#9DB8FF")),
-                new($"Bias · {bias}", $"{Lights.Count(item => item.Bias.IsAccepted)}/{Total}", Brush("#C59BFF"))
+                new(dark.Length == 0 ? "Dark" : $"Dark · {dark}", $"{Lights.Count(item => item.Dark.IsAccepted)}/{Total}", Brush("#9DB8FF")),
+                new(bias.Length == 0 ? biasName : $"{biasName} · {bias}", $"{Lights.Count(item => item.Bias.IsAccepted)}/{Total}", Brush("#C9D3F5"))
             ];
         }
     }
@@ -368,7 +367,7 @@ public sealed class ShellViewModel : BindableBase
     public string ChoiceBadge => _main.ReviewQueue.Count == 1 ? (English ? "1 choice" : "1 scelta") : English ? $"{_main.ReviewQueue.Count} choices" : $"{_main.ReviewQueue.Count} scelte";
     public string ChoiceTitle => Choice is { } item ? $"{item.Calibration} · {item.Filter}" : "";
     public string ChoiceSubtitle => Choice is { } item ? (English ? $"night of {NightLong(item.Night)} · {item.FrameCount} subs" : $"notte del {NightLong(item.Night)} · {item.FrameCount} pose") : "";
-    public ResolveNode? ChoiceSource => Choice is { } item ? new ResolveNode($"{item.FrameCount} Light {item.Filter}", Signature(item.Frame)) : null;
+    public ResolveNode? ChoiceSource => Choice is { } item ? new ResolveNode($"{UiFormat.Frames(item.FrameCount, "Light")} {item.Filter}", Signature(item.Frame)) : null;
     public IReadOnlyList<ResolveNode> ChoiceOptions => Choice?.Candidates.Take(3).Select((candidate, index) =>
         new ResolveNode(CandidateName(candidate), index == 0 ? $"{candidate.Compatibility} · {(English ? "recommended" : "consigliato")}" : candidate.Compatibility)).ToList() ?? [];
     public Color ChoiceAccent => Choice is { } item ? ColourOf(item.Filter) : Color.Parse("#9DB8FF");
@@ -380,9 +379,9 @@ public sealed class ShellViewModel : BindableBase
     public string ImportLabel => Choice switch
     {
         { CanImportFlat: true } => English ? "Import Flats" : "Importa Flat",
-        { CanAddMasterLibrary: true } => English ? "Add Master Library" : "Aggiungi Master Library",
+        { CanAddMasterLibrary: true } => English ? "Add Master Library" : "Aggiungi Libreria Master",
         { CanEditMetadata: true } => English ? "Fix metadata" : "Correggi metadati",
-        _ => English ? "Open Resolve" : "Apri Risolvi"
+        _ => English ? "Show every open choice" : "Mostra tutte le scelte aperte"
     };
     public string ChoiceReason => Choice?.Reason ?? "";
     private FilterSlotRow? PendingFilter => _observatory.Filters.FirstOrDefault(row => row.NeedsConfirmation);
@@ -390,9 +389,9 @@ public sealed class ShellViewModel : BindableBase
     public bool NoChoiceClean => NoChoice && PendingFilter is null;
     public string PendingFilterTitle => PendingFilter is { } row ? (English ? $"{row.RawName} · unrecognised name" : $"{row.RawName} · nome non riconosciuto") : "";
     public string PendingFilterDetail => PendingFilter is { } row
-        ? (English ? $"{row.Filter.Lights} Light · {_observatory.CameraName}. Confirmed once per camera." : $"{row.Filter.Lights} Light · {_observatory.CameraName}. Si conferma una volta per camera.")
+        ? (English ? $"{UiFormat.Frames(row.Filter.Lights, "Light")} · {_observatory.CameraName}. Confirmed once per camera." : $"{row.Filter.Lights} Light · {_observatory.CameraName}. Si conferma una volta per camera.")
         : "";
-    public string PendingFilterAction => English ? "Identify in Instrument" : "Riconosci in Strumento";
+    public string PendingFilterAction => English ? "Identify in Gear" : "Riconosci in Strumento";
     public string AllCalibratedLabel => English ? "Every Light has Flat, Dark and Bias." : "Ogni Light ha Flat, Dark e Bias.";
 
     // ---- Night sky ----
@@ -413,10 +412,10 @@ public sealed class ShellViewModel : BindableBase
         new("metadata", English ? "Frames and metadata" : "Frame e metadati", "Alt 5"),
         new("stats", English ? "Statistics" : "Statistiche", "Alt 6"),
         new("quality", English ? "Frame quality" : "Qualità dei frame", "Alt 7"),
-        new("masters", "Libreria Master", "Alt 8"),
+        new("masters", English ? "Master Library" : "Libreria Master", "Alt 8"),
         new("analyze", English ? "Analyse project" : "Analizza progetto", "Ctrl ↵"),
         new("addFolder", English ? "Import folder" : "Importa cartella", ""),
-        new("addLibrary", English ? "Add Master Library" : "Aggiungi Master Library", ""),
+        new("addLibrary", English ? "Add Master Library" : "Aggiungi Libreria Master", ""),
         new("new", English ? "New project" : "Nuovo progetto", "Ctrl N"),
         new("open", English ? "Open project" : "Apri progetto", "Ctrl O"),
         new("save", English ? "Save" : "Salva", "Ctrl S"),
@@ -424,7 +423,7 @@ public sealed class ShellViewModel : BindableBase
         new("demo", English ? "Open the demo project" : "Apri il progetto demo", ""),
         new("tour", English ? "Guided tour" : "Tour guidato", "F1"),
         new("log", English ? "Diagnostics and log" : "Diagnostica e log", ""),
-        new("menu", English ? "Settings" : "Impostazioni", "Ctrl ,"),
+        new("menu", "Menu", "Ctrl ,"),
         new("updates", English ? "Check for updates" : "Controlla aggiornamenti", "")
     ];
 
@@ -462,7 +461,7 @@ public sealed class ShellViewModel : BindableBase
         _nightsKey = key;
         var previousCount = _nightTotals.Count;
         var byNight = Lights
-            .GroupBy(item => item.Light.SessionId.Value ?? item.Light.CapturedAt.Value?.ToLocalTime().AddHours(-12).ToString("yyyy-MM-dd", CultureInfo.InvariantCulture) ?? "—")
+            .GroupBy(item => item.Light.SessionId.Value ?? SiteTime(item.Light)?.AddHours(-12).ToString("yyyy-MM-dd", CultureInfo.InvariantCulture) ?? "—")
             .OrderBy(group => group.Key, StringComparer.Ordinal)
             .ToList();
         _nightTotals = byNight.Select(group => (group.Key, group.Sum(item => item.Light.ExposureSeconds.Value ?? 0) / 3600, group.Count())).ToList();
@@ -471,27 +470,32 @@ public sealed class ShellViewModel : BindableBase
         var site = SkyMath.SiteOf(Lights.Select(item => item.Light));
         SkyNights = byNight.Select(group =>
         {
-            var date = ParseNight(group.Key) ?? group.Select(item => item.Light.CapturedAt.Value?.LocalDateTime.AddHours(-12).Date).FirstOrDefault(value => value is not null) ?? DateTime.Today;
-            var evening = new DateTime(date.Year, date.Month, date.Day, 18, 0, 0, DateTimeKind.Local);
+            var date = ParseNight(group.Key) ?? group.Select(item => SiteTime(item.Light)?.AddHours(-12).Date).FirstOrDefault(value => value is not null) ?? DateTime.Today;
+            // The row runs on the clock of the place the night was shot: the site's own offset when the frames carry
+            // it (a remote observatory seen from another time zone), this computer's zone otherwise.
+            var evening = new DateTime(date.Year, date.Month, date.Day, 18, 0, 0, DateTimeKind.Unspecified);
+            var siteOffset = group.Select(item => item.Light.SiteUtcOffset).Where(offset => offset is not null)
+                .GroupBy(offset => offset!.Value).OrderByDescending(offsets => offsets.Count()).Select(offsets => (TimeSpan?)offsets.Key).FirstOrDefault();
+            var eveningUtc = siteOffset is { } known ? DateTime.SpecifyKind(evening - known, DateTimeKind.Utc) : TimeZoneInfo.ConvertTimeToUtc(evening, TimeZoneInfo.Local);
             var exposures = group.Where(item => item.Light.CapturedAt.Value is not null).Select(item =>
             {
-                var local = item.Light.CapturedAt.Value!.Value.ToLocalTime().DateTime;
+                var local = SiteTime(item.Light)!.Value;
                 var hour = 18 + (local - evening).TotalHours;
                 var flagged = !(item.Flat.IsAccepted && item.Dark.IsAccepted && item.Bias.IsAccepted);
                 return new SkyExposure(hour, (item.Light.ExposureSeconds.Value ?? 60) / 3600, ColourOf(item.Light.FilterName.Value), flagged);
             }).Where(exposure => exposure.Start >= NightSky.StartHour - 0.5 && exposure.Start <= NightSky.EndHour).ToList();
-            var midnightUtc = evening.AddHours(6).ToUniversalTime();
+            var midnightUtc = eveningUtc.AddHours(6);
             var age = SkyMath.MoonAge(midnightUtc);
             var illumination = SkyMath.MoonIllumination(midnightUtc);
             IReadOnlyList<double>? sun = site is { } place
-                ? Enumerable.Range(0, 73).Select(step => SkyMath.SunAltitude(evening.AddMinutes(step * 10).ToUniversalTime(), place.Latitude, place.Longitude)).ToList()
+                ? Enumerable.Range(0, 73).Select(step => SkyMath.SunAltitude(eveningUtc.AddMinutes(step * 10), place.Latitude, place.Longitude)).ToList()
                 : null;
             // The Moon over the night: from the site in the headers, or a typical northern one with the time zone's longitude.
             var estimated = site is null;
-            var (moonLatitude, moonLongitude) = site ?? (45, TimeZoneInfo.Local.GetUtcOffset(evening).TotalHours * 15);
-            IReadOnlyList<double> moon = Enumerable.Range(0, 73).Select(step => SkyMath.MoonAltitude(evening.AddMinutes(step * 10).ToUniversalTime(), moonLatitude, moonLongitude)).ToList();
+            var (moonLatitude, moonLongitude) = site ?? (45, (evening - eveningUtc).TotalHours * 15);
+            IReadOnlyList<double> moon = Enumerable.Range(0, 73).Select(step => SkyMath.MoonAltitude(eveningUtc.AddMinutes(step * 10), moonLatitude, moonLongitude)).ToList();
             var parts = group.GroupBy(item => item.Light.FilterName.Value ?? "—", StringComparer.OrdinalIgnoreCase)
-                .Select(filter => $"{DisplayFilter(filter.Key)} {(filter.Sum(item => item.Light.ExposureSeconds.Value ?? 0) / 3600).ToString("0.0", Culture)} h");
+                .Select(filter => $"{DisplayFilter(filter.Key)} {UiFormat.Duration(filter.Sum(item => item.Light.ExposureSeconds.Value ?? 0) / 3600)}");
             var open = group.Count(item => !(item.Flat.IsAccepted && item.Dark.IsAccepted && item.Bias.IsAccepted));
             var fresh = _main.Novelty?.Nights.FirstOrDefault(night => night.Night == group.Key);
             var detail = $"{date.ToString("d MMM", Culture)} · {string.Join(" · ", parts)} · {group.Count()} {(English ? "subs" : "pose")} · {MoonText(illumination, moon, evening, estimated)}"
@@ -501,12 +505,14 @@ public sealed class ShellViewModel : BindableBase
         }).ToList();
     }
 
+    private static DateTime? SiteTime(FrameMetadata frame) => AstronomicalSessionResolver.LocalTime(frame, TimeZoneInfo.Local);
+
     /// <summary>"Moon 85 % · rises 21:40 · sets 05:10": how full it was and when it was up.</summary>
     private string MoonText(double illumination, IReadOnlyList<double> altitudes, DateTime evening, bool estimated)
     {
         string At(int step) => evening.AddMinutes(step * 10).ToString("HH:mm", CultureInfo.InvariantCulture);
         bool Up(int step) => altitudes[step] > SkyMath.MoonRiseAltitude;
-        var text = $"{(English ? "Moon" : "Luna")} {illumination * 100:0} %";
+        var text = $"{(English ? "Moon" : "Luna")} {UiFormat.Percent(illumination * 100)}";
         var rise = Enumerable.Range(1, altitudes.Count - 1).Where(step => Up(step) && !Up(step - 1)).Select(step => (int?)step).FirstOrDefault();
         var set = Enumerable.Range(1, altitudes.Count - 1).Where(step => !Up(step) && Up(step - 1)).Select(step => (int?)step).FirstOrDefault();
         if (rise is null && set is null) text += Up(0) ? (English ? " · up all night" : " · alta tutta la notte") : English ? " · below the horizon" : " · sotto l’orizzonte";
@@ -545,7 +551,7 @@ public sealed class ShellViewModel : BindableBase
     private static string Distinct(IEnumerable<string> values)
     {
         var distinct = values.Distinct(StringComparer.OrdinalIgnoreCase).ToList();
-        return distinct.Count switch { 0 => "—", 1 => distinct[0], _ => $"{distinct.Count} master" };
+        return distinct.Count switch { 0 => "", 1 => distinct[0], _ => $"{distinct.Count} master" };
     }
 
     private static string Temperature(double? celsius) => celsius is { } value ? $"{value:0.#} °C".Replace("-", "−") : "";
@@ -566,12 +572,5 @@ public sealed class ShellViewModel : BindableBase
     private string NightShort(string night) => ParseNight(night)?.ToString("d MMM", Culture) ?? night;
     private string NightLong(string night) => ParseNight(night)?.ToString("d MMMM", Culture) ?? night;
 
-    private static string HumanSize(long bytes)
-    {
-        string[] units = ["B", "KB", "MB", "GB", "TB"];
-        double value = bytes;
-        var unit = 0;
-        while (value >= 1024 && unit < units.Length - 1) { value /= 1024; unit++; }
-        return $"{value.ToString(unit < 3 ? "0" : "0.0", CultureInfo.CurrentCulture)} {units[unit]}";
-    }
+    private static string HumanSize(long bytes) => UiFormat.Size(bytes);
 }

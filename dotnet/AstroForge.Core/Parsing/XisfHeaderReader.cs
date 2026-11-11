@@ -68,6 +68,7 @@ public static class XisfHeaderReader
         Supplement(headers, properties, "Instrument:Camera:XBinning", "XBINNING");
         Supplement(headers, properties, "Instrument:Camera:YBinning", "YBINNING");
         Supplement(headers, properties, "Instrument:Filter:Name", "FILTER");
+        Supplement(headers, properties, "Instrument:ExposureTime", "EXPTIME");
         Supplement(headers, properties, "Instrument:FrameExposureTime", "EXPTIME");
         Supplement(headers, properties, "Observation:Time:Start", "DATE-OBS");
         if (!headers.ContainsKey("EGAIN") && properties.TryGetValue("Instrument:Camera:Gain", out var electronGain)) headers["EGAIN"] = electronGain;

@@ -68,8 +68,10 @@ public static class FitsQualityAnalyzer
         var background = Median(backgrounds.ToArray());
         var noise = Math.Max(1e-9, Median(noises.ToArray()));
         var signal = Median(signals.ToArray());
-        var fwhm = stars.Count == 0 ? 0 : Median(stars.Select(item => item.Fwhm).ToArray());
-        var eccentricity = stars.Count == 0 ? 0 : Median(stars.Select(item => item.Eccentricity).ToArray());
+        // Stars beyond the fitted quota of a tile are counted but carry no shape.
+        var shapes = stars.Where(item => double.IsFinite(item.Fwhm)).ToArray();
+        var fwhm = shapes.Length == 0 ? 0 : Median(shapes.Select(item => item.Fwhm).ToArray());
+        var eccentricity = shapes.Length == 0 ? 0 : Median(shapes.Select(item => item.Eccentricity).ToArray());
         var snr = stars.Count == 0 ? 0 : Median(stars.Select(item => item.PeakSnr).ToArray());
         var preview = await ReadPreviewAsync(stream, header.DataOffset, width, height, bitpix, bytesPerPixel, bscale, bzero, background, background + Math.Max(signal, noise), cancellationToken);
         return new(path, background, noise, signal, snr, fwhm, eccentricity, stars.Count, backgrounds.Count, preview.Width, preview.Height, preview.Pixels);
@@ -200,60 +202,223 @@ public static class FitsQualityAnalyzer
             candidates.Add((value, x, y));
         }
         var selected = new List<(double Fwhm, double Eccentricity, double PeakSnr)>();
-        var positions = new List<(int X, int Y)>();
+        var measured = new List<(int X, int Y, double Reach)>();
+        var fitted = 0;
         foreach (var candidate in candidates.OrderByDescending(item => item.Peak).Take(3000))
         {
-            if (positions.Any(position => (position.X - candidate.X) * (position.X - candidate.X) + (position.Y - candidate.Y) * (position.Y - candidate.Y) < 36)) continue;
-            // Estimate a local sky value. Gradients and vignetting must not alter
-            // the stellar profile or turn a hot pixel into a plausible star.
-            var annulus = new List<float>(96);
-            for (var dy = -7; dy <= 7; dy++) for (var dx = -7; dx <= 7; dx++)
-            {
-                var radius2 = dx * dx + dy * dy;
-                if (radius2 is < 25 or > 49) continue;
-                var value = pixels[(candidate.Y + dy) * width + candidate.X + dx];
-                if (float.IsFinite(value)) annulus.Add(value);
-            }
-            if (annulus.Count < 24) continue;
-            annulus.Sort();
-            var localBackground = annulus[annulus.Count / 2];
-            var localDeviations = annulus.Select(value => Math.Abs(value - localBackground)).OrderBy(value => value).ToArray();
-            var localNoise = Math.Max(noise, localDeviations[localDeviations.Length / 2] * 1.4826);
-            var peakSnr = (candidate.Peak - localBackground) / Math.Max(localNoise, 1e-9);
+            if (measured.Any(star => (star.X - candidate.X) * (star.X - candidate.X) + (star.Y - candidate.Y) * (star.Y - candidate.Y) < star.Reach * star.Reach)) continue;
+            // The star sets its own scale. Fixed windows (a 5 to 7 px sky ring, an 11 px box) sat inside the wings of
+            // anything broader than about 4 px FWHM, so soft frames all read the same and hazy ones read sharper.
+            if (SkyRing(pixels, width, height, candidate.X, candidate.Y, 5, 7) is not { } near) continue;
+            if (HalfWidth(pixels, width, height, candidate.X, candidate.Y, near.Median + (candidate.Peak - near.Median) * 0.5) is not { } half) continue;
+            var inner = Math.Max(5, (int)Math.Ceiling(4 * half));
+            if (SkyRing(pixels, width, height, candidate.X, candidate.Y, inner, inner + 2) is not { } ring) continue;
+            // The local sky: gradients and vignetting must not alter the stellar profile.
+            var localBackground = ring.Median;
+            var localNoise = Math.Max(noise, ring.Noise);
+            var amplitude = candidate.Peak - localBackground;
+            var peakSnr = amplitude / Math.Max(localNoise, 1e-9);
             if (peakSnr < 7) continue;
 
-            double sum = 0, sx = 0, sy = 0;
-            var aboveHalfPeak = 0;
-            for (var dy = -5; dy <= 5; dy++) for (var dx = -5; dx <= 5; dx++)
+            // One bright pixel is a hot pixel or a cosmic ray; a flat top is a saturated star with no trustworthy width.
+            int aboveHalfPeak = 0, flatTop = 0;
+            for (var dy = -1; dy <= 1; dy++) for (var dx = -1; dx <= 1; dx++)
             {
-                var pixel = pixels[(candidate.Y + dy) * width + candidate.X + dx];
-                var weight = float.IsFinite(pixel) ? Math.Max(0, pixel - localBackground - 2 * localNoise) : 0;
-                if (weight > (candidate.Peak - localBackground) * 0.5) aboveHalfPeak++;
-                sum += weight; sx += dx * weight; sy += dy * weight;
+                var signal = pixels[(candidate.Y + dy) * width + candidate.X + dx] - localBackground;
+                if (signal > amplitude * 0.5) aboveHalfPeak++;
+                if ((dx != 0 || dy != 0) && signal > amplitude * 0.995) flatTop++;
             }
-            // One bright pixel is normally a hot pixel/cosmic ray; broad plateaus
-            // are usually saturated stars and do not provide a trustworthy FWHM.
-            if (sum <= 0 || aboveHalfPeak is < 2 or > 25) continue;
-            var cx = sx / sum; var cy = sy / sum;
-            if (Math.Abs(cx) > 1.5 || Math.Abs(cy) > 1.5) continue;
-            double xx = 0, yy = 0, xy = 0;
-            for (var dy = -5; dy <= 5; dy++) for (var dx = -5; dx <= 5; dx++)
+            if (aboveHalfPeak < 2 || flatTop >= 3) continue;
+
+            // The brightest stars of a tile carry the width; fainter ones only count, as they always did.
+            if (fitted >= MaximumFittedStarsPerTile)
             {
-                var pixel = pixels[(candidate.Y + dy) * width + candidate.X + dx];
-                var weight = float.IsFinite(pixel) ? Math.Max(0, pixel - localBackground - 2 * localNoise) : 0;
-                var px = dx - cx; var py = dy - cy;
-                xx += weight * px * px; yy += weight * py * py; xy += weight * px * py;
+                measured.Add((candidate.X, candidate.Y, 6));
+                selected.Add((double.NaN, double.NaN, peakSnr));
+                continue;
             }
-            xx /= sum; yy /= sum; xy /= sum;
-            var discriminant = Math.Sqrt(Math.Max(0, (xx - yy) * (xx - yy) + 4 * xy * xy));
-            var major = Math.Max(0, (xx + yy + discriminant) / 2);
-            var minor = Math.Max(0, (xx + yy - discriminant) / 2);
-            var fwhm = 2.35482 * Math.Sqrt((major + minor) / 2);
-            if (fwhm is < 1.35 or > 12 || major <= 0 || minor / major < 0.05) continue;
-            selected.Add((fwhm, Math.Sqrt(Math.Clamp(1 - minor / major, 0, 1)), peakSnr));
-            positions.Add((candidate.X, candidate.Y));
+            var sigma = Math.Max(0.7, half / 1.1774);
+            var reach = Math.Max(3, (int)Math.Ceiling(2.5 * sigma));
+            if (candidate.X < reach || candidate.Y < reach || candidate.X >= width - reach || candidate.Y >= height - reach) continue;
+            if (FitGaussian(pixels, width, candidate.X, candidate.Y, reach, localBackground, amplitude, sigma) is not { } fit) continue;
+            if (Math.Abs(fit.CentreX) > 1.5 || Math.Abs(fit.CentreY) > 1.5) continue;
+            var fwhm = 2.35482 * Math.Sqrt((fit.Major + fit.Minor) / 2);
+            if (fwhm is < 1.35 or > MaximumFwhm || fit.Minor / fit.Major < 0.05) continue;
+            fitted++;
+            selected.Add((fwhm, Math.Sqrt(Math.Clamp(1 - fit.Minor / fit.Major, 0, 1)), peakSnr));
+            measured.Add((candidate.X, candidate.Y, Math.Max(6, 1.5 * fwhm)));
         }
         return selected;
+    }
+
+    private const int MaximumFittedStarsPerTile = 300;
+    private const double MaximumFwhm = 16;
+
+    /// <summary>Median and noise (MAD × 1.4826) of the pixels between two radii around a star; null near the tile's edge.</summary>
+    private static (double Median, double Noise)? SkyRing(float[] pixels, int width, int height, int x, int y, int inner, int outer)
+    {
+        if (x < outer || y < outer || x >= width - outer || y >= height - outer) return null;
+        var ring = new List<float>(8 * outer);
+        for (var dy = -outer; dy <= outer; dy++) for (var dx = -outer; dx <= outer; dx++)
+        {
+            var radius2 = dx * dx + dy * dy;
+            if (radius2 < inner * inner || radius2 > outer * outer) continue;
+            var value = pixels[(y + dy) * width + x + dx];
+            if (float.IsFinite(value)) ring.Add(value);
+        }
+        if (ring.Count < 24) return null;
+        ring.Sort();
+        var median = ring[ring.Count / 2];
+        var deviations = ring.Select(value => Math.Abs(value - median)).OrderBy(value => value).ToArray();
+        return (median, deviations[deviations.Length / 2] * 1.4826);
+    }
+
+    /// <summary>Mean distance from the peak, along the four axes, at which the profile crosses <paramref name="level"/>; null for blobs too broad to be a star.</summary>
+    private static double? HalfWidth(float[] pixels, int width, int height, int x, int y, double level)
+    {
+        const int limit = 10;
+        double total = 0;
+        foreach (var (stepX, stepY) in new[] { (1, 0), (-1, 0), (0, 1), (0, -1) })
+        {
+            double previous = pixels[y * width + x];
+            var crossed = false;
+            for (var step = 1; step <= limit; step++)
+            {
+                int px = x + stepX * step, py = y + stepY * step;
+                if (px < 0 || py < 0 || px >= width || py >= height) return null;
+                double value = pixels[py * width + px];
+                if (!double.IsFinite(value)) return null;
+                if (value < level)
+                {
+                    total += step - 1 + (previous - level) / Math.Max(previous - value, 1e-9);
+                    crossed = true;
+                    break;
+                }
+                previous = value;
+            }
+            if (!crossed) return null;
+        }
+        return total / 4;
+    }
+
+    /// <summary>
+    /// Least-squares fit of an elliptical Gaussian to the background-subtracted pixels within <paramref name="reach"/>
+    /// (Levenberg-Marquardt). Unlike image moments above a threshold, a fit neither shrinks with a window that cuts the
+    /// wings nor with a fainter star, so the width does not depend on brightness.
+    /// </summary>
+    private static (double CentreX, double CentreY, double Major, double Minor)? FitGaussian(
+        float[] pixels, int width, int x, int y, int reach, double localBackground, double amplitude, double sigma)
+    {
+        var points = new List<(double X, double Y, double Signal)>((2 * reach + 1) * (2 * reach + 1));
+        for (var dy = -reach; dy <= reach; dy++) for (var dx = -reach; dx <= reach; dx++)
+        {
+            if (dx * dx + dy * dy > reach * reach) continue;
+            var value = pixels[(y + dy) * width + x + dx];
+            if (float.IsFinite(value)) points.Add((dx, dy, value - localBackground));
+        }
+        if (points.Count < 9) return null;
+
+        // Parameters: amplitude, centre x and y, then the inverse covariance [[a, b], [b, c]].
+        Span<double> parameters = [amplitude, 0, 0, 1 / (sigma * sigma), 0, 1 / (sigma * sigma)];
+        Span<double> trial = stackalloc double[6];
+        Span<double> step = stackalloc double[6];
+        Span<double> jacobian = stackalloc double[6];
+        var normal = new double[6, 7];
+        var error = Residual(points, parameters);
+        var damping = 1e-3;
+        for (var iteration = 0; iteration < 30; iteration++)
+        {
+            Array.Clear(normal);
+            foreach (var (px, py, signal) in points)
+            {
+                double u = px - parameters[1], v = py - parameters[2];
+                var shape = Math.Exp(-0.5 * (parameters[3] * u * u + 2 * parameters[4] * u * v + parameters[5] * v * v));
+                var model = parameters[0] * shape;
+                jacobian[0] = shape;
+                jacobian[1] = model * (parameters[3] * u + parameters[4] * v);
+                jacobian[2] = model * (parameters[4] * u + parameters[5] * v);
+                jacobian[3] = -0.5 * model * u * u;
+                jacobian[4] = -model * u * v;
+                jacobian[5] = -0.5 * model * v * v;
+                for (var row = 0; row < 6; row++)
+                {
+                    for (var column = 0; column < 6; column++) normal[row, column] += jacobian[row] * jacobian[column];
+                    normal[row, 6] += jacobian[row] * (signal - model);
+                }
+            }
+            var improved = false;
+            for (var attempt = 0; attempt < 8 && !improved; attempt++)
+            {
+                if (!Solve(normal, damping, step)) { damping *= 10; continue; }
+                for (var index = 0; index < 6; index++) trial[index] = parameters[index] + step[index];
+                var positive = trial[0] > 0 && trial[3] > 0 && trial[5] > 0 && trial[3] * trial[5] - trial[4] * trial[4] > 0;
+                var trialError = positive ? Residual(points, trial) : double.PositiveInfinity;
+                if (trialError < error)
+                {
+                    var gain = (error - trialError) / Math.Max(error, 1e-30);
+                    trial.CopyTo(parameters);
+                    error = trialError;
+                    damping = Math.Max(damping / 5, 1e-9);
+                    improved = true;
+                    if (gain < 1e-6) iteration = int.MaxValue - 1;
+                }
+                else damping *= 10;
+            }
+            if (!improved) break;
+        }
+
+        double a = parameters[3], b = parameters[4], c = parameters[5];
+        var determinant = a * c - b * b;
+        if (!(determinant > 0) || !double.IsFinite(determinant)) return null;
+        double xx = c / determinant, yy = a / determinant, xy = -b / determinant;
+        var spread = Math.Sqrt(Math.Max(0, (xx - yy) * (xx - yy) + 4 * xy * xy));
+        var major = (xx + yy + spread) / 2;
+        var minor = (xx + yy - spread) / 2;
+        return major > 0 && minor > 0 ? (parameters[1], parameters[2], major, minor) : null;
+    }
+
+    private static double Residual(List<(double X, double Y, double Signal)> points, ReadOnlySpan<double> parameters)
+    {
+        double total = 0;
+        foreach (var (px, py, signal) in points)
+        {
+            double u = px - parameters[1], v = py - parameters[2];
+            var difference = signal - parameters[0] * Math.Exp(-0.5 * (parameters[3] * u * u + 2 * parameters[4] * u * v + parameters[5] * v * v));
+            total += difference * difference;
+        }
+        return total;
+    }
+
+    /// <summary>Solves the damped normal equations (the last column holds the right-hand side) by Gaussian elimination with pivoting.</summary>
+    private static bool Solve(double[,] normal, double damping, Span<double> solution)
+    {
+        Span<double> work = stackalloc double[6 * 7];
+        for (var row = 0; row < 6; row++)
+            for (var column = 0; column < 7; column++)
+                work[row * 7 + column] = row == column ? normal[row, column] * (1 + damping) : normal[row, column];
+        for (var pivot = 0; pivot < 6; pivot++)
+        {
+            var best = pivot;
+            for (var row = pivot + 1; row < 6; row++)
+                if (Math.Abs(work[row * 7 + pivot]) > Math.Abs(work[best * 7 + pivot])) best = row;
+            if (Math.Abs(work[best * 7 + pivot]) < 1e-300) return false;
+            if (best != pivot)
+                for (var column = 0; column < 7; column++)
+                    (work[pivot * 7 + column], work[best * 7 + column]) = (work[best * 7 + column], work[pivot * 7 + column]);
+            for (var row = pivot + 1; row < 6; row++)
+            {
+                var factor = work[row * 7 + pivot] / work[pivot * 7 + pivot];
+                for (var column = pivot; column < 7; column++) work[row * 7 + column] -= factor * work[pivot * 7 + column];
+            }
+        }
+        for (var row = 5; row >= 0; row--)
+        {
+            var value = work[row * 7 + 6];
+            for (var column = row + 1; column < 6; column++) value -= work[row * 7 + column] * solution[column];
+            solution[row] = value / work[row * 7 + row];
+            if (!double.IsFinite(solution[row])) return false;
+        }
+        return true;
     }
 
     private sealed record AnalysisTile(float[] Pixels, int Width, int Height);

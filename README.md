@@ -17,6 +17,7 @@ AstroProject Forge reads FITS and XISF metadata, reconstructs observing nights a
 - FITS/XISF import from N.I.N.A. or any acquisition software with usable headers;
 - Filter → configuration session → observing night project structure;
 - automatic and manual Flat, Dark and Bias assignment;
+- Masters or raw subs: a set of raw Darks or Bias is matched and exported whole for WBPP to integrate, and Dark Flats calibrate the Flats (a project with Darks, Flats and Dark Flats needs no Bias);
 - multiple camera-aware Master Libraries, linked once and remembered for every project;
 - camera, optics, reducer, pixel size and filters read from the headers and always correctable: say which camera and filters you really used;
 - integration statistics by filter, session and night;
@@ -76,6 +77,7 @@ AstroProject Forge legge i metadati FITS e XISF, ricostruisce le notti osservati
 - importazione FITS/XISF da N.I.N.A. o qualsiasi software con header utilizzabili;
 - struttura Filtro → sessione di configurazione → notte osservativa;
 - assegnazione automatica e manuale di Flat, Dark e Bias;
+- Master o sub grezzi: un set di Dark o Bias grezzi viene abbinato ed esportato intero perché WBPP lo integri, e i Dark Flat calibrano i Flat (un progetto con Dark, Flat e Dark Flat non richiede il Bias);
 - più Master Library organizzate per camera, collegate una volta e ricordate per ogni progetto;
 - camera, ottica, riduttore, pixel e filtri letti dagli header e sempre correggibili: indichi tu quale camera e quali filtri hai usato davvero;
 - statistiche di integrazione per filtro, sessione e notte;

@@ -32,16 +32,20 @@ public static partial class FrameClassifier
         Set(frame.BayerPattern, Text(headers, "BAYERPAT", "BAYERPATTERN", "COLORTYP"));
         Set(frame.FocalLengthMm, Number(headers, "FOCALLEN", "FOCALLENGTH"));
         Set(frame.RotatorAngleDeg, Number(headers, "ROTATANG", "ROTATOR", "ROTANGLE"));
-        Set(frame.CapturedAt, Timestamp(headers, "DATE-LOC", "DATE-OBS", "DATE-UTC", "DATE"));
-        ApplyFileName(frame, FileNameMetadata.Parse(path));
+        Set(frame.CapturedAt, CaptureTime(headers, out var siteOffset));
+        frame.SiteUtcOffset = siteOffset;
+        ApplyFileName(frame, FileNameMetadata.Parse(path), Text(headers, "SWCREATE"));
         AstronomicalSessionResolver.Apply(frame, sessionSettings);
         FrameValidator.Revalidate(frame);
         return frame;
     }
 
-    private static void ApplyFileName(FrameMetadata frame, FileNameMetadata name)
+    private static void ApplyFileName(FrameMetadata frame, FileNameMetadata name, string? software)
     {
-        if (frame.FilterName.Value is null && name.Filter is { Length: > 0 }) frame.FilterName.SetOriginal(name.Filter, MetadataSource.Filename);
+        // N.I.N.A. fills the name and the FILTER header from the same wheel: without the header, the token in the
+        // name is the target or "FlatWizard", and taking it for a filter would keep Lights and Flats apart.
+        var nameHasNoFilter = software?.StartsWith("N.I.N.A", StringComparison.OrdinalIgnoreCase) == true;
+        if (frame.FilterName.Value is null && name.Filter is { Length: > 0 } && !nameHasNoFilter) frame.FilterName.SetOriginal(name.Filter, MetadataSource.Filename);
         if (frame.ExposureSeconds.Value is null && name.ExposureSeconds is { } exposure) frame.ExposureSeconds.SetOriginal(exposure, MetadataSource.Filename);
         if (frame.Gain.Value is null && name.Gain is { } gain) frame.Gain.SetOriginal(gain, MetadataSource.Filename);
         if (frame.SensorTemperatureC.Value is null && name.SensorTemperatureC is { } temperature) frame.SensorTemperatureC.SetOriginal(temperature, MetadataSource.Filename);
@@ -57,8 +61,9 @@ public static partial class FrameClassifier
 
     private static FrameKind KindFrom(string? value)
     {
-        var text = (value ?? "").ToLowerInvariant();
-        if (text.Contains("dark flat") || text.Contains("flat dark") || text.Contains("darkflat")) return FrameKind.DarkFlat;
+        // "Dark_Flat", "flat-dark" and "FLATDARK" are the same frame type written with other separators.
+        var text = SeparatorRegex().Replace((value ?? "").ToLowerInvariant(), " ");
+        if (text.Contains("dark flat") || text.Contains("flat dark") || text.Contains("darkflat") || text.Contains("flatdark")) return FrameKind.DarkFlat;
         if (text.Contains("light") || text.Contains("object") || text.Contains("science")) return FrameKind.Light;
         if (text.Contains("flat")) return FrameKind.Flat;
         if (text.Contains("dark")) return FrameKind.Dark;
@@ -81,10 +86,40 @@ public static partial class FrameClassifier
         if (bool.TryParse(value, out var boolean)) return boolean;
         return value.Trim().ToUpperInvariant() switch { "T" or "YES" or "1" => true, "F" or "NO" or "0" => false, _ => null };
     }
-    private static DateTimeOffset? Timestamp(Dictionary<string, object?> headers, params string[] keys)
+    /// <summary>
+    /// When the exposure started. DATE-OBS is UTC by the FITS standard; N.I.N.A., SGP and APT add DATE-LOC, the same
+    /// instant on the site's wall clock, so the difference between the two is the site's UTC offset.
+    /// </summary>
+    private static DateTimeOffset? CaptureTime(Dictionary<string, object?> headers, out TimeSpan? siteOffset)
+    {
+        siteOffset = null;
+        var utc = Utc(headers, "DATE-OBS", "DATE-UTC");
+        var wallClock = headers.TryGetValue("DATE-LOC", out var value)
+            && DateTime.TryParse(Raw(value), CultureInfo.InvariantCulture, DateTimeStyles.RoundtripKind, out var parsed) ? parsed : (DateTime?)null;
+        if (utc is { } instant && wallClock is { Kind: DateTimeKind.Unspecified } local)
+        {
+            var offset = TimeSpan.FromMinutes(Math.Round((local - instant.UtcDateTime).TotalMinutes / 15) * 15);
+            // Offsets on Earth run from -12 h to +14 h in quarter hours: anything else is two clocks that disagree.
+            if (offset >= TimeSpan.FromHours(-12) && offset <= TimeSpan.FromHours(14) && (local - instant.UtcDateTime - offset).Duration() < TimeSpan.FromMinutes(5))
+            {
+                siteOffset = offset;
+                return instant.ToOffset(offset);
+            }
+        }
+        if (utc is not null) return utc;
+        if (wallClock is { } alone) return alone.Kind == DateTimeKind.Unspecified ? new DateTimeOffset(alone, TimeZoneInfo.Local.GetUtcOffset(alone)) : new DateTimeOffset(alone);
+        return Utc(headers, "DATE");
+    }
+
+    private static DateTimeOffset? Utc(Dictionary<string, object?> headers, params string[] keys)
     {
         foreach (var key in keys)
-            if (headers.TryGetValue(key, out var value) && DateTimeOffset.TryParse(Raw(value), CultureInfo.InvariantCulture, DateTimeStyles.AssumeLocal, out var timestamp)) return timestamp;
+        {
+            if (!headers.TryGetValue(key, out var value) || Raw(value) is not { Length: > 0 } text) continue;
+            // Older software splits the instant in two cards: the date in DATE-OBS, the time in TIME-OBS.
+            if (key == "DATE-OBS" && !text.Contains('T') && headers.TryGetValue("TIME-OBS", out var time) && Raw(time) is { Length: > 0 } clock) text = $"{text.Trim()}T{clock.Trim()}";
+            if (DateTimeOffset.TryParse(text, CultureInfo.InvariantCulture, DateTimeStyles.AssumeUniversal, out var timestamp)) return timestamp;
+        }
         return null;
     }
     // Header values are already typed (-9.9 is a double): format them invariantly, or on an Italian system
@@ -92,6 +127,9 @@ public static partial class FrameClassifier
     private static string? Raw(object? value) => Convert.ToString(value, CultureInfo.InvariantCulture);
     private static void Set<T>(MetadataField<T> field, T value) => field.SetOriginal(value, MetadataSource.Header);
 
-    [GeneratedRegex(@"(^|[^a-z])master([^a-z]|$)", RegexOptions.IgnoreCase)]
+    // "masterDark_300s" and "MasterFlat" count; "Remastered" does not.
+    [GeneratedRegex(@"(?<![a-z])masters?(?=$|[^a-z]|bias|dark|flat|light)", RegexOptions.IgnoreCase)]
     private static partial Regex MasterNameRegex();
+    [GeneratedRegex(@"[\s_\-.]+")]
+    private static partial Regex SeparatorRegex();
 }

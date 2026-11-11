@@ -60,10 +60,15 @@ public static class ProjectExportPreflight
     {
         var sources = new HashSet<string>(PathIdentity.Comparer);
         if (string.IsNullOrWhiteSpace(destinationRoot) || string.IsNullOrWhiteSpace(projectName)) return sources;
-        string manifest;
-        try { manifest = Path.Combine(Path.GetFullPath(destinationRoot), projectName, "_AstroForge", "manifest.json"); }
+        string manifest, folder;
+        try
+        {
+            // The export writes to the folder name, not to the name as typed: "NGC 6960" lives in "NGC_6960".
+            folder = ProjectExporter.FolderName(projectName);
+            manifest = Path.Combine(Path.GetFullPath(destinationRoot), folder, "_AstroForge", "manifest.json");
+        }
         catch (Exception exception) when (exception is ArgumentException or NotSupportedException or PathTooLongException) { return sources; }
-        if (!IsManagedProject(manifest, projectName)) return sources;
+        if (!IsManagedProject(manifest, folder)) return sources;
         foreach (var record in ReadManifestFiles(manifest))
         {
             try { sources.Add(Path.GetFullPath(record.Source)); }
@@ -177,7 +182,7 @@ public static class ProjectExportPreflight
                         if (!IsWithin(existing, projectRoot) || !File.Exists(existing)) continue;
                         var existingInfo = new FileInfo(existing);
                         if (candidate.Bytes != length || existingInfo.Length != length
-                            || existingInfo.LastWriteTimeUtc.Ticks != sourceLastWriteUtcTicks
+                            || existingInfo.LastWriteTimeUtc.Ticks != (candidate.CopyLastWriteUtcTicks ?? sourceLastWriteUtcTicks)
                             || candidate.SourceLastWriteUtcTicks is { } recordedTicks && recordedTicks != sourceLastWriteUtcTicks)
                         {
                             if (sourceMatches.Contains(candidate))
@@ -209,7 +214,7 @@ public static class ProjectExportPreflight
                     && (!record.SourceLastWriteUtcTicks.HasValue || record.SourceLastWriteUtcTicks == sourceLastWriteUtcTicks));
                 if (incremental && registered is not null)
                 {
-                    if (stagedInfo.LastWriteTimeUtc.Ticks != sourceLastWriteUtcTicks)
+                    if (stagedInfo.LastWriteTimeUtc.Ticks != (registered.CopyLastWriteUtcTicks ?? sourceLastWriteUtcTicks))
                     {
                         findings.Add(Error("update.manifest_conflict", "File già registrato ma modificato", "Data o contenuto della copia non corrispondono più alla sorgente registrata.", staged));
                         continue;
@@ -259,7 +264,11 @@ public static class ProjectExportPreflight
             bytesToCopy, freeBytes, requiredFree, TimeSpan.FromSeconds(seconds), findings, incremental, Math.Max(0, plan.Files.Count - resumeFiles), reuseMatches);
     }
 
-    private sealed record ManifestFile(string Source, string Destination, string Sha256, long Bytes, long? SourceLastWriteUtcTicks);
+    /// <param name="CopyLastWriteUtcTicks">
+    /// The write time the copy really got. exFAT keeps 10 ms, HFS+ 1 s and FAT 2 s, so on such a drive the copy never
+    /// has the source's exact tick and comparing with the source called every file modified. Older manifests lack it.
+    /// </param>
+    private sealed record ManifestFile(string Source, string Destination, string Sha256, long Bytes, long? SourceLastWriteUtcTicks, long? CopyLastWriteUtcTicks);
 
     private static ManifestFile[] ReadManifestFiles(string manifestPath)
     {
@@ -272,7 +281,8 @@ public static class ProjectExportPreflight
                     item.TryGetProperty("destination", out var destination) ? destination.GetString() ?? "" : "",
                     item.TryGetProperty("sha256", out var sha) ? sha.GetString() ?? "" : "",
                     item.TryGetProperty("bytes", out var bytes) && bytes.TryGetInt64(out var length) ? length : -1,
-                    item.TryGetProperty("source_last_write_utc_ticks", out var ticks) && ticks.TryGetInt64(out var timestamp) ? timestamp : null))
+                    item.TryGetProperty("source_last_write_utc_ticks", out var ticks) && ticks.TryGetInt64(out var timestamp) ? timestamp : null,
+                    item.TryGetProperty("copy_last_write_utc_ticks", out var copyTicks) && copyTicks.TryGetInt64(out var copyTimestamp) ? copyTimestamp : null))
                 .Where(item => item.Source.Length > 0 && item.Destination.Length > 0 && item.Sha256.Length == 64).ToArray();
         }
         catch (System.Text.Json.JsonException) { return []; }

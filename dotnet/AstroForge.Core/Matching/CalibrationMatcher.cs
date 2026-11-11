@@ -24,12 +24,14 @@ public sealed class MatchCandidate
     public bool Compatible { get; set; } = true;
     public int Score { get; set; }
     public bool Exact { get; set; } = true;
+    /// <summary>How far exposure and temperature sit from the target, in units of their tolerance: 0 is an exact Dark or Bias.</summary>
+    public double Deviation { get; set; }
     public List<string> Reasons { get; } = [];
     public List<string> MissingRequired { get; } = [];
 
     internal MatchCandidate Clone()
     {
-        var copy = new MatchCandidate { Frame = Frame, Compatible = Compatible, Score = Score, Exact = Exact };
+        var copy = new MatchCandidate { Frame = Frame, Compatible = Compatible, Score = Score, Exact = Exact, Deviation = Deviation };
         copy.Reasons.AddRange(Reasons);
         copy.MissingRequired.AddRange(MissingRequired);
         return copy;
@@ -48,14 +50,22 @@ public static class CalibrationMatcher
         policy ??= new();
         var evaluated = frames.Where(frame => frame.Kind == requestedKind).Select(frame => Evaluate(target, frame, requestedKind, policy)).ToArray();
         if (evaluated.Length == 0) return new(requestedKind, MatchStatus.Missing, null, []);
+        // A candidate with every required field comes before one that only scores higher on bonuses, and between
+        // equal scores the Dark or Bias closest in exposure and temperature wins: -10 °C beats -8 °C for a -10 °C Light.
         var compatible = evaluated.Where(candidate => candidate.Compatible)
-            .OrderByDescending(candidate => candidate.Score).ThenBy(candidate => candidate.Frame.Path, StringComparer.OrdinalIgnoreCase).ToArray();
+            .OrderBy(candidate => candidate.MissingRequired.Count > 0).ThenByDescending(candidate => candidate.Score).ThenBy(candidate => candidate.Deviation)
+            .ThenBy(candidate => candidate.Frame.Path, StringComparer.OrdinalIgnoreCase).ToArray();
         if (compatible.Length == 0) return new(requestedKind, MatchStatus.Incompatible, null, evaluated);
         var best = compatible[0];
-        if (compatible.Count(candidate => candidate.Score == best.Score) > 1) return new(requestedKind, MatchStatus.Ambiguous, null, compatible);
-        if (best.MissingRequired.Count > 0) return new(requestedKind, MatchStatus.InsufficientMetadata, null, compatible);
+        var complete = best.MissingRequired.Count == 0;
+        if (compatible.Count(candidate => candidate.MissingRequired.Count == 0 == complete && candidate.Score == best.Score && candidate.Deviation - best.Deviation < DeviationTie) > 1)
+            return new(requestedKind, MatchStatus.Ambiguous, null, compatible);
+        if (!complete) return new(requestedKind, MatchStatus.InsufficientMetadata, null, compatible);
         return new(requestedKind, best.Exact ? MatchStatus.Exact : MatchStatus.WithinTolerance, best, compatible);
     }
+
+    // Two candidates closer than this (1% of a tolerance) are the same distance from the target.
+    private const double DeviationTie = 0.01;
 
     /// <summary>
     /// The target fields that <see cref="Evaluate"/> reads for a kind: two targets with the same signature get the same
@@ -90,18 +100,26 @@ public static class CalibrationMatcher
 
         if (requestedKind == FrameKind.Flat)
         {
-            SameText(result, "filtro", target.FilterName.Value, candidate.FilterName.Value, 20, true);
+            // A colour camera without a wheel writes no FILTER on Lights or Flats: that is the same train, not missing data.
+            if (target.FilterName.Value is null && candidate.FilterName.Value is null) Pass(result, "filtro", 20);
+            else SameText(result, "filtro", target.FilterName.Value, candidate.FilterName.Value, 20, true);
             AngularWithin180(result, "rotatore", target.RotatorAngleDeg.Value, candidate.RotatorAngleDeg.Value, policy.RotatorToleranceDegrees, 6);
             Relative(result, "focale", target.FocalLengthMm.Value, candidate.FocalLengthMm.Value, policy.FocalLengthRelativeTolerance, 6);
             if (target.SessionId.Value is not null && target.SessionId.Value == candidate.SessionId.Value) { result.Score += 2; result.Reasons.Add("stessa sessione"); }
         }
-        else if (requestedKind is FrameKind.Dark or FrameKind.DarkFlat)
+        else if (requestedKind == FrameKind.Dark)
         {
             Within(result, "esposizione", target.ExposureSeconds.Value, candidate.ExposureSeconds.Value, policy.DarkExposureToleranceSeconds, 20, true);
             Within(result, "temperatura", target.EffectiveTemperatureC, candidate.EffectiveTemperatureC, policy.TemperatureToleranceC, 14, true);
         }
+        else if (requestedKind == FrameKind.DarkFlat)
+        {
+            // A few seconds of exposure collect no dark current worth matching: the temperature is only a preference.
+            Within(result, "esposizione", target.ExposureSeconds.Value, candidate.ExposureSeconds.Value, policy.DarkExposureToleranceSeconds, 20, true);
+            Preferred(result, "temperatura", target.EffectiveTemperatureC, candidate.EffectiveTemperatureC, policy.TemperatureToleranceC, 8);
+        }
         else if (requestedKind == FrameKind.Bias)
-            Within(result, "temperatura", target.EffectiveTemperatureC, candidate.EffectiveTemperatureC, policy.TemperatureToleranceC, 8, false);
+            Preferred(result, "temperatura", target.EffectiveTemperatureC, candidate.EffectiveTemperatureC, policy.TemperatureToleranceC, 8);
 
         if (candidate.IsMaster) { result.Score++; result.Reasons.Add("Master riconosciuto"); }
         if (FromConfiguredLibrary(candidate))
@@ -121,28 +139,46 @@ public static class CalibrationMatcher
 
     private static void SameText(MatchCandidate result, string label, string? left, string? right, int points, bool required)
     {
+        if (left is null && right is null && !required) return;
         if (left is null || right is null) { Missing(result, label, required); return; }
         if (Normalize(left) == Normalize(right)) Pass(result, label, points); else Fail(result, label, left, right);
     }
     private static void Same<T>(MatchCandidate result, string label, T? left, T? right, int points, bool required) where T : struct
     {
+        if (!left.HasValue && !right.HasValue && !required) return;
         if (!left.HasValue || !right.HasValue) { Missing(result, label, required); return; }
         if (EqualityComparer<T>.Default.Equals(left.Value, right.Value)) Pass(result, label, points); else Fail(result, label, left.Value, right.Value);
     }
     private static void Within(MatchCandidate result, string label, double? left, double? right, double tolerance, int points, bool required)
     {
+        if (!left.HasValue && !right.HasValue && !required) return;
         if (!left.HasValue || !right.HasValue) { Missing(result, label, required); return; }
-        if (Math.Abs(left.Value - right.Value) <= tolerance) Pass(result, label, points); else Fail(result, label, left.Value, right.Value);
-        if (left is not null && right is not null && Math.Abs(left.Value - right.Value) > 1e-9 && result.Compatible) result.Exact = false;
+        var difference = Math.Abs(left.Value - right.Value);
+        if (difference <= tolerance) Pass(result, label, points); else Fail(result, label, left.Value, right.Value);
+        if (difference > 1e-9 && result.Compatible) result.Exact = false;
+        if (tolerance > 0) result.Deviation += difference / tolerance;
+    }
+    /// <summary>A preference, not a requirement: a Bias hardly changes with temperature, so a colder or warmer one still calibrates.</summary>
+    private static void Preferred(MatchCandidate result, string label, double? left, double? right, double tolerance, int points)
+    {
+        if (!left.HasValue && !right.HasValue) return;
+        if (!left.HasValue || !right.HasValue) { Missing(result, label, false); return; }
+        var difference = Math.Abs(left.Value - right.Value);
+        if (difference <= tolerance) Pass(result, label, points);
+        else result.Reasons.Add($"{label}: {right.Value:0.#} °C contro {left.Value:0.#} °C, accettata");
+        if (difference > 1e-9) result.Exact = false;
+        if (tolerance > 0) result.Deviation += difference / tolerance;
     }
     private static void Relative(MatchCandidate result, string label, double? left, double? right, double tolerance, int points)
     {
+        if (!left.HasValue && !right.HasValue) return;
         if (!left.HasValue || !right.HasValue) { Missing(result, label, false); return; }
         if (Math.Abs(left.Value - right.Value) <= Math.Abs(left.Value) * tolerance) Pass(result, label, points); else Fail(result, label, left.Value, right.Value);
         if (left is not null && right is not null && Math.Abs(left.Value - right.Value) > 1e-9 && result.Compatible) result.Exact = false;
     }
     private static void AngularWithin180(MatchCandidate result, string label, double? left, double? right, double tolerance, int points)
     {
+        if (!left.HasValue && !right.HasValue) return;
         if (!left.HasValue || !right.HasValue) { Missing(result, label, false); return; }
         var normalized = Math.Abs(left.Value - right.Value) % 180d;
         var distance = Math.Min(normalized, 180d - normalized);
@@ -150,6 +186,8 @@ public static class CalibrationMatcher
         else { result.Exact = false; result.Reasons.Add($"{label}: differenza {distance:0.###}° oltre la preferenza di {tolerance:0.###}° · verificare se il treno ottico è stato mosso"); }
         if (distance > 1e-9) result.Exact = false;
     }
+    // An optional field that neither frame carries (no rotator, a mono camera without BAYERPAT) is no difference:
+    // callers return before reaching this, so a match with nothing to compare is not downgraded to "within tolerance".
     private static void Missing(MatchCandidate result, string label, bool required)
     {
         result.Exact = false;

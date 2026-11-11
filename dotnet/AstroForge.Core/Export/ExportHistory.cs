@@ -90,7 +90,7 @@ public static class ExportHistoryStore
 
     private static string Markdown(ExportHistoryDocument document)
     {
-        var text = new StringBuilder($"# Cronologia dati — {document.ProjectName}\n\n");
+        var text = new StringBuilder($"# Cronologia dati: {document.ProjectName}\n\n");
         var cumulative = new Dictionary<string, double>(StringComparer.Ordinal);
         var runningSeconds = 0d;
         foreach (var entry in document.Entries.OrderBy(item => item.CreatedAtUtc))
@@ -100,7 +100,7 @@ public static class ExportHistoryStore
         }
         foreach (var entry in document.Entries.OrderByDescending(item => item.CreatedAtUtc))
         {
-            text.AppendLine($"## {entry.CreatedAtUtc.ToLocalTime():yyyy-MM-dd HH:mm} — {(entry.Mode == "initial" ? "Prima esportazione" : entry.Mode == "baseline" ? "Dati precedenti" : "Aggiornamento")}");
+            text.AppendLine($"## {entry.CreatedAtUtc.ToLocalTime():yyyy-MM-dd HH:mm} · {(entry.Mode == "initial" ? "Prima esportazione" : entry.Mode == "baseline" ? "Dati precedenti" : "Aggiornamento")}");
             text.AppendLine();
             text.AppendLine($"- {entry.AddedFiles} file aggiunti · {Duration(entry.AddedIntegrationSeconds)} di integrazione · {entry.UnchangedFiles} invariati · totale {Duration(cumulative[entry.Id])}");
             foreach (var group in entry.Groups)

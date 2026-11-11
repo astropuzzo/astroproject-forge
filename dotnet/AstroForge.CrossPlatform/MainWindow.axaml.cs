@@ -61,6 +61,7 @@ public sealed partial class MainWindow : Window
         Motion.SetReduced(_viewModel.ReducedMotion);
         InitializeComponent();
         DataContext = _viewModel;
+        ApplyDensity();
         _observatory = new ObservatoryViewModel(_viewModel);
         _shell = new ShellViewModel(_viewModel, _observatory);
         // The steps (header, pages, footer) read the shell; the tools, menu and overlays outside them keep the project model.
@@ -229,7 +230,7 @@ public sealed partial class MainWindow : Window
         await _observatory.SkyLoading;
         Check(_observatory.Sky is { Image: null, Panels.Count: 1 } && _observatory.SkyCaption.Contains("20h") && _observatory.SkyCaption.Contains("+31"),
             $"The demo's Lights say where they pointed ({_observatory.SkyCaption}).");
-        Check(_observatory.SkyNote.Contains("non raggiungibile") || _observatory.SkyNote.Contains("not reachable"), $"Without the network the sky must say why it is missing ({_observatory.SkyNote}).");
+        Check(_observatory.SkyNote.Contains("scaricare") || _observatory.SkyNote.Contains("downloaded"), $"Without the network the sky must say why it is missing ({_observatory.SkyNote}).");
         var skyFolder = Path.Combine(Path.GetTempPath(), "AstroProjectForge-smoke-sky");
         try
         {
@@ -240,7 +241,7 @@ public sealed partial class MainWindow : Window
             Check(SkyView.Bounds.Width > 100 && SkyView.Scene == _observatory.Sky, "The field card must show the scene.");
             _viewModel.ShowRealSky = false;
             await _observatory.SkyLoading;
-            Check(_observatory.Sky is { Image: null, Panels.Count: 1 } && (_observatory.SkyNote.Contains("spento") || _observatory.SkyNote.Contains("off")), "Turned off in the Menu, the sky must leave the frame on an empty sky.");
+            Check(_observatory.Sky is { Image: null, Panels.Count: 1 } && (_observatory.SkyNote.Contains("disattivato") || _observatory.SkyNote.Contains("turned off")), "Turned off in the Menu, the sky must leave the frame on an empty sky.");
         }
         finally { _viewModel.ShowRealSky = true; try { if (Directory.Exists(skyFolder)) Directory.Delete(skyFolder, true); } catch (IOException) { } }
 
@@ -766,7 +767,7 @@ public sealed partial class MainWindow : Window
         ClosePalette();
         ToolsButton.Flyout?.Hide();
         SheetTabs.SelectedIndex = index;
-        SheetEyebrow.Text = CanvasText.T(SheetEyebrows[index]).ToUpperInvariant();
+        SheetEyebrow.Text = CanvasText.T(SheetEyebrows[index]);
         if (index == LogSheet) _viewModel.RefreshDiagnostics();
         if (SheetHost.IsVisible) return;
         SheetHost.IsVisible = true;
@@ -937,7 +938,7 @@ public sealed partial class MainWindow : Window
     private void ShowToast(string message)
     {
         if (string.IsNullOrWhiteSpace(message) || _viewModel.IsScanning || !IsLoaded) return;
-        ToastText.Text = message;
+        ToastText.Text = UiLocalization.Translate(message, _viewModel.UiLanguage);
         Toast.IsVisible = true;
         _toastTimer.Stop();
         _toastTimer.Start();
@@ -956,6 +957,8 @@ public sealed partial class MainWindow : Window
         {
             _localizationPending = false;
             CanvasText.Language = _viewModel.UiLanguage;
+            // Number boxes keep the format they were built with: give them the language's decimal mark.
+            foreach (var box in this.GetVisualDescendants().OfType<NumericUpDown>()) box.NumberFormat = UiFormat.Culture.NumberFormat;
             AvaloniaLocalizationAdapter.Apply(this, _viewModel.UiLanguage);
             InvalidateCanvasText(this);
         }, DispatcherPriority.Background);
@@ -973,14 +976,22 @@ public sealed partial class MainWindow : Window
         {
             _viewModel.UiDensity = item.Tag?.ToString() ?? "Comoda";
             _viewModel.SaveState();
+            ApplyDensity();
         }
+    }
+
+    /// <summary>The interface size from the Menu: everything is laid out smaller or larger, so the targets grow with the text.</summary>
+    private void ApplyDensity()
+    {
+        var scale = _viewModel.UiDensity switch { "Compatta" => 0.9, "Ampia" => 1.15, _ => 1.0 };
+        InterfaceScale.LayoutTransform = scale == 1.0 ? null : new ScaleTransform(scale, scale);
     }
     private void UiPreferenceChanged_Click(object? sender, RoutedEventArgs e) => _viewModel.SaveState();
 
     private bool _exportStacked;
 
     /// <summary>
-    /// Wide: the picture of the stack and the nights on the left, the export and WBPP on the right. Narrow: one column, with the export first
+    /// Wide: the stack, the nights and what WBPP will do on the left, the export on the right. Narrow: one column, with the export first
     /// (it is what the step is for), so the pipeline and the keyword table keep the room they need to be read.
     /// </summary>
     private void ArrangeExportColumns(bool stacked)
@@ -1093,33 +1104,19 @@ public sealed partial class MainWindow : Window
     private static void InvalidateCanvasText(Visual root)
     {
         foreach (var visual in root.GetVisualDescendants())
-            if (visual is SpectrumBar or PassbandView or FieldOfViewView or NightsTimeline or StepperBar or NightSky or CalibrationRing or ResolvePaths or OpticalTrain or SamplingGauge or SensorFrame)
+            if (visual is SpectrumBar or PassbandView or FieldOfViewView or NightsTimeline or StepperBar or NightSky or CalibrationRing or ResolvePaths or OpticalTrain or SamplingGauge or SensorFrame
+                or ExportMap or PipelineFlow or CalibrationMap or QualityDistributionChart or QualitySky or DarkCoverageMap)
                 visual.InvalidateVisual();
     }
 
-    /// <summary>
-    /// Opening sequence: the iris opens on the sky, then the interface comes into focus
-    /// like a star pulled sharp by the focuser.
-    /// </summary>
+    /// <summary>Opening sequence: the iris opens on the sky and the interface fades in behind it.</summary>
     private void PlayFirstLight()
     {
         if (Motion.Reduced) return;
-        var blur = new BlurEffect { Radius = 18 };
-        var scale = new ScaleTransform(1.02, 1.02);
         RootLayout.Opacity = 0;
-        RootLayout.Effect = blur;
-        RootLayout.RenderTransformOrigin = RelativePoint.Center;
-        RootLayout.RenderTransform = scale;
         _ = FirstLight.PlayAsync(async () =>
         {
-            await Motion.Tween(this, TimeSpan.FromMilliseconds(950), Motion.EaseOutExpo, t =>
-            {
-                RootLayout.Opacity = Math.Min(1, t * 1.4);
-                blur.Radius = 18 * (1 - t);
-                scale.ScaleX = scale.ScaleY = 1.02 - 0.02 * t;
-            });
-            RootLayout.Effect = null;
-            RootLayout.RenderTransform = null;
+            await Motion.Tween(this, TimeSpan.FromMilliseconds(400), Motion.EaseOutExpo, t => RootLayout.Opacity = t);
             RootLayout.Opacity = 1;
         });
     }
@@ -1164,13 +1161,13 @@ public sealed partial class MainWindow : Window
 
     private async void AddSources_Click(object? sender, RoutedEventArgs e)
     {
-        var folders = await StorageProvider.OpenFolderPickerAsync(new FolderPickerOpenOptions { Title = "Aggiungi cartelle FITS/XISF", AllowMultiple = true });
+        var folders = await StorageProvider.OpenFolderPickerAsync(new FolderPickerOpenOptions { Title = CanvasText.T("Scegli le cartelle con i FITS o gli XISF"), AllowMultiple = true });
         foreach (var folder in folders) if (folder.TryGetLocalPath() is { } path) _viewModel.AddSource(path);
     }
 
     private async void AddFiles_Click(object? sender, RoutedEventArgs e)
     {
-        var files = await StorageProvider.OpenFilePickerAsync(new FilePickerOpenOptions { Title = "Importa immagini astronomiche", AllowMultiple = true, FileTypeFilter = [AstroImages] });
+        var files = await StorageProvider.OpenFilePickerAsync(new FilePickerOpenOptions { Title = CanvasText.T("Scegli i file FITS o XISF"), AllowMultiple = true, FileTypeFilter = [AstroImages] });
         foreach (var file in files) if (file.TryGetLocalPath() is { } path) _viewModel.AddSource(path);
     }
 
@@ -1267,7 +1264,6 @@ public sealed partial class MainWindow : Window
         foreach (var (control, mine) in new[] { (DropLibraryZone, DropTarget.MasterLibrary), (DropCapturesZone, DropTarget.Captures) })
         {
             SetClass(control, "over", zone == mine);
-            SetClass(control, "marching", zone == mine && !Motion.Reduced);
         }
     }
 
@@ -1275,7 +1271,7 @@ public sealed partial class MainWindow : Window
     {
         var version = ++_dropOverlayVersion;
         DropOverlay.Opacity = 0;
-        foreach (var control in new[] { DropLibraryZone, DropCapturesZone }) { SetClass(control, "over", false); SetClass(control, "marching", false); }
+        foreach (var control in new[] { DropLibraryZone, DropCapturesZone }) SetClass(control, "over", false);
         DispatcherTimer.RunOnce(() => { if (version == _dropOverlayVersion) DropOverlay.IsVisible = false; }, TimeSpan.FromMilliseconds(260));
     }
 
@@ -1341,7 +1337,7 @@ public sealed partial class MainWindow : Window
 
     private async void AddLibrary_Click(object? sender, RoutedEventArgs e)
     {
-        var folders = await StorageProvider.OpenFolderPickerAsync(new FolderPickerOpenOptions { Title = "Aggiungi Master Library", AllowMultiple = true });
+        var folders = await StorageProvider.OpenFolderPickerAsync(new FolderPickerOpenOptions { Title = CanvasText.T("Scegli la cartella con i Master Dark e Bias"), AllowMultiple = true });
         foreach (var folder in folders) if (folder.TryGetLocalPath() is { } path) _viewModel.AddMasterLibrary(path);
     }
 
@@ -1381,7 +1377,7 @@ public sealed partial class MainWindow : Window
             new(current, () => Stepper, "Quattro passi",
                 "Importa, Strumento, Calibrazioni, Esporta. Ogni passo ha la sua pagina e un segno di spunta quando non resta nulla da fare. Clic su un passo per tornarci."),
             new(current, () => NextButton, "Un solo pulsante",
-                "In basso a destra, sempre nello stesso punto: fa la prossima cosa che serve al progetto. Sopra di lui una riga dice perché."),
+                "In basso a destra, sempre nello stesso punto: fa la prossima cosa che serve al progetto. Accanto, una riga dice perché."),
             new(current, () => SettingsButton, "Menu e strumenti",
                 "Menu: lingua, aggiornamenti, aiuto e progetto. Strumenti: statistiche, qualità dei frame, metadati e Libreria Master. Ctrl K cerca qualsiasi comando."),
             new(ShellViewModel.ImportStep, () => LibraryCard, "Libreria Master",
@@ -1394,9 +1390,9 @@ public sealed partial class MainWindow : Window
             stops.AddRange(
             [
                 new(ShellViewModel.SetupStep, () => TrainCard, "Treno ottico",
-                    "Telescopio, riduttore, ruota e camera come Forge li ha letti. Tocca una parte per dire cos’è davvero."),
+                    "Telescopio, riduttore, ruota e camera come Forge li ha letti. Clicca una parte per dire cos’è davvero."),
                 new(ShellViewModel.SetupStep, () => ProfileCard, "Camera e ottica",
-                    "Camera, ottica, riduttore e pixel: ognuno si cambia con un tocco e vale per ogni progetto con questa camera."),
+                    "Camera, ottica, riduttore e pixel: ognuno si cambia con un clic e vale per ogni progetto con questa camera."),
                 new(ShellViewModel.SetupStep, () => WheelCard, "Filtri",
                     "Anche i filtri già riconosciuti si possono cambiare: scegli quello giusto dal catalogo e Forge archivia i frame sotto quello."),
                 new(ShellViewModel.CalibrationStep, () => CalibrationCard, "Calibrazione",
@@ -1437,6 +1433,7 @@ public sealed partial class MainWindow : Window
         _viewModel.NewProject();
         _viewModel.ProjectName = DemoDatasetGenerator.Target;
         _viewModel.DestinationPath = Path.Combine(root, "Export");
+        // The demo's masters come in as captures: linking them as a Master Library would leave a demo library in every later project.
         foreach (var folder in new[] { "ASIAIR", "NINA", "Libreria Master" }) _viewModel.AddSource(Path.Combine(root, folder));
         await _viewModel.ScanAsync();
     }
@@ -1544,7 +1541,7 @@ public sealed partial class MainWindow : Window
         startInfo.ArgumentList.Add("/APFVISIBLE=1");
         startInfo.ArgumentList.Add($"/LOG={Path.Combine(updatesDirectory, "installer.log")}");
         if (Process.Start(startInfo) is null)
-            throw new InvalidOperationException("Impossibile avviare l'installer dell'aggiornamento.");
+            throw new InvalidOperationException("Non è stato possibile avviare l’installazione dell’aggiornamento.");
 
         if (Application.Current?.ApplicationLifetime is IClassicDesktopStyleApplicationLifetime desktop) desktop.Shutdown();
         else Close();
@@ -1614,10 +1611,10 @@ public sealed partial class MainWindow : Window
         var title = english ? (opening ? "Open project" : "New project") : (opening ? "Apri progetto" : "Nuovo progetto");
         var question = english ? (opening ? "Open the selected project?" : "Create a new project?") : (opening ? "Aprire il progetto selezionato?" : "Creare un nuovo progetto?");
         var detail = english
-            ? "Unsaved project data will be discarded. Source files and Master Libraries will not be changed."
-            : "I dati del progetto non salvati verranno persi. I file sorgente e le Master Library non verranno modificati.";
+            ? "Unsaved changes to the project will be lost. Your files and Master Libraries are not touched."
+            : "Le modifiche non salvate al progetto andranno perse. I tuoi file e le Librerie Master non vengono toccati.";
         var cancel = new Button { Content = english ? "Cancel" : "Annulla", MinWidth = 100 };
-        var confirm = new Button { Content = english ? "Continue" : "Continua", MinWidth = 100, Classes = { "primary" } };
+        var confirm = new Button { Content = english ? (opening ? "Open project" : "Create new project") : (opening ? "Apri progetto" : "Crea nuovo progetto"), MinWidth = 100, Classes = { "primary" } };
         var actions = new StackPanel { Orientation = Avalonia.Layout.Orientation.Horizontal, Spacing = 8, HorizontalAlignment = Avalonia.Layout.HorizontalAlignment.Right };
         actions.Children.Add(cancel); actions.Children.Add(confirm);
         var content = new StackPanel { Spacing = 12, Margin = new Thickness(22) };
@@ -1649,7 +1646,7 @@ public sealed partial class MainWindow : Window
 
     private async void ChooseDestination_Click(object? sender, RoutedEventArgs e)
     {
-        var folders = await StorageProvider.OpenFolderPickerAsync(new FolderPickerOpenOptions { Title = "Destinazione progetto", AllowMultiple = false });
+        var folders = await StorageProvider.OpenFolderPickerAsync(new FolderPickerOpenOptions { Title = CanvasText.T("Scegli dove mettere il progetto"), AllowMultiple = false });
         if (folders.FirstOrDefault()?.TryGetLocalPath() is { } path) _viewModel.DestinationPath = path;
     }
 
@@ -1662,7 +1659,7 @@ public sealed partial class MainWindow : Window
 
     private async void ExportStatistics_Click(object? sender, RoutedEventArgs e)
     {
-        var folders = await StorageProvider.OpenFolderPickerAsync(new FolderPickerOpenOptions { Title = "Esporta statistiche", AllowMultiple = false });
+        var folders = await StorageProvider.OpenFolderPickerAsync(new FolderPickerOpenOptions { Title = CanvasText.T("Scegli dove salvare le statistiche"), AllowMultiple = false });
         if (folders.FirstOrDefault()?.TryGetLocalPath() is { } path) Try("AF-STATS-001", () => _viewModel.ExportStatistics(path));
     }
 
@@ -1670,30 +1667,30 @@ public sealed partial class MainWindow : Window
     {
         StopBlink();
         _qualityCancellation?.Cancel();
-        _qualityCancellation = new CancellationTokenSource();
+        var cancellation = _qualityCancellation = new CancellationTokenSource();
         try
         {
-            await _viewModel.AnalyzeQualityAsync(_qualityCancellation.Token);
+            await _viewModel.AnalyzeQualityAsync(cancellation.Token);
             await RefreshQualityPreviewAsync(true);
         }
         catch (OperationCanceledException) { }
         catch (Exception exception) { Record("AF-QUALITY-001", exception); }
-        finally { _qualityCancellation?.Dispose(); _qualityCancellation = null; }
+        finally { cancellation.Dispose(); if (ReferenceEquals(_qualityCancellation, cancellation)) _qualityCancellation = null; }
     }
 
     private async void AnalyzeAllQuality_Click(object? sender, RoutedEventArgs e)
     {
         StopBlink();
         _qualityCancellation?.Cancel();
-        _qualityCancellation = new CancellationTokenSource();
+        var cancellation = _qualityCancellation = new CancellationTokenSource();
         try
         {
-            await _viewModel.AnalyzeAllQualityAsync(_qualityCancellation.Token);
+            await _viewModel.AnalyzeAllQualityAsync(cancellation.Token);
             await RefreshQualityPreviewAsync(true);
         }
         catch (OperationCanceledException) { }
         catch (Exception exception) { Record("AF-QUALITY-ALL-001", exception); }
-        finally { _qualityCancellation?.Dispose(); _qualityCancellation = null; }
+        finally { cancellation.Dispose(); if (ReferenceEquals(_qualityCancellation, cancellation)) _qualityCancellation = null; }
     }
     private void CancelQuality_Click(object? sender, RoutedEventArgs e) => _qualityCancellation?.Cancel();
 
@@ -1805,20 +1802,22 @@ public sealed partial class MainWindow : Window
     private void RefreshCalibrationVisuals()
     {
         var analysis = _viewModel.Analysis;
-        var colours = new Dictionary<string, Color>(StringComparer.OrdinalIgnoreCase);
-        Color ColourOf(FrameMetadata frame)
+        var filters = new Dictionary<string, (Color Colour, string Name)>(StringComparer.OrdinalIgnoreCase);
+        (Color Colour, string Name) FilterOf(FrameMetadata frame)
         {
             var raw = frame.RawFilterName ?? frame.FilterName.Value ?? "";
             var camera = PhysicalFilterResolver.CameraKey(frame);
-            if (colours.TryGetValue($"{camera}|{raw}", out var known)) return known;
+            if (filters.TryGetValue($"{camera}|{raw}", out var known)) return known;
             var identity = FilterRecognizer.Recognize(raw.Length == 0 ? null : raw, EquipmentRecognizer.Camera(frame.Camera.Value).IsColor, _viewModel.WheelProfileFor(camera));
-            return colours[$"{camera}|{raw}"] = SpectrumColors.Glass(SpectrumColors.BandsOf(identity), identity.Kind);
+            var name = identity.NeedsConfirmation ? (frame.FilterName.Value ?? raw) : identity.DisplayName;
+            return filters[$"{camera}|{raw}"] = (SpectrumColors.Glass(SpectrumColors.BandsOf(identity), identity.Kind), name.Length == 0 ? "—" : name);
         }
-        CalibrationMapView.Rows = CalibrationRow.Build(analysis, ColourOf);
-        PipelineFlowView.Keywords = _viewModel.WbppKeywords.Select(keyword => $"{keyword.Keyword} · PRE {keyword.Pre}").ToList();
+        Color ColourOf(FrameMetadata frame) => FilterOf(frame).Colour;
+        CalibrationMapView.Rows = CalibrationRow.Build(analysis, ColourOf, frame => FilterOf(frame).Name);
+        PipelineFlowView.Keywords = _viewModel.WbppKeywords.Select(keyword => $"{keyword.Keyword}: Pre {keyword.Pre}").ToList();
         PipelineFlowView.Streams = analysis is null ? [] : analysis.Lights
             .GroupBy(item => item.Light.FilterName.Value ?? "—", StringComparer.OrdinalIgnoreCase)
-            .Select(group => new PipelineStream(group.Key, ColourOf(group.First().Light), group.Count(), group.Sum(item => item.Light.ExposureSeconds.Value ?? 0)))
+            .Select(group => new PipelineStream(FilterOf(group.First().Light).Name, ColourOf(group.First().Light), group.Count(), group.Sum(item => item.Light.ExposureSeconds.Value ?? 0)))
             .OrderByDescending(stream => stream.Colour.R - stream.Colour.B)
             .ToList();
     }
@@ -1959,6 +1958,7 @@ public sealed partial class MainWindow : Window
         var lights = activated.Row.Lights.ToHashSet();
         var item = _viewModel.ReviewQueue.FirstOrDefault(entry => entry.Calibration == activated.Cell.Calibration && entry.Targets.Any(lights.Contains));
         if (item is null) return;
+        ReviewExpander.IsExpanded = true;
         ReviewList.SelectedItem = item;
         ReviewList.ScrollIntoView(item);
     }
@@ -1979,7 +1979,7 @@ public sealed partial class MainWindow : Window
     private async void RollbackMasterOrganizer_Click(object? sender, RoutedEventArgs e) => await RunAsync("AF-MASTER-ROLLBACK-001", () => _viewModel.RollbackMasterOrganizerAsync());
     private async void ChooseMasterOrganizerDestination_Click(object? sender, RoutedEventArgs e)
     {
-        var folders = await StorageProvider.OpenFolderPickerAsync(new FolderPickerOpenOptions { Title = "Destinazione nuova Master Library", AllowMultiple = false });
+        var folders = await StorageProvider.OpenFolderPickerAsync(new FolderPickerOpenOptions { Title = CanvasText.T("Cartella della nuova libreria ordinata"), AllowMultiple = false });
         if (folders.FirstOrDefault()?.TryGetLocalPath() is { } path) _viewModel.MasterOrganizerDestination = path;
     }
 
@@ -1991,7 +1991,7 @@ public sealed partial class MainWindow : Window
     private void DiscardRecovery_Click(object? sender, RoutedEventArgs e) => _viewModel.DiscardRecovery();
     private async void ExportSupport_Click(object? sender, RoutedEventArgs e)
     {
-        var file = await StorageProvider.SaveFilePickerAsync(new FilePickerSaveOptions { Title = "Esporta diagnostica", SuggestedFileName = $"AstroProjectForge-Support-{DateTime.Now:yyyyMMdd-HHmmss}.zip", DefaultExtension = "zip" });
+        var file = await StorageProvider.SaveFilePickerAsync(new FilePickerSaveOptions { Title = CanvasText.T("Salva il file di supporto"), SuggestedFileName = $"AstroProjectForge-Support-{DateTime.Now:yyyyMMdd-HHmmss}.zip", DefaultExtension = "zip" });
         if (file?.TryGetLocalPath() is { } path) await RunAsync("AF-SUPPORT-001", () => _viewModel.ExportSupportBundleAsync(path));
     }
 
@@ -2019,5 +2019,12 @@ public sealed partial class MainWindow : Window
     }
     private void Try(string code, Action operation) { try { operation(); } catch (Exception exception) { Record(code, exception); } }
     private void Try(string code, Func<string> operation) { try { _ = operation(); } catch (Exception exception) { Record(code, exception); } }
-    private void Record(string code, Exception exception) => _viewModel.RecordError(code, exception);
+    private void Record(string code, Exception exception)
+    {
+        _viewModel.RecordError(code, exception);
+        if (exception is OperationCanceledException) return;
+        // Without this a failed action only reached the log, and the button seemed to do nothing.
+        var english = _viewModel.UiLanguage == UiLocalization.English;
+        ShowToast((english ? "Not done. " : "Non eseguito. ") + UiLocalization.Translate(exception.Message, _viewModel.UiLanguage));
+    }
 }

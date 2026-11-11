@@ -213,6 +213,7 @@ finally
     if (Directory.Exists(exportRoot)) Directory.Delete(exportRoot, true);
 }
 await RegressionQa.RunAsync();
+await AlgorithmQa.RunAsync();
 FilterQa.Run();
 EquipmentQa.Run();
 NoveltyQa.Run();

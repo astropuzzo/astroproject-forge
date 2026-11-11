@@ -1,5 +1,6 @@
 using System.Globalization;
 using Avalonia.Media;
+using AstroForge.App.Services;
 using AstroForge.Core.Equipment;
 using AstroForge.Core.Filters;
 using AstroForge.CrossPlatform.Controls;
@@ -30,7 +31,22 @@ public sealed partial class ObservatoryViewModel
         .OrderByDescending(item => item.Uses).ThenBy(item => item.Name, StringComparer.OrdinalIgnoreCase)
         .Select(item => new CameraChoice(item.Id, item.Name, item.Type)).ToList();
 
-    private string Number(double value, string format) => value.ToString(format, English ? CultureInfo.InvariantCulture : CultureInfo.GetCultureInfo("it-IT"));
+    private static string Number(double value, string format) => UiFormat.Number(value, format);
+
+    /// <summary>A catalogue reducer in the interface language: the catalogue names them in Italian with the factor attached.</summary>
+    private string ReducerName(string? catalogName, double factor)
+    {
+        var kind = string.Join(' ', (catalogName ?? "").Split(' ').TakeWhile(word => !char.IsDigit(word.FirstOrDefault())));
+        if (kind.Length == 0) kind = factor > 1 ? "Extender" : "Riduttore";
+        if (English) kind = kind switch
+        {
+            "Riduttore" => "Reducer",
+            "Spianatore/riduttore" => "Flattener/reducer",
+            "Correttore di coma" => "Coma corrector",
+            _ => kind
+        };
+        return $"{kind} {Number(factor, "0.0##")}×";
+    }
 
     // ---- Configuration shown in the field of view ----
     private double? ReducerFactorOption => Instrument?.ReducerFactor
@@ -49,27 +65,25 @@ public sealed partial class ObservatoryViewModel
     private (double Width, double Height)? PreviewField => PreviewFocal is { } focal ? Instrument?.FieldOfViewAt(focal) : null;
     private (double Width, double Height)? OtherField => OtherFocal is { } focal ? Instrument?.FieldOfViewAt(focal) : null;
 
-    public string ReducedLabel => ReducerFactorOption is { } factor ? (English ? $"Reducer {Number(factor, "0.0#")}×" : $"Riduttore {Number(factor, "0.0#")}×") : "";
+    public string ReducedLabel => ReducerFactorOption is { } factor ? ReducerName(null, factor) : "";
     public string NativeLabel => English ? "Native" : "Nativo";
     public double PreviewWidth => PreviewField?.Width ?? 0;
     public double PreviewHeight => PreviewField?.Height ?? 0;
     public double OtherWidth => OtherField?.Width ?? 0;
     public double OtherHeight => OtherField?.Height ?? 0;
     public string OtherLabel => OtherFocal is { } focal ? (ShowReduced ? (English ? $"native {focal:0} mm" : $"nativo {focal:0} mm") : (English ? $"with reducer {focal:0} mm" : $"con riduttore {focal:0} mm")) : "";
-    public string FovBig => PreviewField is { } fov ? $"{Number(fov.Width, "0.00")}°" : "—";
+    public string FovBig => PreviewField is { } fov ? $"{Number(fov.Width, "0.00")}°" : "-";
     public string FovSmall => PreviewField is { } fov ? $"× {Number(fov.Height, "0.00")}°" : "";
-    public string FovEyebrow => FovEyebrowText.ToUpperInvariant();
-    private string FovEyebrowText => SelectedFilter is { } filter
-        ? (English ? $"Field of view · filter {(filter.NeedsConfirmation ? filter.RawName : filter.DisplayName)}" : $"Campo inquadrato · filtro {(filter.NeedsConfirmation ? filter.RawName : filter.DisplayName)}")
-        : (English ? "Field of view" : "Campo inquadrato");
+    public string FovEyebrow => (English ? "Field of view" : "Campo inquadrato")
+        + (SelectedFilter is { } filter ? $" · {(filter.NeedsConfirmation ? filter.RawName : filter.DisplayName)}" : "");
     public string FovNote => !HasReducerOption || OtherField is not { } other || PreviewField is not { } fov ? ""
         : ShowReduced
             ? (English ? $"The reducer widens the field {Number(fov.Width / other.Width, "0.00")} times." : $"Il riduttore allarga il campo di {Number(fov.Width / other.Width, "0.00")} volte.")
             : (English ? $"Native: {Number(other.Width / fov.Width, "0.00")}× the detail, smaller field." : $"Nativo: dettaglio {Number(other.Width / fov.Width, "0.00")}×, campo più stretto.");
-    public string FocalText => PreviewFocal is { } focal ? $"{focal:0} mm" : "—";
+    public string FocalText => PreviewFocal is { } focal ? $"{focal:0} mm" : "-";
     public string RatioText => PreviewFocal is { } focal && Instrument?.ApertureMm is > 0 ? (English ? $"focal · f/{Number(focal / Instrument.ApertureMm.Value, "0.0")}" : $"focale · f/{Number(focal / Instrument.ApertureMm.Value, "0.0")}") : (English ? "focal length" : "focale");
     public double PreviewScale => PreviewFocal is { } focal ? Instrument?.ImageScaleAt(focal) ?? 0 : 0;
-    public string PreviewScaleText => PreviewScale > 0 ? $"{Number(PreviewScale, "0.00")}″/px" : "—";
+    public string PreviewScaleText => PreviewScale > 0 ? $"{Number(PreviewScale, "0.00")}″/px" : "-";
     public string SamplingVerdict => PreviewScale switch
     {
         <= 0 => "",
@@ -96,7 +110,7 @@ public sealed partial class ObservatoryViewModel
         instrument.TelescopeSource != EquipmentSource.Header || instrument.Telescope.IsRecognized);
 
     public TrainPart? TrainReducer => Instrument is not { } instrument || !ShowReduced || ReducerFactorOption is not { } factor ? null : new TrainPart(
-        instrument.Telescope.Reducer?.Name ?? (English ? $"Reducer {Number(factor, "0.0#")}×" : $"Riduttore {Number(factor, "0.0#")}×"),
+        ReducerName(instrument.Telescope.Reducer?.Name, factor),
         $"{instrument.NativeFocalMm:0} × {Number(factor, "0.0#")} = {instrument.NativeFocalMm * factor:0} mm",
         instrument.FocalSource == EquipmentSource.User ? (English ? "your profile" : "profilo") : "FOCALLEN",
         true);
@@ -115,16 +129,16 @@ public sealed partial class ObservatoryViewModel
     private string SourceLabel(EquipmentSource source, string keyword, double confidence) => source switch
     {
         EquipmentSource.User => English ? "your profile" : "profilo",
-        EquipmentSource.Catalog => English ? $"{keyword} · catalogue {confidence:P0}" : $"{keyword} · catalogo {confidence:P0}",
-        _ => English ? $"{keyword} · header" : $"{keyword} · header"
+        EquipmentSource.Catalog => English ? $"{keyword} · catalogue {UiFormat.Percent(confidence * 100)}" : $"{keyword} · catalogo {UiFormat.Percent(confidence * 100)}",
+        _ => $"{keyword} · header"
     };
 
     // ---- Profile ----
     public bool IsProfileConfirmed => Instrument?.Override is not null;
     public string ProfileBadge => IsProfileConfirmed ? (English ? "Confirmed" : "Confermato") : (English ? "To confirm" : "Da confermare");
-    public string OpticsRow => TrainTelescope?.Title ?? "—";
+    public string OpticsRow => TrainTelescope?.Title ?? "-";
     public string OpticsChip => Instrument is { } instrument ? SourceLabel(instrument.TelescopeSource, "TELESCOP", instrument.Telescope.Confidence) : "";
-    public string ReducerRow => Instrument is not { } instrument ? "—"
+    public string ReducerRow => Instrument is not { } instrument ? "-"
         : instrument.ReducerFactor is { } factor ? $"{Number(factor, "0.0#")}× · {instrument.FocalMm:0} mm"
         : English ? $"none · {instrument.FocalMm:0} mm" : $"nessuno · {instrument.FocalMm:0} mm";
     public string ReducerChip => Instrument?.FocalSource switch
@@ -135,7 +149,7 @@ public sealed partial class ObservatoryViewModel
         _ => "FOCALLEN"
     };
     public string CameraChip => Instrument is { } instrument ? SourceLabel(instrument.CameraSource, "INSTRUME", instrument.Camera.Confidence) : "";
-    public string PixelRow => Instrument?.PixelUm is { } pixel ? $"{Number(pixel, "0.##")} µm" + (Instrument.Binning > 1 ? $" · bin {Instrument.Binning}" : "") : "—";
+    public string PixelRow => Instrument?.PixelUm is { } pixel ? $"{Number(pixel, "0.##")} µm" + (Instrument.Binning > 1 ? $" · bin {Instrument.Binning}" : "") : "-";
     public string PixelChip => Instrument?.PixelSource switch
     {
         EquipmentSource.User => English ? "your profile" : "profilo",
@@ -147,8 +161,7 @@ public sealed partial class ObservatoryViewModel
         ? $"{Filters.Count(row => !row.NeedsConfirmation)} of {Filters.Count} filters identified"
         : $"{Filters.Count(row => !row.NeedsConfirmation)} filtri su {Filters.Count} riconosciuti";
     public string WheelChip => PendingCount == 0 ? "OK" : English ? $"{PendingCount} unsure" : $"{PendingCount} dubbi";
-    public string WheelTitle => WheelTitleText.ToUpperInvariant();
-    private string WheelTitleText => English ? $"Filter wheel · {CameraName}" : $"Ruota portafiltri · {CameraName}";
+    public string WheelTitle => English ? $"Filter wheel · {CameraName}" : $"Ruota portafiltri · {CameraName}";
 
     // ---- Profile editor ----
     public bool IsEditing { get => _isEditing; set { if (Set(ref _isEditing, value)) Raise(nameof(IsViewing)); } }
@@ -285,7 +298,7 @@ public sealed partial class ObservatoryViewModel
         if (keep is > 0) factors.Add((keep.Value, null));
         ReducerChoices = factors
             .GroupBy(item => Math.Round(item.Factor, 3))
-            .Select(group => group.FirstOrDefault(item => item.Name is not null) is { Name: { } named } ? new ReducerChoice(group.Key, $"{named} · {Number(group.Key, "0.0##")}×")
+            .Select(group => group.FirstOrDefault(item => item.Name is not null) is { Name: { } named } ? new ReducerChoice(group.Key, ReducerName(named, group.Key))
                 : new ReducerChoice(group.Key, Math.Abs(group.Key - 1) < 0.001 ? (English ? "None" : "Nessuno") : $"{Number(group.Key, "0.0##")}×"))
             .OrderByDescending(choice => Math.Abs(choice.Factor - 1) < 0.001).ThenBy(choice => choice.Factor)
             .ToList();

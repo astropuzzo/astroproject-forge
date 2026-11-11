@@ -46,10 +46,13 @@ internal static class NoveltyQa
         var root = Path.Combine(Path.GetTempPath(), "AstroForge-novelty-" + Guid.NewGuid().ToString("N"));
         try
         {
-            var control = Path.Combine(root, "Cygnus Loop", "_AstroForge");
+            // The layout the exporter really writes: the folder and the recorded name carry an underscore for the space.
+            var folder = ProjectExporter.FolderName("Cygnus Loop");
+            Assert(folder == "Cygnus_Loop", $"Nome cartella inatteso: {folder}.");
+            var control = Path.Combine(root, folder, "_AstroForge");
             Directory.CreateDirectory(control);
             var files = nightOne.Select((frame, index) => new { source = frame.Path, destination = $"Light/{index}.fits", sha256 = new string('a', 64), bytes = 10 }).ToArray();
-            File.WriteAllText(Path.Combine(control, "manifest.json"), JsonSerializer.Serialize(new { application = "AstroProject Forge", project_name = "Cygnus Loop", files }));
+            File.WriteAllText(Path.Combine(control, "manifest.json"), JsonSerializer.Serialize(new { application = "AstroProject Forge", project_name = folder, files }));
             var sources = ProjectExportPreflight.ExportedSources(root, "Cygnus Loop");
             Assert(sources.Count == 3 && nightOne.All(frame => sources.Contains(frame.Path)) && !sources.Contains(nightTwo[0].Path), "Il manifest deve elencare i file sorgente già nel progetto.");
             Assert(ProjectNovelty.Compute(all, sources) is { NewLights: 2, WholeNights: 1 }, "Le novità si calcolano rispetto al manifest.");

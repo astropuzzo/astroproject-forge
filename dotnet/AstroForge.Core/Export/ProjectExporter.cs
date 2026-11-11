@@ -9,7 +9,8 @@ using AstroForge.Core.Wbpp;
 
 namespace AstroForge.Core.Export;
 
-public sealed record PlannedFile(FrameMetadata Frame, string RelativePath, string Role, string? GroupId = null);
+/// <param name="Keywords">The WBPP grouping values decided with the plan. They travel with the file because an update leaves files where an earlier export put them, so the folder names can be out of date.</param>
+public sealed record PlannedFile(FrameMetadata Frame, string RelativePath, string Role, string? GroupId = null, IReadOnlyDictionary<string, string>? Keywords = null);
 public sealed record ProjectPlan(string ProjectName, string DestinationRoot, IReadOnlyList<PlannedFile> Files, WbppRecipe Recipe, ProjectStatistics? Statistics = null, string? PixInsightOutputFolderName = null)
 {
     public long RequiredBytes => Files.Sum(file => new FileInfo(file.Frame.Path).Length);
@@ -36,19 +37,21 @@ public static class ProjectExporter
 {
     public static ProjectPlan BuildPlan(string projectName, string destinationRoot, ProjectAnalysis analysis, IReadOnlySet<string>? excludedQualityPaths = null, string? pixInsightOutputFolderName = null)
     {
-        if (!analysis.Ready) throw new InvalidOperationException("Il progetto contiene calibrazioni irrisolte.");
-        var recipe = WbppRecipeEngine.Recommend(analysis);
+        // Lights set aside in the Quality Lab are filed apart: they need no calibration, are not integration time
+        // and must not hold the export back.
+        var kept = analysis.Without(excludedQualityPaths);
+        if (!kept.Ready) throw new InvalidOperationException("Il progetto contiene calibrazioni irrisolte.");
+        var recipe = WbppRecipeEngine.Recommend(kept);
         var files = new List<PlannedFile>();
         var included = new HashSet<string>(PathIdentity.Comparer);
-        foreach (var item in analysis.Lights)
+        foreach (var item in analysis.Lights.Where(item => excludedQualityPaths?.Contains(item.Light.Path) == true))
         {
-            if (excludedQualityPaths?.Contains(item.Light.Path) == true)
-            {
-                var excludedFilter = Token(item.Light.FilterName.Value ?? "UNKNOWN");
-                var excludedNight = Token(item.Light.SessionId.Value ?? "UNKNOWN");
-                Add(files, included, new(item.Light, Combine(["Excluded", "Quality", $"FILTER_{excludedFilter}", $"NIGHT_{excludedNight}", item.Light.FileName]), "excluded-light", "quality"));
-                continue;
-            }
+            var excludedFilter = Token(item.Light.FilterName.Value ?? "UNKNOWN");
+            var excludedNight = Token(item.Light.SessionId.Value ?? "UNKNOWN");
+            Add(files, included, new(item.Light, Combine(["Excluded", "Quality", $"FILTER_{excludedFilter}", $"NIGHT_{excludedNight}", item.Light.FileName]), "excluded-light", "quality"));
+        }
+        foreach (var item in kept.Lights)
+        {
             if (item.FlatGroup is null || item.Dark.Selected is null || item.Bias.Selected is null)
                 throw new InvalidOperationException($"Calibrazioni incomplete per {item.Light.FileName}.");
             var light = item.Light;
@@ -56,33 +59,56 @@ public static class ProjectExporter
             var session = Token(light.SessionId.Value ?? "UNKNOWN");
             var flatSet = item.FlatGroup.Id;
             var darkSet = DarkSet(item.Dark.Selected.Frame);
-            var biasSet = BiasSet(item.Bias.Selected.Frame);
+            // With Dark Flats standing in for the Bias there is no Bias to name or export.
+            var biasSet = item.Bias.RequestedKind == FrameKind.Bias ? BiasSet(item.Bias.Selected.Frame) : null;
             var parts = new List<string> { "Light", $"FILTER_{filter}" };
             if (recipe.Contains("FLATSET")) parts.Add($"FLATSET_{flatSet}");
             if (recipe.Contains("DARKSET")) parts.Add($"DARKSET_{darkSet}");
-            if (recipe.Contains("BIASSET")) parts.Add($"BIASSET_{biasSet}");
-            if (recipe.Contains("TARGET")) parts.Add($"TARGET_{WbppValue(light.ObjectName.Value ?? "UNKNOWN")}");
+            if (recipe.Contains("BIASSET") && biasSet is not null) parts.Add($"BIASSET_{biasSet}");
+            var target = WbppValue(light.ObjectName.Value ?? "UNKNOWN");
+            if (recipe.Contains("TARGET")) parts.Add($"TARGET_{target}");
             parts.Add($"NIGHT_{session}");
             parts.Add(light.FileName);
-            Add(files, included, new(light, Combine(parts), "light", flatSet));
+            var lightKeywords = new Dictionary<string, string> { ["FLATSET"] = flatSet, ["DARKSET"] = darkSet, ["TARGET"] = target };
+            if (biasSet is not null) lightKeywords["BIASSET"] = biasSet;
+            Add(files, included, new(light, Combine(parts), "light", flatSet, lightKeywords));
 
             foreach (var flat in item.FlatGroup.Frames)
             {
                 var flatParts = new List<string> { "Flat", $"FILTER_{filter}" };
                 if (recipe.Contains("FLATSET")) flatParts.Add($"FLATSET_{flatSet}");
-                if (recipe.Contains("BIASSET")) flatParts.Add($"BIASSET_{biasSet}");
+                if (recipe.Contains("BIASSET") && biasSet is not null) flatParts.Add($"BIASSET_{biasSet}");
                 flatParts.Add(flat.FileName);
-                Add(files, included, new(flat, Combine(flatParts), "flat", flatSet));
+                var flatKeywords = new Dictionary<string, string> { ["FLATSET"] = flatSet };
+                if (biasSet is not null) flatKeywords["BIASSET"] = biasSet;
+                Add(files, included, new(flat, Combine(flatParts), "flat", flatSet, flatKeywords));
             }
-            var dark = item.Dark.Selected.Frame;
-            var bias = item.Bias.Selected.Frame;
-            Add(files, included, new(dark, Combine(["Dark", "Masters", $"DARKSET_{darkSet}", MasterName(dark)]), "dark", darkSet));
-            Add(files, included, new(bias, Combine(["Bias", "Masters", $"BIASSET_{biasSet}", MasterName(bias)]), "bias", biasSet));
+            AddCalibration(files, included, item.Dark.Selected.Frame, item.DarkSet, "Dark", "DARKSET", darkSet, "dark");
+            if (biasSet is not null) AddCalibration(files, included, item.Bias.Selected.Frame, item.BiasSet, "Bias", "BIASSET", biasSet, "bias");
+            // WBPP takes Dark Flats as Darks and pairs them with the Flats by exposure.
+            if (item.DarkFlat?.Selected is { } darkFlat)
+                AddCalibration(files, included, darkFlat.Frame, item.DarkFlatSet, "Dark", "DARKFLAT", DarkFlatSet(darkFlat.Frame), "dark");
         }
         ResolveCollisions(files);
         EnsureNoCollisions(files);
-        return new(SafeName(projectName), Path.GetFullPath(destinationRoot), files, recipe, ProjectStatisticsCalculator.Calculate(analysis),
+        return new(SafeName(projectName), Path.GetFullPath(destinationRoot), files, recipe, ProjectStatisticsCalculator.Calculate(kept),
             string.IsNullOrWhiteSpace(pixInsightOutputFolderName) ? null : SafeName(pixInsightOutputFolderName));
+    }
+
+    /// <summary>The folder (and manifest) name a project name becomes: spaces and characters a file system refuses turn into underscores.</summary>
+    public static string FolderName(string projectName) => SafeName(projectName);
+
+    private static void AddCalibration(List<PlannedFile> files, HashSet<string> included, FrameMetadata selected, CalibrationGroup? set, string folder, string keyword, string setName, string role)
+    {
+        var keywords = new Dictionary<string, string> { [keyword] = setName };
+        // A set of raw subs goes out whole, under its own names, for WBPP to integrate. A Master keeps the Master layout.
+        if (set is { Frames.Count: > 1 })
+        {
+            foreach (var frame in set.Frames)
+                Add(files, included, new(frame, Combine([folder, $"{keyword}_{setName}", frame.FileName]), role, setName, keywords));
+            return;
+        }
+        Add(files, included, new(selected, Combine([folder, "Masters", $"{keyword}_{setName}", MasterName(selected)]), role, setName, keywords));
     }
 
     public static async Task<string> ExecuteAsync(ProjectPlan plan, IProgress<ExportProgress>? progress = null, CancellationToken cancellationToken = default,
@@ -93,6 +119,7 @@ public static class ProjectExporter
         var projectRoot = plan.ProjectRoot;
         var staging = Path.Combine(plan.DestinationRoot, $".{plan.ProjectName}.astroforge-staging");
         var workingRoot = preflight.IsIncremental ? projectRoot : staging;
+        if (!preflight.IsIncremental) PruneStaging(staging, plan);
         Directory.CreateDirectory(workingRoot);
         var totalBytes = preflight.TotalBytes;
         long copiedBytes = 0;
@@ -142,6 +169,7 @@ public static class ProjectExporter
                     group_id = item.GroupId,
                     bytes = new FileInfo(destination).Length,
                     source_last_write_utc_ticks = File.GetLastWriteTimeUtc(item.Frame.Path).Ticks,
+                    copy_last_write_utc_ticks = File.GetLastWriteTimeUtc(destination).Ticks,
                     sha256 = Convert.ToHexString(hash).ToLowerInvariant(),
                     metadata = Snapshot(item.Frame)
                 });
@@ -182,6 +210,20 @@ public static class ProjectExporter
             // Staging remains available for diagnosis. Original files are never modified.
             throw;
         }
+    }
+
+    /// <summary>
+    /// A first export that stopped half way leaves its copies in the staging folder to be resumed. If the plan changed in
+    /// between (another Flat Set, a Light set aside), the copies of the old plan must not ride along into the project.
+    /// </summary>
+    private static void PruneStaging(string staging, ProjectPlan plan)
+    {
+        if (!Directory.Exists(staging)) return;
+        var planned = plan.Files.Select(file => Path.GetFullPath(Path.Combine(staging, file.RelativePath))).ToHashSet(PathIdentity.Comparer);
+        foreach (var file in Directory.EnumerateFiles(staging, "*", SearchOption.AllDirectories))
+            if (!planned.Contains(Path.GetFullPath(file))) File.Delete(file);
+        foreach (var directory in Directory.EnumerateDirectories(staging, "*", SearchOption.AllDirectories).OrderByDescending(path => path.Length))
+            if (!Directory.EnumerateFileSystemEntries(directory).Any()) Directory.Delete(directory);
     }
 
     private static Dictionary<string, JsonElement> ExistingManifestRecords(string projectRoot)
@@ -260,7 +302,7 @@ public static class ProjectExporter
         builder.AppendLine("Caricare ricorsivamente `Light`, `Flat`, `Dark` e `Bias`.\n");
         builder.AppendLine("## Grouping Keywords\n");
         if (plan.Recipe.Keywords.Count == 0) builder.AppendLine("Lasciare vuota la tabella **Grouping Keywords**.\n");
-        foreach (var keyword in plan.Recipe.Keywords) builder.AppendLine($"- `{keyword.Keyword}` — Pre: {(keyword.Pre ? "ON" : "OFF")}, Post: {(keyword.Post ? "ON" : "OFF")} — {keyword.Reason}");
+        foreach (var keyword in plan.Recipe.Keywords) builder.AppendLine($"- `{keyword.Keyword}`: Pre {(keyword.Pre ? "ON" : "OFF")}, Post {(keyword.Post ? "ON" : "OFF")}. {keyword.Reason}");
         builder.AppendLine("\n`FILTER`, binning ed esposizione sono gestiti nativamente. Non aggiungere `DATE-OBS`. Smart naming override non è necessario per keyword personalizzate nel percorso.");
         builder.AppendLine("\nPrima di Run, verificare nella scheda Calibration che ogni Light mostri Dark, Flat e Bias previsti.");
         return builder.ToString();
@@ -284,11 +326,11 @@ public static class ProjectExporter
         }
         var builder = new StringBuilder("SEZIONE;FILTRO;SESSIONE/NOTTE;ORE;LIGHT;NOTTI;FLAT;STATO\n");
         foreach (var item in statistics.Filters)
-            builder.AppendLine(string.Join(';', "FILTRO", C(item.Filter), "", C(item.ExposureHours), C(item.LightCount), C(item.NightCount), C(item.FlatFrameCount), C(item.Ready ? "Pronto" : $"{item.UnresolvedCalibrationCount} irrisolte")));
+            builder.AppendLine(string.Join(';', "FILTRO", C(item.Filter), "", C(Math.Round(item.ExposureHours, 3)), C(item.LightCount), C(item.NightCount), C(item.FlatFrameCount), C(item.Ready ? "Pronto" : $"{item.UnresolvedCalibrationCount} irrisolte")));
         foreach (var item in statistics.Sessions)
-            builder.AppendLine(string.Join(';', "SESSIONE", C(item.Filter), C(item.Session), C(item.ExposureHours), C(item.LightCount), C(item.NightCount), C(item.FlatFrameCount), C(item.Ready ? "Pronta" : $"{item.UnresolvedCalibrationCount} irrisolte")));
+            builder.AppendLine(string.Join(';', "SESSIONE", C(item.Filter), C(item.Session), C(Math.Round(item.ExposureHours, 3)), C(item.LightCount), C(item.NightCount), C(item.FlatFrameCount), C(item.Ready ? "Pronta" : $"{item.UnresolvedCalibrationCount} irrisolte")));
         foreach (var item in statistics.Nights)
-            builder.AppendLine(string.Join(';', "NOTTE", C(item.Filter), C(item.Night), C(item.ExposureHours), C(item.LightCount), "1", "", C(item.IssueCount == 0 ? "OK" : $"{item.IssueCount} avvisi")));
+            builder.AppendLine(string.Join(';', "NOTTE", C(item.Filter), C(item.Night), C(Math.Round(item.ExposureHours, 3)), C(item.LightCount), "1", "", C(item.IssueCount == 0 ? "OK" : $"{item.IssueCount} avvisi")));
         return builder.ToString();
     }
 
@@ -331,15 +373,22 @@ public static class ProjectExporter
         {
             FrameKind.Dark => $"MasterDark_G{Number(frame.Gain.Value)}_T{Number(frame.EffectiveTemperatureC)}_O{Number(frame.Offset.Value)}_E{Number(frame.ExposureSeconds.Value)}s_{geometry}{Path.GetExtension(frame.Path).ToLowerInvariant()}",
             FrameKind.Bias => $"MasterBias_G{Number(frame.Gain.Value)}_O{Number(frame.Offset.Value)}_{geometry}{Path.GetExtension(frame.Path).ToLowerInvariant()}",
+            FrameKind.DarkFlat => $"MasterDarkFlat_G{Number(frame.Gain.Value)}_E{Number(frame.ExposureSeconds.Value)}s_{geometry}{Path.GetExtension(frame.Path).ToLowerInvariant()}",
             _ => frame.FileName
         };
     }
-    private static string DarkSet(FrameMetadata frame) => $"G{Number(frame.Gain.Value)}-T{Number(frame.EffectiveTemperatureC)}-O{Number(frame.Offset.Value)}";
+    // A raw sub reports the sensor's reading (-9.8 °C): its set is named after the whole degree it was cooled to.
+    private static string DarkSet(FrameMetadata frame) =>
+        $"G{Number(frame.Gain.Value)}-T{Number(frame.IsMaster ? frame.EffectiveTemperatureC : frame.EffectiveTemperatureC is { } reading ? Math.Round(reading) : null)}-O{Number(frame.Offset.Value)}";
+    private static string DarkFlatSet(FrameMetadata frame) => $"G{Number(frame.Gain.Value)}-E{Number(frame.ExposureSeconds.Value)}s";
     private static string BiasSet(FrameMetadata frame) => $"G{Number(frame.Gain.Value)}-O{Number(frame.Offset.Value)}";
     private static string Number(double? value) => value?.ToString("0.###", System.Globalization.CultureInfo.InvariantCulture) ?? throw new InvalidOperationException("Metadato numerico richiesto assente.");
     private static string Combine(IEnumerable<string> parts) => Path.Combine(parts.ToArray());
-    private static string Token(string value) => string.Join('_', value.Split(Path.GetInvalidFileNameChars().Concat([' ']).ToArray(), StringSplitOptions.RemoveEmptyEntries));
-    private static string WbppValue(string value) => new string(value.Select(character => char.IsLetterOrDigit(character) || "-():. ".Contains(character) ? character : '-').ToArray()).Replace(" ", "-");
+    // The same set on every system: a project made on macOS or Linux must still open on Windows and on exFAT drives,
+    // where these characters and a trailing dot are refused.
+    private static readonly char[] UnsafeNameCharacters = [.. "<>:\"/\\|?* ", .. Enumerable.Range(0, 32).Select(code => (char)code)];
+    private static string Token(string value) => string.Join('_', value.Split(UnsafeNameCharacters, StringSplitOptions.RemoveEmptyEntries)).Trim('.');
+    private static string WbppValue(string value) => new string(value.Select(character => char.IsLetterOrDigit(character) || "-(). ".Contains(character) ? character : '-').ToArray()).Replace(" ", "-").Trim('.', '-');
     private static string SafeName(string value)
     {
         var result = Token(value).Trim('.', ' ');

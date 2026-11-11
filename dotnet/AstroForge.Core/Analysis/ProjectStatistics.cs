@@ -74,6 +74,13 @@ public static class ProjectStatisticsCalculator
     public static ProjectStatistics Calculate(ProjectAnalysis analysis)
     {
         var items = analysis.Lights.ToArray();
+        // "Ha" and "HA" are one filter, under the spelling met first.
+        var spellings = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
+        string Display(string? value)
+        {
+            var name = string.IsNullOrWhiteSpace(value) ? "Senza filtro" : value.Trim();
+            return spellings.TryGetValue(name, out var known) ? known : spellings[name] = name;
+        }
         var filters = items.GroupBy(item => Display(item.Light.FilterName.Value)).OrderBy(group => group.Key, StringComparer.OrdinalIgnoreCase)
             .Select(group => Filter(group.Key, group.ToArray())).ToArray();
         var sessions = items.GroupBy(item => new { Filter = Display(item.Light.FilterName.Value), Session = item.FlatGroup?.Id ?? "IRRISOLTA" })
@@ -93,7 +100,8 @@ public static class ProjectStatisticsCalculator
             items.Sum(item => item.Light.ExposureSeconds.Value ?? 0),
             filters.Length,
             sessions.Length,
-            nights.Length,
+            // The rows of Nights are per filter: two filters shot on the same night are still one night.
+            nights.Select(night => night.Night).Distinct(StringComparer.OrdinalIgnoreCase).Count(),
             captures.Length == 0 ? null : captures[0],
             captures.Length == 0 ? null : captures[^1],
             filters,
@@ -113,7 +121,7 @@ public static class ProjectStatisticsCalculator
             frames.Select(frame => frame.SessionId.Value ?? "Notte non definita").Distinct(StringComparer.OrdinalIgnoreCase).Count(),
             items.Where(item => item.FlatGroup is not null).SelectMany(item => item.FlatGroup!.Frames).Distinct().Count(),
             items.Select(item => item.Dark.Selected?.Frame).Where(frame => frame is not null).Distinct().Count(),
-            items.Select(item => item.Bias.Selected?.Frame).Where(frame => frame is not null).Distinct().Count(),
+            items.Where(item => item.Bias.RequestedKind == FrameKind.Bias).Select(item => item.Bias.Selected?.Frame).Where(frame => frame is not null).Distinct().Count(),
             items.Sum(Unresolved),
             frames.Select(frame => frame.Gain.Value).Where(value => value.HasValue).Select(value => value!.Value).Distinct().OrderBy(value => value).ToArray(),
             temperatures.Length == 0 ? null : temperatures.Min(),
@@ -149,13 +157,12 @@ public static class ProjectStatisticsCalculator
     }
 
     private static int Unresolved(LightCalibrationAnalysis item) => new[] { item.Flat, item.Dark, item.Bias }.Count(result => !result.IsAccepted);
-    private static string Display(string? value) => string.IsNullOrWhiteSpace(value) ? "Senza filtro" : value.Trim();
     private static DateTimeOffset? First(IEnumerable<FrameMetadata> frames) { var values = Times(frames); return values.Length == 0 ? null : values[0]; }
     private static DateTimeOffset? Last(IEnumerable<FrameMetadata> frames) { var values = Times(frames); return values.Length == 0 ? null : values[^1]; }
     private static DateTimeOffset[] Times(IEnumerable<FrameMetadata> frames) => frames.Select(frame => frame.CapturedAt.Value).Where(value => value.HasValue).Select(value => value!.Value).OrderBy(value => value).ToArray();
     private static string JoinNames(IEnumerable<FrameMetadata?> frames)
     {
         var names = frames.Where(frame => frame is not null).Select(frame => frame!.FileName).Distinct(StringComparer.OrdinalIgnoreCase).ToArray();
-        return names.Length == 0 ? "—" : string.Join(", ", names);
+        return string.Join(", ", names);
     }
 }

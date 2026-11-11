@@ -19,6 +19,7 @@ public sealed record FilterChoice(string Id, string Display)
 public sealed class FilterSlotRow : BindableBase
 {
     private FilterChoice? _choice;
+    private readonly bool _english;
 
     public FilterSlotRow(InstrumentFilter filter, IReadOnlyList<FilterChoice> choices, bool english)
     {
@@ -27,31 +28,29 @@ public sealed class FilterSlotRow : BindableBase
         Bands = SpectrumColors.BandsOf(filter.Identity);
         Glass = SpectrumColors.GlassBrush(Bands, filter.Identity.Kind);
         _choice = filter.Identity.Product is { } product ? choices.FirstOrDefault(choice => choice.Id == product.Id) : null;
-        var hours = filter.IntegrationSeconds / 3600;
-        Usage = english
-            ? $"{filter.Lights} Light · {hours:0.0} h · {filter.Flats} Flat"
-            : $"{filter.Lights} Light · {hours:0.0} h · {filter.Flats} Flat";
+        _english = english;
+        Usage = $"{UiFormat.Frames(filter.Lights, "Light")} · {UiFormat.Duration(filter.IntegrationSeconds / 3600)} · {UiFormat.Frames(filter.Flats, "Flat")}";
         Source = filter.Identity.Source switch
         {
             FilterMatchSource.UserProfile => english ? "confirmed by you" : "confermato da te",
-            FilterMatchSource.CatalogProduct => english ? $"catalogue · {filter.Identity.Confidence:P0}" : $"catalogo · {filter.Identity.Confidence:P0}",
-            FilterMatchSource.GenericName => english ? $"from the name · {filter.Identity.Confidence:P0}" : $"dal nome · {filter.Identity.Confidence:P0}",
+            FilterMatchSource.CatalogProduct => english ? $"catalogue · {UiFormat.Percent(filter.Identity.Confidence * 100)}" : $"catalogo · {UiFormat.Percent(filter.Identity.Confidence * 100)}",
+            FilterMatchSource.GenericName => english ? $"from the name · {UiFormat.Percent(filter.Identity.Confidence * 100)}" : $"dal nome · {UiFormat.Percent(filter.Identity.Confidence * 100)}",
             FilterMatchSource.NoFilter => english ? "colour sensor" : "sensore a colori",
-            _ => english ? "to confirm" : "da confermare"
+            _ => english ? "to identify" : "da riconoscere"
         };
     }
 
     public InstrumentFilter Filter { get; }
-    public string RawName => Filter.RawName.Length == 0 ? "—" : Filter.RawName;
+    public string RawName => Filter.RawName.Length == 0 ? "-" : Filter.RawName;
     public string DisplayName => Filter.Identity.NeedsConfirmation ? "?" : Filter.Identity.DisplayName;
-    public string Lines => Filter.Identity.Lines.Count == 0 ? KindLabel : string.Join(" + ", Filter.Identity.Lines.Select(line => $"{line.Name} {line.WavelengthNm.ToString("0.#", CultureInfo.CurrentCulture)}"));
+    public string Lines => Filter.Identity.Lines.Count == 0 ? KindLabel : string.Join(" + ", Filter.Identity.Lines.Select(line => $"{SpectrumColors.LineName(line.Name)} {UiFormat.Number(line.WavelengthNm, "0.#")} nm"));
     public string KindLabel => Filter.Identity.Kind switch
     {
-        FilterKind.Broadband => "Broadband",
-        FilterKind.LightPollution => "Light pollution",
-        FilterKind.None => "—",
+        FilterKind.Broadband => _english ? "broadband" : "banda larga",
+        FilterKind.LightPollution => _english ? "light pollution" : "anti-inquinamento luminoso",
         _ => ""
     };
+    public bool HasLines => Lines.Length > 0;
     public string Usage { get; }
     public string Source { get; }
     public bool NeedsConfirmation => Filter.NeedsConfirmation;
@@ -139,7 +138,7 @@ public sealed partial class ObservatoryViewModel : BindableBase
 
     public bool HasInstrument => Instrument is not null;
     public bool HasNoInstrument => Instrument is null;
-    public string CameraName => Instrument?.Camera.DisplayName ?? "—";
+    public string CameraName => Instrument?.Camera.DisplayName ?? "-";
     public string CameraType => Instrument?.Camera.Type switch
     {
         CameraSensorType.Mono => "MONO",
@@ -150,7 +149,7 @@ public sealed partial class ObservatoryViewModel : BindableBase
     public string CameraSource => Instrument?.CameraSource switch
     {
         EquipmentSource.User => English ? "your choice" : "scelta tua",
-        EquipmentSource.Catalog => English ? $"catalogue · {Instrument.Camera.Confidence:P0}" : $"catalogo · {Instrument.Camera.Confidence:P0}",
+        EquipmentSource.Catalog => English ? $"catalogue · {UiFormat.Percent(Instrument.Camera.Confidence * 100)}" : $"catalogo · {UiFormat.Percent(Instrument.Camera.Confidence * 100)}",
         _ => English ? "from the header" : "dall'header"
     };
     /// <summary>The camera without its maker, for the stepper: "ASI2600MM Pro".</summary>
@@ -164,14 +163,14 @@ public sealed partial class ObservatoryViewModel : BindableBase
             return name;
         }
     }
-    public string TelescopeName => Instrument is null ? "—" : Instrument.Telescope.RawName.Length == 0 && Instrument.Telescope.Telescope is null ? (English ? "Optics not in the headers" : "Ottica non indicata negli header") : Instrument.Telescope.DisplayName;
+    public string TelescopeName => Instrument is null ? "-" : Instrument.Telescope.RawName.Length == 0 && Instrument.Telescope.Telescope is null ? (English ? "Optics not in the headers" : "Ottica non indicata negli header") : Instrument.Telescope.DisplayName;
     public string TelescopeDetail => Instrument?.Telescope.Telescope is { } scope
         ? $"Ø {scope.ApertureMm:0} mm · {scope.FocalMm:0} mm · f/{scope.FocalRatio:0.0}" + (Instrument.Telescope.Reducer is { } reducer ? $" → {Instrument.FocalMm:0} mm f/{Instrument.FocalMm / scope.ApertureMm:0.0}" : "")
         : Instrument?.FocalMm is { } focal ? $"{focal:0} mm" : "";
-    public string PixelText => Instrument?.PixelUm is { } pixel ? $"{pixel:0.##} µm" + (Instrument.Binning > 1 ? $" · bin {Instrument.Binning}" : "") : "—";
-    public string ScaleText => Instrument?.ImageScale is { } scale ? $"{scale:0.00}″/px" : "—";
-    public string FieldText => Instrument?.FieldOfView is { } fov ? $"{fov.Width:0.00}° × {fov.Height:0.00}°" : "—";
-    public string SensorText => Instrument?.SensorWidthMm is { } w && Instrument.SensorHeightMm is { } h ? $"{w:0.0} × {h:0.0} mm" : "—";
+    public string PixelText => Instrument?.PixelUm is { } pixel ? $"{pixel:0.##} µm" + (Instrument.Binning > 1 ? $" · bin {Instrument.Binning}" : "") : "-";
+    public string ScaleText => Instrument?.ImageScale is { } scale ? $"{scale:0.00}″/px" : "-";
+    public string FieldText => Instrument?.FieldOfView is { } fov ? $"{fov.Width:0.00}° × {fov.Height:0.00}°" : "-";
+    public string SensorText => Instrument?.SensorWidthMm is { } w && Instrument.SensorHeightMm is { } h ? $"{w:0.0} × {h:0.0} mm" : "-";
     public double FieldWidth => Instrument?.FieldOfView?.Width ?? 0;
     public double FieldHeight => Instrument?.FieldOfView?.Height ?? 0;
     public int PendingCount => Instrument?.PendingConfirmations ?? 0;
@@ -179,8 +178,8 @@ public sealed partial class ObservatoryViewModel : BindableBase
     public string PendingText => PendingCount switch
     {
         0 => English ? "Every filter identified" : "Tutti i filtri riconosciuti",
-        1 => English ? "1 filter to confirm" : "1 filtro da confermare",
-        var count => English ? $"{count} filters to confirm" : $"{count} filtri da confermare"
+        1 => English ? "1 filter to identify" : "1 filtro da riconoscere",
+        var count => English ? $"{count} filters to identify" : $"{count} filtri da riconoscere"
     };
     public string WheelCaption => Instrument is null ? "" : English
         ? $"{Filters.Count} filters on {CameraName}. What you confirm is remembered for this camera in every project."
@@ -246,11 +245,11 @@ public sealed partial class ObservatoryViewModel : BindableBase
             var identity = slot?.Filter.Identity ?? FilterRecognizer.Recognize(row.Filter);
             var bands = slot?.Bands ?? SpectrumColors.BandsOf(identity);
             var name = identity.NeedsConfirmation ? row.Filter : identity.DisplayName;
-            var lines = slot?.Lines ?? string.Join(" + ", identity.Lines.Select(line => line.Name));
-            var width = identity.BandwidthNm is { } nm ? $"{nm.ToString("0.#", CultureInfo.CurrentCulture)} nm" : "";
+            var lines = slot?.Lines ?? string.Join(" + ", identity.Lines.Select(line => SpectrumColors.LineName(line.Name)));
+            var width = identity.BandwidthNm is { } nm ? (English ? $"{UiFormat.Number(nm, "0.#")} nm wide" : $"largo {UiFormat.Number(nm, "0.#")} nm") : "";
             var detail = identity.NeedsConfirmation
-                ? (English ? "to confirm" : "da confermare")
-                : string.Join(" · ", new[] { width, lines }.Where(part => part.Length > 0));
+                ? (English ? "to identify" : "da riconoscere")
+                : string.Join(" · ", new[] { lines, width }.Where(part => part.Length > 0));
             if (!identity.NeedsConfirmation && !string.Equals(FilterRecognizer.Normalize(name), FilterRecognizer.Normalize(row.Filter), StringComparison.OrdinalIgnoreCase) && name.Replace("α", "a") != row.Filter)
                 detail = $"«{row.Filter}» · {detail}";
             var own = lights.Where(item => string.Equals(item.Light.FilterName.Value, row.Filter, StringComparison.OrdinalIgnoreCase)).ToList();
@@ -258,19 +257,21 @@ public sealed partial class ObservatoryViewModel : BindableBase
             var share = own.Count == 0 ? 0 : calibrated / (double)own.Count;
             var open = own.Count - calibrated;
             var hours = _main.NightStatistics.Where(night => string.Equals(night.Filter, row.Filter, StringComparison.OrdinalIgnoreCase)).Sum(night => night.Hours);
-            FilterCards.Add(new FilterCard(name, detail, row.Integration, $"{row.Lights} Light · {NightsLabel(row.Nights)}", row.Status, row.Ready, row.Percentage,
+            FilterCards.Add(new FilterCard(name, detail, row.Integration, $"{UiFormat.Frames(row.Lights, "Light")} · {NightsLabel(row.Nights)}", row.Status, row.Ready, row.Percentage,
                 bands, new SolidColorBrush(SpectrumColors.Glass(bands, identity.Kind)))
             {
                 RawFilter = row.Filter,
                 Hours = HoursLabel(hours),
                 Calibrated = share * 100,
-                CalibratedText = $"{share * 100:0} %",
-                CalibratedDetail = open == 0 ? (English ? "Calibration" : "Calibrazione") : English ? $"{open} Light to resolve" : $"{open} Light da risolvere",
+                CalibratedText = UiFormat.Percent(share * 100),
+                CalibratedDetail = open == 0 ? (English ? "Calibrated" : "Calibrati") : English ? $"{UiFormat.Frames(open, "Light")} to resolve" : $"{open} Light da risolvere",
                 NeedsConfirmation = identity.NeedsConfirmation
             });
         }
 
-        var colours = FilterCards.Zip(_main.FilterStatistics).ToDictionary(pair => pair.Second.Filter, pair => ((SolidColorBrush)pair.First.Accent).Color, StringComparer.OrdinalIgnoreCase);
+        // Built with TryAdd: a duplicate spelling of a filter ("Ha", "HA") must not throw and take the whole analysis down.
+        var colours = new Dictionary<string, Color>(StringComparer.OrdinalIgnoreCase);
+        foreach (var (card, statistics) in FilterCards.Zip(_main.FilterStatistics)) colours.TryAdd(statistics.Filter, ((SolidColorBrush)card.Accent).Color);
         Nights = _main.NightStatistics
             .GroupBy(row => row.Night)
             .OrderBy(group => group.Key, StringComparer.Ordinal)
@@ -283,13 +284,7 @@ public sealed partial class ObservatoryViewModel : BindableBase
 
     private string NightsLabel(int nights) => nights == 1 ? (English ? "1 night" : "1 notte") : English ? $"{nights} nights" : $"{nights} notti";
 
-    /// <summary>Hours and minutes the way an imager says them: "40 h 30", "3 h", "45 min".</summary>
-    public static string HoursLabel(double hours)
-    {
-        var minutes = (int)Math.Round(hours * 60);
-        if (minutes < 60) return $"{minutes} min";
-        return minutes % 60 == 0 ? $"{minutes / 60} h" : $"{minutes / 60} h {minutes % 60:00}";
-    }
+    public static string HoursLabel(double hours) => UiFormat.Duration(hours);
 
     private string NightLabel(string night) =>
         DateTime.TryParseExact(night, "yyyy-MM-dd", CultureInfo.InvariantCulture, DateTimeStyles.None, out var date)
