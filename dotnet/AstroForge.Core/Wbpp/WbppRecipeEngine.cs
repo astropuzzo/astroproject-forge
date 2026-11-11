@@ -1,4 +1,5 @@
 using AstroForge.Core.Analysis;
+using AstroForge.Core.Models;
 
 namespace AstroForge.Core.Wbpp;
 
@@ -29,7 +30,8 @@ public static class WbppRecipeEngine
             if (light.ObjectName.Value is { Length: > 0 } target) targets.Add(target.Trim());
             Add(flatChoices, $"{light.XBin.Value}|{light.YBin.Value}|{light.Width.Value}|{light.Height.Value}|{light.FilterName.Value}|{light.BayerPattern.Value}", item.FlatGroup?.Id);
             Add(darkChoices, $"{light.XBin.Value}|{light.YBin.Value}|{light.Width.Value}|{light.Height.Value}|{light.ExposureSeconds.Value:0.###}", item.Dark.Selected?.Frame.Path);
-            Add(biasChoices, $"{light.XBin.Value}|{light.YBin.Value}|{light.Width.Value}|{light.Height.Value}", item.Bias.Selected?.Frame.Path);
+            // Dark Flats standing in for the Bias are paired with the Flats by exposure: they need no BIASSET.
+            Add(biasChoices, $"{light.XBin.Value}|{light.YBin.Value}|{light.Width.Value}|{light.Height.Value}", item.Bias.RequestedKind == FrameKind.Bias ? item.Bias.Selected?.Frame.Path : null);
         }
         if (flatChoices.Values.Any(values => values.Count > 1)) recommendations.Add(new("FLATSET", true, false, "Separa i Light che usano Flat diversi."));
         if (darkChoices.Values.Any(values => values.Count > 1)) recommendations.Add(new("DARKSET", true, false, "Separa i Light che richiedono Dark diversi."));

@@ -17,7 +17,9 @@ public sealed record LightCalibrationAnalysis(
     CalibrationGroup? FlatGroup,
     string? FlatDecision = null,
     CalibrationGroup? DarkSet = null,
-    CalibrationGroup? BiasSet = null);
+    CalibrationGroup? BiasSet = null,
+    MatchResult? DarkFlat = null,
+    CalibrationGroup? DarkFlatSet = null);
 
 public sealed record ProjectAnalysis(IReadOnlyList<CalibrationGroup> FlatGroups, IReadOnlyList<LightCalibrationAnalysis> Lights)
 {
@@ -43,6 +45,9 @@ public static class ProjectAnalyzer
         var biases = new CalibrationMatchCache(Candidates(frames, FrameKind.Bias, biasSets), FrameKind.Bias, policy);
         // An old stack left in a scanned folder (a master Light) is not a sub to calibrate and integrate again.
         var lightFrames = frames.Where(frame => frame.Kind == FrameKind.Light && !frame.IsMaster).ToArray();
+        var darkFlatSets = SetsByMember(GroupRawSets(frames, FrameKind.DarkFlat));
+        var darkFlatCandidates = Candidates(frames, FrameKind.DarkFlat, darkFlatSets).ToArray();
+        var darkFlatByFlats = new Dictionary<CalibrationGroup, MatchResult>(ReferenceEqualityComparer.Instance);
         var flatMatches = ResolveFlatEpochs(lightFrames, flatGroups, representatives, policy);
         var lights = new List<LightCalibrationAnalysis>();
         foreach (var light in lightFrames)
@@ -52,7 +57,20 @@ public static class ProjectAnalyzer
             var dark = ResolveManual(darks.Find(light), light.ManualDarkPath.Value, darkSets);
             var bias = ResolveManual(biases.Find(light), light.ManualBiasPath.Value, biasSets);
             var group = flat.Selected is not null ? groupByPath.GetValueOrDefault(flat.Selected.Frame.Path) : null;
-            lights.Add(new(light, flat, dark, bias, group, flatResolution.Decision, SetOf(dark, darkSets), SetOf(bias, biasSets)));
+            var biasSet = SetOf(bias, biasSets);
+            // Dark Flats belong to the Flats: they are matched to the Flat set's exposure and gain, not to the Light.
+            MatchResult? darkFlat = null;
+            if (group is not null && darkFlatCandidates.Length > 0)
+            {
+                if (!darkFlatByFlats.TryGetValue(group, out var matched))
+                    darkFlatByFlats[group] = matched = CalibrationMatcher.Find(group.Representative, darkFlatCandidates, FrameKind.DarkFlat, policy);
+                if (matched.IsAccepted) darkFlat = matched;
+            }
+            var darkFlatSet = darkFlat is null ? null : SetOf(darkFlat, darkFlatSets);
+            // Flats calibrated with their own Dark Flats need no Bias, and the Light's Dark already carries the bias
+            // signal: the usual CMOS set of Darks, Flats and Dark Flats is complete without a Bias.
+            if (!bias.IsAccepted && darkFlat is not null) { bias = darkFlat; biasSet = darkFlatSet; }
+            lights.Add(new(light, flat, dark, bias, group, flatResolution.Decision, SetOf(dark, darkSets), biasSet, darkFlat, darkFlatSet));
         }
         return new(flatGroups, lights);
     }

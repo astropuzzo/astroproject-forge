@@ -107,10 +107,16 @@ public static class CalibrationMatcher
             Relative(result, "focale", target.FocalLengthMm.Value, candidate.FocalLengthMm.Value, policy.FocalLengthRelativeTolerance, 6);
             if (target.SessionId.Value is not null && target.SessionId.Value == candidate.SessionId.Value) { result.Score += 2; result.Reasons.Add("stessa sessione"); }
         }
-        else if (requestedKind is FrameKind.Dark or FrameKind.DarkFlat)
+        else if (requestedKind == FrameKind.Dark)
         {
             Within(result, "esposizione", target.ExposureSeconds.Value, candidate.ExposureSeconds.Value, policy.DarkExposureToleranceSeconds, 20, true);
             Within(result, "temperatura", target.EffectiveTemperatureC, candidate.EffectiveTemperatureC, policy.TemperatureToleranceC, 14, true);
+        }
+        else if (requestedKind == FrameKind.DarkFlat)
+        {
+            // A few seconds of exposure collect no dark current worth matching: the temperature is only a preference.
+            Within(result, "esposizione", target.ExposureSeconds.Value, candidate.ExposureSeconds.Value, policy.DarkExposureToleranceSeconds, 20, true);
+            Preferred(result, "temperatura", target.EffectiveTemperatureC, candidate.EffectiveTemperatureC, policy.TemperatureToleranceC, 8);
         }
         else if (requestedKind == FrameKind.Bias)
             Preferred(result, "temperatura", target.EffectiveTemperatureC, candidate.EffectiveTemperatureC, policy.TemperatureToleranceC, 8);
@@ -155,7 +161,7 @@ public static class CalibrationMatcher
         if (!left.HasValue || !right.HasValue) { Missing(result, label, false); return; }
         var difference = Math.Abs(left.Value - right.Value);
         if (difference <= tolerance) Pass(result, label, points);
-        else result.Reasons.Add($"{label}: {right.Value:0.#} °C per un Light a {left.Value:0.#} °C, accettata");
+        else result.Reasons.Add($"{label}: {right.Value:0.#} °C contro {left.Value:0.#} °C, accettata");
         if (difference > 1e-9) result.Exact = false;
         if (tolerance > 0) result.Deviation += difference / tolerance;
     }

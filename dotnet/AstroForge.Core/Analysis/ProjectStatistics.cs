@@ -121,7 +121,7 @@ public static class ProjectStatisticsCalculator
             frames.Select(frame => frame.SessionId.Value ?? "Notte non definita").Distinct(StringComparer.OrdinalIgnoreCase).Count(),
             items.Where(item => item.FlatGroup is not null).SelectMany(item => item.FlatGroup!.Frames).Distinct().Count(),
             items.Select(item => item.Dark.Selected?.Frame).Where(frame => frame is not null).Distinct().Count(),
-            items.Select(item => item.Bias.Selected?.Frame).Where(frame => frame is not null).Distinct().Count(),
+            items.Where(item => item.Bias.RequestedKind == FrameKind.Bias).Select(item => item.Bias.Selected?.Frame).Where(frame => frame is not null).Distinct().Count(),
             items.Sum(Unresolved),
             frames.Select(frame => frame.Gain.Value).Where(value => value.HasValue).Select(value => value!.Value).Distinct().OrderBy(value => value).ToArray(),
             temperatures.Length == 0 ? null : temperatures.Min(),

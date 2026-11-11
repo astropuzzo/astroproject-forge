@@ -28,7 +28,8 @@ internal static class AlgorithmQa
         MatchingRules();
         SkyCoordinates();
         await RawSetsExportAndWbppAsync();
-        Console.WriteLine("PASS: FWHM su stelle sintetiche, ora di scatto, notti di un sito remoto, conteggio notti, spareggio dei Dark, nomi file, cartelle libreria, card FITS/XISF, regole di abbinamento, coordinate e set di Dark/Bias grezzi fino all'istanza WBPP verificati.");
+        DarkFlatsStandInForTheBias();
+        Console.WriteLine("PASS: FWHM su stelle sintetiche, ora di scatto, notti di un sito remoto, conteggio notti, spareggio dei Dark, nomi file, cartelle libreria, card FITS/XISF, regole di abbinamento, coordinate e set di Dark/Bias grezzi fino all'istanza WBPP e Dark Flat al posto del Bias verificati.");
     }
 
     private static async Task FwhmFollowsTheStarAsync()
@@ -312,6 +313,37 @@ internal static class AlgorithmQa
             Assert(Directory.Exists(exported) && !Directory.EnumerateFiles(exported, "Light_orphan.fit", SearchOption.AllDirectories).Any(file => !file.Contains("Excluded")), "Il Light escluso è finito tra i Light da elaborare.");
         }
         finally { Directory.Delete(root, true); }
+    }
+
+    private static void DarkFlatsStandInForTheBias()
+    {
+        var settings = new SessionSettings(TimeZoneInfo.Utc, new TimeOnly(12, 0));
+        var lights = Enumerable.Range(0, 2).Select(index => ClassifyAt($"df-light-{index}.fits", settings, ("DATE-OBS", $"2026-08-14T22:0{index}:00Z"))).ToArray();
+        var flats = Enumerable.Range(0, 2).Select(index => ClassifyAt($"df-flat-{index}.fits", settings, ("IMAGETYP", "FLAT"), ("EXPTIME", 2.5), ("DATE-OBS", $"2026-08-15T04:0{index}:00Z"))).ToArray();
+        var dark = ClassifyAt("masterDark_300s.fits", settings, ("IMAGETYP", "Master Dark"));
+        // N.I.N.A.'s Flat Wizard: raw Dark Flats at the Flats' exposure, taken warmer than the Lights and with no set point.
+        var darkFlats = Enumerable.Range(0, 3).Select(index => ClassifyAt($"df-darkflat-{index}.fits", settings, ("IMAGETYP", "DARKFLAT"), ("EXPTIME", 2.5), ("SET-TEMP", null), ("CCD-TEMP", -4.0 + 0.1 * index))).ToArray();
+        Assert(darkFlats.All(frame => frame.Kind == FrameKind.DarkFlat), "IMAGETYP DARKFLAT non classificato come Dark Flat.");
+
+        var withoutThem = ProjectAnalyzer.Analyze([.. lights, .. flats, dark]);
+        Assert(!withoutThem.Ready && withoutThem.Lights.All(item => item.Bias.Status == MatchStatus.Missing), "Senza Bias né Dark Flat il progetto non è pronto.");
+
+        var analysis = ProjectAnalyzer.Analyze([.. lights, .. flats, dark, .. darkFlats]);
+        Assert(analysis.Ready, $"Dark, Flat e Dark Flat devono bastare: {string.Join(", ", analysis.Lights.Select(item => $"{item.Flat.Status}/{item.Dark.Status}/{item.Bias.Status}"))}.");
+        Assert(analysis.Lights.All(item => item.Bias.RequestedKind == FrameKind.DarkFlat && item.DarkFlatSet is { Frames.Count: 3 }), "I Dark Flat non sono stati abbinati al set di Flat.");
+
+        var plan = ProjectExporter.BuildPlan("Dark Flats", Path.GetTempPath(), analysis);
+        Assert(!plan.Files.Any(file => file.Role == "bias"), "Senza Bias non deve esserci un Bias nel piano.");
+        var exportedDarkFlats = plan.Files.Where(file => file.Frame.Kind == FrameKind.DarkFlat).ToArray();
+        Assert(exportedDarkFlats.Length == 3 && exportedDarkFlats.All(file => file.Role == "dark" && file.RelativePath.Contains("DARKFLAT_G100-E2.5s")), "I Dark Flat devono andare a WBPP come Dark del loro set.");
+        Assert(!plan.Recipe.Contains("BIASSET"), "I Dark Flat non richiedono la keyword BIASSET.");
+
+        // A Dark Flat at another exposure does not fit these Flats; with a Bias present both are exported.
+        var longer = ClassifyAt("df-darkflat-long.fits", settings, ("IMAGETYP", "DARKFLAT"), ("EXPTIME", 8.0));
+        Assert(!ProjectAnalyzer.Analyze([.. lights, .. flats, dark, longer]).Ready, "Un Dark Flat di un'altra esposizione non calibra questi Flat.");
+        var bias = ClassifyAt("masterBias.fits", settings, ("IMAGETYP", "Master Bias"), ("EXPTIME", 0));
+        var both = ProjectExporter.BuildPlan("Both", Path.GetTempPath(), ProjectAnalyzer.Analyze([.. lights, .. flats, dark, bias, .. darkFlats]));
+        Assert(both.Files.Count(file => file.Role == "bias") == 1 && both.Files.Count(file => file.Frame.Kind == FrameKind.DarkFlat) == 3, "Con Bias e Dark Flat vanno esportati entrambi.");
     }
 
     private static void ClosestDarkWinsATie()

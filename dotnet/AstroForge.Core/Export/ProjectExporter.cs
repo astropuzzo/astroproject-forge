@@ -59,28 +59,35 @@ public static class ProjectExporter
             var session = Token(light.SessionId.Value ?? "UNKNOWN");
             var flatSet = item.FlatGroup.Id;
             var darkSet = DarkSet(item.Dark.Selected.Frame);
-            var biasSet = BiasSet(item.Bias.Selected.Frame);
+            // With Dark Flats standing in for the Bias there is no Bias to name or export.
+            var biasSet = item.Bias.RequestedKind == FrameKind.Bias ? BiasSet(item.Bias.Selected.Frame) : null;
             var parts = new List<string> { "Light", $"FILTER_{filter}" };
             if (recipe.Contains("FLATSET")) parts.Add($"FLATSET_{flatSet}");
             if (recipe.Contains("DARKSET")) parts.Add($"DARKSET_{darkSet}");
-            if (recipe.Contains("BIASSET")) parts.Add($"BIASSET_{biasSet}");
+            if (recipe.Contains("BIASSET") && biasSet is not null) parts.Add($"BIASSET_{biasSet}");
             var target = WbppValue(light.ObjectName.Value ?? "UNKNOWN");
             if (recipe.Contains("TARGET")) parts.Add($"TARGET_{target}");
             parts.Add($"NIGHT_{session}");
             parts.Add(light.FileName);
-            Add(files, included, new(light, Combine(parts), "light", flatSet,
-                new Dictionary<string, string> { ["FLATSET"] = flatSet, ["DARKSET"] = darkSet, ["BIASSET"] = biasSet, ["TARGET"] = target }));
+            var lightKeywords = new Dictionary<string, string> { ["FLATSET"] = flatSet, ["DARKSET"] = darkSet, ["TARGET"] = target };
+            if (biasSet is not null) lightKeywords["BIASSET"] = biasSet;
+            Add(files, included, new(light, Combine(parts), "light", flatSet, lightKeywords));
 
             foreach (var flat in item.FlatGroup.Frames)
             {
                 var flatParts = new List<string> { "Flat", $"FILTER_{filter}" };
                 if (recipe.Contains("FLATSET")) flatParts.Add($"FLATSET_{flatSet}");
-                if (recipe.Contains("BIASSET")) flatParts.Add($"BIASSET_{biasSet}");
+                if (recipe.Contains("BIASSET") && biasSet is not null) flatParts.Add($"BIASSET_{biasSet}");
                 flatParts.Add(flat.FileName);
-                Add(files, included, new(flat, Combine(flatParts), "flat", flatSet, new Dictionary<string, string> { ["FLATSET"] = flatSet, ["BIASSET"] = biasSet }));
+                var flatKeywords = new Dictionary<string, string> { ["FLATSET"] = flatSet };
+                if (biasSet is not null) flatKeywords["BIASSET"] = biasSet;
+                Add(files, included, new(flat, Combine(flatParts), "flat", flatSet, flatKeywords));
             }
             AddCalibration(files, included, item.Dark.Selected.Frame, item.DarkSet, "Dark", "DARKSET", darkSet, "dark");
-            AddCalibration(files, included, item.Bias.Selected.Frame, item.BiasSet, "Bias", "BIASSET", biasSet, "bias");
+            if (biasSet is not null) AddCalibration(files, included, item.Bias.Selected.Frame, item.BiasSet, "Bias", "BIASSET", biasSet, "bias");
+            // WBPP takes Dark Flats as Darks and pairs them with the Flats by exposure.
+            if (item.DarkFlat?.Selected is { } darkFlat)
+                AddCalibration(files, included, darkFlat.Frame, item.DarkFlatSet, "Dark", "DARKFLAT", DarkFlatSet(darkFlat.Frame), "dark");
         }
         ResolveCollisions(files);
         EnsureNoCollisions(files);
@@ -366,12 +373,14 @@ public static class ProjectExporter
         {
             FrameKind.Dark => $"MasterDark_G{Number(frame.Gain.Value)}_T{Number(frame.EffectiveTemperatureC)}_O{Number(frame.Offset.Value)}_E{Number(frame.ExposureSeconds.Value)}s_{geometry}{Path.GetExtension(frame.Path).ToLowerInvariant()}",
             FrameKind.Bias => $"MasterBias_G{Number(frame.Gain.Value)}_O{Number(frame.Offset.Value)}_{geometry}{Path.GetExtension(frame.Path).ToLowerInvariant()}",
+            FrameKind.DarkFlat => $"MasterDarkFlat_G{Number(frame.Gain.Value)}_E{Number(frame.ExposureSeconds.Value)}s_{geometry}{Path.GetExtension(frame.Path).ToLowerInvariant()}",
             _ => frame.FileName
         };
     }
     // A raw sub reports the sensor's reading (-9.8 °C): its set is named after the whole degree it was cooled to.
     private static string DarkSet(FrameMetadata frame) =>
         $"G{Number(frame.Gain.Value)}-T{Number(frame.IsMaster ? frame.EffectiveTemperatureC : frame.EffectiveTemperatureC is { } reading ? Math.Round(reading) : null)}-O{Number(frame.Offset.Value)}";
+    private static string DarkFlatSet(FrameMetadata frame) => $"G{Number(frame.Gain.Value)}-E{Number(frame.ExposureSeconds.Value)}s";
     private static string BiasSet(FrameMetadata frame) => $"G{Number(frame.Gain.Value)}-O{Number(frame.Offset.Value)}";
     private static string Number(double? value) => value?.ToString("0.###", System.Globalization.CultureInfo.InvariantCulture) ?? throw new InvalidOperationException("Metadato numerico richiesto assente.");
     private static string Combine(IEnumerable<string> parts) => Path.Combine(parts.ToArray());
