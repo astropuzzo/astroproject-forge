@@ -85,6 +85,7 @@ public static class FitsHeaderReader
         private readonly List<string> _history = [];
         private readonly List<string> _comments = [];
         private readonly char[] _card = new char[CardSize];
+        private string? _openString;
 
         /// <summary>Parses the complete blocks of a chunk; true once the END card is found.</summary>
         public bool Parse(ReadOnlySpan<byte> chunk, long offset)
@@ -125,9 +126,21 @@ public static class FitsHeaderReader
                     _comments.Add(card[8..].Trim().ToString());
                     continue;
                 }
+                // A long string ends with '&' and goes on in CONTINUE cards, which carry no '='.
+                if (keyword.Equals("CONTINUE", StringComparison.OrdinalIgnoreCase))
+                {
+                    if (_openString is not null && _headers[_openString] is string head && head.EndsWith('&') && ParseValue(RemoveComment(card[8..]).Trim()) is string tail)
+                        _headers[_openString] = head[..^1] + tail;
+                    else _openString = null;
+                    continue;
+                }
+                _openString = null;
                 if (keyword.Length == 0 || card[8] != '=' || card[9] != ' ')
                     continue;
-                _headers[KeywordName(keyword)] = ParseValue(RemoveComment(card[10..]).Trim());
+                var name = KeywordName(keyword);
+                var value = ParseValue(RemoveComment(card[10..]).Trim());
+                _headers[name] = value;
+                if (value is string) _openString = name;
             }
             return false;
         }

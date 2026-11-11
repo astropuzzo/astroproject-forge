@@ -122,7 +122,8 @@ public sealed record InstrumentProfile(
         // One focal length, or none known: the camera is one rig, Flats and all.
         if (clusters.Count <= 1) return [(clusters.Count == 1 ? clusters[0].Focal : null, frames.ToList())];
 
-        foreach (var frame in frames.Where(frame => !sized.Contains(frame)))
+        var sizedSet = new HashSet<FrameMetadata>(sized, ReferenceEqualityComparer.Instance);
+        foreach (var frame in frames.Where(frame => !sizedSet.Contains(frame)))
         {
             if (frame.FocalLengthMm.Value is > 0 and var focal)
             {

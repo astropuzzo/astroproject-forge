@@ -20,7 +20,7 @@ public sealed class ProjectScanner
         IHeaderCache? cache = null)
     {
         // Enumeration already carries size and write time (on Windows for free from the directory listing): no stat per file.
-        var files = roots.SelectMany(Enumerate).DistinctBy(file => file.FullName, StringComparer.OrdinalIgnoreCase).ToArray();
+        var files = roots.SelectMany(Enumerate).DistinctBy(file => file.FullName, IO.PathIdentity.Comparer).ToArray();
         var frames = new FrameMetadata[files.Length];
         var completed = 0;
         var cacheHits = 0;
@@ -70,6 +70,10 @@ public sealed class ProjectScanner
     {
         if (File.Exists(root) && Extensions.Contains(System.IO.Path.GetExtension(root).ToLowerInvariant())) return [new FileInfo(System.IO.Path.GetFullPath(root))];
         if (!Directory.Exists(root)) return [];
-        return new DirectoryInfo(root).EnumerateFiles("*", SearchOption.AllDirectories).Where(file => Extensions.Contains(file.Extension.ToLowerInvariant()));
+        // One folder that cannot be read (System Volume Information on a drive root) must not abort the whole scan.
+        var options = new EnumerationOptions { RecurseSubdirectories = true, IgnoreInaccessible = true, AttributesToSkip = 0 };
+        // "._name" files are macOS resource forks left on shared drives, not images.
+        return new DirectoryInfo(root).EnumerateFiles("*", options)
+            .Where(file => Extensions.Contains(file.Extension.ToLowerInvariant()) && !file.Name.StartsWith("._", StringComparison.Ordinal));
     }
 }
