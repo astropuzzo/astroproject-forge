@@ -11,9 +11,8 @@ namespace AstroForge.CrossPlatform.Controls;
 public sealed record ExportNode(string Name, int Files, Color? Colour, IReadOnlyList<ExportNode> Children, int New = 0);
 
 /// <summary>
-/// The project as it will land on disk, drawn as a tree growing from the project folder to its filter and night
-/// folders. While the copy runs, light travels from the root to the leaves at the pace of the export; a light
-/// shimmer runs along the branches while it waits.
+/// The project as it will land on disk, drawn as a tree from the project folder to its filter and night folders.
+/// While the copy runs the branches fill from the root to the leaves at the pace of the export.
 /// </summary>
 public sealed class ExportMap : AmbientControl
 {
@@ -28,13 +27,13 @@ public sealed class ExportMap : AmbientControl
 
     private static readonly Typeface Mono = new(new FontFamily("avares://AstroProjectForge/Assets/Fonts#JetBrains Mono"));
     private static readonly Typeface Body = new(new FontFamily("Inter"), weight: FontWeight.SemiBold);
-    private static readonly Typeface Display = new(new FontFamily("avares://AstroProjectForge/Assets/Fonts#Unbounded"), weight: FontWeight.Medium);
     private static readonly Color Accent = Color.Parse("#9DB8FF"), Oiii = Color.Parse("#3FE0D0");
     private static readonly IBrush Fg = new ImmutableSolidColorBrush(Color.Parse("#EEF1FF"));
     private static readonly IBrush LabelPlate = new ImmutableSolidColorBrush(Color.Parse("#B80A0F22"));
-    private static readonly IBrush Muted = new ImmutableSolidColorBrush(Color.Parse("#8E97BD"));
+    private static readonly IBrush Muted = new ImmutableSolidColorBrush(Color.Parse("#A3ABCD"));
+    private static readonly Typeface Plain = new(new FontFamily("Inter"));
 
-    private const double LeafPitch = 34, Top = 14, MaxDepth = 3;
+    private const double LeafPitch = 40, Top = 14, MaxDepth = 3;
 
     private double _reveal = 1, _shownProgress, _flash;
 
@@ -47,7 +46,7 @@ public sealed class ExportMap : AmbientControl
     /// <summary>True while the tree is only the expected layout, before a real plan exists.</summary>
     public bool IsPreview { get => GetValue(IsPreviewProperty); set => SetValue(IsPreviewProperty, value); }
 
-    protected override bool WantsAmbient => Root is not null;
+    protected override bool WantsAmbient => IsRunning;
 
     protected override void OnPropertyChanged(AvaloniaPropertyChangedEventArgs change)
     {
@@ -118,7 +117,7 @@ public sealed class ExportMap : AmbientControl
         var culture = CultureInfo.CurrentCulture;
         if (Root is null)
         {
-            var empty = new FormattedText(CanvasText.T("Nessuna struttura. Analizza il progetto."), culture, FlowDirection.LeftToRight, Mono, 11, Muted);
+            var empty = new FormattedText(CanvasText.T("Nessuna struttura. Analizza il progetto."), culture, FlowDirection.LeftToRight, Plain, 12, Muted);
             context.DrawText(empty, new Point(0, Top + 20));
             return;
         }
@@ -129,8 +128,6 @@ public sealed class ExportMap : AmbientControl
         var right = placed.Max(item => item.At.X);
         var threshold = 14 + (right - 14 + 12) * Math.Clamp(_shownProgress, 0, 1);
         var columns = Math.Max(1, placed.Max(item => item.Depth));
-        // The waiting shimmer: a band of light that runs from the root to the leaves every few seconds.
-        var shimmer = Motion.Reduced ? double.NaN : 14 + (right + 160) * ((Clock / 4.2) % 1) - 80;
 
         foreach (var item in placed.Where(item => item.Parent is not null))
         {
@@ -153,28 +150,9 @@ public sealed class ExportMap : AmbientControl
                 context.DrawGeometry(null, new Pen(new SolidColorBrush(Color.FromArgb(IsPreview ? (byte)40 : (byte)70, colour.R, colour.G, colour.B)), width, lineCap: PenLineCap.Round), geometry);
                 if (_shownProgress > 0)
                     using (context.PushClip(new Rect(0, 0, threshold, Bounds.Height)))
-                    {
-                        context.DrawGeometry(null, new Pen(new SolidColorBrush(Color.FromArgb(60, colour.R, colour.G, colour.B)), width * 3.2, lineCap: PenLineCap.Round), geometry);
                         context.DrawGeometry(null, new Pen(new SolidColorBrush(colour), width, lineCap: PenLineCap.Round), geometry);
-                    }
-                if (!double.IsNaN(shimmer) && !IsRunning && _shownProgress < 1)
-                    using (context.PushClip(new Rect(shimmer, 0, 80, Bounds.Height)))
-                        context.DrawGeometry(null, new Pen(new SolidColorBrush(Color.FromArgb(110, colour.R, colour.G, colour.B)), width, lineCap: PenLineCap.Round), geometry);
             }
         }
-
-        // Sparks ride the copy front while the export runs.
-        if (IsRunning && !Motion.Reduced && _shownProgress is > 0 and < 1)
-            foreach (var item in placed.Where(item => item.Parent is not null && item.Parent.At.X < threshold && item.At.X >= threshold - 4))
-            {
-                var colour = item.Node.Colour ?? item.Parent!.Node.Colour ?? Accent;
-                var span = Math.Max(1, item.At.X - item.Parent!.At.X);
-                var t = Math.Clamp((threshold - item.Parent.At.X) / span, 0, 1);
-                var y = item.Parent.At.Y + (item.At.Y - item.Parent.At.Y) * (3 * t * t - 2 * t * t * t);
-                var flicker = 0.7 + 0.3 * Math.Sin(Clock * 18 + item.At.Y);
-                context.DrawEllipse(new ImmutableSolidColorBrush(Color.FromArgb((byte)(90 * flicker), colour.R, colour.G, colour.B)), null, new Point(threshold, y), 7, 7);
-                context.DrawEllipse(new ImmutableSolidColorBrush(Colors.White), null, new Point(threshold, y), 2, 2);
-            }
 
         foreach (var item in placed)
         {
@@ -185,46 +163,41 @@ public sealed class ExportMap : AmbientControl
             var radius = item.Depth == 0 ? 7 : 3 + 4 * Math.Sqrt(item.Node.Files / (double)maxFiles);
             using (context.PushOpacity(appear * (hasNew && item.Node.New == 0 && item.Depth > 0 ? 0.5 : 1)))
             {
-                // An update: the branches that carry new files breathe a ring, the ones already in the project step back.
+                // An update: the branches that carry new files wear a ring, the ones already in the project step back.
                 if (item.Node.New > 0 && item.Depth > 0)
-                {
-                    var breath = Motion.Reduced ? 0.5 : 0.5 + 0.5 * Math.Sin(Clock * 3);
-                    context.DrawEllipse(null, new Pen(new SolidColorBrush(Color.FromArgb((byte)(120 + 100 * breath), Oiii.R, Oiii.G, Oiii.B)), 1.4), item.At, radius + 4 + 2 * breath, radius + 4 + 2 * breath);
-                }
-                if (lit || item.Depth == 0)
-                    context.DrawEllipse(new ImmutableSolidColorBrush(Color.FromArgb(50, colour.R, colour.G, colour.B)), null, item.At, radius + 6, radius + 6);
+                    context.DrawEllipse(null, new Pen(new SolidColorBrush(Oiii), 1.4), item.At, radius + 4, radius + 4);
                 if (_flash > 0)
                     context.DrawEllipse(null, new Pen(new SolidColorBrush(Color.FromArgb((byte)(160 * _flash), Oiii.R, Oiii.G, Oiii.B)), 1.2), item.At, radius + 4 + 16 * (1 - _flash), radius + 4 + 16 * (1 - _flash));
                 context.DrawEllipse(lit || item.Depth == 0 ? new ImmutableSolidColorBrush(colour) : new ImmutableSolidColorBrush(Color.Parse("#0C1126")),
                     new Pen(new SolidColorBrush(colour), 1.3), item.At, radius, radius);
 
                 var leaf = item.Node.Children.Count == 0 || item.Depth >= MaxDepth;
-                var name = new FormattedText(item.Node.Name, culture, FlowDirection.LeftToRight, item.Depth == 0 ? Display : Body, item.Depth == 0 ? 12 : 11, Fg)
+                var name = new FormattedText(item.Node.Name, culture, FlowDirection.LeftToRight, Body, item.Depth == 0 ? 12 : 11, Fg)
                 {
-                    MaxTextWidth = leaf ? 236 : 170, MaxLineCount = 1, Trimming = TextTrimming.CharacterEllipsis
+                    MaxTextWidth = leaf ? 236 : 150, MaxLineCount = 1, Trimming = TextTrimming.CharacterEllipsis
                 };
-                var countText = item.Node.Files == 1 ? "1 file" : $"{item.Node.Files} file";
+                var countText = item.Node.Files == 1 ? "1 file" : $"{item.Node.Files} {(AstroForge.App.Services.UiFormat.English ? "files" : "file")}";
                 if (item.Node.New > 0) countText += $" · +{item.Node.New} {CanvasText.T("nuovi")}";
-                var count = new FormattedText(countText, culture, FlowDirection.LeftToRight, Mono, 9, item.Node.New > 0 ? new SolidColorBrush(Oiii) : Muted);
+                var count = new FormattedText(countText, culture, FlowDirection.LeftToRight, Plain, 11, item.Node.New > 0 ? new SolidColorBrush(Oiii) : Muted);
                 if (leaf)
                 {
-                    context.DrawText(name, new Point(item.At.X + radius + 8, item.At.Y - name.Height + 2));
+                    context.DrawText(name, new Point(item.At.X + radius + 8, item.At.Y - name.Height + 1));
                     context.DrawText(count, new Point(item.At.X + radius + 8, item.At.Y + 1));
                 }
                 else
                 {
-                    // Branch labels sit above their node on a dark plate, clear of the links that leave it.
-                    var origin = new Point(item.At.X - 4, item.At.Y - radius - name.Height - count.Height - 3);
-                    context.DrawRectangle(LabelPlate, null, new Rect(origin.X - 4, origin.Y - 1, Math.Max(name.Width, count.Width) + 8, name.Height + count.Height + 3), 5, 5);
+                    // A branch label is one line above its node, on a dark plate: two lines ran into the branch above.
+                    var origin = new Point(item.At.X - 4, item.At.Y - radius - name.Height - 4);
+                    context.DrawRectangle(LabelPlate, null, new Rect(origin.X - 4, origin.Y - 1, name.Width + count.Width + 16, name.Height + 2), 4, 4);
                     context.DrawText(name, origin);
-                    context.DrawText(count, new Point(origin.X, origin.Y + name.Height));
+                    context.DrawText(count, new Point(origin.X + name.Width + 8, origin.Y + name.Height - count.Height));
                 }
             }
         }
 
         if (IsPreview)
         {
-            var caption = new FormattedText(CanvasText.T("struttura provvisoria · calibrazioni da completare"), culture, FlowDirection.LeftToRight, Mono, 9.5, Muted);
+            var caption = new FormattedText(CanvasText.T("struttura provvisoria · calibrazioni da completare"), culture, FlowDirection.LeftToRight, Plain, 11, Muted);
             context.DrawText(caption, new Point(Bounds.Width - caption.Width, Bounds.Height - caption.Height));
         }
     }

@@ -84,7 +84,8 @@ public static class AppStateStore
     {
         try
         {
-            if (!File.Exists(FilePath)) return new();
+            // A first run starts without motion when the system asks for that; afterwards the Menu switch decides.
+            if (!File.Exists(FilePath)) return new() { ReducedMotion = SystemPreferences.PrefersReducedMotion() };
             var state = JsonSerializer.Deserialize<AppState>(SettingsMigration.Migrate(File.ReadAllText(FilePath)), Options) ?? new();
             state.Overrides = new(state.Overrides, PathIdentity.Comparer);
             state.EquipmentProfiles = EquipmentOverride.Normalize(state.EquipmentProfiles);

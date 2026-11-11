@@ -30,7 +30,7 @@ public static class CatalogBrowser
                 if (item is null) return new Panel();
                 var row = new Grid { ColumnDefinitions = new ColumnDefinitions("*,Auto") };
                 row.Children.Add(new TextBlock { Text = name(item), TextTrimming = Avalonia.Media.TextTrimming.CharacterEllipsis, VerticalAlignment = VerticalAlignment.Center });
-                var info = new TextBlock { Text = detail(item), Classes = { "mono", "muted" }, FontSize = 10.5, Margin = new Thickness(12, 0, 0, 0), VerticalAlignment = VerticalAlignment.Center };
+                var info = new TextBlock { Text = detail(item), Classes = { "mono", "muted" }, FontSize = 11, Margin = new Thickness(12, 0, 0, 0), VerticalAlignment = VerticalAlignment.Center };
                 Grid.SetColumn(info, 1);
                 row.Children.Add(info);
                 return row;

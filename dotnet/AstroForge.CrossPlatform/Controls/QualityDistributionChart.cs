@@ -36,7 +36,7 @@ public sealed class QualityDistributionChart : Control
         var bounds = Bounds.Deflate(14);
         if (_rows.Count == 0 || bounds.Width < 120 || bounds.Height < 80)
         {
-            DrawText(context, "La distribuzione apparirà dopo l’analisi della serie", new Point(bounds.X, bounds.Y + 18), "#7F93AB", 12);
+            DrawText(context, CanvasText.T("La distribuzione apparirà dopo l’analisi della serie"), new Point(bounds.X, bounds.Y + 18), "#A3ABCD", 12);
             return;
         }
 
@@ -56,7 +56,7 @@ public sealed class QualityDistributionChart : Control
         {
             var y = plot.Y + plot.Height * grid / 4;
             context.DrawLine(new Pen(Brush.Parse("#243246"), 1), new Point(plot.X, y), new Point(plot.Right, y));
-            DrawText(context, Math.Round(maxCount * (4 - grid) / 4d).ToString("0"), new Point(bounds.X + 4, y - 7), "#61758E", 9);
+            DrawText(context, Math.Round(maxCount * (4 - grid) / 4d).ToString("0"), new Point(bounds.X + 4, y - 7), "#A3ABCD", 11);
         }
 
         var binWidth = plot.Width / bins;
@@ -65,7 +65,7 @@ public sealed class QualityDistributionChart : Control
             var height = plot.Height * counts[index] / maxCount;
             var left = plot.X + index * binWidth + 1;
             var centerScore = _maximum * (index + .5) / bins;
-            var color = centerScore >= Threshold ? "#B9FFAB56" : "#A83AD3C6";
+            var color = centerScore >= Threshold ? "#B9FFC27A" : "#A83FE0D0";
             context.DrawRectangle(Brush.Parse(color), null, new Rect(left, plot.Bottom - height, Math.Max(2, binWidth - 3), height));
         }
 
@@ -77,24 +77,28 @@ public sealed class QualityDistributionChart : Control
             var selected = ReferenceEquals(row, SelectedItem);
             var point = new Point(x, plot.Bottom + 8 + index % 3 * 5);
             _points.Add((point, row));
-            var brush = selected ? Brush.Parse("#70FFF0") : row.IsExcluded ? Brush.Parse("#BE6BFF") : row.IsSuspect ? Brush.Parse("#FFAA55") : Brush.Parse("#90A8C2");
+            var brush = selected ? Brush.Parse("#EEF1FF") : row.IsExcluded ? Brush.Parse("#8E97BD") : row.IsSuspect ? Brush.Parse("#FFC27A") : Brush.Parse("#3FE0D0");
             context.DrawEllipse(brush, selected ? new Pen(Brushes.White, 1) : null, point, selected ? 4 : row.IsSuspect || row.IsExcluded ? 3.3 : 2.5, selected ? 4 : row.IsSuspect || row.IsExcluded ? 3.3 : 2.5);
         }
 
-        context.DrawLine(new Pen(Brush.Parse("#FFAA55"), 1.5, dashStyle: new DashStyle([4, 3], 0)), new Point(thresholdX, plot.Y), new Point(thresholdX, plot.Bottom + 13));
-        DrawText(context, $"σ {Threshold:0.0}", new Point(Math.Min(plot.Right - 42, thresholdX + 5), plot.Y + 2), "#FFAA55", 10);
+        context.DrawLine(new Pen(Brush.Parse("#FFC27A"), 1.5, dashStyle: new DashStyle([4, 3], 0)), new Point(thresholdX, plot.Y), new Point(thresholdX, plot.Bottom + 13));
+        DrawText(context, $"σ {Threshold:0.0}", new Point(Math.Min(plot.Right - 46, thresholdX + 5), plot.Y + 2), "#FFC27A", 11);
         if (SelectedItem is { Error: null })
         {
             var selectedX = plot.X + Math.Clamp(SelectedItem.OutlierScore / _maximum, 0, 1) * plot.Width;
-            context.DrawLine(new Pen(Brush.Parse("#70FFF0"), 1.3, dashStyle: new DashStyle([3, 3], 0)), new Point(selectedX, plot.Y), new Point(selectedX, plot.Bottom + 13));
+            context.DrawLine(new Pen(Brush.Parse("#EEF1FF"), 1.3, dashStyle: new DashStyle([3, 3], 0)), new Point(selectedX, plot.Y), new Point(selectedX, plot.Bottom + 13));
         }
 
         for (var tick = 0; tick <= 4; tick++)
-            DrawText(context, (_maximum * tick / 4d).ToString("0.0"), new Point(plot.X + plot.Width * tick / 4d - 7, bounds.Bottom - 12), "#71859D", 9);
+            DrawText(context, (_maximum * tick / 4d).ToString("0.0"), new Point(plot.X + plot.Width * tick / 4d - 8, bounds.Bottom - 14), "#A3ABCD", 11);
         var suspectCount = _rows.Count(row => row.IsSuspect);
-        DrawText(context, $"SCORE · {_rows.Count} FRAME", new Point(plot.X, bounds.Y + 3), "#ADC0D7", 10);
-        DrawText(context, $"OK {_rows.Count - suspectCount}", new Point(plot.X + 120, bounds.Y + 3), "#3AD3C6", 10);
-        DrawText(context, $"CHECK {suspectCount}", new Point(plot.X + 180, bounds.Y + 3), "#FFAB56", 10);
+        var english = AstroForge.App.Services.UiFormat.English;
+        var title = english ? $"Outlier score, {_rows.Count} frames" : $"Punteggio di anomalia, {_rows.Count} frame";
+        var regular = english ? $"{_rows.Count - suspectCount} regular" : $"{_rows.Count - suspectCount} regolari";
+        var suspects = english ? $"{suspectCount} suspect" : $"{suspectCount} sospetti";
+        DrawText(context, title, new Point(plot.X, bounds.Y + 3), "#EEF1FF", 11);
+        DrawText(context, regular, new Point(plot.X + 200, bounds.Y + 3), "#3FE0D0", 11);
+        DrawText(context, suspects, new Point(plot.X + 290, bounds.Y + 3), "#FFC27A", 11);
     }
 
     protected override void OnPointerPressed(PointerPressedEventArgs e)

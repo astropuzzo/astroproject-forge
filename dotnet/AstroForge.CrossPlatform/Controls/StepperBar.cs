@@ -16,9 +16,9 @@ public sealed record ShellStep(string Title, string Detail, StepState State, boo
 
 /// <summary>
 /// The four steps of a project in one row: a numbered node per step, a line between them that is drawn in as the work moves on,
-/// a check on every finished step and a breathing ring on the one on screen. Click or Enter opens a step.
+/// a check on every finished step and a ring around the one on screen. Click, or arrows and Enter, opens a step.
 /// </summary>
-public sealed class StepperBar : AmbientControl
+public sealed class StepperBar : Control
 {
     public static readonly StyledProperty<IReadOnlyList<ShellStep>?> StepsProperty =
         AvaloniaProperty.Register<StepperBar, IReadOnlyList<ShellStep>?>(nameof(Steps));
@@ -30,12 +30,15 @@ public sealed class StepperBar : AmbientControl
     private static readonly Typeface Small = new(FontFamily.Default);
     private static readonly Typeface Mono = new(new FontFamily("avares://AstroProjectForge/Assets/Fonts#JetBrains Mono"), FontStyle.Normal, FontWeight.SemiBold);
     private static readonly IBrush Fg = new ImmutableSolidColorBrush(Color.Parse("#EEF1FF"));
-    private static readonly IBrush Muted = new ImmutableSolidColorBrush(Color.Parse("#8E97BD"));
-    private static readonly IBrush Dim = new ImmutableSolidColorBrush(Color.Parse("#5B6490"));
+    private static readonly IBrush Muted = new ImmutableSolidColorBrush(Color.Parse("#A3ABCD"));
+    private static readonly IBrush Accent = new ImmutableSolidColorBrush(Color.Parse("#9DB8FF"));
+    private static readonly IBrush Ok = new ImmutableSolidColorBrush(Color.Parse("#7CF2C9"));
+    private static readonly IPen Lit = new ImmutablePen(new ImmutableSolidColorBrush(Color.Parse("#9DB8FF")), 2, lineCap: PenLineCap.Round);
+    private static readonly IPen NowRing = new ImmutablePen(new ImmutableSolidColorBrush(Color.Parse("#809DB8FF")), 1.5);
     private static readonly IBrush Warn = new ImmutableSolidColorBrush(Color.Parse("#FFC27A"));
     private static readonly IBrush Ink = new ImmutableSolidColorBrush(Color.Parse("#07102A"));
     private static readonly IBrush Hover = new ImmutableSolidColorBrush(Color.Parse("#0F9DB8FF"));
-    private static readonly IPen FocusRing = new ImmutablePen(new ImmutableSolidColorBrush(Color.Parse("#9DB8FF")), 1.5);
+    private static readonly IPen FocusRing = new ImmutablePen(new ImmutableSolidColorBrush(Color.Parse("#EEF1FF")), 2);
     private static readonly IPen Ghost = new ImmutablePen(new ImmutableSolidColorBrush(Color.Parse("#2E96AAFF")), 1.2, new ImmutableDashStyle([2, 4], 0));
     private static readonly IPen DimRing = new ImmutablePen(new ImmutableSolidColorBrush(Color.Parse("#4D96AAFF")), 1.4);
     private static readonly IPen WarnRing = new ImmutablePen(new ImmutableSolidColorBrush(Color.Parse("#FFC27A")), 1.6);
@@ -57,8 +60,6 @@ public sealed class StepperBar : AmbientControl
     public event EventHandler<int>? StepInvoked;
 
     public IReadOnlyList<ShellStep>? Steps { get => GetValue(StepsProperty); set => SetValue(StepsProperty, value); }
-
-    protected override bool WantsAmbient => Steps?.Any(step => step.State == StepState.Now) == true;
 
     protected override Size MeasureOverride(Size availableSize) => new(double.IsInfinity(availableSize.Width) ? 640 : availableSize.Width, DesignHeight);
 
@@ -141,18 +142,13 @@ public sealed class StepperBar : AmbientControl
         if (steps.Count == 0 || Bounds.Width < 40) return;
 
         // The line between nodes: a dotted ghost, with the finished stretch drawn over it.
-        var lit = new ImmutablePen(new LinearGradientBrush
-        {
-            StartPoint = new RelativePoint(0, 0, RelativeUnit.Relative), EndPoint = new RelativePoint(1, 0, RelativeUnit.Relative),
-            GradientStops = { new GradientStop(Color.Parse("#3FE0D0"), 0), new GradientStop(Color.Parse("#9DB8FF"), 1) }
-        }.ToImmutable(), 2, lineCap: PenLineCap.Round);
         for (var index = 0; index < steps.Count - 1; index++)
         {
             var from = new Point(CentreX(index) + NodeRadius + 8, CentreY);
             var to = new Point(CentreX(index + 1) - NodeRadius - 8, CentreY);
             context.DrawLine(Ghost, from, to);
             var amount = Math.Clamp(_lit - index, 0, 1);
-            if (amount > 0) context.DrawLine(lit, from, new Point(from.X + (to.X - from.X) * amount, CentreY));
+            if (amount > 0) context.DrawLine(Lit, from, new Point(from.X + (to.X - from.X) * amount, CentreY));
         }
 
         for (var index = 0; index < steps.Count; index++)
@@ -160,8 +156,8 @@ public sealed class StepperBar : AmbientControl
             var step = steps[index];
             var centre = new Point(CentreX(index), CentreY);
             var cell = CellOf(index);
-            if (index == _hover) context.DrawRectangle(Hover, null, cell.Deflate(new Thickness(6, 0, 6, 2)), 12, 12);
-            if (IsFocused && index == _focus && IsKeyboardFocusWithin) context.DrawRectangle(null, FocusRing, cell.Deflate(new Thickness(6, 0, 6, 2)), 12, 12);
+            if (index == _hover) context.DrawRectangle(Hover, null, cell.Deflate(new Thickness(6, 0, 6, 2)), 10, 10);
+            if (IsFocused && index == _focus && IsKeyboardFocusWithin) context.DrawRectangle(null, FocusRing, cell.Deflate(new Thickness(6, 1, 6, 2)), 10, 10);
             DrawNode(context, step, centre, index);
             DrawLabels(context, step, cell, centre);
         }
@@ -174,36 +170,22 @@ public sealed class StepperBar : AmbientControl
         var radius = NodeRadius * pop;
         var number = (index + 1).ToString(CultureInfo.InvariantCulture);
 
-        if (isNow)
-        {
-            // A soft ring breathes out from the step on screen.
-            var phase = Clock * 0.5 % 1;
-            context.DrawEllipse(new RadialGradientBrush { GradientStops = { new GradientStop(Color.FromArgb(70, 157, 184, 255), 0), new GradientStop(Color.FromArgb(0, 157, 184, 255), 1) } }, null, centre, radius + 14, radius + 14);
-            context.DrawEllipse(null, new Pen(new SolidColorBrush(Color.FromArgb((byte)(130 * (1 - phase)), 157, 184, 255)), 1.2), centre, radius + 3 + 9 * phase, radius + 3 + 9 * phase);
-        }
+        if (isNow) context.DrawEllipse(null, NowRing, centre, radius + 5, radius + 5);
         if (step.Complete)
         {
-            context.DrawEllipse(new LinearGradientBrush
-            {
-                StartPoint = new RelativePoint(0, 0, RelativeUnit.Relative), EndPoint = new RelativePoint(1, 1, RelativeUnit.Relative),
-                GradientStops = { new GradientStop(Color.Parse("#7CF2C9"), 0), new GradientStop(Color.Parse("#9DB8FF"), 1) }
-            }, null, centre, radius, radius);
+            context.DrawEllipse(Ok, null, centre, radius, radius);
             DrawCheck(context, centre, radius);
             return;
         }
         if (isNow)
         {
-            context.DrawEllipse(new LinearGradientBrush
-            {
-                StartPoint = new RelativePoint(0, 0, RelativeUnit.Relative), EndPoint = new RelativePoint(1, 1, RelativeUnit.Relative),
-                GradientStops = { new GradientStop(Color.Parse("#F4F6FF"), 0), new GradientStop(Color.Parse("#9DB8FF"), 1) }
-            }, null, centre, radius, radius);
+            context.DrawEllipse(Accent, null, centre, radius, radius);
             DrawGlyph(context, number, centre, Ink);
             return;
         }
         var warn = step.State == StepState.Attention;
         context.DrawEllipse(new SolidColorBrush(Color.FromArgb(warn ? (byte)38 : (byte)18, warn ? (byte)255 : (byte)157, warn ? (byte)194 : (byte)184, warn ? (byte)122 : (byte)255)), warn ? WarnRing : DimRing, centre, radius - 1, radius - 1);
-        DrawGlyph(context, warn ? "!" : number, centre, warn ? Warn : step.Openable ? Muted : Dim);
+        DrawGlyph(context, warn ? "!" : number, centre, warn ? Warn : Muted);
     }
 
     private static void DrawGlyph(DrawingContext context, string text, Point centre, IBrush brush)
@@ -230,8 +212,8 @@ public sealed class StepperBar : AmbientControl
     private static void DrawLabels(DrawingContext context, ShellStep step, Rect cell, Point centre)
     {
         var pending = step.State == StepState.Pending;
-        var titleBrush = pending && !step.Openable ? Dim : Fg;
-        var detailBrush = step.Attention ? Warn : pending ? Dim : Muted;
+        var titleBrush = pending && !step.Openable ? Muted : Fg;
+        var detailBrush = step.Attention ? Warn : Muted;
         var width = Math.Max(40, cell.Width - 16);
         var title = new FormattedText(step.Title, CultureInfo.CurrentCulture, FlowDirection.LeftToRight, Body, 13.5, titleBrush) { MaxTextWidth = width, MaxLineCount = 1, Trimming = TextTrimming.CharacterEllipsis, TextAlignment = TextAlignment.Center };
         var detail = new FormattedText(step.Detail, CultureInfo.CurrentCulture, FlowDirection.LeftToRight, Small, 11, detailBrush) { MaxTextWidth = width, MaxLineCount = 1, Trimming = TextTrimming.CharacterEllipsis, TextAlignment = TextAlignment.Center };

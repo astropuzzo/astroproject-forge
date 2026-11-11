@@ -26,11 +26,12 @@ public sealed class SensorFrame : Control
     public static readonly StyledProperty<string?> NoteProperty = AvaloniaProperty.Register<SensorFrame, string?>(nameof(Note));
 
     private static readonly Typeface Mono = new(new FontFamily("avares://AstroProjectForge/Assets/Fonts#JetBrains Mono"));
+    private static readonly Typeface Body = new(new FontFamily("Inter"));
     private static readonly IBrush Void = new ImmutableSolidColorBrush(Color.Parse("#04060D"));
     private static readonly IBrush Shade = new ImmutableSolidColorBrush(Color.Parse("#7304060D"));
     private static readonly IBrush Pill = new ImmutableSolidColorBrush(Color.Parse("#B004060D"));
     private static readonly IBrush Fg = new ImmutableSolidColorBrush(Color.Parse("#EEF2FF"));
-    private static readonly IBrush Soft = new ImmutableSolidColorBrush(Color.Parse("#B3BECDFF"));
+    private static readonly IBrush Soft = new ImmutableSolidColorBrush(Color.Parse("#C9D3F5"));
     private static readonly IPen Outline = new ImmutablePen(new ImmutableSolidColorBrush(Color.Parse("#EEF2FF")), 1.5);
     private static readonly IPen Other = new ImmutablePen(new ImmutableSolidColorBrush(Color.Parse("#99BECDFF")), 1, new ImmutableDashStyle([4, 5], 0));
     private static readonly IPen Ruler = new ImmutablePen(new ImmutableSolidColorBrush(Color.Parse("#E6EEF2FF")), 1.5);
@@ -146,8 +147,8 @@ public sealed class SensorFrame : Control
             if (scene?.Target is { } mark) DrawTarget(context, mark, At(mark.Xi, mark.Eta), panels);
             DrawMoon(context, bounds, frame, pxPerDeg);
         }
-        var note = string.IsNullOrWhiteSpace(Note) ? null : new FormattedText(Note, CultureInfo.CurrentCulture, FlowDirection.LeftToRight, Mono, 10.5, Soft)
-        { MaxTextWidth = Math.Max(120, Math.Min(300, bounds.Width * 0.5 - 56)), MaxLineCount = 3, Trimming = TextTrimming.CharacterEllipsis };
+        var note = string.IsNullOrWhiteSpace(Note) ? null : new FormattedText(Note, CultureInfo.CurrentCulture, FlowDirection.LeftToRight, Body, 11, Soft)
+        { MaxTextWidth = Math.Max(120, Math.Min(320, bounds.Width * 0.5 - 56)), MaxLineCount = 6, Trimming = TextTrimming.CharacterEllipsis };
         var floor = bounds.Height - 118 - 14;
         // The compass and the ruler sit between the readout and the note; a short card has no room for them.
         var rulerBaseline = note is null ? floor : floor - note.Height - 12;
@@ -167,9 +168,12 @@ public sealed class SensorFrame : Control
             var points = SkyPointings.Corners(panel.Xi, panel.Eta, rig.WidthDeg, rig.HeightDeg, panel.AngleDeg).Select(corner => at(corner.Xi, corner.Eta)).ToArray();
             context.DrawGeometry(null, pen, Polygon(points));
             if (index > 0) continue;
-            var anchor = points.OrderBy(point => point.Y).ThenBy(point => point.X).First();
-            var width = new FormattedText(rig.Label, CultureInfo.CurrentCulture, FlowDirection.LeftToRight, Mono, 10.5, brush).Width;
-            DrawText(context, rig.Label, brush, new Point(Math.Clamp(anchor.X + 8, 8, Math.Max(8, bounds.Width - width - 14)), Math.Clamp(anchor.Y + 6, 32, Math.Max(32, bounds.Height - 118 - 24))), 10.5, pill: true);
+            // The name goes inside the frame, under the middle of its upper edge, where no line crosses it.
+            var upper = points.OrderBy(point => point.Y).Take(2).ToArray();
+            var edge = new Point((upper[0].X + upper[1].X) / 2, (upper[0].Y + upper[1].Y) / 2);
+            var inside = Toward(edge, new Point(points.Average(point => point.X), points.Average(point => point.Y)), 16);
+            var width = TextWidth(rig.Label, 11);
+            DrawText(context, rig.Label, brush, new Point(Math.Clamp(inside.X - width / 2, 12, Math.Max(12, bounds.Width - width - 16)), Math.Clamp(inside.Y - 7, 36, Math.Max(36, bounds.Height - 118 - 24))), 11, pill: true);
         }
     }
 
@@ -241,13 +245,14 @@ public sealed class SensorFrame : Control
             context.DrawEllipse(MoonFill, MoonEdge, centre, radius, radius);
             foreach (var (dx, dy, rx, ry) in Maria)
                 context.DrawEllipse(MoonSea, null, new Point(centre.X + dx * radius, centre.Y + dy * radius), rx * radius, ry * radius);
-            DrawText(context, label, Soft, new Point(centre.X - TextWidth(label, 10) / 2, centre.Y + radius + 6), 10);
+            var width = TextWidth(label, 11);
+            DrawText(context, label, Soft, new Point(Math.Min(centre.X - width / 2, frame.Left - 12 - width), centre.Y - radius - 20), 11);
         }
         else
         {
             var centre = frame.Center;
             context.DrawEllipse(null, MoonRing, centre, radius, radius);
-            DrawText(context, label, Soft, new Point(centre.X - TextWidth(label, 10) / 2, Math.Max(32, centre.Y - radius - 18)), 10, pill: true);
+            DrawText(context, label, Soft, new Point(centre.X - TextWidth(label, 11) / 2, centre.Y + radius + 6), 11, pill: true);
         }
     }
 
@@ -270,8 +275,8 @@ public sealed class SensorFrame : Control
         context.DrawEllipse(Pill, null, centre, arm + 11, arm + 11);
         context.DrawLine(Ruler, centre, new Point(centre.X, centre.Y - arm));
         context.DrawLine(Ruler, centre, new Point(centre.X - arm, centre.Y));
-        DrawText(context, "N", Fg, new Point(centre.X - 3, centre.Y - arm - 14), 10);
-        DrawText(context, "E", Fg, new Point(centre.X - arm - 13, centre.Y - 6), 10);
+        DrawText(context, "N", Fg, new Point(centre.X - 3, centre.Y - arm - 15), 11);
+        DrawText(context, "E", Fg, new Point(centre.X - arm - 14, centre.Y - 7), 11);
 
         var steps = new[] { 0.02, 0.05, 0.1, 0.25, 0.5, 1, 2, 5, 10, 20, 40 };
         var step = steps.LastOrDefault(candidate => candidate * pxPerDeg <= 120, steps[0]);
@@ -284,7 +289,7 @@ public sealed class SensorFrame : Control
         context.DrawLine(Ruler, new Point(left, y), new Point(left + length, y));
         context.DrawLine(Ruler, new Point(left, y - 4), new Point(left, y + 4));
         context.DrawLine(Ruler, new Point(left + length, y - 4), new Point(left + length, y + 4));
-        DrawText(context, label, Fg, new Point(left, y - 19), 10);
+        DrawText(context, label, Fg, new Point(left, y - 20), 11);
     }
 
     private void DrawTexts(DrawingContext context, Rect bounds, FormattedText? note, double floor)

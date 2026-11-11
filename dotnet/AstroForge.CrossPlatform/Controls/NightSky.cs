@@ -35,8 +35,8 @@ public sealed class NightSky : Control
     private const double LabelWidth = 68, AxisHeight = 16;
     private static readonly Typeface Mono = new(new FontFamily("avares://AstroProjectForge/Assets/Fonts#JetBrains Mono"));
     private static readonly Typeface Body = new(FontFamily.Default);
-    private static readonly IBrush Muted = new ImmutableSolidColorBrush(Color.Parse("#8E97BD"));
-    private static readonly IBrush Dim = new ImmutableSolidColorBrush(Color.Parse("#5B6490"));
+    private static readonly IBrush Muted = new ImmutableSolidColorBrush(Color.Parse("#A3ABCD"));
+    private static readonly IBrush Dim = new ImmutableSolidColorBrush(Color.Parse("#8E97BD"));
     private static readonly IBrush Accent = new ImmutableSolidColorBrush(Color.Parse("#9DB8FF"));
     private static readonly IBrush Fg = new ImmutableSolidColorBrush(Color.Parse("#EEF1FF"));
     private static readonly IBrush MoonDark = new ImmutableSolidColorBrush(Color.Parse("#219DB8FF"));
@@ -185,7 +185,7 @@ public sealed class NightSky : Control
         foreach (var hour in new[] { 18, 20, 22, 24, 26, 28, 30 })
         {
             var text = hour == 24 ? CanvasText.T("00 mezzanotte") : (hour % 24).ToString("00", CultureInfo.InvariantCulture);
-            var axis = new FormattedText(text, CultureInfo.CurrentCulture, FlowDirection.LeftToRight, Mono, 9, hour == 24 ? Accent : Dim);
+            var axis = new FormattedText(text, CultureInfo.CurrentCulture, FlowDirection.LeftToRight, Mono, 11, hour == 24 ? Accent : Dim);
             var x = Math.Clamp(X(hour) - axis.Width / 2, plot.X, bounds.Width - axis.Width);
             context.DrawText(axis, new Point(x, used.Bottom + 4));
         }

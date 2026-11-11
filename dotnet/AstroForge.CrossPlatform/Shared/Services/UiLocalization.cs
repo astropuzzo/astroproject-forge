@@ -22,10 +22,11 @@ public static partial class UiLocalization
     public static void ApplyCulture(string language)
     {
         var culture = CultureInfo.GetCultureInfo(NormalizeLanguage(language) == English ? "en-US" : "it-IT");
+        // Only the defaults: CurrentCulture set here would stick to this call's execution context and
+        // leave timers and continuations captured earlier formatting in the previous language.
         CultureInfo.DefaultThreadCurrentCulture = culture;
         CultureInfo.DefaultThreadCurrentUICulture = culture;
-        CultureInfo.CurrentCulture = culture;
-        CultureInfo.CurrentUICulture = culture;
+        UiFormat.SetLanguage(language);
     }
 
     public static string Translate(string? value, string language)
@@ -51,7 +52,7 @@ public static partial class UiLocalization
         match = NeedsResolution().Match(value);
         if (match.Success) return $"Review required · {match.Groups[1].Value} missing or ambiguous calibration assignments";
         match = FilesAnalyzed().Match(value);
-        if (match.Success) return $"{match.Groups[1].Value} files analyzed · {match.Groups[2].Value} cached · {match.Groups[3].Value} read · {match.Groups[4].Value} warnings";
+        if (match.Success) return $"{match.Groups[1].Value} files analysed · {match.Groups[2].Value} cached · {match.Groups[3].Value} read · {match.Groups[4].Value} warnings";
         match = FileCount().Match(value);
         if (match.Success) return $"{match.Groups[1].Value} files";
         match = WarningCount().Match(value);
@@ -148,7 +149,7 @@ public static partial class UiLocalization
     [GeneratedRegex("^(\\d+) linked sources?$")] private static partial Regex EnglishLinkedSources();
     [GeneratedRegex("^Ready for WBPP · (\\d+) Light frames with Flat, Dark and Bias assigned$")] private static partial Regex EnglishReadyForWbpp();
     [GeneratedRegex("^Review required · (\\d+) missing or ambiguous calibration assignments$")] private static partial Regex EnglishNeedsResolution();
-    [GeneratedRegex("^(\\d+) files analyzed · (\\d+) cached · (\\d+) read · (\\d+) warnings$")] private static partial Regex EnglishFilesAnalyzed();
+    [GeneratedRegex("^(\\d+) files analysed · (\\d+) cached · (\\d+) read · (\\d+) warnings$")] private static partial Regex EnglishFilesAnalyzed();
     [GeneratedRegex("^(\\d+) files$")] private static partial Regex EnglishFileCount();
     [GeneratedRegex("^(\\d+) warnings$")] private static partial Regex EnglishWarningCount();
     [GeneratedRegex("^(\\d+) to review$")] private static partial Regex EnglishReviewCount();

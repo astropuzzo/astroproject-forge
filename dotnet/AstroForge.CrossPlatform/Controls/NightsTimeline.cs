@@ -22,8 +22,8 @@ public sealed class NightsTimeline : Control
         AvaloniaProperty.Register<NightsTimeline, IReadOnlyList<NightBar>?>(nameof(Nights));
 
     private static readonly Typeface Mono = new(new FontFamily("avares://AstroProjectForge/Assets/Fonts#JetBrains Mono"));
-    private static readonly IBrush Muted = new ImmutableSolidColorBrush(Color.Parse("#8E97BD"));
-    private static readonly IBrush Dim = new ImmutableSolidColorBrush(Color.Parse("#5B6490"));
+    private static readonly IBrush Muted = new ImmutableSolidColorBrush(Color.Parse("#A3ABCD"));
+    private static readonly IBrush Dim = new ImmutableSolidColorBrush(Color.Parse("#8E97BD"));
     private static readonly IPen Grid = new ImmutablePen(new ImmutableSolidColorBrush(Color.Parse("#1496AAFF")), 1);
     private static readonly IPen Cumulative = new ImmutablePen(new ImmutableSolidColorBrush(Color.Parse("#EEF1FF")), 1.4, lineCap: PenLineCap.Round);
     private double _growth = 1;
@@ -60,7 +60,7 @@ public sealed class NightsTimeline : Control
         {
             var y = plot.Bottom - plot.Height * step / 2;
             context.DrawLine(Grid, new Point(plot.X, y), new Point(plot.Right, y));
-            var label = new FormattedText($"{maxHours * step / 2:0.#}h", CultureInfo.CurrentCulture, FlowDirection.LeftToRight, Mono, 9, Dim);
+            var label = new FormattedText($"{maxHours * step / 2:0.#}h", CultureInfo.CurrentCulture, FlowDirection.LeftToRight, Mono, 11, Dim);
             context.DrawText(label, new Point(0, y - 6));
         }
 
@@ -94,7 +94,7 @@ public sealed class NightsTimeline : Control
             var every = Math.Max(1, (int)Math.Ceiling(60 / slot));
             if (index % every == 0)
             {
-                var label = new FormattedText(nights[index].Label, CultureInfo.CurrentCulture, FlowDirection.LeftToRight, Mono, 9, Muted);
+                var label = new FormattedText(nights[index].Label, CultureInfo.CurrentCulture, FlowDirection.LeftToRight, Mono, 11, Muted);
                 context.DrawText(label, new Point(Math.Clamp(x + barWidth / 2 - label.Width / 2, plot.X, bounds.Width - label.Width), plot.Bottom + 8));
             }
         }

@@ -50,7 +50,7 @@ public sealed class GuidedTour : Panel
         footer.Children.Add(_next);
         _card = new Border
         {
-            Classes = { "card", "hero" },
+            Classes = { "card", "hero", "floating" },
             Background = new ImmutableSolidColorBrush(Color.Parse("#F20C1328")),
             Width = 360,
             Padding = new Thickness(20, 16),
@@ -94,7 +94,7 @@ public sealed class GuidedTour : Panel
         _index = index;
         var stop = _stops[index];
         _selectTab?.Invoke(stop.Tab);
-        _step.Text = string.Format(CanvasText.T("TOUR · {0} DI {1}"), index + 1, _stops.Count);
+        _step.Text = string.Format(CanvasText.T("Tour · {0} di {1}"), index + 1, _stops.Count);
         _title.Text = CanvasText.T(stop.Title);
         _body.Text = CanvasText.T(stop.Body);
         _back.Content = CanvasText.T("Indietro");
@@ -197,9 +197,9 @@ internal sealed class TourScrim : AmbientControl
         if (hole.Width < 8 || hole.Height < 8) return;
 
         // Finder reticle: a soft glow on the rim, corner brackets that breathe and a slow marching outline.
-        var breathe = Motion.Reduced ? 0.5 : 0.5 + 0.5 * Math.Sin(Clock * 2.2);
+        const double breathe = 0.5;
         context.DrawRectangle(null, new Pen(new SolidColorBrush(Color.FromArgb((byte)(40 + 40 * breathe), Oiii.R, Oiii.G, Oiii.B)), 6), hole, radius, radius);
-        context.DrawRectangle(null, new Pen(new SolidColorBrush(Color.FromArgb(150, Oiii.R, Oiii.G, Oiii.B)), 1, new DashStyle([4, 4], -Clock * 6)), hole, radius, radius);
+        context.DrawRectangle(null, new Pen(new SolidColorBrush(Color.FromArgb(150, Oiii.R, Oiii.G, Oiii.B)), 1, new DashStyle([4, 4], 0)), hole, radius, radius);
         var arm = Math.Min(22, Math.Min(hole.Width, hole.Height) / 3);
         var push = 5 + 3 * breathe;
         var pen = new Pen(new SolidColorBrush(Oiii), 2, lineCap: PenLineCap.Round);

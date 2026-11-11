@@ -56,7 +56,7 @@ public sealed partial class ObservatoryViewModel
             var panels = SkyPointings.Mosaic(SkyPointings.Panels(lights, Math.Max(0.05, 0.35 * smallest)), 3 * largest, MaxPanels);
             if (panels.Count == 0)
             {
-                Show(null, "", English ? "The files carry no sky coordinates (RA/DEC): the pointing is not known." : "Nei file non ci sono le coordinate del cielo (RA/DEC): non so dove puntava.");
+                Show(null, "", English ? "The headers carry no sky coordinates (RA/DEC), so the field cannot be placed on the sky." : "Negli header mancano le coordinate (RA/DEC), quindi il campo non si può collocare sul cielo.");
                 return;
             }
 
@@ -73,19 +73,19 @@ public sealed partial class ObservatoryViewModel
 
             if (!_main.ShowRealSky)
             {
-                Show(Scene(null, centre, largest, panels, target, rigs: rigs), caption, (English ? "The real sky is off (Menu)." : "Il cielo reale è spento (Menu).") + details);
+                Show(Scene(null, centre, largest, panels, target, rigs: rigs), caption, (English ? "The real sky is turned off. Turn it on from the Menu." : "Il cielo reale è disattivato. Si riattiva dal Menu.") + details);
                 return;
             }
 
             // The panels first, on an empty sky, so the frame is where it belongs while the picture is on its way.
-            Show(Scene(null, centre, largest, panels, target, rigs: rigs), caption, (English ? "Loading the sky…" : "Carico il cielo…") + details);
+            Show(Scene(null, centre, largest, panels, target, rigs: rigs), caption, (English ? "Loading the sky picture…" : "Caricamento della foto del cielo…") + details);
             var extent = Extent(centre, largest, panels, rigs);
             var image = await _skyClient.GetAsync(centre.Ra, centre.Dec, Math.Max(4.5 * largest, 2.5 * extent), SkyPicturePixels, cancel);
             cancel.ThrowIfCancellationRequested();
             if (image is null)
             {
                 Show(Scene(null, centre, largest, panels, target, rigs: rigs), caption,
-                    (English ? "The sky is not reachable (offline?): the frame is still where the data were taken." : "Cielo non raggiungibile (offline?): il riquadro è comunque dove sono stati presi i dati.") + details);
+                    (English ? "The sky picture could not be downloaded. Check the connection. The frame is still where the data were taken." : "Non è stato possibile scaricare la foto del cielo. Controlla la connessione. Il riquadro resta dove sono stati presi i dati.") + details);
                 return;
             }
 
@@ -97,7 +97,7 @@ public sealed partial class ObservatoryViewModel
         catch (OperationCanceledException) { /* a newer sky is being built */ }
         catch (Exception exception) when (exception is HttpRequestException or IOException or InvalidOperationException or ArgumentException)
         {
-            if (!cancel.IsCancellationRequested) Show(null, "", English ? "The sky could not be loaded." : "Non sono riuscito a caricare il cielo.");
+            if (!cancel.IsCancellationRequested) Show(null, "", English ? "The sky picture could not be loaded. Check the connection and analyse again." : "Non è stato possibile caricare la foto del cielo. Controlla la connessione e rianalizza.");
         }
     }
 
@@ -161,9 +161,8 @@ public sealed partial class ObservatoryViewModel
 
     internal static string RigColour(int order) => new[] { "#FFC27A", "#8FE3B0", "#C79BFF", "#7FD3FF", "#FF9DB8" }[order % 5];
 
-    private string RigLabel(int number, InstrumentProfile profile) => English
-        ? $"Setup {number} · {profile.FocalMm:0} mm · {profile.FieldOfView!.Value.Width:0.0}°"
-        : $"Setup {number} · {profile.FocalMm:0} mm · {profile.FieldOfView!.Value.Width:0.0}°";
+    private string RigLabel(int number, InstrumentProfile profile) =>
+        $"{(English ? "Rig" : "Strumento")} {number} · {profile.FocalMm:0} mm · {Number(profile.FieldOfView!.Value.Width, "0.0")}°";
 
     /// <summary>Where the position and the angle of the frames come from, and the mount's own coordinates when they were far off.</summary>
     private string SkyDetails(IReadOnlyList<SkyPanel> panels)
@@ -171,21 +170,21 @@ public sealed partial class ObservatoryViewModel
         var main = panels[0];
         var position = main.PositionSource switch
         {
-            "wcs" => English ? "solved WCS" : "WCS risolto",
-            "object" => English ? "target" : "bersaglio",
-            _ => English ? "mount RA/DEC" : "RA/DEC montatura"
+            "wcs" => English ? "the plate solution (WCS)" : "soluzione astrometrica (WCS)",
+            "object" => English ? "the target's coordinates" : "coordinate del bersaglio",
+            _ => English ? "the mount's RA/DEC" : "RA/DEC della montatura"
         };
-        var angle = !panels.All(panel => panel.PositionAngleDeg is not null) ? (English ? "not recorded (upright)" : "non registrato (dritto)")
+        var angle = !panels.All(panel => panel.PositionAngleDeg is not null) ? (English ? "not in the headers, drawn upright" : "assente dagli header, disegnato dritto")
             : main.AngleSource switch
             {
-                "wcs" => English ? "WCS" : "WCS",
-                "rotator" => English ? "rotator" : "rotatore",
-                _ => English ? "declared" : "dichiarato"
+                "wcs" => English ? "from the plate solution" : "dalla soluzione astrometrica",
+                "rotator" => English ? "from the rotator" : "dal rotatore",
+                _ => English ? "as written in the headers" : "come scritto negli header"
             };
-        var text = English ? $"\nposition: {position} · angle: {angle}" : $"\nposizione: {position} · angolo: {angle}";
+        var text = English ? $"\nPosition from {position}. Angle {angle}." : $"\nPosizione da {position}. Angolo {angle}.";
         var off = panels.Max(panel => panel.MountDeviationDeg);
         if (off > 0.1)
-            text += English ? $"\nthe mount's RA/DEC were up to {Number(off, "0.0")}° off" : $"\nla montatura dava fino a {Number(off, "0.0")}° di scarto";
+            text += English ? $"\nThe mount's RA/DEC were up to {Number(off, "0.0")}° off." : $"\nLe RA/DEC della montatura sbagliavano fino a {Number(off, "0.0")}°.";
         return text;
     }
 
