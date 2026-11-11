@@ -360,7 +360,8 @@ internal static class AlgorithmQa
         var exact = Dark("dark-10.fits", -10);
         var warmer = Dark("dark-08.fits", -8);
         var closest = CalibrationMatcher.Find(light, [warmer, exact], FrameKind.Dark);
-        Assert(closest.IsAccepted && closest.Selected?.Frame == exact, $"Tra -10 °C e -8 °C deve vincere il Dark esatto, non {closest.Status}.");
+        // Neither frame says READOUTM or BAYERPAT: that is nothing to compare, not a tolerance, so the match is exact.
+        Assert(closest.Status == MatchStatus.Exact && closest.Selected?.Frame == exact, $"Tra -10 °C e -8 °C deve vincere il Dark esatto, non {closest.Status}.");
 
         var colder = Dark("dark-12.fits", -12);
         var symmetric = CalibrationMatcher.Find(light, [warmer, colder], FrameKind.Dark);

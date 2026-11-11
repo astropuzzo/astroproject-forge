@@ -139,16 +139,19 @@ public static class CalibrationMatcher
 
     private static void SameText(MatchCandidate result, string label, string? left, string? right, int points, bool required)
     {
+        if (left is null && right is null && !required) return;
         if (left is null || right is null) { Missing(result, label, required); return; }
         if (Normalize(left) == Normalize(right)) Pass(result, label, points); else Fail(result, label, left, right);
     }
     private static void Same<T>(MatchCandidate result, string label, T? left, T? right, int points, bool required) where T : struct
     {
+        if (!left.HasValue && !right.HasValue && !required) return;
         if (!left.HasValue || !right.HasValue) { Missing(result, label, required); return; }
         if (EqualityComparer<T>.Default.Equals(left.Value, right.Value)) Pass(result, label, points); else Fail(result, label, left.Value, right.Value);
     }
     private static void Within(MatchCandidate result, string label, double? left, double? right, double tolerance, int points, bool required)
     {
+        if (!left.HasValue && !right.HasValue && !required) return;
         if (!left.HasValue || !right.HasValue) { Missing(result, label, required); return; }
         var difference = Math.Abs(left.Value - right.Value);
         if (difference <= tolerance) Pass(result, label, points); else Fail(result, label, left.Value, right.Value);
@@ -158,6 +161,7 @@ public static class CalibrationMatcher
     /// <summary>A preference, not a requirement: a Bias hardly changes with temperature, so a colder or warmer one still calibrates.</summary>
     private static void Preferred(MatchCandidate result, string label, double? left, double? right, double tolerance, int points)
     {
+        if (!left.HasValue && !right.HasValue) return;
         if (!left.HasValue || !right.HasValue) { Missing(result, label, false); return; }
         var difference = Math.Abs(left.Value - right.Value);
         if (difference <= tolerance) Pass(result, label, points);
@@ -167,12 +171,14 @@ public static class CalibrationMatcher
     }
     private static void Relative(MatchCandidate result, string label, double? left, double? right, double tolerance, int points)
     {
+        if (!left.HasValue && !right.HasValue) return;
         if (!left.HasValue || !right.HasValue) { Missing(result, label, false); return; }
         if (Math.Abs(left.Value - right.Value) <= Math.Abs(left.Value) * tolerance) Pass(result, label, points); else Fail(result, label, left.Value, right.Value);
         if (left is not null && right is not null && Math.Abs(left.Value - right.Value) > 1e-9 && result.Compatible) result.Exact = false;
     }
     private static void AngularWithin180(MatchCandidate result, string label, double? left, double? right, double tolerance, int points)
     {
+        if (!left.HasValue && !right.HasValue) return;
         if (!left.HasValue || !right.HasValue) { Missing(result, label, false); return; }
         var normalized = Math.Abs(left.Value - right.Value) % 180d;
         var distance = Math.Min(normalized, 180d - normalized);
@@ -180,6 +186,8 @@ public static class CalibrationMatcher
         else { result.Exact = false; result.Reasons.Add($"{label}: differenza {distance:0.###}° oltre la preferenza di {tolerance:0.###}° · verificare se il treno ottico è stato mosso"); }
         if (distance > 1e-9) result.Exact = false;
     }
+    // An optional field that neither frame carries (no rotator, a mono camera without BAYERPAT) is no difference:
+    // callers return before reaching this, so a match with nothing to compare is not downgraded to "within tolerance".
     private static void Missing(MatchCandidate result, string label, bool required)
     {
         result.Exact = false;
