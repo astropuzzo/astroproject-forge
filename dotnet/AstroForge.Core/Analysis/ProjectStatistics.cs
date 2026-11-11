@@ -163,6 +163,6 @@ public static class ProjectStatisticsCalculator
     private static string JoinNames(IEnumerable<FrameMetadata?> frames)
     {
         var names = frames.Where(frame => frame is not null).Select(frame => frame!.FileName).Distinct(StringComparer.OrdinalIgnoreCase).ToArray();
-        return names.Length == 0 ? "—" : string.Join(", ", names);
+        return string.Join(", ", names);
     }
 }

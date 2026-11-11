@@ -18,12 +18,12 @@ public static class SupportBundleBuilder
 {
     public static readonly IReadOnlyList<string> PreviewEntries =
     [
-        "README.txt — contenuto e limiti privacy",
-        "system.json — versione app, sistema operativo e runtime",
-        "settings.json — sole impostazioni tecniche non sensibili",
-        "diagnostics.json — conteggi, mai nomi o percorsi dei file",
-        "issues.json — codici, severità e quantità",
-        "logs/*.jsonl — eventi applicativi strutturati senza dati astronomici"
+        "README.txt: contenuto e limiti privacy",
+        "system.json: versione app, sistema operativo e runtime",
+        "settings.json: sole impostazioni tecniche non sensibili",
+        "diagnostics.json: conteggi, mai nomi o percorsi dei file",
+        "issues.json: codici, severità e quantità",
+        "logs/*.jsonl: eventi applicativi strutturati senza dati astronomici"
     ];
 
     public static async Task<SupportBundleResult> BuildAsync(SupportBundleRequest request, CancellationToken cancellationToken = default)

@@ -240,6 +240,8 @@ public sealed class MainViewModel : BindableBase
                 Raise(name);
             Raise(nameof(ExportActionLabel)); Raise(nameof(ExportChangeSummary)); Raise(nameof(ExportResumeSummary));
             if (_analysis is not null) RefreshReviewQueue();
+            // The tree's group labels are written when it is built: build it again in the new language.
+            if (_frames.Count > 0) RebuildTree();
             if (_exportPreflight is not null) RefreshExportHistory(_exportPreflight.ProjectRoot);
             UiLanguageChanged?.Invoke(this, EventArgs.Empty);
         }
@@ -2016,7 +2018,7 @@ public sealed class MainViewModel : BindableBase
     {
         if (frames.Count == 0) return "";
         var values = frames.Select(selector).Distinct().Take(2).ToArray();
-        return values.Length == 1 ? formatter(values[0]) : "— Valori misti —";
+        return values.Length == 1 ? formatter(values[0]) : MixedValues;
     }
 
     private static string AggregateSource(IReadOnlyList<FrameMetadata>? frames, Func<FrameMetadata, MetadataSource> selector)
@@ -2059,7 +2061,9 @@ public sealed class MainViewModel : BindableBase
     private static string Input(double? value) => value?.ToString("0.###", CultureInfo.CurrentCulture) ?? "";
     private static double? ParseDefault(string text) => TryNumber(text, out var value) ? value : null;
 
-    private static bool IsMixed(string value) => value.StartsWith('—');
+    // What an editor field shows when the selected frames disagree; a field left on it is not applied.
+    private const string MixedValues = "(valori misti)";
+    private static bool IsMixed(string value) => value == MixedValues;
     private static string NormalizeText(string? value) => string.Join(' ', (value ?? "").Trim().ToLowerInvariant().Split((char[]?)null, StringSplitOptions.RemoveEmptyEntries));
     private IReadOnlyList<FrameMetadata> GetManualLinkFrames()
     {

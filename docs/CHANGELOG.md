@@ -53,6 +53,40 @@ Revisione dell’algoritmo e dell’interfaccia: tutto il codice è stato rilett
 
 - Se una delle due fonti (feed del canale o GitHub) va in timeout o risponde con dati non validi, l’altra viene comunque usata.
 
+**Uso quotidiano**
+
+- Una sorgente su un disco non collegato all’avvio (un NAS, un disco USB) spariva dal progetto e dal file salvato al primo salvataggio. Ora resta elencata.
+- Un’analisi alla volta: si poteva avviarne una seconda mentre la prima era in corso, e un’analisi letta per sorgenti cambiate nel frattempo veniva mostrata come il progetto. Ora le richieste aspettano quella in corso, e un risultato superato viene riletto.
+- I Light messi da parte nel Quality Lab escono subito da ciò che è pronto, dalle scelte da fare e dai totali. “Ripristina tutti” riprende anche le esclusioni fatte prima dell’ultima analisi.
+- “Annulla” dopo una nuova analisi agiva sui frame vecchi e diceva di aver funzionato: ora la cronologia delle modifiche riparte con l’analisi.
+- “Tutta la notte” per un Dark o un Bias raggiungeva anche Light con un’altra esposizione o un altro gain, che diventavano incompatibili.
+- Svuotare un campo toglie la correzione e torna al valore del file, invece di registrare “nessun valore”.
+- La linea delle notti segue l’orologio del sito, come le notti: i Light di un osservatorio remoto non cadono più fuori dal riquadro.
+- Un file di progetto che non si riesce a scrivere non resta più quello su cui ogni azione successiva prova a salvare. Un’azione che fallisce mostra un avviso con il motivo, invece di finire solo nel registro.
+- Nelle viste delle calibrazioni i Dark Flat e i set di Bias grezzi sono chiamati con il loro nome, e una calibrazione senza differenze è segnata come identica (prima bastava un campo facoltativo assente, come il rotatore, per farla risultare “entro la tolleranza”).
+
+**Interfaccia**
+
+- Via la riga “PASSO N DI 4” sopra ogni titolo, che ripeteva la barra dei passi, e via le etichette tutte in maiuscolo: titoli di scheda, intestazioni e stati sono scritti normalmente, in italiano e in inglese.
+- Un solo formato per numeri, percentuali, durate e dimensioni, nella lingua dell’interfaccia. Prima convivevano “0.3 h” e “0,3 h”, “6.14 MB” e “6 MB”, “20 min” e “40m”, “100 %” e “100%”.
+- Una parola per ogni cosa: i filtri sono “da riconoscere”, la libreria è “Libreria Master”, il passo è “Strumento”, i file sono “acquisizioni”, il filtro è Hα. I conteggi hanno singolare e plurale veri (“1 filtro/i” non c’è più). Su un computer si “clicca”, non si “tocca”.
+- Testi che venivano tagliati: la nota sotto il cielo, la scritta del trascinamento, le intestazioni della Libreria Master. “Campo inquadrato · Filtro Filtro 3” ripeteva la parola.
+- Il pulsante del catalogo accanto a Camera e Ottica era un puntino quasi invisibile: ora è un pulsante “Catalogo”. Il nome del riduttore non ripete più il fattore.
+- Passo Importa: le due schede non hanno più un’altezza minima che spingeva “Opzioni avanzate” fuori dallo schermo.
+- Passo Calibrazioni: un solo anello (il secondo ripeteva il primo), una legenda per i segni delle celle, e il titolo “Da risolvere” compare solo quando c’è qualcosa da risolvere.
+- Passo Esporta: la scheda di WBPP sta sotto le notti, così le due colonne hanno altezze simili; nome del progetto e destinazione hanno un’etichetta; i riquadri del riepilogo compaiono quando hanno un dato e “Controlla prima” sparisce a esportazione finita.
+- Aspetto: il pulsante principale è in tinta unita (via il gradiente azzurro-lilla), via bagliori e ombre da schede e pulsanti, tre soli raggi per gli angoli. Il diagramma di WBPP è fatto di corsie dritte, senza nastri ondulati che non dicevano nulla. Via la stellina dalla barra delle novità e i puntini decorativi. Nessuna animazione gira in continuo tranne le stelle dello sfondo, che “Riduci animazioni” ferma.
+- Caratteri: ciascuno ha un compito solo. Il testo e i titoli in Inter, Unbounded per il nome e i numeri grandi, il corsivo con grazie per il sottotitolo della pagina, il monospazio per keyword e valori misurati.
+- Leggibilità: nessun testo sotto gli 11 pixel, e il contrasto dei testi secondari supera 4,5:1 anche sul punto più chiaro dello sfondo.
+- La mappa delle calibrazioni si usa anche da tastiera, con le frecce e Invio.
+- “Dimensione interfaccia” veniva salvata e mai applicata: ora ridimensiona l’interfaccia.
+- I messaggi che comparivano solo in italiano anche con l’interfaccia in inglese (avvisi, riepiloghi, albero dei metadati, errori) hanno la loro versione inglese. Dal dizionario sono uscite 447 voci che nessuna schermata usava più.
+
+**Controlli QA**
+
+- Nuovo gruppo di test del Core per ogni correzione: stelle sintetiche per la FWHM, ora di scatto e siti remoti, spareggi tra Dark, nomi file, cartelle della libreria, card FITS e XISF, regole di abbinamento, coordinate, e un’esportazione vera con Dark e Bias grezzi fino all’istanza WBPP.
+- Le immagini dei quattro passi nella documentazione sono state rifatte sull’interfaccia nuova.
+
 ## 1.13.1 — 1 ottobre 2026
 
 - **Passo Esporta: la colonna di sinistra non si stira più.** Con l’esportazione finita la colonna di destra (mappa dell’export e WBPP) diventa molto più alta, e aprendo “Grouping Keywords da inserire a mano” cresceva ancora: la colonna di sinistra si allungava insieme, così si muoveva e si ingrandiva soltanto l’immagine dell’integrazione, e sotto restava un riquadro delle notti quasi vuoto. Ora le due colonne hanno ciascuna la propria altezza: l’anteprima dell’integrazione e le notti restano com’erano, qualunque cosa succeda a destra.

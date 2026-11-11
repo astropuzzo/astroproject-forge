@@ -302,7 +302,7 @@ public static class ProjectExporter
         builder.AppendLine("Caricare ricorsivamente `Light`, `Flat`, `Dark` e `Bias`.\n");
         builder.AppendLine("## Grouping Keywords\n");
         if (plan.Recipe.Keywords.Count == 0) builder.AppendLine("Lasciare vuota la tabella **Grouping Keywords**.\n");
-        foreach (var keyword in plan.Recipe.Keywords) builder.AppendLine($"- `{keyword.Keyword}` — Pre: {(keyword.Pre ? "ON" : "OFF")}, Post: {(keyword.Post ? "ON" : "OFF")} — {keyword.Reason}");
+        foreach (var keyword in plan.Recipe.Keywords) builder.AppendLine($"- `{keyword.Keyword}`: Pre {(keyword.Pre ? "ON" : "OFF")}, Post {(keyword.Post ? "ON" : "OFF")}. {keyword.Reason}");
         builder.AppendLine("\n`FILTER`, binning ed esposizione sono gestiti nativamente. Non aggiungere `DATE-OBS`. Smart naming override non è necessario per keyword personalizzate nel percorso.");
         builder.AppendLine("\nPrima di Run, verificare nella scheda Calibration che ogni Light mostri Dark, Flat e Bias previsti.");
         return builder.ToString();
