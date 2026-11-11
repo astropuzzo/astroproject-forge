@@ -1667,30 +1667,30 @@ public sealed partial class MainWindow : Window
     {
         StopBlink();
         _qualityCancellation?.Cancel();
-        _qualityCancellation = new CancellationTokenSource();
+        var cancellation = _qualityCancellation = new CancellationTokenSource();
         try
         {
-            await _viewModel.AnalyzeQualityAsync(_qualityCancellation.Token);
+            await _viewModel.AnalyzeQualityAsync(cancellation.Token);
             await RefreshQualityPreviewAsync(true);
         }
         catch (OperationCanceledException) { }
         catch (Exception exception) { Record("AF-QUALITY-001", exception); }
-        finally { _qualityCancellation?.Dispose(); _qualityCancellation = null; }
+        finally { cancellation.Dispose(); if (ReferenceEquals(_qualityCancellation, cancellation)) _qualityCancellation = null; }
     }
 
     private async void AnalyzeAllQuality_Click(object? sender, RoutedEventArgs e)
     {
         StopBlink();
         _qualityCancellation?.Cancel();
-        _qualityCancellation = new CancellationTokenSource();
+        var cancellation = _qualityCancellation = new CancellationTokenSource();
         try
         {
-            await _viewModel.AnalyzeAllQualityAsync(_qualityCancellation.Token);
+            await _viewModel.AnalyzeAllQualityAsync(cancellation.Token);
             await RefreshQualityPreviewAsync(true);
         }
         catch (OperationCanceledException) { }
         catch (Exception exception) { Record("AF-QUALITY-ALL-001", exception); }
-        finally { _qualityCancellation?.Dispose(); _qualityCancellation = null; }
+        finally { cancellation.Dispose(); if (ReferenceEquals(_qualityCancellation, cancellation)) _qualityCancellation = null; }
     }
     private void CancelQuality_Click(object? sender, RoutedEventArgs e) => _qualityCancellation?.Cancel();
 

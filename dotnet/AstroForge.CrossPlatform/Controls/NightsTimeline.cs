@@ -89,7 +89,7 @@ public sealed class NightsTimeline : Control
                 y -= height + 1.5;
             }
             running += nights[index].Hours;
-            cumulative.Add(new Point(x + barWidth / 2, plot.Bottom - running / total * plot.Height * Motion.EaseOutExpo(Math.Clamp(_growth * 1.3 - 0.2, 0, 1))));
+            cumulative.Add(new Point(x + barWidth / 2, plot.Bottom - (total > 0 ? running / total : 0) * plot.Height * Motion.EaseOutExpo(Math.Clamp(_growth * 1.3 - 0.2, 0, 1))));
 
             var every = Math.Max(1, (int)Math.Ceiling(60 / slot));
             if (index % every == 0)

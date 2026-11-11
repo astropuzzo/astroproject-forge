@@ -269,7 +269,9 @@ public sealed partial class ObservatoryViewModel : BindableBase
             });
         }
 
-        var colours = FilterCards.Zip(_main.FilterStatistics).ToDictionary(pair => pair.Second.Filter, pair => ((SolidColorBrush)pair.First.Accent).Color, StringComparer.OrdinalIgnoreCase);
+        // Built with TryAdd: a duplicate spelling of a filter ("Ha", "HA") must not throw and take the whole analysis down.
+        var colours = new Dictionary<string, Color>(StringComparer.OrdinalIgnoreCase);
+        foreach (var (card, statistics) in FilterCards.Zip(_main.FilterStatistics)) colours.TryAdd(statistics.Filter, ((SolidColorBrush)card.Accent).Color);
         Nights = _main.NightStatistics
             .GroupBy(row => row.Night)
             .OrderBy(group => group.Key, StringComparer.Ordinal)

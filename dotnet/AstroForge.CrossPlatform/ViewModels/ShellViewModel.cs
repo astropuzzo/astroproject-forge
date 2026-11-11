@@ -8,6 +8,7 @@ using AstroForge.App.ViewModels;
 using AstroForge.Core.Analysis;
 using AstroForge.Core.Filters;
 using AstroForge.Core.Models;
+using AstroForge.Core.Sessions;
 using AstroForge.CrossPlatform.Controls;
 
 namespace AstroForge.CrossPlatform.ViewModels;
@@ -299,12 +300,14 @@ public sealed class ShellViewModel : BindableBase
     }
     private double CumulativeHours(int nights) => _nightTotals.Take(nights).Sum(night => night.Hours);
     public double Snr => HasNights && _nightTotals[0].Hours > 0 ? Math.Sqrt(CumulativeHours(NightIndex) / _nightTotals[0].Hours) : 1;
-    public string HoursBig => HasNights ? ((int)Math.Floor(CumulativeHours(NightIndex) + 1e-6)).ToString(CultureInfo.InvariantCulture) : "0";
+    // Hours and minutes come from one rounded total: 1 h 59,5 min is 2 h, not "1 h".
+    private int CumulativeMinutes => (int)Math.Round(CumulativeHours(NightIndex) * 60);
+    public string HoursBig => HasNights ? (CumulativeMinutes / 60).ToString(CultureInfo.InvariantCulture) : "0";
     public string HoursSmall
     {
         get
         {
-            var minutes = (int)Math.Round(CumulativeHours(NightIndex) * 60) % 60;
+            var minutes = CumulativeMinutes % 60;
             return minutes == 0 ? " h" : $" h {minutes:00} min";
         }
     }
@@ -344,11 +347,13 @@ public sealed class ShellViewModel : BindableBase
             var flats = _main.Analysis?.FlatGroups.Count ?? 0;
             var dark = Distinct(Lights.Select(item => item.Dark.Selected?.Frame).Where(frame => frame is not null).Select(frame => $"{frame!.ExposureSeconds.Value:0.#} s {Temperature(frame.EffectiveTemperatureC)}"));
             var bias = Distinct(Lights.Select(item => item.Bias.Selected?.Frame).Where(frame => frame is not null).Select(frame => $"gain {frame!.Gain.Value:0.#}"));
+            // Dark Flats stand in for the Bias when the Flats are calibrated with them.
+            var biasName = Lights.Any(item => item.Bias.RequestedKind == FrameKind.DarkFlat) ? (Lights.All(item => item.Bias.RequestedKind == FrameKind.DarkFlat) ? "Dark Flat" : "Bias / Dark Flat") : "Bias";
             return
             [
                 new(flats == 1 ? "Flat · 1 set" : $"Flat · {flats} set", $"{Lights.Count(item => item.Flat.IsAccepted)}/{Total}", Brush("#3FE0D0")),
                 new(dark.Length == 0 ? "Dark" : $"Dark · {dark}", $"{Lights.Count(item => item.Dark.IsAccepted)}/{Total}", Brush("#9DB8FF")),
-                new(bias.Length == 0 ? "Bias" : $"Bias · {bias}", $"{Lights.Count(item => item.Bias.IsAccepted)}/{Total}", Brush("#C9D3F5"))
+                new(bias.Length == 0 ? biasName : $"{biasName} · {bias}", $"{Lights.Count(item => item.Bias.IsAccepted)}/{Total}", Brush("#C9D3F5"))
             ];
         }
     }
@@ -456,7 +461,7 @@ public sealed class ShellViewModel : BindableBase
         _nightsKey = key;
         var previousCount = _nightTotals.Count;
         var byNight = Lights
-            .GroupBy(item => item.Light.SessionId.Value ?? item.Light.CapturedAt.Value?.ToLocalTime().AddHours(-12).ToString("yyyy-MM-dd", CultureInfo.InvariantCulture) ?? "—")
+            .GroupBy(item => item.Light.SessionId.Value ?? SiteTime(item.Light)?.AddHours(-12).ToString("yyyy-MM-dd", CultureInfo.InvariantCulture) ?? "—")
             .OrderBy(group => group.Key, StringComparer.Ordinal)
             .ToList();
         _nightTotals = byNight.Select(group => (group.Key, group.Sum(item => item.Light.ExposureSeconds.Value ?? 0) / 3600, group.Count())).ToList();
@@ -465,25 +470,30 @@ public sealed class ShellViewModel : BindableBase
         var site = SkyMath.SiteOf(Lights.Select(item => item.Light));
         SkyNights = byNight.Select(group =>
         {
-            var date = ParseNight(group.Key) ?? group.Select(item => item.Light.CapturedAt.Value?.LocalDateTime.AddHours(-12).Date).FirstOrDefault(value => value is not null) ?? DateTime.Today;
-            var evening = new DateTime(date.Year, date.Month, date.Day, 18, 0, 0, DateTimeKind.Local);
+            var date = ParseNight(group.Key) ?? group.Select(item => SiteTime(item.Light)?.AddHours(-12).Date).FirstOrDefault(value => value is not null) ?? DateTime.Today;
+            // The row runs on the clock of the place the night was shot: the site's own offset when the frames carry
+            // it (a remote observatory seen from another time zone), this computer's zone otherwise.
+            var evening = new DateTime(date.Year, date.Month, date.Day, 18, 0, 0, DateTimeKind.Unspecified);
+            var siteOffset = group.Select(item => item.Light.SiteUtcOffset).Where(offset => offset is not null)
+                .GroupBy(offset => offset!.Value).OrderByDescending(offsets => offsets.Count()).Select(offsets => (TimeSpan?)offsets.Key).FirstOrDefault();
+            var eveningUtc = siteOffset is { } known ? DateTime.SpecifyKind(evening - known, DateTimeKind.Utc) : TimeZoneInfo.ConvertTimeToUtc(evening, TimeZoneInfo.Local);
             var exposures = group.Where(item => item.Light.CapturedAt.Value is not null).Select(item =>
             {
-                var local = item.Light.CapturedAt.Value!.Value.ToLocalTime().DateTime;
+                var local = SiteTime(item.Light)!.Value;
                 var hour = 18 + (local - evening).TotalHours;
                 var flagged = !(item.Flat.IsAccepted && item.Dark.IsAccepted && item.Bias.IsAccepted);
                 return new SkyExposure(hour, (item.Light.ExposureSeconds.Value ?? 60) / 3600, ColourOf(item.Light.FilterName.Value), flagged);
             }).Where(exposure => exposure.Start >= NightSky.StartHour - 0.5 && exposure.Start <= NightSky.EndHour).ToList();
-            var midnightUtc = evening.AddHours(6).ToUniversalTime();
+            var midnightUtc = eveningUtc.AddHours(6);
             var age = SkyMath.MoonAge(midnightUtc);
             var illumination = SkyMath.MoonIllumination(midnightUtc);
             IReadOnlyList<double>? sun = site is { } place
-                ? Enumerable.Range(0, 73).Select(step => SkyMath.SunAltitude(evening.AddMinutes(step * 10).ToUniversalTime(), place.Latitude, place.Longitude)).ToList()
+                ? Enumerable.Range(0, 73).Select(step => SkyMath.SunAltitude(eveningUtc.AddMinutes(step * 10), place.Latitude, place.Longitude)).ToList()
                 : null;
             // The Moon over the night: from the site in the headers, or a typical northern one with the time zone's longitude.
             var estimated = site is null;
-            var (moonLatitude, moonLongitude) = site ?? (45, TimeZoneInfo.Local.GetUtcOffset(evening).TotalHours * 15);
-            IReadOnlyList<double> moon = Enumerable.Range(0, 73).Select(step => SkyMath.MoonAltitude(evening.AddMinutes(step * 10).ToUniversalTime(), moonLatitude, moonLongitude)).ToList();
+            var (moonLatitude, moonLongitude) = site ?? (45, (evening - eveningUtc).TotalHours * 15);
+            IReadOnlyList<double> moon = Enumerable.Range(0, 73).Select(step => SkyMath.MoonAltitude(eveningUtc.AddMinutes(step * 10), moonLatitude, moonLongitude)).ToList();
             var parts = group.GroupBy(item => item.Light.FilterName.Value ?? "—", StringComparer.OrdinalIgnoreCase)
                 .Select(filter => $"{DisplayFilter(filter.Key)} {UiFormat.Duration(filter.Sum(item => item.Light.ExposureSeconds.Value ?? 0) / 3600)}");
             var open = group.Count(item => !(item.Flat.IsAccepted && item.Dark.IsAccepted && item.Bias.IsAccepted));
@@ -494,6 +504,8 @@ public sealed class ShellViewModel : BindableBase
             return new SkyNight(date.ToString("d MMM", Culture), detail, exposures, age, illumination, sun, moon, estimated, fresh is not null);
         }).ToList();
     }
+
+    private static DateTime? SiteTime(FrameMetadata frame) => AstronomicalSessionResolver.LocalTime(frame, TimeZoneInfo.Local);
 
     /// <summary>"Moon 85 % · rises 21:40 · sets 05:10": how full it was and when it was up.</summary>
     private string MoonText(double illumination, IReadOnlyList<double> altitudes, DateTime evening, bool estimated)

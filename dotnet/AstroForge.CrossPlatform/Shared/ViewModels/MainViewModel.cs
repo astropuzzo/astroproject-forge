@@ -93,6 +93,10 @@ public sealed class MainViewModel : BindableBase
     private bool _showOnboarding;
     private string _diagnosticsSummary = "";
     private bool _awaitingReanalysis;
+    private ProjectAnalysis? _activeAnalysis;
+    private Task? _scanTask;
+    private int _inputsVersion;
+    private int _qualityGeneration;
     private ExportPreflightReport? _exportPreflight;
     private ExportExecutionControl? _exportControl;
     private CancellationTokenSource? _exportCancellation;
@@ -152,7 +156,8 @@ public sealed class MainViewModel : BindableBase
         _updateStatus = "Controllo aggiornamenti attivo";
         _pendingRecovery = _recoveryJournal.Read<ProjectRecoverySnapshot>();
         _showOnboarding = !_state.HasCompletedOnboarding && _pendingRecovery is null;
-        foreach (var path in _state.SourcePaths.Where(path => Directory.Exists(path) || File.Exists(path))) SourcePaths.Add(path);
+        // A source on a drive that is not mounted right now stays listed: dropping it here erased it from the saved project at the first save.
+        foreach (var path in _state.SourcePaths) SourcePaths.Add(path);
         if (SourcePaths.Count > 0)
         {
             _readinessText = _uiLanguage == UiLocalization.English ? "Step 1 · Select Analyze" : "Passo 1 · Premi Analizza";
@@ -281,7 +286,7 @@ public sealed class MainViewModel : BindableBase
         SetNovelty(ProjectNovelty.Compute(_frames, known));
     }
     /// <summary>The latest calibration analysis, for screens that draw the whole project at once.</summary>
-    public ProjectAnalysis? Analysis => _analysis;
+    public ProjectAnalysis? Analysis => _activeAnalysis;
     public bool HasVisibleTree => TreeRoots.Count > 0;
     public bool ShowImportPrompt => !HasSources && !HasAnalysis;
     public bool ShowAnalysisPrompt => HasSources && !HasAnalysis;
@@ -320,7 +325,7 @@ public sealed class MainViewModel : BindableBase
     public bool HasExportPreflight => _exportPreflight is not null;
     public bool ExportPreflightReady => _exportPreflight?.IsReady == true;
     public bool CanRunExportPreflight => HasExportPlan && !IsScanning && !HasRecoverySnapshot;
-    public bool CanStartExport => _analysis?.Ready == true && !string.IsNullOrWhiteSpace(ProjectName) && !string.IsNullOrWhiteSpace(DestinationPath) && !IsScanning && !HasRecoverySnapshot && _exportState is not (ExportRunState.Running or ExportRunState.Paused or ExportRunState.Cancelling);
+    public bool CanStartExport => _activeAnalysis?.Ready == true && !string.IsNullOrWhiteSpace(ProjectName) && !string.IsNullOrWhiteSpace(DestinationPath) && !IsScanning && !HasRecoverySnapshot && _exportState is not (ExportRunState.Running or ExportRunState.Paused or ExportRunState.Cancelling);
     public bool CanPauseExport => _exportState == ExportRunState.Running;
     public bool CanResumeExport => _exportState == ExportRunState.Paused;
     public bool CanCancelExport => _exportState is ExportRunState.Running or ExportRunState.Paused or ExportRunState.Cancelling;
@@ -454,14 +459,14 @@ public sealed class MainViewModel : BindableBase
         : $"{SourcePaths.Count} importate";
     public string TotalIssuesLabel => UiLanguage == UiLocalization.English ? $"{TotalIssues} warnings" : $"{TotalIssues} segnalazioni";
     public int OverrideCount => _frames.Count(frame => HasAnyOverride(frame));
-    public int UnresolvedCalibrations => _analysis?.UnresolvedCount ?? 0;
+    public int UnresolvedCalibrations => _activeAnalysis?.UnresolvedCount ?? 0;
     public int ReviewQueueCount => ReviewQueue.Count;
     public string ReviewQueueSummary => ReviewQueue.Count == 0
         ? (UiLanguage == UiLocalization.English ? "Nothing to resolve" : "Completo")
         : UiLanguage == UiLocalization.English
             ? $"{ReviewQueue.Count} {(ReviewQueue.Count == 1 ? "group" : "groups")} · {ReviewQueue.Sum(item => item.FrameCount)} assignments"
             : $"{ReviewQueue.Count} {(ReviewQueue.Count == 1 ? "gruppo" : "gruppi")} · {ReviewQueue.Sum(item => item.FrameCount)} assegnazioni";
-    public bool IsProjectReady => _analysis?.Ready == true;
+    public bool IsProjectReady => _activeAnalysis?.Ready == true;
     public string ReadinessText { get => _readinessText; private set => Set(ref _readinessText, value); }
     public string CalibrationSummary { get => _calibrationSummary; private set => Set(ref _calibrationSummary, value); }
     public string PlanSummary => _plan is null ? L("L’elenco dei file si prepara quando le calibrazioni sono risolte.", "The file list is prepared once the calibrations are resolved.") : UiLanguage == UiLocalization.English ? $"{_plan.Files.Count} files · {HumanSize(_plan.RequiredBytes)} · {_plan.ProjectRoot}" : $"{_plan.Files.Count} file · {HumanSize(_plan.RequiredBytes)} · {_plan.ProjectRoot}";
@@ -606,6 +611,9 @@ public sealed class MainViewModel : BindableBase
         SetNovelty(null);
         _frames = [];
         _analysis = null;
+        _activeAnalysis = null;
+        _inputsVersion++;
+        _qualityGeneration++;
         _statistics = null;
         Instrument = null;
         Setups = [];
@@ -870,9 +878,12 @@ public sealed class MainViewModel : BindableBase
     {
         if (string.IsNullOrWhiteSpace(path)) throw new ArgumentException("Il percorso del progetto non è valido.", nameof(path));
         if (!path.EndsWith(".astroforge", StringComparison.OrdinalIgnoreCase)) path += ".astroforge";
+        var previous = CurrentProjectFile;
         CurrentProjectFile = Path.GetFullPath(path);
         if (string.IsNullOrWhiteSpace(ProjectName)) ProjectName = Path.GetFileNameWithoutExtension(CurrentProjectFile);
-        SaveState();
+        // A file that could not be written must not stay the project every later action tries to save to.
+        try { SaveState(); }
+        catch { CurrentProjectFile = previous; throw; }
         Status = L($"Progetto salvato · {Path.GetFileName(CurrentProjectFile)}", $"Project saved · {Path.GetFileName(CurrentProjectFile)}");
     }
 
@@ -936,8 +947,26 @@ public sealed class MainViewModel : BindableBase
 
     public async Task ScanAsync(CancellationToken cancellationToken = default)
     {
+        // One analysis at a time: a second request (a button on another page, a drop) waits for the one in flight.
+        if (_scanTask is { IsCompleted: false } running) { await running; return; }
+        var task = ScanUntilCurrentAsync(cancellationToken);
+        _scanTask = task;
+        await task;
+    }
+
+    private async Task ScanUntilCurrentAsync(CancellationToken cancellationToken)
+    {
+        // Sources or libraries that change while the folders are being read make the result describe a project that
+        // no longer exists: read again instead of showing it.
+        while (!await ScanOnceAsync(cancellationToken))
+            if (SourcePaths.Count == 0) return;
+    }
+
+    private async Task<bool> ScanOnceAsync(CancellationToken cancellationToken)
+    {
         var availableLibraries = MasterLibraries.Where(item => item.Enabled && item.IsOnline).ToArray();
-        if (SourcePaths.Count == 0) { Status = L("Aggiungi almeno una cartella o un file FITS/XISF.", "Add at least one FITS/XISF folder or file."); return; }
+        if (SourcePaths.Count == 0) { Status = L("Aggiungi almeno una cartella o un file FITS/XISF.", "Add at least one FITS/XISF folder or file."); return true; }
+        var inputs = _inputsVersion;
         using var tracked = BeginTrackedOperation("Analisi progetto", "AF-SCAN-START", "Analisi progetto avviata");
         IsScanning = true;
         Progress = 0;
@@ -952,7 +981,17 @@ public sealed class MainViewModel : BindableBase
                 Status = $"{item.Completed}/{item.Total} · {item.CurrentFile}";
             });
             var sessionSettings = new SessionSettings(TimeZoneInfo.Local, new TimeOnly(SessionBoundaryHour, 0));
-            _frames = await _scanner.ScanAsync(roots, sessionSettings, progress, cancellationToken, _headerCache);
+            var scanned = await _scanner.ScanAsync(roots, sessionSettings, progress, cancellationToken, _headerCache);
+            if (inputs != _inputsVersion)
+            {
+                tracked.Complete("AF-SCAN-STALE", "Analisi ripetuta: le sorgenti sono cambiate durante la lettura");
+                return false;
+            }
+            _frames = scanned;
+            // Undo entries hold the frames of the previous analysis: applying them now would change nothing and say it did.
+            _undo.Clear();
+            UndoCommand.RaiseCanExecuteChanged();
+            SelectedNode = null;
             foreach (var library in activeLibraries) LibraryMetadataResolver.Apply(_frames, library.Path, library.Priority);
             foreach (var frame in _frames)
                 if (_state.Overrides.TryGetValue(frame.Path, out var saved)) { AppStateStore.Apply(frame, saved); FrameValidator.Revalidate(frame); }
@@ -977,10 +1016,13 @@ public sealed class MainViewModel : BindableBase
             ClearProjectCommand.RaiseCanExecuteChanged();
             SaveState();
             tracked.Complete("AF-SCAN-OK", $"Analisi completata: {TotalFiles} file, {TotalIssues} segnalazioni");
+            return true;
         }
         catch (Exception exception)
         {
             tracked.Fail("AF-SCAN-001", "Analisi progetto non completata", exception);
+            // Without this the last progress line stays on screen and the failure is only in the log.
+            if (exception is not OperationCanceledException) Status = L($"Analisi non completata: {exception.Message}", $"The analysis did not finish: {exception.Message}");
             throw;
         }
         finally
@@ -991,7 +1033,7 @@ public sealed class MainViewModel : BindableBase
 
     public void BuildPlan()
     {
-        if (_analysis?.Ready != true) throw new InvalidOperationException("Risolvi prima le calibrazioni ancora aperte.");
+        if (_analysis is null || _activeAnalysis?.Ready != true) throw new InvalidOperationException("Risolvi prima le calibrazioni ancora aperte.");
         if (string.IsNullOrWhiteSpace(ProjectName)) throw new InvalidOperationException("Inserisci il nome del progetto.");
         if (string.IsNullOrWhiteSpace(DestinationPath)) throw new InvalidOperationException("Seleziona la cartella di destinazione.");
         _plan = ProjectExporter.BuildPlan(ProjectName, DestinationPath, _analysis, _excludedQualityPaths,
@@ -1025,11 +1067,14 @@ public sealed class MainViewModel : BindableBase
         QualityProgress = 0;
         QualityStatus = $"{series.DisplayName} · analisi pixel di {lights.Length} Light…";
         var results = new List<QualityFrameRow>(lights.Length);
+        var generation = _qualityGeneration;
         try
         {
             for (var index = 0; index < lights.Length; index++)
             {
                 cancellationToken.ThrowIfCancellationRequested();
+                // The project was analysed again or edited: these rows would land in series that replaced the ones being measured.
+                if (generation != _qualityGeneration) return;
                 var frame = lights[index];
                 try
                 {
@@ -1038,11 +1083,13 @@ public sealed class MainViewModel : BindableBase
                     var metrics = await Task.Run(
                         () => FitsQualityAnalyzer.AnalyzeAsync(frame.Path, cancellationToken),
                         cancellationToken);
+                    if (generation != _qualityGeneration) return;
                     var row = new QualityFrameRow(frame, metrics, _excludedQualityPaths.Contains(frame.Path), series.ConfigurationSession, series.ComparisonGroupId);
                     results.Add(row); _allQualityFrames.Add(row); QualityFrames.Add(row);
                 }
-                catch (Exception exception) when (exception is InvalidDataException or NotSupportedException or IOException)
+                catch (Exception exception) when (exception is not OperationCanceledException)
                 {
+                    if (generation != _qualityGeneration) return;
                     var row = QualityFrameRow.Failed(frame, exception.Message, _excludedQualityPaths.Contains(frame.Path), series.ConfigurationSession, series.ComparisonGroupId);
                     results.Add(row); _allQualityFrames.Add(row); QualityFrames.Add(row);
                 }
@@ -1083,7 +1130,7 @@ public sealed class MainViewModel : BindableBase
     public void ExcludeQualitySuspects()
     {
         foreach (var item in SelectedQualitySeries?.Frames.Where(item => item.IsSuspect) ?? []) SetQualityExcluded(item, true);
-        SaveState(); InvalidateExportPlan(); RefreshQualityCounts();
+        SaveState(); InvalidateExportPlan(); RefreshQualityCounts(); ExclusionsChanged();
     }
 
     public void SetQualitySelection(IReadOnlyCollection<QualityFrameRow> rows)
@@ -1095,7 +1142,7 @@ public sealed class MainViewModel : BindableBase
     public void ExcludeSelectedQualityFrames(IEnumerable<QualityFrameRow> rows)
     {
         foreach (var item in rows) SetQualityExcluded(item, true);
-        SaveState(); InvalidateExportPlan(); RefreshQualityCounts();
+        SaveState(); InvalidateExportPlan(); RefreshQualityCounts(); ExclusionsChanged();
     }
 
     public async Task RenderQualityPreviewAsync(QualityFrameRow? item, CancellationToken cancellationToken = default, bool fullResolution = false)
@@ -1118,19 +1165,34 @@ public sealed class MainViewModel : BindableBase
     {
         if (SelectedQualityFrame is null) return;
         SetQualityExcluded(SelectedQualityFrame, !SelectedQualityFrame.IsExcluded);
-        SaveState(); InvalidateExportPlan(); RefreshQualityCounts();
+        SaveState(); InvalidateExportPlan(); RefreshQualityCounts(); ExclusionsChanged();
     }
 
     public void RestoreAllQualityFrames()
     {
         foreach (var item in _allQualityFrames) SetQualityExcluded(item, false);
-        SaveState(); InvalidateExportPlan(); RefreshQualityCounts();
+        // Exclusions made before the last analysis have no row any more, yet they still keep their Lights out of the export.
+        _excludedQualityPaths.Clear();
+        SaveState(); InvalidateExportPlan(); RefreshQualityCounts(); ExclusionsChanged();
     }
 
     private void SetQualityExcluded(QualityFrameRow item, bool excluded)
     {
         item.IsExcluded = excluded;
         if (excluded) _excludedQualityPaths.Add(item.Path); else _excludedQualityPaths.Remove(item.Path);
+    }
+
+    /// <summary>A Light set aside (or taken back) changes at once what is ready, what is still to choose and the totals.</summary>
+    private void ExclusionsChanged()
+    {
+        if (_analysis is null) return;
+        _activeAnalysis = _analysis.Without(_excludedQualityPaths);
+        RefreshStatistics();
+        RefreshReviewQueue();
+        Raise(nameof(Analysis)); Raise(nameof(IsProjectReady)); Raise(nameof(UnresolvedCalibrations));
+        Raise(nameof(ReviewQueueCount)); Raise(nameof(ReviewQueueSummary));
+        Raise(nameof(TotalIntegrationText)); Raise(nameof(StatisticsSummary)); Raise(nameof(StatisticsDateRange));
+        RaiseProjectWorkflowProperties();
     }
 
     private void RefreshQualityCounts()
@@ -1190,6 +1252,7 @@ public sealed class MainViewModel : BindableBase
 
     private void BuildQualitySeriesDefinitions()
     {
+        _qualityGeneration++;
         _allQualityFrames.Clear();
         QualityFrames.Clear();
         QualitySeries.Clear();
@@ -1461,7 +1524,9 @@ public sealed class MainViewModel : BindableBase
         if (item?.SelectedCandidate is null || _analysis is null) return;
         var targets = scope switch
         {
-            ReviewAssignmentScope.Night => _frames.Where(frame => frame.Kind == FrameKind.Light && NormalizeText(frame.FilterName.Value) == NormalizeText(item.Frame.FilterName.Value) && NormalizeText(frame.SessionId.Value) == NormalizeText(item.Frame.SessionId.Value)).ToArray(),
+            // A Dark or Bias given to the whole night goes to the Lights it can calibrate, not to other exposures or gains.
+            ReviewAssignmentScope.Night => _frames.Where(frame => frame.Kind == FrameKind.Light && NormalizeText(frame.FilterName.Value) == NormalizeText(item.Frame.FilterName.Value) && NormalizeText(frame.SessionId.Value) == NormalizeText(item.Frame.SessionId.Value)
+                && (item.Calibration == "Flat" || CalibrationScopeMatcher.Matches(item.Frame, frame, item.Calibration == "Dark" ? FrameKind.Dark : FrameKind.Bias))).ToArray(),
             ReviewAssignmentScope.Configuration when item.Calibration == "Flat" => _frames.Where(frame => frame.Kind == FrameKind.Light && NormalizeText(frame.FilterName.Value) == NormalizeText(item.Frame.FilterName.Value) && CalibrationScopeMatcher.Matches(item.Frame, frame, FrameKind.Flat)).ToArray(),
             ReviewAssignmentScope.Configuration => _frames.Where(frame => frame.Kind == FrameKind.Light && CalibrationScopeMatcher.Matches(item.Frame, frame, item.Calibration == "Dark" ? FrameKind.Dark : FrameKind.Bias)).ToArray(),
             _ => item.Targets.ToArray()
@@ -1895,7 +1960,8 @@ public sealed class MainViewModel : BindableBase
         var hadOverride = field.HasOverride;
         var old = field.OverrideValue;
         undo.Add(() => { if (hadOverride) field.SetOverride(old); else field.ClearOverride(); });
-        field.SetOverride(value);
+        // Emptying a field takes the correction away and gives back what the file says; it does not record "no value".
+        if (value is null) field.ClearOverride(); else field.SetOverride(value);
     }
 
     private void ApplyLibraryOffset()
@@ -2020,6 +2086,7 @@ public sealed class MainViewModel : BindableBase
         // One physical filter, one name: confirmed wheel slots and labels from different programs are filed together.
         PhysicalFilterResolver.Apply(_frames, WheelProfileFor);
         _analysis = ProjectAnalyzer.Analyze(_frames);
+        _activeAnalysis = _analysis.Without(_excludedQualityPaths);
         RefreshInstrument();
         BuildQualitySeriesDefinitions();
         RefreshStatistics();
@@ -2032,7 +2099,7 @@ public sealed class MainViewModel : BindableBase
         }
         RefreshReviewQueue();
 
-        var recipe = WbppRecipeEngine.Recommend(_analysis);
+        var recipe = WbppRecipeEngine.Recommend(_activeAnalysis);
         WbppKeywords.Clear();
         foreach (var keyword in recipe.Keywords)
             WbppKeywords.Add(new(keyword.Keyword, keyword.Pre ? "ON" : "OFF", keyword.Post ? "ON" : "OFF", keyword.Reason));
@@ -2040,11 +2107,11 @@ public sealed class MainViewModel : BindableBase
         foreach (var note in recipe.Notes) WbppNotes.Add(note);
 
         var english = UiLanguage == UiLocalization.English;
-        ReadinessText = _analysis.Lights.Count == 0
+        ReadinessText = _activeAnalysis.Lights.Count == 0
             ? (english ? "No Light frames found" : "Nessun Light trovato")
-            : _analysis.Ready
-                ? (english ? $"Step 3 · Export {_analysis.Lights.Count} Light frames" : $"Passo 3 · Esporta {_analysis.Lights.Count} Light")
-                : (english ? $"Step 2 · Resolve {_analysis.UnresolvedCount} calibrations" : $"Passo 2 · Risolvi {_analysis.UnresolvedCount} calibrazioni");
+            : _activeAnalysis.Ready
+                ? (english ? $"Step 3 · Export {_activeAnalysis.Lights.Count} Light frames" : $"Passo 3 · Esporta {_activeAnalysis.Lights.Count} Light")
+                : (english ? $"Step 2 · Resolve {_activeAnalysis.UnresolvedCount} calibrations" : $"Passo 2 · Risolvi {_activeAnalysis.UnresolvedCount} calibrazioni");
         InvalidateExportPlan();
         Raise(nameof(UnresolvedCalibrations));
         Raise(nameof(IsProjectReady));
@@ -2058,8 +2125,8 @@ public sealed class MainViewModel : BindableBase
     private void RefreshReviewQueue()
     {
         ReviewQueue.Clear();
-        if (_analysis is null) return;
-        var unresolved = _analysis.Lights.SelectMany(item => new[]
+        if (_activeAnalysis is null) return;
+        var unresolved = _activeAnalysis.Lights.SelectMany(item => new[]
         {
             new ReviewSource(item.Light, "Flat", item.Flat),
             new ReviewSource(item.Light, "Dark", item.Dark),
@@ -2258,8 +2325,8 @@ public sealed class MainViewModel : BindableBase
         FilterStatistics.Clear();
         SessionStatistics.Clear();
         NightStatistics.Clear();
-        if (_analysis is null) { _statistics = null; return; }
-        _statistics = ProjectStatisticsCalculator.Calculate(_analysis);
+        if (_activeAnalysis is null) { _statistics = null; return; }
+        _statistics = ProjectStatisticsCalculator.Calculate(_activeAnalysis);
         var maximumHours = Math.Max(0.001, _statistics.Filters.Select(item => item.ExposureHours).DefaultIfEmpty().Max());
         foreach (var item in _statistics.Filters)
         {

@@ -63,7 +63,11 @@ public sealed record CalibrationRow(string Filter, string Night, Color Colour, I
                 ? UiFormat.Frames(flats, "Flat") : UiFormat.Frames(selected.Count, "Flat"),
             "Dark" => selected.Select(frame => frame.ExposureSeconds.Value).OfType<double>().Distinct().Order()
                 .Select(seconds => UiFormat.Number(seconds, "0.#") + " s").DefaultIfEmpty("Master").Aggregate((a, b) => $"{a} · {b}"),
-            _ => selected.Any(frame => frame.IsMaster) ? "Master" : $"{selected.Count} Bias"
+            // The third column holds what calibrates the Flats: a Bias, or the Dark Flats that stand in for it.
+            _ => (results.Any(result => result.RequestedKind == FrameKind.DarkFlat) ? "Dark Flat" : "Bias") is var kind
+                && items.Select(item => item.BiasSet).OfType<CalibrationGroup>().Distinct().Sum(set => set.Frames.Count) is var subs and > 0
+                    ? UiFormat.Frames(subs, kind)
+                    : kind == "Bias" ? "Master" : "Master Dark Flat"
         };
         return new(calibration, tolerance ? CalibrationCellState.Tolerance : CalibrationCellState.Exact, detail);
     }
