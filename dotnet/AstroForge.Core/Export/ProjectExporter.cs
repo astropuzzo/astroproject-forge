@@ -162,6 +162,7 @@ public static class ProjectExporter
                     group_id = item.GroupId,
                     bytes = new FileInfo(destination).Length,
                     source_last_write_utc_ticks = File.GetLastWriteTimeUtc(item.Frame.Path).Ticks,
+                    copy_last_write_utc_ticks = File.GetLastWriteTimeUtc(destination).Ticks,
                     sha256 = Convert.ToHexString(hash).ToLowerInvariant(),
                     metadata = Snapshot(item.Frame)
                 });
