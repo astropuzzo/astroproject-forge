@@ -51,7 +51,7 @@ public sealed class MainViewModel : BindableBase
     private bool _showIssuesOnly;
     private string _searchText = "";
     private string _libraryPath = "";
-    private string _status = "Aggiungi sorgenti FITS/XISF e analizza il progetto";
+    private string _status = "";
     private double _progress;
     private string _editGain = "";
     private string _editOffset = "";
@@ -80,7 +80,7 @@ public sealed class MainViewModel : BindableBase
     private string _projectDefaultTemperature = "";
     private MasterLibraryItem? _selectedMasterLibrary;
     private string _masterOrganizerDestination = "";
-    private string _masterOrganizerStatus = "Scansiona le Master Library abilitate per iniziare";
+    private string _masterOrganizerStatus = "";
     private string _currentProjectFile = "";
     private DateTimeOffset _projectCreatedAt = DateTimeOffset.Now;
     private string _uiDensity = "Comoda";
@@ -91,7 +91,7 @@ public sealed class MainViewModel : BindableBase
     private string _updateChannel = ReleaseIdentity.Channel;
     private string _updateStatus = "Controllo aggiornamenti attivo";
     private bool _showOnboarding;
-    private string _diagnosticsSummary = "Nessun evento caricato";
+    private string _diagnosticsSummary = "";
     private bool _awaitingReanalysis;
     private ExportPreflightReport? _exportPreflight;
     private ExportExecutionControl? _exportControl;
@@ -156,7 +156,7 @@ public sealed class MainViewModel : BindableBase
         if (SourcePaths.Count > 0)
         {
             _readinessText = _uiLanguage == UiLocalization.English ? "Step 1 · Select Analyze" : "Passo 1 · Premi Analizza";
-            _status = $"{SourceSummary} · avvia l’analisi per costruire la mappa";
+            _status = "";
         }
         foreach (var pair in _state.Overrides.Where(pair => pair.Value.Kind is not null)) _kindOverrides.Add(pair.Key);
         ApplyOverridesCommand = new RelayCommand(ApplyOverrides, () => SelectedNode is not null && !IsScanning);
@@ -209,7 +209,7 @@ public sealed class MainViewModel : BindableBase
     public bool CreatePixInsightOutputFolder { get => _createPixInsightOutputFolder; set { if (Set(ref _createPixInsightOutputFolder, value)) InvalidateExportPlan(); } }
     public string PixInsightOutputFolderName { get => _pixInsightOutputFolderName; set { if (Set(ref _pixInsightOutputFolderName, value)) InvalidateExportPlan(); } }
     public string CurrentProjectFile { get => _currentProjectFile; private set { if (Set(ref _currentProjectFile, value)) { Raise(nameof(ProjectDocumentStatus)); Raise(nameof(HasProjectContent)); } } }
-    public string ProjectDocumentStatus => string.IsNullOrWhiteSpace(CurrentProjectFile) ? "Progetto non ancora salvato" : Path.GetFileName(CurrentProjectFile);
+    public string ProjectDocumentStatus => string.IsNullOrWhiteSpace(CurrentProjectFile) ? L("Progetto non ancora salvato", "Project not saved yet") : Path.GetFileName(CurrentProjectFile);
     public bool HasProjectContent => SourcePaths.Count > 0 || !string.IsNullOrWhiteSpace(CurrentProjectFile) || !string.IsNullOrWhiteSpace(ProjectName) || !string.IsNullOrWhiteSpace(DestinationPath);
     public string UiDensity { get => _uiDensity; set => Set(ref _uiDensity, value); }
     public string UiLanguage
@@ -227,6 +227,12 @@ public sealed class MainViewModel : BindableBase
             Raise(nameof(MasterLibraryCountLabel));
             Raise(nameof(ImportedSourceCountLabel));
             Raise(nameof(TotalIssuesLabel));
+            foreach (var name in new[]
+                     {
+                         nameof(SourceSummary), nameof(StatisticsSummary), nameof(SelectionTitle), nameof(SelectionDetail), nameof(ApplyLabel), nameof(QualityTableSummary),
+                         nameof(RecoverySummary), nameof(AnalysisActionLabel), nameof(ProjectDocumentStatus), nameof(PlanSummary), nameof(ExportStateLabel), nameof(ExportFileSummary)
+                     })
+                Raise(name);
             Raise(nameof(ExportActionLabel)); Raise(nameof(ExportChangeSummary)); Raise(nameof(ExportResumeSummary));
             if (_analysis is not null) RefreshReviewQueue();
             if (_exportPreflight is not null) RefreshExportHistory(_exportPreflight.ProjectRoot);
@@ -280,7 +286,7 @@ public sealed class MainViewModel : BindableBase
     public bool ShowImportPrompt => !HasSources && !HasAnalysis;
     public bool ShowAnalysisPrompt => HasSources && !HasAnalysis;
     public bool ShowNoResultsPrompt => HasAnalysis && TreeRoots.Count == 0;
-    public string SourceSummary => SourcePaths.Count == 1 ? "1 sorgente collegata" : $"{SourcePaths.Count} sorgenti collegate";
+    public string SourceSummary => SourcePaths.Count == 1 ? L("1 cartella o file", "1 folder or file") : L($"{SourcePaths.Count} cartelle o file", $"{SourcePaths.Count} folders or files");
     public string SourceBreakdown
     {
         get
@@ -301,10 +307,10 @@ public sealed class MainViewModel : BindableBase
     public int AnalyzedFileCount => _frames.Count;
     public long? PlannedBytes => _plan?.RequiredBytes;
     public long? BytesToCopy => _exportPreflight?.BytesToCopy;
-    public string AnalysisActionLabel => IsScanning ? "Analisi in corso…" : HasAnalysis || _awaitingReanalysis ? "Rianalizza" : "Analizza";
+    public string AnalysisActionLabel => IsScanning ? L("Analisi in corso…", "Analysing…") : HasAnalysis || _awaitingReanalysis ? L("Rianalizza", "Analyse again") : L("Analizza", "Analyse");
     public string RecoverySummary => _pendingRecovery is null
-        ? "Nessun recupero necessario"
-        : $"{_pendingRecovery.Operation} interrotta il {_pendingRecovery.StartedAtUtc.ToLocalTime():dd MMM yyyy 'alle' HH:mm}. È disponibile lo stato del progetto precedente.";
+        ? ""
+        : L($"{_pendingRecovery.Operation}: interrotta il {_pendingRecovery.StartedAtUtc.ToLocalTime():d MMM yyyy 'alle' HH:mm}. Puoi ripristinare il progetto com’era prima.", $"{_pendingRecovery.Operation}: interrupted on {_pendingRecovery.StartedAtUtc.ToLocalTime():d MMM yyyy 'at' HH:mm}. You can restore the project as it was before.");
     public string DiagnosticsSummary { get => _diagnosticsSummary; private set => Set(ref _diagnosticsSummary, value); }
     public double ExportMarginPercent { get => _exportMarginPercent; set { if (Set(ref _exportMarginPercent, value)) InvalidateExportPreflight(); } }
     public double ExportMinimumReserveGiB { get => _exportMinimumReserveGiB; set { if (Set(ref _exportMinimumReserveGiB, value)) InvalidateExportPreflight(); } }
@@ -320,25 +326,28 @@ public sealed class MainViewModel : BindableBase
     public bool CanCancelExport => _exportState is ExportRunState.Running or ExportRunState.Paused or ExportRunState.Cancelling;
     public string ExportStateLabel => _exportState switch
     {
-        ExportRunState.Preflighting => "PREFLIGHT IN CORSO",
-        ExportRunState.Ready => "PRONTO",
-        ExportRunState.Blocked => "BLOCCATO",
-        ExportRunState.Running => "COPIA + SHA-256",
-        ExportRunState.Paused => "IN PAUSA",
-        ExportRunState.Cancelling => "ANNULLAMENTO…",
-        ExportRunState.Completed => "COMPLETATO",
-        ExportRunState.Cancelled => "RIPRENDIBILE",
-        ExportRunState.Failed => "ERRORE",
-        _ => "PRONTO DA ESPORTARE"
+        ExportRunState.Preflighting => L("Controllo in corso", "Check in progress"),
+        ExportRunState.Ready => L("Controllato, pronto da esportare", "Checked, ready to export"),
+        ExportRunState.Blocked => L("Bloccato dal controllo", "Blocked by the check"),
+        ExportRunState.Running => L("Copia e verifica in corso", "Copying and verifying"),
+        ExportRunState.Paused => L("In pausa", "Paused"),
+        ExportRunState.Cancelling => L("Annullamento in corso…", "Cancelling…"),
+        ExportRunState.Completed => L("Esportato e verificato", "Exported and verified"),
+        ExportRunState.Cancelled => L("Interrotto, si può riprendere", "Interrupted, can be resumed"),
+        ExportRunState.Failed => L("Esportazione non riuscita", "Export failed"),
+        _ => L("Pronto da esportare", "Ready to export")
     };
+    // The four figures mean something once a check ran (or an update knows what is new), and until the copy is done.
+    public bool HasExportSummary => (_exportPreflight is not null || PendingUpdate is not null) && _exportState != ExportRunState.Completed;
+    public bool ShowExportPreflight => CanRunExportPreflight && _exportState is not (ExportRunState.Completed or ExportRunState.Running or ExportRunState.Paused or ExportRunState.Cancelling);
     public string ExportProgressDetail { get => _exportProgressDetail; private set => Set(ref _exportProgressDetail, value); }
     // Before the check runs, an update already knows what it will copy: the new data.
     private ProjectNovelty? PendingUpdate => _exportPreflight is null && Novelty is { } news && ExportHistory.Count > 0 ? news : null;
     public string ExportFileSummary => PendingUpdate is { } pending ? (UiLanguage == UiLocalization.English ? $"{pending.NewFiles} new" : $"{pending.NewFiles} nuovi")
-        : _exportPreflight is null ? "—" : UiLanguage == UiLocalization.English ? $"{_exportPreflight.TotalFiles} files" : $"{_exportPreflight.TotalFiles} file";
-    public string ExportBytesSummary => PendingUpdate is { } pending ? (UiLanguage == UiLocalization.English ? $"{HumanSize(pending.NewBytes)} to copy" : $"{HumanSize(pending.NewBytes)} da copiare") : _exportPreflight is null ? "—" : UiLanguage == UiLocalization.English ? $"{HumanSize(_exportPreflight.BytesToCopy)} to copy" : $"{HumanSize(_exportPreflight.BytesToCopy)} da copiare";
-    public string ExportSpaceSummary => _exportPreflight is null ? "—" : _exportPreflight.AvailableFreeBytes is { } value ? (UiLanguage == UiLocalization.English ? $"{HumanSize(value)} free" : $"{HumanSize(value)} liberi") : "Spazio non disponibile";
-    public string ExportEtaSummary => _exportPreflight is null ? "—" : FormatDuration(_exportPreflight.EstimatedDuration);
+        : _exportPreflight is null ? "-" : UiLanguage == UiLocalization.English ? $"{_exportPreflight.TotalFiles} files" : $"{_exportPreflight.TotalFiles} file";
+    public string ExportBytesSummary => PendingUpdate is { } pending ? HumanSize(pending.NewBytes) : _exportPreflight is null ? "-" : HumanSize(_exportPreflight.BytesToCopy);
+    public string ExportSpaceSummary => _exportPreflight?.AvailableFreeBytes is { } value ? HumanSize(value) : "-";
+    public string ExportEtaSummary => _exportPreflight is null ? "-" : FormatDuration(_exportPreflight.EstimatedDuration);
     public string ExportResumeSummary => _exportPreflight is null
         ? (UiLanguage == UiLocalization.English ? "No comparison run" : "Nessun confronto eseguito")
         : _exportPreflight.IsIncremental
@@ -373,8 +382,8 @@ public sealed class MainViewModel : BindableBase
     public bool CanExcludeQualitySuspects => !IsQualityAnalyzing && QualityPendingSuspectCount > 0;
     public string ExcludeQualitySuspectsLabel => QualityPendingSuspectCount > 0 ? $"Escludi {QualityPendingSuspectCount} sospetti" : "Nessun sospetto da escludere";
     public string QualityTableSummary => SelectedQualitySeries is null
-        ? "Nessuna serie selezionata"
-        : $"{QualityFrames.Count}/{SelectedQualitySeries.AnalyzedCount} mostrati · {QualitySuspectCount} sospetti · {QualityExcludedCount} esclusi";
+        ? L("Nessuna serie selezionata", "No series selected")
+        : L($"{QualityFrames.Count} mostrati su {SelectedQualitySeries.AnalyzedCount} · {QualitySuspectCount} sospetti · {QualityExcludedCount} esclusi", $"{QualityFrames.Count} of {SelectedQualitySeries.AnalyzedCount} shown · {QualitySuspectCount} suspects · {QualityExcludedCount} excluded");
     public IEnumerable<QualityFrameRow> QualityChartFrames => SelectedQualitySeries?.Frames ?? [];
     public bool QualityShowOnlySuspects
     {
@@ -420,7 +429,7 @@ public sealed class MainViewModel : BindableBase
             foreach (var frame in _frames) AstronomicalSessionResolver.Apply(frame, settings);
             RefreshIntelligence();
             RebuildTree();
-            Status = $"Sessioni ricalcolate con cambio alle {_sessionBoundaryHour:00}:00 locali";
+            Status = L($"Notti ricalcolate: il cambio è alle {_sessionBoundaryHour:00}:00", $"Nights recalculated: the boundary is at {_sessionBoundaryHour:00}:00");
         }
     }
     public string AstronomicalNightExplanation => UiLanguage == UiLocalization.English
@@ -443,7 +452,7 @@ public sealed class MainViewModel : BindableBase
     public string ImportedSourceCountLabel => UiLanguage == UiLocalization.English
         ? $"{SourcePaths.Count} imported"
         : $"{SourcePaths.Count} importate";
-    public string TotalIssuesLabel => UiLanguage == UiLocalization.English ? $"{TotalIssues} warnings" : $"AVVISI {TotalIssues}";
+    public string TotalIssuesLabel => UiLanguage == UiLocalization.English ? $"{TotalIssues} warnings" : $"{TotalIssues} segnalazioni";
     public int OverrideCount => _frames.Count(frame => HasAnyOverride(frame));
     public int UnresolvedCalibrations => _analysis?.UnresolvedCount ?? 0;
     public int ReviewQueueCount => ReviewQueue.Count;
@@ -455,14 +464,16 @@ public sealed class MainViewModel : BindableBase
     public bool IsProjectReady => _analysis?.Ready == true;
     public string ReadinessText { get => _readinessText; private set => Set(ref _readinessText, value); }
     public string CalibrationSummary { get => _calibrationSummary; private set => Set(ref _calibrationSummary, value); }
-    public string PlanSummary => _plan is null ? "Genera il piano dopo aver risolto le calibrazioni." : UiLanguage == UiLocalization.English ? $"{_plan.Files.Count} files · {HumanSize(_plan.RequiredBytes)} · {_plan.ProjectRoot}" : $"{_plan.Files.Count} file · {HumanSize(_plan.RequiredBytes)} · {_plan.ProjectRoot}";
+    public string PlanSummary => _plan is null ? L("L’elenco dei file si prepara quando le calibrazioni sono risolte.", "The file list is prepared once the calibrations are resolved.") : UiLanguage == UiLocalization.English ? $"{_plan.Files.Count} files · {HumanSize(_plan.RequiredBytes)} · {_plan.ProjectRoot}" : $"{_plan.Files.Count} file · {HumanSize(_plan.RequiredBytes)} · {_plan.ProjectRoot}";
     public string TotalIntegrationText => _statistics is null ? "0 h" : FormatHours(_statistics.ExposureSeconds);
-    public string StatisticsSummary => _statistics is null ? "Analizza il progetto per calcolare le statistiche." : $"{_statistics.LightCount} Light · {_statistics.FilterCount} filtri · {_statistics.ConfigurationSessionCount} sessioni · {_statistics.NightCount} notti";
+    public string StatisticsSummary => _statistics is null
+        ? L("Nessuna statistica. Analizza il progetto per calcolarle.", "No statistics yet. Analyse the project to compute them.")
+        : L($"{_statistics.LightCount} Light · {_statistics.FilterCount} filtri · {_statistics.ConfigurationSessionCount} sessioni · {_statistics.NightCount} notti", $"{_statistics.LightCount} Lights · {_statistics.FilterCount} filters · {_statistics.ConfigurationSessionCount} sessions · {_statistics.NightCount} nights");
     public string StatisticsDateRange => _statistics?.FirstCapture is null ? "Nessun intervallo temporale" : $"{_statistics.FirstCapture.Value.ToLocalTime():dd MMM yyyy} → {_statistics.LastCapture!.Value.ToLocalTime():dd MMM yyyy}";
-    public string SelectionTitle => SelectedNode?.Name ?? "Nessuna selezione";
-    public string SelectionDetail => SelectedNode is null ? "Seleziona un nodo dell'albero" : $"{SelectedNode.Count} frame · {SelectedNode.IssueCount} segnalazioni";
+    public string SelectionTitle => SelectedNode?.Name ?? L("Nessuna selezione", "No selection");
+    public string SelectionDetail => SelectedNode is null ? L("Seleziona una voce dell’elenco", "Select an item in the list") : L($"{SelectedNode.Count} frame · {SelectedNode.IssueCount} segnalazioni", $"{SelectedNode.Count} frames · {SelectedNode.IssueCount} warnings");
     public bool HasSelection => SelectedNode is not null;
-    public string ApplyLabel => SelectedNode is null ? "Applica" : $"Applica a {SelectedNode.Count} frame";
+    public string ApplyLabel => SelectedNode is null ? L("Applica", "Apply") : L($"Applica a {SelectedNode.Count} frame", $"Apply to {SelectedNode.Count} frames");
     public string GainSource => AggregateSource(SelectedNode?.Frames, frame => frame.Gain.Source);
     public string OffsetSource => AggregateSource(SelectedNode?.Frames, frame => frame.Offset.Source);
     public string TemperatureSource => AggregateSource(SelectedNode?.Frames, frame => frame.SetTemperatureC.Source);
@@ -519,13 +530,13 @@ public sealed class MainViewModel : BindableBase
     {
         if (string.IsNullOrWhiteSpace(path)) return;
         path = Path.GetFullPath(path);
-        if (SourcePaths.Contains(path, PathIdentity.Comparer)) { Status = "Sorgente già collegata"; return; }
+        if (SourcePaths.Contains(path, PathIdentity.Comparer)) { Status = L("Già tra le acquisizioni", "Already among the captures"); return; }
         var hadAnalysis = _analysis is not null || _frames.Count > 0;
         SourcePaths.Add(path);
         Raise(nameof(HasProjectContent));
         Raise(nameof(ImportedSourceCountLabel));
         InvalidateProjectAnalysis(hadAnalysis);
-        Status = $"{SourceSummary} · pronta per l’analisi";
+        Status = L($"{SourceSummary} da analizzare", $"{SourceSummary} to analyse");
         SaveState();
     }
 
@@ -536,7 +547,7 @@ public sealed class MainViewModel : BindableBase
         Raise(nameof(HasProjectContent));
         Raise(nameof(ImportedSourceCountLabel));
         InvalidateProjectAnalysis(hadAnalysis);
-        Status = HasSources ? $"Sorgente rimossa · {SourceSummary} · rianalizza il progetto" : "Nessuna sorgente collegata";
+        Status = HasSources ? L("Rimossa dal progetto. I file restano su disco. Rianalizza.", "Removed from the project. The files stay on disk. Analyse again.") : L("Rimossa dal progetto. I file restano su disco.", "Removed from the project. The files stay on disk.");
         SaveState();
     }
 
@@ -558,7 +569,7 @@ public sealed class MainViewModel : BindableBase
         Raise(nameof(MasterLibraryCountLabel));
         InvalidateProjectAnalysis(_analysis is not null || _frames.Count > 0);
         SaveState();
-        Status = "Libreria rimossa · Master invariati su disco";
+        Status = L("Libreria rimossa. I Master restano su disco.", "Library removed. The Masters stay on disk.");
     }
 
     public void MoveSelectedMasterLibrary(int direction)
@@ -571,7 +582,7 @@ public sealed class MainViewModel : BindableBase
         SaveState();
     }
 
-    public void RefreshMasterLibraryStates() { foreach (var item in MasterLibraries) item.RefreshState(); Status = $"{MasterLibraries.Count(item => item.IsOnline && item.Enabled)}/{MasterLibraries.Count} librerie disponibili"; }
+    public void RefreshMasterLibraryStates() { foreach (var item in MasterLibraries) item.RefreshState(); Status = L($"{MasterLibraries.Count(item => item.IsOnline && item.Enabled)} librerie raggiungibili su {MasterLibraries.Count}", $"{MasterLibraries.Count(item => item.IsOnline && item.Enabled)} of {MasterLibraries.Count} libraries reachable"); }
 
     private void AddMasterLibraryItem(MasterLibraryItem item)
     {
@@ -584,7 +595,7 @@ public sealed class MainViewModel : BindableBase
     {
         if (e.PropertyName is not (nameof(MasterLibraryItem.Enabled) or nameof(MasterLibraryItem.Path))) return;
         InvalidateProjectAnalysis(_analysis is not null || _frames.Count > 0);
-        Status = HasSources ? "Configurazione Master aggiornata · rianalizza il progetto" : "Configurazione Master aggiornata";
+        Status = HasSources ? L("Librerie Master aggiornate. Rianalizza il progetto.", "Master libraries updated. Analyse the project again.") : L("Librerie Master aggiornate", "Master libraries updated");
         SaveState();
     }
 
@@ -680,7 +691,7 @@ public sealed class MainViewModel : BindableBase
         ExportPreflightFindings.Clear();
         ExportProgress = 0;
         SetExportState(ExportRunState.Idle);
-        ExportProgressDetail = HasExportPlan ? "Anteprima pronta · controlli automatici inclusi nell’esportazione." : "Anteprima facoltativa · controlli automatici inclusi nell’esportazione.";
+        ExportProgressDetail = L("Spazio, percorsi e conflitti vengono controllati quando parte l’esportazione.", "Space, paths and conflicts are checked when the export starts.");
         RaiseExportProperties();
     }
 
@@ -697,7 +708,7 @@ public sealed class MainViewModel : BindableBase
         Raise(nameof(CanRunExportPreflight)); Raise(nameof(CanStartExport)); Raise(nameof(CanPauseExport));
         Raise(nameof(CanResumeExport)); Raise(nameof(CanCancelExport)); Raise(nameof(ExportStateLabel)); Raise(nameof(ExportState));
         Raise(nameof(ExportFileSummary)); Raise(nameof(ExportBytesSummary)); Raise(nameof(ExportSpaceSummary));
-        Raise(nameof(ExportEtaSummary)); Raise(nameof(ExportResumeSummary));
+        Raise(nameof(ExportEtaSummary)); Raise(nameof(ExportResumeSummary)); Raise(nameof(HasExportSummary)); Raise(nameof(ShowExportPreflight));
         Raise(nameof(ExportActionLabel)); Raise(nameof(ExportChangeSummary)); Raise(nameof(HasExportHistory));
     }
 
@@ -717,11 +728,11 @@ public sealed class MainViewModel : BindableBase
             var plan = await MasterLibraryOrganizer.PlanAsync(requests, MasterOrganizerDestination, cancellationToken);
             ApplyMasterOrganizerPlan(plan);
             var conflicts = plan.Count(item => item.Status != MasterOrganizationPlanStatus.Ready);
-            if (conflicts > 0) throw new IOException($"Preflight non superato: risolvi {conflicts} conflitti evidenziati prima di copiare.");
+            if (conflicts > 0) throw new IOException(L($"Il controllo ha trovato {conflicts} conflitti: risolvili prima di copiare.", $"The check found {conflicts} conflicts: resolve them before copying."));
             MasterOrganizerStatus = $"Organizzazione di {requests.Length} Master…";
             var results = await MasterLibraryOrganizer.ExecuteAsync(requests, MasterOrganizerDestination, cancellationToken);
             foreach (var item in MasterOrganizerItems) item.SetPreflight("Copiato e verificato");
-            MasterOrganizerStatus = $"Completata · {results.Count} copie verificate · {results.Count(item => item.HeaderStamped)} header aggiornati";
+            MasterOrganizerStatus = L($"{results.Count} copie create e verificate, {results.Count(item => item.HeaderStamped)} con l’header aggiornato", $"{results.Count} copies created and verified, {results.Count(item => item.HeaderStamped)} with updated headers");
             Status = MasterOrganizerStatus;
             tracked.Complete("AF-MASTER-ORGANIZE-OK", $"Organizzazione completata: {results.Count} copie verificate");
         }
@@ -737,19 +748,21 @@ public sealed class MainViewModel : BindableBase
         var plan = await MasterLibraryOrganizer.PlanAsync(MasterOrganizerRequests(), MasterOrganizerDestination, cancellationToken);
         ApplyMasterOrganizerPlan(plan);
         var conflicts = plan.Count(item => item.Status != MasterOrganizationPlanStatus.Ready);
-        MasterOrganizerStatus = conflicts == 0 ? $"Verifica completata · {plan.Count} Master pronti" : $"Verifica bloccata · {conflicts} conflitti su {plan.Count} Master";
+        MasterOrganizerStatus = conflicts == 0
+            ? L($"Controllo riuscito: {plan.Count} Master pronti per la copia", $"Check passed: {plan.Count} Masters ready to copy")
+            : L($"Controllo fermato da {conflicts} conflitti su {plan.Count} Master", $"Check stopped by {conflicts} conflicts on {plan.Count} Masters");
         Status = MasterOrganizerStatus;
     }
 
     public async Task RollbackMasterOrganizerAsync(CancellationToken cancellationToken = default)
     {
-        if (string.IsNullOrWhiteSpace(MasterOrganizerDestination)) throw new InvalidOperationException("Scegli la libreria da ripristinare.");
+        if (string.IsNullOrWhiteSpace(MasterOrganizerDestination)) throw new InvalidOperationException("Scegli prima la cartella della libreria ordinata.");
         using var tracked = BeginTrackedOperation("Rollback Master Library", "AF-MASTER-ROLLBACK-START", "Rollback verificato avviato");
         try
         {
             var removed = await MasterLibraryOrganizer.RollbackAsync(MasterOrganizerDestination, cancellationToken);
-            foreach (var item in MasterOrganizerItems) item.SetPreflight("Batch annullato");
-            MasterOrganizerStatus = $"Batch annullato · rimosse {removed} copie verificate · originali intatti";
+            foreach (var item in MasterOrganizerItems) item.SetPreflight("Copia annullata");
+            MasterOrganizerStatus = L($"Ultima copia annullata: rimosse {removed} copie. Gli originali non sono stati toccati.", $"Last copy undone: {removed} copies removed. The originals were not touched.");
             Status = MasterOrganizerStatus;
             tracked.Complete("AF-MASTER-ROLLBACK-OK", $"Rollback completato: {removed} copie rimosse");
         }
@@ -762,9 +775,9 @@ public sealed class MainViewModel : BindableBase
 
     private MasterOrganizationRequest[] MasterOrganizerRequests()
     {
-        if (string.IsNullOrWhiteSpace(MasterOrganizerDestination)) throw new InvalidOperationException("Scegli la destinazione della nuova Master Library.");
+        if (string.IsNullOrWhiteSpace(MasterOrganizerDestination)) throw new InvalidOperationException("Scegli prima la cartella della libreria ordinata.");
         var invalid = MasterOrganizerItems.Where(item => !item.TryRequest(out _)).ToArray();
-        if (invalid.Length > 0) throw new InvalidOperationException($"Completa prima i metadati di {invalid.Length} Master evidenziati.");
+        if (invalid.Length > 0) throw new InvalidOperationException(L($"Completa prima i metadati dei {invalid.Length} Master evidenziati.", $"Complete the metadata of the {invalid.Length} highlighted Masters first."));
         return MasterOrganizerItems.Select(item => { item.TryRequest(out var request); return request!; }).ToArray();
     }
 
@@ -772,13 +785,13 @@ public sealed class MainViewModel : BindableBase
     {
         var bySource = plan.ToDictionary(item => item.Request.Source.Path, PathIdentity.Comparer);
         foreach (var item in MasterOrganizerItems)
-            item.SetPreflight(bySource.TryGetValue(item.Frame.Path, out var value) ? value.Status == MasterOrganizationPlanStatus.Ready ? "Pronto" : $"CONFLITTO · {value.Message}" : "Non verificato");
+            item.SetPreflight(bySource.TryGetValue(item.Frame.Path, out var value) ? value.Status == MasterOrganizationPlanStatus.Ready ? L("Pronto", "Ready") : L($"Conflitto: {value.Message}", $"Conflict: {value.Message}") : "Non verificato");
     }
 
     public async Task ScanMasterLibrariesAsync(CancellationToken cancellationToken = default)
     {
         var libraries = MasterLibraries.Where(item => item.Enabled && item.IsOnline).OrderBy(item => item.Priority).ToArray();
-        if (libraries.Length == 0) throw new InvalidOperationException("Aggiungi o abilita almeno una Master Library online.");
+        if (libraries.Length == 0) throw new InvalidOperationException("Collega o abilita almeno una Libreria Master raggiungibile.");
         using var tracked = BeginTrackedOperation("Scansione Master Library", "AF-MASTER-SCAN-START", $"Scansione di {libraries.Length} librerie avviata");
         try
         {
@@ -855,12 +868,12 @@ public sealed class MainViewModel : BindableBase
 
     public void SaveProject(string path)
     {
-        if (string.IsNullOrWhiteSpace(path)) throw new ArgumentException("Percorso progetto non valido.", nameof(path));
+        if (string.IsNullOrWhiteSpace(path)) throw new ArgumentException("Il percorso del progetto non è valido.", nameof(path));
         if (!path.EndsWith(".astroforge", StringComparison.OrdinalIgnoreCase)) path += ".astroforge";
         CurrentProjectFile = Path.GetFullPath(path);
         if (string.IsNullOrWhiteSpace(ProjectName)) ProjectName = Path.GetFileNameWithoutExtension(CurrentProjectFile);
         SaveState();
-        Status = $"Progetto salvato · {Path.GetFileName(CurrentProjectFile)}";
+        Status = L($"Progetto salvato · {Path.GetFileName(CurrentProjectFile)}", $"Project saved · {Path.GetFileName(CurrentProjectFile)}");
     }
 
     public async Task LoadProjectAsync(string path)
@@ -868,7 +881,7 @@ public sealed class MainViewModel : BindableBase
         if (_pendingRecovery is not null) throw new InvalidOperationException("Ripristina o ignora prima il recupero in sospeso.");
         var document = ProjectDocumentStore.Load(path);
         ApplyProjectDocument(document, Path.GetFullPath(path));
-        Status = $"Progetto aperto · {Path.GetFileName(CurrentProjectFile)}";
+        Status = L($"Progetto aperto · {Path.GetFileName(CurrentProjectFile)}", $"Project opened · {Path.GetFileName(CurrentProjectFile)}");
         if (SourcePaths.Count > 0) await ScanAsync(); else SaveState();
     }
 
@@ -924,7 +937,7 @@ public sealed class MainViewModel : BindableBase
     public async Task ScanAsync(CancellationToken cancellationToken = default)
     {
         var availableLibraries = MasterLibraries.Where(item => item.Enabled && item.IsOnline).ToArray();
-        if (SourcePaths.Count == 0) { Status = "Aggiungi almeno una sorgente FITS/XISF."; return; }
+        if (SourcePaths.Count == 0) { Status = L("Aggiungi almeno una cartella o un file FITS/XISF.", "Add at least one FITS/XISF folder or file."); return; }
         using var tracked = BeginTrackedOperation("Analisi progetto", "AF-SCAN-START", "Analisi progetto avviata");
         IsScanning = true;
         Progress = 0;
@@ -956,7 +969,7 @@ public sealed class MainViewModel : BindableBase
             RefreshNovelty();
             _awaitingReanalysis = false;
             RaiseProjectWorkflowProperties();
-            Status = $"{TotalFiles} file analizzati · {_scanner.LastCacheHits} da cache · {_scanner.LastParsedFiles} letti · {TotalIssues} segnalazioni";
+            Status = L($"{TotalFiles} file analizzati, {TotalIssues} segnalazioni", $"{TotalFiles} files analysed, {TotalIssues} warnings");
             Raise(nameof(TotalFiles)); Raise(nameof(TotalIssues)); Raise(nameof(OverrideCount));
             Raise(nameof(TotalIssuesLabel));
             ApplyLibraryOffsetCommand.RaiseCanExecuteChanged();
@@ -978,7 +991,7 @@ public sealed class MainViewModel : BindableBase
 
     public void BuildPlan()
     {
-        if (_analysis?.Ready != true) throw new InvalidOperationException("Risolvi prima tutte le calibrazioni evidenziate.");
+        if (_analysis?.Ready != true) throw new InvalidOperationException("Risolvi prima le calibrazioni ancora aperte.");
         if (string.IsNullOrWhiteSpace(ProjectName)) throw new InvalidOperationException("Inserisci il nome del progetto.");
         if (string.IsNullOrWhiteSpace(DestinationPath)) throw new InvalidOperationException("Seleziona la cartella di destinazione.");
         _plan = ProjectExporter.BuildPlan(ProjectName, DestinationPath, _analysis, _excludedQualityPaths,
@@ -988,20 +1001,20 @@ public sealed class MainViewModel : BindableBase
         // A folder that is already a project makes this an update: say so before anything is copied.
         RefreshExportHistory(_plan.ProjectRoot);
         Raise(nameof(PlanSummary)); Raise(nameof(HasExportPlan)); Raise(nameof(CanRunExportPreflight));
-        Status = $"Anteprima pronta: {_plan.Files.Count} file, {HumanSize(_plan.RequiredBytes)} · i controlli verranno eseguiti automaticamente";
+        Status = L($"Anteprima pronta: {_plan.Files.Count} file, {HumanSize(_plan.RequiredBytes)}", $"Preview ready: {_plan.Files.Count} files, {HumanSize(_plan.RequiredBytes)}");
     }
 
     public string GenerateWbppInstance()
     {
         if (_plan is null) BuildPlan();
         var path = WbppInstanceGenerator.Generate(_plan!);
-        Status = $"Istanza WBPP pronta · {Path.GetFileName(path)}";
+        Status = L($"Istanza WBPP pronta · {Path.GetFileName(path)}", $"WBPP instance ready · {Path.GetFileName(path)}");
         return path;
     }
 
     public async Task AnalyzeQualityAsync(CancellationToken cancellationToken = default)
     {
-        var series = SelectedQualitySeries ?? throw new InvalidOperationException("Seleziona prima una serie di calibrazione.");
+        var series = SelectedQualitySeries ?? throw new InvalidOperationException("Seleziona prima una serie.");
         var lights = series.SourceFrames.Where(IsQualityFits).ToArray();
         if (lights.Length == 0) throw new InvalidOperationException("La serie selezionata non contiene Light FITS supportati.");
         foreach (var previous in series.Frames) _allQualityFrames.Remove(previous);
@@ -1250,11 +1263,11 @@ public sealed class MainViewModel : BindableBase
     public async Task RunExportPreflightAsync(CancellationToken cancellationToken = default)
     {
         if (_plan is null) BuildPlan();
-        var plan = _plan ?? throw new InvalidOperationException("Impossibile costruire il piano di esportazione.");
+        var plan = _plan ?? throw new InvalidOperationException("Non è stato possibile preparare l’elenco dei file da esportare.");
         SetExportState(ExportRunState.Preflighting);
         IsScanning = true;
         ExportProgress = 0;
-        ExportProgressDetail = "Controllo di sorgenti, spazio e destinazione…";
+        ExportProgressDetail = L("Controllo di file, spazio e destinazione…", "Checking files, space and destination…");
         using var operation = _eventLog.BeginOperation("Verifica esportazione", "AF-EXPORT-PREFLIGHT-START", "Verifica esportazione avviata");
         try
         {
@@ -1263,7 +1276,7 @@ public sealed class MainViewModel : BindableBase
             SetExportState(report.IsReady ? ExportRunState.Ready : ExportRunState.Blocked);
             ExportProgressDetail = report.IsReady
                 ? (UiLanguage == UiLocalization.English ? $"Check complete · {report.WarningCount} warnings" : $"Verifica completata · {report.WarningCount} avvisi")
-                : UiLanguage == UiLocalization.English ? $"Export blocked · {report.ErrorCount} errors · {report.WarningCount} warnings" : $"Export bloccato · {report.ErrorCount} errori · {report.WarningCount} avvisi";
+                : UiLanguage == UiLocalization.English ? $"Export blocked · {report.ErrorCount} errors · {report.WarningCount} warnings" : $"Esportazione bloccata · {report.ErrorCount} errori · {report.WarningCount} avvisi";
             Status = ExportProgressDetail;
             if (report.IsReady) operation.Complete("AF-EXPORT-PREFLIGHT-OK", ExportProgressDetail);
             else operation.Fail("AF-EXPORT-PREFLIGHT-BLOCKED", ExportProgressDetail, new ExportPreflightException(report));
@@ -1271,7 +1284,7 @@ public sealed class MainViewModel : BindableBase
         catch (Exception exception)
         {
             SetExportState(ExportRunState.Failed);
-            ExportProgressDetail = "Preflight non completato";
+            ExportProgressDetail = L("Controllo non completato", "The check did not complete");
             operation.Fail("AF-EXPORT-PREFLIGHT-001", "Preflight export non completato", exception);
             throw;
         }
@@ -1327,7 +1340,7 @@ public sealed class MainViewModel : BindableBase
         File.WriteAllText(Path.Combine(output, "filters.csv"), CsvFilters(_statistics), new UTF8Encoding(true));
         File.WriteAllText(Path.Combine(output, "sessions.csv"), CsvSessions(_statistics), new UTF8Encoding(true));
         File.WriteAllText(Path.Combine(output, "nights.csv"), CsvNights(_statistics), new UTF8Encoding(true));
-        Status = $"Statistiche esportate: {output}";
+        Status = L($"Statistiche esportate in {output}", $"Statistics exported to {output}");
         return output;
     }
 
@@ -1342,13 +1355,13 @@ public sealed class MainViewModel : BindableBase
                 item.Timestamp.ToLocalTime().ToString("dd MMM HH:mm:ss"),
                 item.Level,
                 item.Code,
-                item.Operation ?? "—",
-                string.IsNullOrWhiteSpace(item.OperationId) ? "—" : item.OperationId[..Math.Min(8, item.OperationId.Length)],
+                item.Operation ?? "-",
+                string.IsNullOrWhiteSpace(item.OperationId) ? "-" : item.OperationId[..Math.Min(8, item.OperationId.Length)],
                 item.Message,
                 item.ExceptionType ?? ""));
         var errors = events.Count(item => item.Level is "Error" or "Critical");
         var operations = events.Where(item => !string.IsNullOrWhiteSpace(item.OperationId)).Select(item => item.OperationId).Distinct(StringComparer.Ordinal).Count();
-        DiagnosticsSummary = $"{events.Count} eventi recenti · {errors} errori · {operations} operazioni correlate";
+        DiagnosticsSummary = L($"{events.Count} eventi recenti · {errors} errori · {operations} operazioni", $"{events.Count} recent events · {errors} errors · {operations} operations");
     }
 
     public async Task RestoreRecoveryAsync(CancellationToken cancellationToken = default)
@@ -1363,7 +1376,7 @@ public sealed class MainViewModel : BindableBase
         Raise(nameof(CanAnalyzeProject));
         Raise(nameof(RecoverySummary));
         _eventLog.Write("Information", "AF-RECOVERY-RESTORED", "Fotografia progetto ripristinata", operationId: recovery.OperationId, operation: recovery.Operation);
-        Status = "Progetto ripristinato dal recovery journal";
+        Status = L("Progetto ripristinato com’era prima dell’interruzione", "Project restored as it was before the interruption");
         if (SourcePaths.Count > 0) await ScanAsync(cancellationToken); else SaveState();
     }
 
@@ -1378,7 +1391,7 @@ public sealed class MainViewModel : BindableBase
         Raise(nameof(CanAnalyzeProject));
         Raise(nameof(RecoverySummary));
         _eventLog.Write("Information", "AF-RECOVERY-DISCARDED", "Fotografia di recupero ignorata", operationId: recovery.OperationId, operation: recovery.Operation);
-        Status = "Recupero ignorato · progetto invariato";
+        Status = L("Recupero ignorato. Il progetto non è cambiato.", "Recovery dismissed. The project did not change.");
     }
 
     public async Task<string> ExportSupportBundleAsync(string outputPath, CancellationToken cancellationToken = default)
@@ -1417,7 +1430,7 @@ public sealed class MainViewModel : BindableBase
         {
             var result = await SupportBundleBuilder.BuildAsync(new(outputPath, version, settings, diagnostics, issues, _eventLog.Files), cancellationToken);
             operation.Complete("AF-SUPPORT-EXPORTED", $"Pacchetto diagnostico creato con {result.Entries.Count} elementi");
-            Status = $"Pacchetto diagnostico creato · {result.Entries.Count} elementi";
+            Status = L($"File di supporto creato con {result.Entries.Count} elementi", $"Support file created with {result.Entries.Count} items");
             return result.Path;
         }
         catch (Exception exception)
@@ -1432,7 +1445,7 @@ public sealed class MainViewModel : BindableBase
     public void ClearHeaderCache()
     {
         _headerCache.Clear();
-        Status = "Cache header svuotata";
+        Status = L("La prossima analisi rilegge tutti gli header", "The next analysis reads every header again");
     }
 
     public void SelectReviewItem(ReviewQueueItem? item)
@@ -1476,13 +1489,13 @@ public sealed class MainViewModel : BindableBase
         });
         RefreshIntelligence(); RebuildTree(); SaveState(); UndoCommand.RaiseCanExecuteChanged();
         var scopeLabel = scope switch { ReviewAssignmentScope.Night => "nella notte", ReviewAssignmentScope.Configuration => "con la stessa configurazione", _ => "nel gruppo" };
-        Status = $"{item.Calibration} assegnato manualmente a {targets.Length} Light {scopeLabel}";
+        Status = L($"{item.Calibration} assegnato a {targets.Length} Light {scopeLabel}", $"{item.Calibration} assigned to {targets.Length} Lights {scopeLabel}");
     }
 
     private void SaveSettings()
     {
         SaveState();
-        Status = "Impostazioni, percorsi e override salvati";
+        Status = L("Impostazioni e correzioni salvate", "Settings and corrections saved");
     }
 
     public void NewProject()
@@ -1500,7 +1513,7 @@ public sealed class MainViewModel : BindableBase
         InvalidateProjectAnalysis(false);
         Raise(nameof(HasProjectContent));
         SaveState();
-        Status = "Nuovo progetto";
+        Status = L("Nuovo progetto", "New project");
     }
 
     private bool CanLinkFlatSet()
@@ -1523,7 +1536,7 @@ public sealed class MainViewModel : BindableBase
         _undo.Push(() => { foreach (var action in undoActions.AsEnumerable().Reverse()) action(); RefreshIntelligence(); RebuildTree(); RefreshCounts(); SaveState(); });
         var linkedName = SelectedFlatSet.Display;
         RefreshIntelligence(); RebuildTree(); RefreshCounts(); SaveState();
-        Status = $"Flat Set collegato a {lights.Length} Light · {linkedName}";
+        Status = L($"Flat Set {linkedName} collegato a {lights.Length} Light", $"Flat Set {linkedName} linked to {lights.Length} Lights");
         UndoCommand.RaiseCanExecuteChanged();
         UnlinkFlatSetCommand.RaiseCanExecuteChanged();
     }
@@ -1541,7 +1554,7 @@ public sealed class MainViewModel : BindableBase
         }
         _undo.Push(() => { foreach (var action in undoActions.AsEnumerable().Reverse()) action(); RefreshIntelligence(); RebuildTree(); RefreshCounts(); SaveState(); });
         RefreshIntelligence(); RebuildTree(); RefreshCounts(); SaveState();
-        Status = $"Collegamento Flat rimosso da {lights.Length} Light · modalità automatica ripristinata";
+        Status = L($"Collegamento Flat rimosso da {lights.Length} Light: tornano all’abbinamento automatico", $"Flat link removed from {lights.Length} Lights: they go back to automatic matching");
         UndoCommand.RaiseCanExecuteChanged();
         UnlinkFlatSetCommand.RaiseCanExecuteChanged();
     }
@@ -1549,7 +1562,7 @@ public sealed class MainViewModel : BindableBase
     public async Task<string> ExportAsync(CancellationToken cancellationToken = default)
     {
         if (_plan is null) BuildPlan();
-        var plan = _plan ?? throw new InvalidOperationException("Impossibile costruire il piano di esportazione.");
+        var plan = _plan ?? throw new InvalidOperationException("Non è stato possibile preparare l’elenco dei file da esportare.");
         using var tracked = BeginTrackedOperation("Esportazione progetto", "AF-EXPORT-START", "Esportazione verificata avviata");
         _exportCancellation = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
         _exportControl = new();
@@ -1557,7 +1570,7 @@ public sealed class MainViewModel : BindableBase
         IsScanning = true;
         try
         {
-            ExportProgressDetail = "Verifica del progetto…";
+            ExportProgressDetail = L("Controllo del progetto…", "Checking the project…");
             var report = await ProjectExportPreflight.AnalyzeAsync(plan, CurrentExportOptions(), _exportCancellation.Token);
             ApplyExportPreflight(report);
             if (!report.IsReady) throw new ExportPreflightException(report);
@@ -1565,11 +1578,10 @@ public sealed class MainViewModel : BindableBase
             var progress = new Progress<ExportProgress>(item =>
             {
                 ExportProgress = item.Total == 0 ? 0 : item.Completed * 100d / item.Total;
-                var speed = item.MiBPerSecond <= 0 ? "calcolo velocità" : $"{item.MiBPerSecond:0.0} MiB/s";
-                var eta = item.EstimatedRemaining is null ? "ETA —" : $"ETA {FormatDuration(item.EstimatedRemaining.Value)}";
-                var mode = item.Resumed ? "riusato" : "verificato";
-                ExportProgressDetail = $"{item.Completed}/{item.Total} · {HumanSize(item.BytesCopied)} / {HumanSize(item.TotalBytes)} · {speed} · {eta}";
-                Status = $"{mode} · {item.CurrentFile}";
+                var english = UiLanguage == UiLocalization.English;
+                var speed = item.MiBPerSecond <= 0 ? "" : $" · {UiFormat.Number(item.MiBPerSecond, "0.0")} MB/s";
+                var eta = item.EstimatedRemaining is null ? "" : english ? $" · about {FormatDuration(item.EstimatedRemaining.Value)} left" : $" · ancora circa {FormatDuration(item.EstimatedRemaining.Value)}";
+                ExportProgressDetail = $"{item.Completed}/{item.Total} file · {HumanSize(item.BytesCopied)} / {HumanSize(item.TotalBytes)}{speed}{eta}";
             });
             var output = await ProjectExporter.ExecuteAsync(plan, progress, _exportCancellation.Token, _exportControl, CurrentExportOptions());
             SetExportState(ExportRunState.Completed);
@@ -1580,7 +1592,7 @@ public sealed class MainViewModel : BindableBase
             ExportProgressDetail = report.IsIncremental
                 ? (UiLanguage == UiLocalization.English ? $"Update complete · {report.NewFileCount} new · {report.ResumeFileCount} unchanged" : $"Aggiornamento completato · {report.NewFileCount} nuovi · {report.ResumeFileCount} invariati")
                 : UiLanguage == UiLocalization.English ? $"Copied and verified · {plan.Files.Count} files" : $"Copia e verifica completate · {plan.Files.Count} file";
-            Status = $"Progetto verificato: {output}";
+            Status = L($"Progetto copiato e verificato in {output}", $"Project copied and verified in {output}");
             RefreshExportHistory(output);
             tracked.Complete("AF-EXPORT-OK", $"Esportazione verificata completata: {plan.Files.Count} file");
             return output;
@@ -1588,7 +1600,7 @@ public sealed class MainViewModel : BindableBase
         catch (OperationCanceledException) when (_exportCancellation.IsCancellationRequested)
         {
             SetExportState(ExportRunState.Cancelled);
-            ExportProgressDetail = "Esportazione annullata · copie verificate conservate nello staging";
+            ExportProgressDetail = UiLanguage == UiLocalization.English ? "Export cancelled. The files already copied are kept, so it can resume from there." : "Esportazione annullata. I file già copiati restano, così può riprendere da lì.";
             Status = ExportProgressDetail;
             tracked.Complete("AF-EXPORT-CANCELLED", "Export annullato in modo riprendibile");
             throw;
@@ -1597,14 +1609,14 @@ public sealed class MainViewModel : BindableBase
         {
             ApplyExportPreflight(exception.Report);
             SetExportState(ExportRunState.Blocked);
-            ExportProgressDetail = $"Export bloccato dal nuovo preflight · {exception.Report.ErrorCount} errori";
+            ExportProgressDetail = UiLanguage == UiLocalization.English ? $"The check before the copy found {exception.Report.ErrorCount} errors. Nothing was copied." : $"Il controllo prima della copia ha trovato {exception.Report.ErrorCount} errori. Non è stato copiato nulla.";
             tracked.Fail("AF-EXPORT-PREFLIGHT-CHANGED", "Le condizioni sono cambiate dopo il dry-run", exception);
             throw;
         }
         catch (Exception exception)
         {
             SetExportState(ExportRunState.Failed);
-            ExportProgressDetail = "Esportazione interrotta · staging conservato";
+            ExportProgressDetail = UiLanguage == UiLocalization.English ? "The export stopped on an error. The files already copied are kept." : "L’esportazione si è fermata per un errore. I file già copiati restano.";
             tracked.Fail("AF-EXPORT-001", "Esportazione progetto non completata", exception);
             throw;
         }
@@ -1623,7 +1635,7 @@ public sealed class MainViewModel : BindableBase
         if (_exportState != ExportRunState.Running || _exportControl is null) return;
         _exportControl.Pause();
         SetExportState(ExportRunState.Paused);
-        Status = "Esportazione in pausa";
+        Status = L("Esportazione in pausa", "Export paused");
     }
 
     public void ResumeExport()
@@ -1631,7 +1643,7 @@ public sealed class MainViewModel : BindableBase
         if (_exportState != ExportRunState.Paused || _exportControl is null) return;
         _exportControl.Resume();
         SetExportState(ExportRunState.Running);
-        Status = "Export ripreso";
+        Status = L("Esportazione ripresa", "Export resumed");
     }
 
     public void CancelExport()
@@ -1640,7 +1652,7 @@ public sealed class MainViewModel : BindableBase
         SetExportState(ExportRunState.Cancelling);
         _exportControl?.Resume();
         _exportCancellation.Cancel();
-        Status = "Annullamento in corso…";
+        Status = L("Annullamento in corso…", "Cancelling…");
     }
 
     private void RebuildTree()
@@ -1691,12 +1703,12 @@ public sealed class MainViewModel : BindableBase
                 var biases = entries.Select(item => item.Bias.Selected?.Frame).Where(frame => frame is not null).Cast<FrameMetadata>().Distinct().ToArray();
                 var allFrames = lights.Concat(flats).Concat(darks).Concat(biases).Distinct().ToArray();
                 var decision = entries.Select(item => item.FlatDecision).FirstOrDefault(value => !string.IsNullOrWhiteSpace(value));
-                var sessionName = flatGroup is null ? $"Sessione {sessionIndex:00} · Flat da risolvere" : $"Sessione {sessionIndex:00} · {flatGroup.Id}";
-                if (!string.IsNullOrWhiteSpace(decision) && decision.Contains("manuale", StringComparison.OrdinalIgnoreCase)) sessionName += " · MANUALE";
+                var sessionName = flatGroup is null ? L($"Sessione {sessionIndex:00} · Flat da risolvere", $"Session {sessionIndex:00} · Flats to resolve") : L($"Sessione {sessionIndex:00} · {flatGroup.Id}", $"Session {sessionIndex:00} · {flatGroup.Id}");
+                if (!string.IsNullOrWhiteSpace(decision) && decision.Contains("manuale", StringComparison.OrdinalIgnoreCase)) sessionName += L(" · manuale", " · manual");
                 var sessionNode = new ProjectTreeNode { Key = $"optical-session:{filterName}:{group.Key}", Name = sessionName, Detail = decision ?? "", Icon = flatGroup is null ? "!" : "S", Frames = allFrames };
 
                 var nightNodes = lights.GroupBy(light => light.SessionId.Value ?? "Notte non definita").OrderBy(night => night.Key).Select(night =>
-                    GroupNode($"night:{filterName}:{group.Key}:{night.Key}", $"Notte · {night.Key}", "N", night,
+                    GroupNode($"night:{filterName}:{group.Key}:{night.Key}", L($"Notte · {night.Key}", $"Night · {night.Key}"), "N", night,
                         night.GroupBy(SeriesKey).Select(series => GroupNode($"series:{group.Key}:{night.Key}:{series.Key}", series.Key, "≋", series, series.Select(Leaf))))).ToArray();
                 if (nightNodes.Length > 0) sessionNode.Children.Add(GroupNode($"nights:{filterName}:{group.Key}", "Notti osservative", "N", lights, nightNodes));
                 if (flats.Length > 0) sessionNode.Children.Add(GroupNode($"session-flats:{group.Key}", "Flat della sessione", "F", flats, flats.Select(Leaf)));
@@ -1707,13 +1719,13 @@ public sealed class MainViewModel : BindableBase
             }
 
             foreach (var unused in visibleFlatGroups.Where(group => DisplayFilter(group.Representative.FilterName.Value).Equals(filterName, StringComparison.OrdinalIgnoreCase) && !usedFlatIds.Contains(group.Id)))
-                sessions.Add(GroupNode($"unused-flat:{unused.Id}", $"Flat Set non collegato · {unused.Id}", "?", unused.Frames,
+                sessions.Add(GroupNode($"unused-flat:{unused.Id}", L($"Flat Set non collegato · {unused.Id}", $"Flat Set not linked · {unused.Id}"), "?", unused.Frames,
                     [GroupNode($"unused-flat-files:{unused.Id}", "Flat", "F", unused.Frames, unused.Frames.Select(Leaf))]));
 
             if (sessions.Count == 0) continue;
             var filterFrames = sessions.SelectMany(node => node.Frames).Distinct().ToArray();
             var sessionsContainer = GroupNode($"sessions:{filterName}", "Sessioni di configurazione", "S", filterFrames, sessions);
-            TreeRoots.Add(Category($"project-filter:{filterName}", filterName == "Senza filtro" ? "Senza filtro" : $"Filtro · {filterName}", "◐", filterFrames, [sessionsContainer]));
+            TreeRoots.Add(Category($"project-filter:{filterName}", filterName == "Senza filtro" ? L("Senza filtro", "No filter") : L($"Filtro · {filterName}", $"Filter · {filterName}"), "◐", filterFrames, [sessionsContainer]));
         }
     }
 
@@ -1740,14 +1752,14 @@ public sealed class MainViewModel : BindableBase
                 if (darks.Length > 0) children.Add(GroupNode($"sensor-dark:{pair.Key}", "Dark", "D", darks, darks.Select(Leaf)));
                 if (biases.Length > 0) children.Add(GroupNode($"sensor-bias:{pair.Key}", "Bias", "B", biases, biases.Select(Leaf)));
                 var pairFrames = darks.Concat(biases).Distinct().ToArray();
-                sessionNodes.Add(GroupNode($"sensor-session:{pair.Key}", $"Sessione sensore {index:00} · {pair.Key}", "S", pairFrames, children));
+                sessionNodes.Add(GroupNode($"sensor-session:{pair.Key}", L($"Sessione sensore {index:00} · {pair.Key}", $"Sensor session {index:00} · {pair.Key}"), "S", pairFrames, children));
                 index++;
             }
         }
         var used = available.Where(frame => usedPaths.Contains(frame.Path)).ToArray();
         if (used.Length == 0 || sessionNodes.Count == 0) return;
         var sessions = GroupNode("sensor-sessions", "Calibrazioni utilizzate", "S", used, sessionNodes);
-        TreeRoots.Add(Category("project-calibration", "Master assegnati al progetto", "◆", used, [sessions]));
+        TreeRoots.Add(Category("project-calibration", L("Master assegnati al progetto", "Masters assigned to the project"), "◆", used, [sessions]));
     }
 
     private static string SensorPairKey(FrameMetadata? dark, FrameMetadata? bias)
@@ -1845,7 +1857,7 @@ public sealed class MainViewModel : BindableBase
         _initialSession = EditSession = Aggregate(frames, frame => frame.SessionId.Value, value => value ?? "");
         _initialKind = EditKind = frames.Select(frame => frame.Kind).Distinct().Take(2).Count() == 1 ? frames[0].Kind : FrameKind.Unknown;
         SelectedIssues.Clear();
-        foreach (var issue in frames.SelectMany(frame => frame.Issues.Select(issue => $"{frame.FileName} — {issue.Message}")).Distinct()) SelectedIssues.Add(issue);
+        foreach (var issue in frames.SelectMany(frame => frame.Issues.Select(issue => $"{frame.FileName}: {issue.Message}")).Distinct()) SelectedIssues.Add(issue);
         Raise(nameof(EditGain)); Raise(nameof(EditOffset)); Raise(nameof(EditTemperature)); Raise(nameof(EditFilter)); Raise(nameof(EditFlatSet)); Raise(nameof(EditSession)); Raise(nameof(EditKind)); Raise(nameof(RawHeaders));
     }
 
@@ -1871,10 +1883,10 @@ public sealed class MainViewModel : BindableBase
             }
             FrameValidator.Revalidate(frame);
         }
-        if (undoActions.Count == 0) { Status = "Nessun valore modificato"; return; }
+        if (undoActions.Count == 0) { Status = L("Nessun valore modificato", "No value changed"); return; }
         var affectedFrames = SelectedNode.Frames.ToArray();
         _undo.Push(() => { foreach (var action in undoActions.AsEnumerable().Reverse()) action(); foreach (var frame in affectedFrames) FrameValidator.Revalidate(frame); RefreshIntelligence(); RebuildTree(); RefreshCounts(); });
-        Status = $"Override applicati a {SelectedNode.Count} frame";
+        Status = L($"Correzioni applicate a {SelectedNode.Count} frame", $"Corrections applied to {SelectedNode.Count} frames");
         RefreshIntelligence(); RebuildTree(); RefreshCounts(); LoadEditor(); SaveState(); UndoCommand.RaiseCanExecuteChanged();
     }
 
@@ -1902,10 +1914,10 @@ public sealed class MainViewModel : BindableBase
 
     private void ApplyProjectDefaults()
     {
-        if (!TryProjectDefaults(out var defaults)) { Status = "Valori di riserva non validi: inserisci numeri o lascia vuoto"; return; }
+        if (!TryProjectDefaults(out var defaults)) { Status = L("Valori di riserva non validi: inserisci numeri o lascia vuoto", "Invalid fallback values: enter numbers or leave empty"); return; }
         var changed = ProjectMetadataDefaultsResolver.Apply(_frames, defaults);
         RefreshIntelligence(); RebuildTree(); RefreshCounts(); SaveState();
-        Status = $"Fallback progetto applicati a {changed} frame · valori presenti negli header non modificati";
+        Status = L($"Valori di riserva applicati a {changed} frame. I valori già negli header non cambiano.", $"Fallback values applied to {changed} frames. Values already in the headers do not change.");
     }
 
     private bool TryProjectDefaults(out ProjectMetadataDefaults defaults)
@@ -1921,7 +1933,7 @@ public sealed class MainViewModel : BindableBase
     private void Undo()
     {
         if (_undo.TryPop(out var action)) action();
-        Status = "Ultima modifica annullata";
+        Status = L("Ultima modifica annullata", "Last change undone");
         SaveState();
         UndoCommand.RaiseCanExecuteChanged();
         LoadEditor();
@@ -1943,7 +1955,7 @@ public sealed class MainViewModel : BindableBase
 
     private static string AggregateSource(IReadOnlyList<FrameMetadata>? frames, Func<FrameMetadata, MetadataSource> selector)
     {
-        if (frames is null || frames.Count == 0) return "—";
+        if (frames is null || frames.Count == 0) return "-";
         var values = frames.Select(selector).Distinct().Take(2).ToArray();
         return values.Length == 1 ? SourceLabel(values[0]) : "Origini miste";
     }
@@ -2120,11 +2132,11 @@ public sealed class MainViewModel : BindableBase
 
     private sealed record ReviewSource(FrameMetadata Frame, string Calibration, MatchResult Result);
 
-    private static string DisplayValue(string? value) => string.IsNullOrWhiteSpace(value) ? "—" : value.Trim();
-    private static string DisplayValue(double? value) => value.HasValue ? value.Value.ToString("0.###", CultureInfo.CurrentCulture) : "—";
-    private static string DisplayTemperature(double? value) => value.HasValue ? $"{value.Value:0.#} °C" : "—";
-    private static string DisplayExposure(double? value) => value.HasValue ? $"{value.Value:0.###} s" : "—";
-    private static string DisplayBinning(FrameMetadata frame) => frame.XBin.Value.HasValue && frame.YBin.Value.HasValue ? $"{frame.XBin.Value}×{frame.YBin.Value}" : "—";
+    private static string DisplayValue(string? value) => string.IsNullOrWhiteSpace(value) ? "-" : value.Trim();
+    private static string DisplayValue(double? value) => value.HasValue ? value.Value.ToString("0.###", CultureInfo.CurrentCulture) : "-";
+    private static string DisplayTemperature(double? value) => value.HasValue ? $"{value.Value:0.#} °C" : "-";
+    private static string DisplayExposure(double? value) => value.HasValue ? $"{value.Value:0.###} s" : "-";
+    private static string DisplayBinning(FrameMetadata frame) => frame.XBin.Value.HasValue && frame.YBin.Value.HasValue ? $"{frame.XBin.Value}×{frame.YBin.Value}" : "-";
 
     /// <summary>The imaging train read from the project's headers, with the filters still waiting for a one-time confirmation.</summary>
     public InstrumentProfile? Instrument { get; private set; }
@@ -2251,7 +2263,7 @@ public sealed class MainViewModel : BindableBase
         var maximumHours = Math.Max(0.001, _statistics.Filters.Select(item => item.ExposureHours).DefaultIfEmpty().Max());
         foreach (var item in _statistics.Filters)
         {
-            var gain = item.Gains.Count == 0 ? "—" : string.Join(", ", item.Gains.Select(value => value.ToString("0.###")));
+            var gain = item.Gains.Count == 0 ? "-" : string.Join(", ", item.Gains.Select(value => value.ToString("0.###")));
             var temperature = TemperatureRange(item.MinimumTemperatureC, item.MaximumTemperatureC);
             FilterStatistics.Add(new(item.Filter, FormatHours(item.ExposureSeconds), item.LightCount, item.NightCount, item.ConfigurationSessionCount,
                 $"{item.FlatFrameCount} Flat · {item.DarkMasterCount} Dark · {item.BiasMasterCount} Bias", gain, temperature,
@@ -2261,7 +2273,7 @@ public sealed class MainViewModel : BindableBase
         foreach (var item in _statistics.Sessions)
         {
             sessionNumbers[item.Filter] = sessionNumbers.GetValueOrDefault(item.Filter) + 1;
-            var displayName = $"Sessione {sessionNumbers[item.Filter]:00} · {DateRange(item.FirstCapture, item.LastCapture)}";
+            var displayName = L($"Sessione {sessionNumbers[item.Filter]:00} · {DateRange(item.FirstCapture, item.LastCapture)}", $"Session {sessionNumbers[item.Filter]:00} · {DateRange(item.FirstCapture, item.LastCapture)}");
             SessionStatistics.Add(new(item.Filter, displayName, item.Session, FormatHours(item.ExposureSeconds), item.LightCount, item.NightCount, item.FlatFrameCount,
                 item.DarkMasters, item.BiasMasters, item.Ready ? "Pronta" : $"{item.UnresolvedCalibrationCount} irrisolte", item.Ready));
         }
@@ -2359,14 +2371,10 @@ public sealed class MainViewModel : BindableBase
         return node;
     }
 
-    private static string HumanSize(long bytes)
-    {
-        string[] units = ["B", "KB", "MB", "GB", "TB"];
-        var value = (double)bytes;
-        var index = 0;
-        while (value >= 1024 && index < units.Length - 1) { value /= 1024; index++; }
-        return $"{value:0.##} {units[index]}";
-    }
+    private static string HumanSize(long bytes) => UiFormat.Size(bytes);
+
+    /// <summary>A message built at run time, in the interface language.</summary>
+    private string L(string italian, string english) => UiLanguage == UiLocalization.English ? english : italian;
 
     private static string FormatDuration(TimeSpan value)
     {
@@ -2376,16 +2384,11 @@ public sealed class MainViewModel : BindableBase
         return $"{(int)value.TotalHours} h {value.Minutes:00} min";
     }
 
-    private static string FormatHours(double seconds)
-    {
-        var duration = TimeSpan.FromSeconds(Math.Max(0, seconds));
-        var hours = (int)Math.Floor(duration.TotalHours);
-        return duration.Minutes == 0 ? $"{hours} h" : $"{hours} h {duration.Minutes:00} min";
-    }
+    private static string FormatHours(double seconds) => UiFormat.Duration(seconds / 3600);
 
     private static string TemperatureRange(double? minimum, double? maximum)
     {
-        if (minimum is null || maximum is null) return "—";
+        if (minimum is null || maximum is null) return "-";
         return Math.Abs(minimum.Value - maximum.Value) < 0.05 ? $"{Signed(minimum.Value)} °C" : $"{Signed(minimum.Value)}…{Signed(maximum.Value)} °C";
     }
 
@@ -2507,10 +2510,10 @@ public sealed class ReviewQueueItem(IReadOnlyList<FrameMetadata> targets, string
         ? (english ? "Same configuration and filter" : "Stessa configurazione e filtro")
         : (english ? "Same configuration" : "Stessa configurazione");
     public string TargetSignature => $"Light · Camera {SignatureValue(Frame.Camera.Value)} · G{SignatureValue(Frame.Gain.Value)} · O{SignatureValue(Frame.Offset.Value)} · {SignatureTemperature(Frame.EffectiveTemperatureC)} · {SignatureBinning(Frame)} · {SignatureValue(Frame.ReadoutMode.Value)}";
-    private static string SignatureValue(string? value) => string.IsNullOrWhiteSpace(value) ? "—" : value.Trim();
-    private static string SignatureValue(double? value) => value.HasValue ? value.Value.ToString("0.###") : "—";
-    private static string SignatureTemperature(double? value) => value.HasValue ? $"{value.Value:0.#} °C" : "—";
-    private static string SignatureBinning(FrameMetadata value) => value.XBin.Value.HasValue && value.YBin.Value.HasValue ? $"{value.XBin.Value}×{value.YBin.Value}" : "—";
+    private static string SignatureValue(string? value) => string.IsNullOrWhiteSpace(value) ? "-" : value.Trim();
+    private static string SignatureValue(double? value) => value.HasValue ? value.Value.ToString("0.###") : "-";
+    private static string SignatureTemperature(double? value) => value.HasValue ? $"{value.Value:0.#} °C" : "-";
+    private static string SignatureBinning(FrameMetadata value) => value.XBin.Value.HasValue && value.YBin.Value.HasValue ? $"{value.XBin.Value}×{value.YBin.Value}" : "-";
 }
 public sealed record ReviewCandidateOption(string Path, string FileName, int Score, string Compatibility, string Reasons, string Camera, string Gain, string Offset, string Temperature, string Exposure, string Binning, string Readout, string? FlatSetId, int FrameCount, string Display)
 {
@@ -2550,12 +2553,12 @@ public sealed class QualityFrameRow : BindableBase
     public double Snr => Metrics?.Snr ?? 0;
     public int StarCount => Metrics?.StarCount ?? 0;
     public int CoverageZones => Metrics?.CoverageZones ?? 0;
-    public string FwhmText => Error is null ? Fwhm.ToString("0.00") : "—";
-    public string EccentricityText => Error is null ? Eccentricity.ToString("0.000") : "—";
-    public string NoiseText => Error is null ? Noise.ToString("0.##") : "—";
-    public string SnrText => Error is null ? Snr.ToString("0.0") : "—";
-    public string StarsText => Error is null ? StarCount.ToString("N0") : "—";
-    public string CoverageText => Error is null ? CoverageZones.ToString() : "—";
+    public string FwhmText => Error is null ? Fwhm.ToString("0.00") : "-";
+    public string EccentricityText => Error is null ? Eccentricity.ToString("0.000") : "-";
+    public string NoiseText => Error is null ? Noise.ToString("0.##") : "-";
+    public string SnrText => Error is null ? Snr.ToString("0.0") : "-";
+    public string StarsText => Error is null ? StarCount.ToString("N0") : "-";
+    public string CoverageText => Error is null ? CoverageZones.ToString() : "-";
     public bool IsExcluded { get => _isExcluded; set { if (Set(ref _isExcluded, value)) Raise(nameof(State)); } }
     public bool IsSuspect { get => _isSuspect; private set { if (Set(ref _isSuspect, value)) Raise(nameof(State)); } }
     public double OutlierScore { get => _outlierScore; private set => Set(ref _outlierScore, value); }
@@ -2634,7 +2637,7 @@ public sealed class QualitySeriesRow : BindableBase
     public string ConfigurationSession { get; }
     public double ExposureSeconds { get; }
     public string ComparisonGroupId { get; }
-    public string ExposureText => ExposureSeconds > 0 ? $"{ExposureSeconds:0.###} s" : "EXP —";
+    public string ExposureText => ExposureSeconds > 0 ? $"{ExposureSeconds:0.###} s" : "-";
     public IReadOnlyList<FrameMetadata> SourceFrames { get; }
     public IReadOnlyList<QualityFrameRow> Frames => _frames;
     public int FrameCount => SourceFrames.Count;

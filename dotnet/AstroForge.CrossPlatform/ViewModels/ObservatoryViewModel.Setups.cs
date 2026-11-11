@@ -1,5 +1,6 @@
 using System.Collections.ObjectModel;
 using Avalonia.Media;
+using AstroForge.App.Services;
 using AstroForge.Core.Equipment;
 
 namespace AstroForge.CrossPlatform.ViewModels;
@@ -14,7 +15,7 @@ public sealed partial class ObservatoryViewModel
     public bool HasSeveralSetups => SetupRows.Count > 1;
     public string SetupHint => English
         ? "This project mixes rigs. Pick one to check its camera, optics and filters; the others stay dashed on the sky."
-        : "Il progetto mescola più setup. Scegline uno per controllare camera, ottica e filtri; gli altri restano tratteggiati sul cielo.";
+        : "Il progetto mescola più strumenti. Scegline uno per controllare camera, ottica e filtri; gli altri restano tratteggiati sul cielo.";
 
     public void SelectSetup(string key) => _main.SelectSetup(key);
 
@@ -33,14 +34,13 @@ public sealed partial class ObservatoryViewModel
                 var isSelected = setup.Key == selected;
                 var colour = isSelected ? SelectedRigColour : RigColour(others++);
                 var camera = ShortCamera(profile?.Camera.DisplayName ?? setup.CameraName);
-                var scope = profile?.Telescope is { } train && (train.RawName.Length > 0 || train.Telescope is not null) ? train.DisplayName : "";
+                var scope = profile?.Telescope is { } train && (train.RawName.Length > 0 || train.Telescope is not null)
+                    ? (train.Telescope?.Name ?? train.RawName) + (train.Reducer is { } reducer ? $" + {ReducerName(reducer.Name, reducer.Factor)}" : "")
+                    : "";
                 var focal = profile?.FocalMm ?? setup.FocalMm;
                 var optics = string.Join(" · ", new[] { scope, focal is { } length ? $"{length:0} mm" : "" }.Where(part => part.Length > 0));
-                var hours = setup.IntegrationSeconds / 3600;
-                var usage = English
-                    ? $"{setup.Lights} Light · {hours:0.0} h · {setup.Nights} {(setup.Nights == 1 ? "night" : "nights")}"
-                    : $"{setup.Lights} Light · {hours:0.0} h · {setup.Nights} {(setup.Nights == 1 ? "notte" : "notti")}";
-                SetupRows.Add(new SetupRow(setup.Key, $"Setup {index + 1}", camera, optics.Length == 0 ? (English ? "optics not in the headers" : "ottica non indicata") : optics, usage, isSelected,
+                var usage = $"{UiFormat.Frames(setup.Lights, "Light")} · {UiFormat.Duration(setup.IntegrationSeconds / 3600)} · {NightsLabel(setup.Nights)}";
+                SetupRows.Add(new SetupRow(setup.Key, $"{(English ? "Rig" : "Strumento")} {index + 1}", camera, optics.Length == 0 ? (English ? "optics not in the headers" : "ottica non indicata") : optics, usage, isSelected,
                     new SolidColorBrush(Color.Parse(colour))));
             }
         }

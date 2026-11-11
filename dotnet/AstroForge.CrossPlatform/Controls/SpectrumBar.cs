@@ -20,7 +20,7 @@ public sealed class SpectrumBar : Control
     public static readonly StyledProperty<bool> LargeProperty =
         AvaloniaProperty.Register<SpectrumBar, bool>(nameof(Large));
 
-    private static readonly IBrush Label = new ImmutableSolidColorBrush(Color.Parse("#8E97BD"));
+    private static readonly IBrush Label = new ImmutableSolidColorBrush(Color.Parse("#A3ABCD"));
     private static readonly IBrush Tick = new ImmutableSolidColorBrush(Color.Parse("#405B6490"));
     private static readonly Typeface Mono = new(new FontFamily("avares://AstroProjectForge/Assets/Fonts#JetBrains Mono"));
 
@@ -71,12 +71,12 @@ public sealed class SpectrumBar : Control
             var x = X(peak);
             if (labelled.Any(other => Math.Abs(other - x) < 44)) continue;
             labelled.Add(x);
-            var text = new FormattedText(peak.ToString("0.#", CultureInfo.CurrentCulture), CultureInfo.CurrentCulture, FlowDirection.LeftToRight, Mono, 9.5, Label);
+            var text = new FormattedText(peak.ToString("0.#", CultureInfo.CurrentCulture), CultureInfo.CurrentCulture, FlowDirection.LeftToRight, Mono, 11, Label);
             context.DrawText(text, new Point(Math.Clamp(x - text.Width / 2, 0, width - text.Width), 15));
         }
         if (labelled.Count == 0 && Bands is { Count: > 0 })
         {
-            var text = new FormattedText(CanvasText.T("banda larga"), CultureInfo.CurrentCulture, FlowDirection.LeftToRight, Mono, 9.5, Label);
+            var text = new FormattedText(CanvasText.T("banda larga"), CultureInfo.CurrentCulture, FlowDirection.LeftToRight, Mono, 11, Label);
             context.DrawText(text, new Point(0, 15));
         }
     }
@@ -123,7 +123,7 @@ public sealed class SpectrumBar : Control
                 if (labelled.Any(other => Math.Abs(other - x) < 60)) continue;
                 labelled.Add(x);
                 var text = new FormattedText(peak.ToString("0.0", CultureInfo.CurrentCulture) + (labelled.Count == bands.Count(b => b.WidthNm < 60) ? " nm" : ""),
-                    CultureInfo.CurrentCulture, FlowDirection.LeftToRight, Mono, 9, LargeLabel);
+                    CultureInfo.CurrentCulture, FlowDirection.LeftToRight, Mono, 11, LargeLabel);
                 var tx = x + 6 + text.Width > width - 4 ? x - 6 - text.Width : x + 6;
                 context.DrawText(text, new Point(tx, 13 - text.Height / 2));
             }

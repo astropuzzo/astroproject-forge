@@ -32,8 +32,8 @@ public sealed class StackPreview : AmbientControl
     public int Palette { get => GetValue(PaletteProperty); set => SetValue(PaletteProperty, value); }
     public string? Seed { get => GetValue(SeedProperty); set => SetValue(SeedProperty, value); }
 
-    // Grain only moves while the stack is still noisy enough to see it.
-    protected override bool WantsAmbient => _fields is not null && Snr < 3.5;
+    // The grain stands still: it changes with the nights integrated, not with time.
+    protected override bool WantsAmbient => false;
 
     protected override void OnAttachedToVisualTree(VisualTreeAttachmentEventArgs e)
     {
@@ -78,7 +78,7 @@ public sealed class StackPreview : AmbientControl
     {
         var bounds = new Rect(Bounds.Size);
         if (bounds.Width <= 0 || _fields is null) return;
-        var frame = (int)(Clock * 11);
+        const int frame = 0;
         if (frame != _frame || _bitmap is null)
         {
             _frame = frame;

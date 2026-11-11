@@ -24,9 +24,9 @@ public sealed class QualitySky : AmbientControl
         AvaloniaProperty.Register<QualitySky, double>(nameof(Threshold), 3.5);
 
     private static readonly Typeface Mono = new(new FontFamily("avares://AstroProjectForge/Assets/Fonts#JetBrains Mono"));
-    private static readonly Color Star = Color.Parse("#DDE4FF"), Oiii = Color.Parse("#3FE0D0"), Warn = Color.Parse("#FFC27A"), MutedColour = Color.Parse("#5B6490");
-    private static readonly IBrush Muted = new ImmutableSolidColorBrush(Color.Parse("#8E97BD"));
-    private static readonly IBrush Dim = new ImmutableSolidColorBrush(Color.Parse("#5B6490"));
+    private static readonly Color Star = Color.Parse("#DDE4FF"), Oiii = Color.Parse("#3FE0D0"), Warn = Color.Parse("#FFC27A"), MutedColour = Color.Parse("#8E97BD");
+    private static readonly IBrush Muted = new ImmutableSolidColorBrush(Color.Parse("#A3ABCD"));
+    private static readonly IBrush Dim = new ImmutableSolidColorBrush(Color.Parse("#8E97BD"));
     private static readonly IBrush Fg = new ImmutableSolidColorBrush(Color.Parse("#EEF1FF"));
     private static readonly IPen Grid = new ImmutablePen(new ImmutableSolidColorBrush(Color.Parse("#1296AAFF")), 1, new ImmutableDashStyle([2, 4], 0));
     private static readonly IPen Reticle = new ImmutablePen(new ImmutableSolidColorBrush(Color.Parse("#EEF1FF")), 1);
@@ -43,7 +43,7 @@ public sealed class QualitySky : AmbientControl
     public QualityFrameRow? SelectedItem { get => GetValue(SelectedItemProperty); set => SetValue(SelectedItemProperty, value); }
     public double Threshold { get => GetValue(ThresholdProperty); set => SetValue(ThresholdProperty, value); }
 
-    protected override bool WantsAmbient => _stars.Count > 0;
+    protected override bool WantsAmbient => false;
 
     protected override void OnPropertyChanged(AvaloniaPropertyChangedEventArgs change)
     {
@@ -106,14 +106,14 @@ public sealed class QualitySky : AmbientControl
             var y = plot.Y + plot.Height * step / 3;
             context.DrawLine(Grid, new Point(x, plot.Y), new Point(x, plot.Bottom));
             context.DrawLine(Grid, new Point(plot.X, y), new Point(plot.Right, y));
-            var fwhm = new FormattedText((minF + (maxF - minF) * step / 3).ToString(maxF - minF < 0.6 ? "0.00" : "0.0", culture), culture, FlowDirection.LeftToRight, Mono, 9, Dim);
+            var fwhm = new FormattedText((minF + (maxF - minF) * step / 3).ToString(maxF - minF < 0.6 ? "0.00" : "0.0", culture), culture, FlowDirection.LeftToRight, Mono, 11, Dim);
             context.DrawText(fwhm, new Point(Math.Clamp(x - fwhm.Width / 2, plot.X, plot.Right - fwhm.Width), plot.Bottom + 4));
-            var snr = new FormattedText((maxS - (maxS - minS) * step / 3).ToString(maxS - minS < 6 ? "0.0" : "0", culture), culture, FlowDirection.LeftToRight, Mono, 9, Dim);
+            var snr = new FormattedText((maxS - (maxS - minS) * step / 3).ToString(maxS - minS < 6 ? "0.0" : "0", culture), culture, FlowDirection.LeftToRight, Mono, 11, Dim);
             context.DrawText(snr, new Point(plot.X - snr.Width - 6, y - 6));
         }
-        var xAxis = new FormattedText(CanvasText.T("FWHM px"), culture, FlowDirection.LeftToRight, Mono, 9, Muted);
+        var xAxis = new FormattedText(CanvasText.T("FWHM px"), culture, FlowDirection.LeftToRight, Mono, 11, Muted);
         context.DrawText(xAxis, new Point(plot.Right - xAxis.Width, plot.Bottom + 16));
-        var yAxis = new FormattedText("SNR", culture, FlowDirection.LeftToRight, Mono, 9, Muted);
+        var yAxis = new FormattedText("SNR", culture, FlowDirection.LeftToRight, Mono, 11, Muted);
         context.DrawText(yAxis, new Point(plot.X + 4, plot.Y));
 
         var ordered = rows.OrderBy(row => row.Path, StringComparer.Ordinal).ToList();
@@ -128,7 +128,7 @@ public sealed class QualitySky : AmbientControl
 
             // Quality rank 0..1: sharp and strong subs shine more.
             var rank = 1 - Math.Clamp(((at.X - plot.X) / plot.Width + (at.Y - plot.Y) / plot.Height) / 2, 0, 1);
-            var twinkle = Motion.Reduced ? 1 : 0.85 + 0.15 * Math.Sin(Clock * (1.3 + index % 5 * 0.37) + index * 1.7);
+            const double twinkle = 1;
             var colour = row.IsExcluded ? MutedColour : row.IsSuspect ? Warn : Color.FromRgb(
                 (byte)(Star.R + (Oiii.R - Star.R) * rank * 0.35), (byte)(Star.G + (Oiii.G - Star.G) * rank * 0.35), (byte)(Star.B + (Oiii.B - Star.B) * rank * 0.35));
             using (context.PushOpacity(appear))
@@ -156,7 +156,7 @@ public sealed class QualitySky : AmbientControl
                 context.DrawEllipse(new ImmutableSolidColorBrush(colour), null, at, radius * 0.55, radius * 0.55);
                 if (row.IsSuspect)
                 {
-                    var pulse = Motion.Reduced ? 0.5 : 0.5 + 0.5 * Math.Sin(Clock * 3 + index);
+                    const double pulse = 0.5;
                     context.DrawEllipse(null, new Pen(new SolidColorBrush(Color.FromArgb((byte)(120 + 100 * pulse), Warn.R, Warn.G, Warn.B)), 1.3), at, radius + 3 + 3 * pulse, radius + 3 + 3 * pulse);
                 }
             }
@@ -173,7 +173,7 @@ public sealed class QualitySky : AmbientControl
                 foreach (var direction in new[] { new Vector(1, 0), new Vector(-1, 0), new Vector(0, 1), new Vector(0, -1) })
                     context.DrawLine(Reticle, at + direction * (r - 3), at + direction * (r + 6));
             }
-            var label = new FormattedText($"{row.FileName} · FWHM {row.FwhmText} · SNR {row.SnrText}", culture, FlowDirection.LeftToRight, Mono, 9.5, Fg) { MaxTextWidth = 320, MaxLineCount = 1, Trimming = TextTrimming.CharacterEllipsis };
+            var label = new FormattedText($"{row.FileName} · FWHM {row.FwhmText} · SNR {row.SnrText}", culture, FlowDirection.LeftToRight, Mono, 11, Fg) { MaxTextWidth = 320, MaxLineCount = 1, Trimming = TextTrimming.CharacterEllipsis };
             var origin = new Point(Math.Clamp(at.X + radius + 14, 0, Math.Max(0, Bounds.Width - label.Width - 8)), Math.Clamp(at.Y - label.Height - 6, 0, Bounds.Height - label.Height));
             context.DrawRectangle(new ImmutableSolidColorBrush(Color.Parse("#D00A0F22")), null, new Rect(origin.X - 5, origin.Y - 2, label.Width + 10, label.Height + 4), 5, 5);
             context.DrawText(label, origin);

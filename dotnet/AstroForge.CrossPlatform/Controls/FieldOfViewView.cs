@@ -16,7 +16,7 @@ public sealed class FieldOfViewView : Control
     public static readonly StyledProperty<double> HeightDegProperty = AvaloniaProperty.Register<FieldOfViewView, double>(nameof(HeightDeg));
 
     private static readonly Typeface Mono = new(new FontFamily("avares://AstroProjectForge/Assets/Fonts#JetBrains Mono"));
-    private static readonly IBrush Muted = new ImmutableSolidColorBrush(Color.Parse("#8E97BD"));
+    private static readonly IBrush Muted = new ImmutableSolidColorBrush(Color.Parse("#A3ABCD"));
     private static readonly IBrush Fg = new ImmutableSolidColorBrush(Color.Parse("#EEF1FF"));
     private static readonly IPen Frame = new ImmutablePen(new ImmutableSolidColorBrush(Color.Parse("#9DB8FF")), 1.4);
     private static readonly IPen Grid = new ImmutablePen(new ImmutableSolidColorBrush(Color.Parse("#1496AAFF")), 1);
@@ -87,7 +87,7 @@ public sealed class FieldOfViewView : Control
             GradientStops = { new GradientStop(Color.Parse("#F2F0E6"), 0), new GradientStop(Color.Parse("#B9B6A8"), 0.85), new GradientStop(Color.Parse("#8C897C"), 1) }
         };
         context.DrawEllipse(moon, null, moonCenter, moonRadius, moonRadius);
-        var moonLabel = new FormattedText($"{CanvasText.T("Luna")} {0.52:0.00}°", CultureInfo.CurrentCulture, FlowDirection.LeftToRight, Mono, 9.5, Muted);
+        var moonLabel = new FormattedText($"{CanvasText.T("Luna")} {0.52:0.00}°", CultureInfo.CurrentCulture, FlowDirection.LeftToRight, Mono, 11, Muted);
         context.DrawText(moonLabel, new Point(moonCenter.X - moonLabel.Width / 2, moonCenter.Y + moonRadius + 4));
     }
 }

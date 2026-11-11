@@ -25,7 +25,7 @@ public sealed class ResolvePaths : AmbientControl
     private static readonly IPen NodeLine = new ImmutablePen(new ImmutableSolidColorBrush(Color.Parse("#52AABEFF")), 1);
     private static readonly IPen Alternative = new ImmutablePen(new ImmutableSolidColorBrush(Color.Parse("#528E97BD")), 1.2, new ImmutableDashStyle([2, 4], 0));
     private static readonly IBrush Fg = new ImmutableSolidColorBrush(Color.Parse("#EEF1FF"));
-    private static readonly IBrush Muted = new ImmutableSolidColorBrush(Color.Parse("#8E97BD"));
+    private static readonly IBrush Muted = new ImmutableSolidColorBrush(Color.Parse("#A3ABCD"));
     private static readonly IBrush Warn = new ImmutableSolidColorBrush(Color.Parse("#FFC27A"));
     private Rect[] _optionRects = [];
 
@@ -116,7 +116,7 @@ public sealed class ResolvePaths : AmbientControl
         context.DrawRectangle(NodeFill, border, rect, 10, 10);
         var width = rect.Width - 22;
         var title = new FormattedText(node.Title, CultureInfo.CurrentCulture, FlowDirection.LeftToRight, Body, 11.5, titleBrush) { MaxTextWidth = width, MaxLineCount = 1, Trimming = TextTrimming.CharacterEllipsis };
-        var detail = new FormattedText(node.Detail, CultureInfo.CurrentCulture, FlowDirection.LeftToRight, Mono, 9, Muted) { MaxTextWidth = width, MaxLineCount = 1, Trimming = TextTrimming.CharacterEllipsis };
+        var detail = new FormattedText(node.Detail, CultureInfo.CurrentCulture, FlowDirection.LeftToRight, Mono, 11, Muted) { MaxTextWidth = width, MaxLineCount = 1, Trimming = TextTrimming.CharacterEllipsis };
         var top = rect.Center.Y - (title.Height + detail.Height) / 2;
         context.DrawText(title, new Point(rect.X + 11, top));
         context.DrawText(detail, new Point(rect.X + 11, top + title.Height));
