@@ -93,7 +93,8 @@ public static class ProjectStatisticsCalculator
             items.Sum(item => item.Light.ExposureSeconds.Value ?? 0),
             filters.Length,
             sessions.Length,
-            nights.Length,
+            // The rows of Nights are per filter: two filters shot on the same night are still one night.
+            nights.Select(night => night.Night).Distinct(StringComparer.OrdinalIgnoreCase).Count(),
             captures.Length == 0 ? null : captures[0],
             captures.Length == 0 ? null : captures[^1],
             filters,

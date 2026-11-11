@@ -24,12 +24,14 @@ public sealed class MatchCandidate
     public bool Compatible { get; set; } = true;
     public int Score { get; set; }
     public bool Exact { get; set; } = true;
+    /// <summary>How far exposure and temperature sit from the target, in units of their tolerance: 0 is an exact Dark or Bias.</summary>
+    public double Deviation { get; set; }
     public List<string> Reasons { get; } = [];
     public List<string> MissingRequired { get; } = [];
 
     internal MatchCandidate Clone()
     {
-        var copy = new MatchCandidate { Frame = Frame, Compatible = Compatible, Score = Score, Exact = Exact };
+        var copy = new MatchCandidate { Frame = Frame, Compatible = Compatible, Score = Score, Exact = Exact, Deviation = Deviation };
         copy.Reasons.AddRange(Reasons);
         copy.MissingRequired.AddRange(MissingRequired);
         return copy;
@@ -48,14 +50,22 @@ public static class CalibrationMatcher
         policy ??= new();
         var evaluated = frames.Where(frame => frame.Kind == requestedKind).Select(frame => Evaluate(target, frame, requestedKind, policy)).ToArray();
         if (evaluated.Length == 0) return new(requestedKind, MatchStatus.Missing, null, []);
+        // A candidate with every required field comes before one that only scores higher on bonuses, and between
+        // equal scores the Dark or Bias closest in exposure and temperature wins: -10 °C beats -8 °C for a -10 °C Light.
         var compatible = evaluated.Where(candidate => candidate.Compatible)
-            .OrderByDescending(candidate => candidate.Score).ThenBy(candidate => candidate.Frame.Path, StringComparer.OrdinalIgnoreCase).ToArray();
+            .OrderBy(candidate => candidate.MissingRequired.Count > 0).ThenByDescending(candidate => candidate.Score).ThenBy(candidate => candidate.Deviation)
+            .ThenBy(candidate => candidate.Frame.Path, StringComparer.OrdinalIgnoreCase).ToArray();
         if (compatible.Length == 0) return new(requestedKind, MatchStatus.Incompatible, null, evaluated);
         var best = compatible[0];
-        if (compatible.Count(candidate => candidate.Score == best.Score) > 1) return new(requestedKind, MatchStatus.Ambiguous, null, compatible);
-        if (best.MissingRequired.Count > 0) return new(requestedKind, MatchStatus.InsufficientMetadata, null, compatible);
+        var complete = best.MissingRequired.Count == 0;
+        if (compatible.Count(candidate => candidate.MissingRequired.Count == 0 == complete && candidate.Score == best.Score && candidate.Deviation - best.Deviation < DeviationTie) > 1)
+            return new(requestedKind, MatchStatus.Ambiguous, null, compatible);
+        if (!complete) return new(requestedKind, MatchStatus.InsufficientMetadata, null, compatible);
         return new(requestedKind, best.Exact ? MatchStatus.Exact : MatchStatus.WithinTolerance, best, compatible);
     }
+
+    // Two candidates closer than this (1% of a tolerance) are the same distance from the target.
+    private const double DeviationTie = 0.01;
 
     /// <summary>
     /// The target fields that <see cref="Evaluate"/> reads for a kind: two targets with the same signature get the same
@@ -132,8 +142,10 @@ public static class CalibrationMatcher
     private static void Within(MatchCandidate result, string label, double? left, double? right, double tolerance, int points, bool required)
     {
         if (!left.HasValue || !right.HasValue) { Missing(result, label, required); return; }
-        if (Math.Abs(left.Value - right.Value) <= tolerance) Pass(result, label, points); else Fail(result, label, left.Value, right.Value);
-        if (left is not null && right is not null && Math.Abs(left.Value - right.Value) > 1e-9 && result.Compatible) result.Exact = false;
+        var difference = Math.Abs(left.Value - right.Value);
+        if (difference <= tolerance) Pass(result, label, points); else Fail(result, label, left.Value, right.Value);
+        if (difference > 1e-9 && result.Compatible) result.Exact = false;
+        if (tolerance > 0) result.Deviation += difference / tolerance;
     }
     private static void Relative(MatchCandidate result, string label, double? left, double? right, double tolerance, int points)
     {

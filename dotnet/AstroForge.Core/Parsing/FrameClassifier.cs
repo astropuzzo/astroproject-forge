@@ -32,7 +32,8 @@ public static partial class FrameClassifier
         Set(frame.BayerPattern, Text(headers, "BAYERPAT", "BAYERPATTERN", "COLORTYP"));
         Set(frame.FocalLengthMm, Number(headers, "FOCALLEN", "FOCALLENGTH"));
         Set(frame.RotatorAngleDeg, Number(headers, "ROTATANG", "ROTATOR", "ROTANGLE"));
-        Set(frame.CapturedAt, Timestamp(headers, "DATE-LOC", "DATE-OBS", "DATE-UTC", "DATE"));
+        Set(frame.CapturedAt, CaptureTime(headers, out var siteOffset));
+        frame.SiteUtcOffset = siteOffset;
         ApplyFileName(frame, FileNameMetadata.Parse(path));
         AstronomicalSessionResolver.Apply(frame, sessionSettings);
         FrameValidator.Revalidate(frame);
@@ -81,10 +82,35 @@ public static partial class FrameClassifier
         if (bool.TryParse(value, out var boolean)) return boolean;
         return value.Trim().ToUpperInvariant() switch { "T" or "YES" or "1" => true, "F" or "NO" or "0" => false, _ => null };
     }
-    private static DateTimeOffset? Timestamp(Dictionary<string, object?> headers, params string[] keys)
+    /// <summary>
+    /// When the exposure started. DATE-OBS is UTC by the FITS standard; N.I.N.A., SGP and APT add DATE-LOC, the same
+    /// instant on the site's wall clock, so the difference between the two is the site's UTC offset.
+    /// </summary>
+    private static DateTimeOffset? CaptureTime(Dictionary<string, object?> headers, out TimeSpan? siteOffset)
+    {
+        siteOffset = null;
+        var utc = Utc(headers, "DATE-OBS", "DATE-UTC");
+        var wallClock = headers.TryGetValue("DATE-LOC", out var value)
+            && DateTime.TryParse(Raw(value), CultureInfo.InvariantCulture, DateTimeStyles.RoundtripKind, out var parsed) ? parsed : (DateTime?)null;
+        if (utc is { } instant && wallClock is { Kind: DateTimeKind.Unspecified } local)
+        {
+            var offset = TimeSpan.FromMinutes(Math.Round((local - instant.UtcDateTime).TotalMinutes / 15) * 15);
+            // Offsets on Earth run from -12 h to +14 h in quarter hours: anything else is two clocks that disagree.
+            if (offset >= TimeSpan.FromHours(-12) && offset <= TimeSpan.FromHours(14) && (local - instant.UtcDateTime - offset).Duration() < TimeSpan.FromMinutes(5))
+            {
+                siteOffset = offset;
+                return instant.ToOffset(offset);
+            }
+        }
+        if (utc is not null) return utc;
+        if (wallClock is { } alone) return alone.Kind == DateTimeKind.Unspecified ? new DateTimeOffset(alone, TimeZoneInfo.Local.GetUtcOffset(alone)) : new DateTimeOffset(alone);
+        return Utc(headers, "DATE");
+    }
+
+    private static DateTimeOffset? Utc(Dictionary<string, object?> headers, params string[] keys)
     {
         foreach (var key in keys)
-            if (headers.TryGetValue(key, out var value) && DateTimeOffset.TryParse(Raw(value), CultureInfo.InvariantCulture, DateTimeStyles.AssumeLocal, out var timestamp)) return timestamp;
+            if (headers.TryGetValue(key, out var value) && DateTimeOffset.TryParse(Raw(value), CultureInfo.InvariantCulture, DateTimeStyles.AssumeUniversal, out var timestamp)) return timestamp;
         return null;
     }
     // Header values are already typed (-9.9 is a double): format them invariantly, or on an Italian system

@@ -92,6 +92,8 @@ public sealed class FrameMetadata
     public MetadataField<double?> FocalLengthMm { get; } = new();
     public MetadataField<double?> RotatorAngleDeg { get; } = new();
     public MetadataField<DateTimeOffset?> CapturedAt { get; } = new();
+    /// <summary>The site's UTC offset, known when the capture software wrote both its local time (DATE-LOC) and UTC (DATE-OBS).</summary>
+    public TimeSpan? SiteUtcOffset { get; set; }
     public MetadataField<string?> SessionId { get; } = new();
     public MetadataField<string?> ManualDarkPath { get; } = new();
     public MetadataField<string?> ManualBiasPath { get; } = new();

@@ -159,8 +159,8 @@ internal static class DemoProjectE2e
         var statistics = ProjectStatisticsCalculator.Calculate(analysis);
         Assert(statistics.LightCount == 16 && Math.Abs(statistics.ExposureHours - 16 * 300 / 3600d) < 1e-9, "Integrazione totale del demo errata.");
         // Nights are counted per filter: Hα on both nights, OIII on the first, SII on the second.
-        Assert(statistics.FilterCount == 3 && statistics.NightCount == 4 && statistics.Nights.Select(night => night.Night).Distinct().Count() == 2,
-            $"Filtri o notti del demo errati: {statistics.FilterCount} filtri, {statistics.NightCount} notti filtro.");
+        Assert(statistics.FilterCount == 3 && statistics.NightCount == 2 && statistics.Nights.Count == 4,
+            $"Filtri o notti del demo errati: {statistics.FilterCount} filtri, {statistics.NightCount} notti, {statistics.Nights.Count} righe notte per filtro.");
         var recipe = WbppRecipeEngine.Recommend(analysis);
         // Hα spans both nights with different dust shadows: WBPP must keep the two Flat Sets apart.
         Assert(recipe.Keywords.Select(keyword => keyword.Keyword).SequenceEqual(["FLATSET"]) && recipe.Keywords[0].Pre && !recipe.Keywords[0].Post,
